@@ -28,6 +28,7 @@ GitOps repository for deploying **Confluent Platform**, **Apache Flink** (via Co
 - [Namespace Convention](#namespace-convention)
 - [Helm Charts Reference](#helm-charts-reference)
 - [Troubleshooting](#troubleshooting)
+- [Additional Guides](#additional-guides)
 
 ---
 
@@ -72,14 +73,14 @@ ArgoCD is the only component installed directly via `helm install`. Everything e
 
 ## Environments
 
-| Environment | Cluster | Sync Policy | Use Case |
-|-------------|---------|-------------|----------|
-| **dev** | `cfk-eks` (us-east-2) | Automated (prune + selfHeal) | Development and testing |
-| **qa** | qa-cluster | Manual | Quality assurance |
-| **stg** | stg-cluster | Manual | Pre-production staging |
-| **prd** | prd-cluster | Manual | Production |
+| Environment | Sync Policy | Use Case |
+|-------------|-------------|----------|
+| **dev** | Automated (prune + selfHeal) | Development and testing |
+| **qa** | Manual | Quality assurance |
+| **stg** | Manual | Pre-production staging |
+| **prd** | Manual | Production |
 
-Each environment has its own Kubernetes cluster, namespace, and resource sizing. The cluster inventory is defined in `hosts.yaml`.
+Each environment has its own Kubernetes namespace and resource sizing. The cluster inventory is defined in `hosts.yaml`. Update `hosts.yaml` with the actual cluster API endpoints for your infrastructure.
 
 ---
 
@@ -89,9 +90,10 @@ Each environment has its own Kubernetes cluster, namespace, and resource sizing.
 FCB/
 |
 |-- README.md                          # This file
+|-- README-EXISTING-ARGOCD.md          # Guide: deploy into an existing ArgoCD
+|-- README-OPENSHIFT.md                # Guide: deploy on OpenShift
 |-- .gitignore                         # Ignore secrets, IDE files, temp files
-|-- .gitkeep
-|-- hosts.yaml                         # Cluster inventory (4 clusters)
+|-- hosts.yaml                         # Cluster inventory
 |-- secrets.yaml                       # Secret reference template
 |
 |-- apps/                              # Application definitions
@@ -99,7 +101,7 @@ FCB/
 |   |-- argocd/                        # ArgoCD self-provisioning (Helm)
 |   |   |-- dev/
 |   |   |   |-- app.yaml              #   ArgoCD Application resource
-|   |   |   +-- values.yaml           #   Helm values (replicas, resources, LB, password)
+|   |   |   +-- values.yaml           #   Helm values (replicas, resources, service type)
 |   |   |-- qa/  stg/  prd/           #   Same structure per environment
 |   |
 |   |-- cert-manager/                  # cert-manager (Helm) - Flink prerequisite
@@ -143,7 +145,7 @@ FCB/
 |       +-- .gitkeep
 |
 +-- gitops-config/                     # ArgoCD ApplicationSet definitions
-    +-- aws-us-east-2/
+    +-- <region>/
         |-- dev/
         |   |-- cert-manager-application-set.yaml
         |   |-- confluent-operator-application-set.yaml
@@ -162,7 +164,7 @@ FCB/
 | `apps/<app>/<env>/app.yaml` | ArgoCD Application resource that tells ArgoCD *what* to deploy and *where* |
 | `apps/<app>/<env>/values.yaml` | Helm values file (reference copy; dev app.yaml uses inline `valuesObject`) |
 | `apps/<app>/<env>/manifests/` | Raw Kubernetes CRD manifests (for confluent-platform and confluent-flink) |
-| `gitops-config/aws-us-east-2/<env>/` | ArgoCD ApplicationSet resources for multi-cluster orchestration |
+| `gitops-config/<region>/<env>/` | ArgoCD ApplicationSet resources for multi-cluster orchestration |
 
 ---
 
@@ -174,15 +176,6 @@ Before deploying, ensure the following tools are installed and configured:
 |------|---------|---------|
 | `kubectl` | 1.28+ | Kubernetes CLI |
 | `helm` | 3.14+ / 4.x | Helm package manager |
-| `aws` CLI | 2.x | EKS authentication (must be on PATH) |
-
-### AWS CLI PATH (Windows/Git Bash)
-
-If `kubectl` fails with `executable aws not found`, add the AWS CLI to your PATH:
-
-```bash
-export PATH="$PATH:/c/Program Files/Amazon/AWSCLIV2"
-```
 
 ### Kubeconfig
 
@@ -213,6 +206,10 @@ ArgoCD  -->  cert-manager  -->  confluent-operator     -->  confluent-platform
 - **confluent-platform** and **confluent-flink** CRDs require their respective operators to be running.
 
 All steps below use **dev** as the target environment. Replace `dev` with `qa`, `stg`, or `prd` for other environments.
+
+> **Already have ArgoCD running?** Skip to [README-EXISTING-ARGOCD.md](README-EXISTING-ARGOCD.md) for a streamlined guide.
+>
+> **Deploying on OpenShift?** See [README-OPENSHIFT.md](README-OPENSHIFT.md) for OpenShift-specific instructions.
 
 ---
 
@@ -263,19 +260,24 @@ argocd-server-...                                  1/1     Running
 
 ### Step 3 - Access ArgoCD UI
 
-The dev values file configures the ArgoCD server as a `LoadBalancer` service. Get the external URL:
+Retrieve the ArgoCD server URL based on your platform's ingress method (LoadBalancer, NodePort, Ingress, or OpenShift Route).
 
 ```bash
+# Check the service type
 kubectl get svc argocd-server -n argocd
 ```
 
 | Field | Value |
 |-------|-------|
-| **URL** | `http://<EXTERNAL-IP>` (from the LoadBalancer output) |
+| **URL** | Depends on your service exposure method (LoadBalancer IP, Ingress hostname, or Route) |
 | **Username** | `admin` |
-| **Password** | `3qnIIsA5FZfG1Krq` (pre-configured in dev values.yaml) |
+| **Password** | Pre-configured in `values.yaml`, or retrieve auto-generated password (see below) |
 
-The ELB hostname changes on each fresh deploy. DNS propagation may take 1-2 minutes.
+Retrieve the auto-generated admin password:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
 
 ---
 
@@ -378,9 +380,6 @@ kubectl apply -f apps/confluent-flink/dev/app.yaml
 Copy-paste this block to deploy everything from scratch on a clean cluster:
 
 ```bash
-# Ensure AWS CLI is on PATH (Windows/Git Bash)
-export PATH="$PATH:/c/Program Files/Amazon/AWSCLIV2"
-
 # Add Helm repos (idempotent)
 helm repo add argo-cd https://argoproj.github.io/argo-helm 2>/dev/null || true
 helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
@@ -410,15 +409,7 @@ kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
 kubectl apply -f apps/confluent-platform/dev/app.yaml
 kubectl apply -f apps/confluent-flink/dev/app.yaml
 
-# 5. Print ArgoCD URL
-echo ""
-echo "=== ArgoCD ==="
-echo "URL:      http://$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-echo "Username: admin"
-echo "Password: 3qnIIsA5FZfG1Krq"
-echo ""
-
-# 6. Show all ArgoCD applications
+# 5. Show all ArgoCD applications
 kubectl get applications -n argocd
 ```
 
@@ -429,8 +420,6 @@ kubectl get applications -n argocd
 To completely remove everything and start fresh:
 
 ```bash
-export PATH="$PATH:/c/Program Files/Amazon/AWSCLIV2"
-
 # Delete all ArgoCD-managed applications first
 kubectl delete applications --all -n argocd
 
@@ -517,18 +506,6 @@ ArgoCD deploys Confluent Platform CRDs in a specific order using `argocd.argopro
 
 ## Troubleshooting
 
-### AWS CLI not found
-
-```
-Unable to connect to the server: getting credentials: exec: executable aws not found
-```
-
-Add the AWS CLI to your PATH:
-
-```bash
-export PATH="$PATH:/c/Program Files/Amazon/AWSCLIV2"
-```
-
 ### Flink operator fails to install without cert-manager
 
 ```
@@ -556,10 +533,17 @@ kubectl get application confluent-operator-dev -n argocd -o jsonpath='{.status.s
 
 ### Viewing ArgoCD admin password
 
-The dev environment has a pre-configured admin password: `3qnIIsA5FZfG1Krq`
-
 For environments without a pre-configured password, retrieve the auto-generated one:
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
+
+---
+
+## Additional Guides
+
+| Guide | Description |
+|-------|-------------|
+| [README-EXISTING-ARGOCD.md](README-EXISTING-ARGOCD.md) | Deploy operator apps into an existing ArgoCD instance |
+| [README-OPENSHIFT.md](README-OPENSHIFT.md) | Deploy on OpenShift with ArgoCD (OpenShift GitOps or standalone) |
