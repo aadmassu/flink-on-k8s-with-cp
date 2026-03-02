@@ -1,8 +1,10 @@
 # Deploying on OpenShift with ArgoCD
 
-This guide covers deploying the Confluent Platform and Flink operator stack on **Red Hat OpenShift**, using either the **OpenShift GitOps Operator** (built-in ArgoCD) or a **standalone ArgoCD** installation.
+This guide covers deploying **cert-manager**, **Confluent Operator (CFK)**, and **Flink Operator** on **Red Hat OpenShift**, using either the **OpenShift GitOps Operator** (built-in ArgoCD) or a **standalone ArgoCD** installation.
 
 For generic Kubernetes instructions, see the main [README.md](README.md).
+
+> **Current scope:** This guide covers operator installation only. Confluent Platform CRDs and Confluent Flink Manager deployment will be covered in a future update.
 
 ---
 
@@ -18,17 +20,14 @@ For generic Kubernetes instructions, see the main [README.md](README.md).
   - [B2 - Install ArgoCD via Helm](#b2---install-argocd-via-helm)
   - [B3 - Create a Route for ArgoCD](#b3---create-a-route-for-argocd)
   - [B4 - Access the ArgoCD UI](#b4---access-the-argocd-ui)
-- [Deploy the Operator Apps](#deploy-the-operator-apps)
+- [Deploy the Operators](#deploy-the-operators)
   - [Step 1 - Prepare App Definitions for OpenShift](#step-1---prepare-app-definitions-for-openshift)
   - [Step 2 - Deploy cert-manager](#step-2---deploy-cert-manager)
   - [Step 3 - Deploy Confluent Operator (CFK)](#step-3---deploy-confluent-operator-cfk)
   - [Step 4 - Deploy Flink Operator](#step-4---deploy-flink-operator)
-  - [Step 5 - Deploy Confluent Platform](#step-5---deploy-confluent-platform)
-  - [Step 6 - Deploy Confluent Flink Manager](#step-6---deploy-confluent-flink-manager)
 - [Verify All Applications](#verify-all-applications)
 - [OpenShift-Specific Considerations](#openshift-specific-considerations)
   - [Security Context Constraints (SCCs)](#security-context-constraints-sccs)
-  - [Routes vs Ingress](#routes-vs-ingress)
   - [OpenShift GitOps Namespace Restrictions](#openshift-gitops-namespace-restrictions)
   - [cert-manager on OpenShift](#cert-manager-on-openshift)
 - [Quick Deploy Script (OpenShift)](#quick-deploy-script-openshift)
@@ -183,7 +182,7 @@ oc -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password
 
 ---
 
-## Deploy the Operator Apps
+## Deploy the Operators
 
 These steps apply regardless of whether you used Option A or Option B. The only difference is the ArgoCD namespace:
 
@@ -197,6 +196,7 @@ Set the namespace variable for the commands below:
 ```bash
 # Set this to match your ArgoCD namespace
 ARGOCD_NS=openshift-gitops   # or "argocd" for standalone Helm installs
+ENV=dev                       # Change to qa, stg, or prd as needed
 ```
 
 ### Step 1 - Prepare App Definitions for OpenShift
@@ -204,10 +204,8 @@ ARGOCD_NS=openshift-gitops   # or "argocd" for standalone Helm installs
 If using OpenShift GitOps (Option A), update the namespace in each `app.yaml` to `openshift-gitops`:
 
 ```bash
-ENV=dev  # Change to qa, stg, or prd as needed
-
 # Update namespace in all app.yaml files for your environment
-for app in cert-manager confluent-operator confluent-flink-operator confluent-platform confluent-flink; do
+for app in cert-manager confluent-operator confluent-flink-operator; do
   sed -i "s/namespace: argocd/namespace: ${ARGOCD_NS}/" apps/${app}/${ENV}/app.yaml
 done
 ```
@@ -284,37 +282,6 @@ confluent-operator-...                 1/1     Running
 flink-kubernetes-operator-...          2/2     Running
 ```
 
-### Step 5 - Deploy Confluent Platform
-
-Requires the Confluent Operator to be running.
-
-```bash
-oc apply -f apps/confluent-platform/${ENV}/app.yaml
-```
-
-ArgoCD deploys CRD manifests in sync-wave order:
-
-| Wave | Components |
-|------|-----------|
-| 0 | KRaftController |
-| 1 | Kafka |
-| 2 | SchemaRegistry, Connect |
-| 3 | ksqlDB, ControlCenter |
-
-Monitor progress:
-
-```bash
-oc get applications confluent-platform-${ENV} -n ${ARGOCD_NS} -w
-```
-
-### Step 6 - Deploy Confluent Flink Manager
-
-Requires the Flink Operator to be running.
-
-```bash
-oc apply -f apps/confluent-flink/${ENV}/app.yaml
-```
-
 ---
 
 ## Verify All Applications
@@ -334,8 +301,6 @@ NAME                            HEALTH    SYNC     NAMESPACE
 cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev
-confluent-platform-dev          Healthy   Synced   confluent-dev
-confluent-flink-dev             Healthy   Synced   confluent-dev
 ```
 
 ---
@@ -344,14 +309,12 @@ confluent-flink-dev             Healthy   Synced   confluent-dev
 
 ### Security Context Constraints (SCCs)
 
-OpenShift enforces Security Context Constraints (SCCs) that restrict pod security settings. Some Confluent components may need elevated SCCs.
+OpenShift enforces Security Context Constraints (SCCs) that restrict pod security settings. Some components may need elevated SCCs.
 
 **Grant the required SCC to service accounts:**
 
 ```bash
-ENV=dev
-
-# Confluent operator and platform components
+# Confluent operator
 oc adm policy add-scc-to-user anyuid -z default -n confluent-${ENV}
 oc adm policy add-scc-to-user anyuid -z confluent-operator -n confluent-${ENV}
 
@@ -366,18 +329,6 @@ oc adm policy add-scc-to-user anyuid -z cert-manager-cainjector -n cert-manager
 
 > **Tip:** Start with `restricted-v2` (OpenShift default) and only escalate to `anyuid` or `nonroot-v2` if pods fail to start with `CrashLoopBackOff` or `CreateContainerConfigError` due to security context violations. Check pod events for details: `oc describe pod <pod-name> -n <namespace>`.
 
-### Routes vs Ingress
-
-OpenShift uses **Routes** rather than Ingress resources. If any Confluent component needs external access (e.g., Control Center, Schema Registry), create Routes:
-
-```bash
-# Example: expose Control Center
-oc create route passthrough control-center \
-  --service=controlcenter \
-  --port=9021 \
-  --namespace=confluent-${ENV}
-```
-
 ### OpenShift GitOps Namespace Restrictions
 
 By default, the OpenShift GitOps ArgoCD instance can only manage resources in its own namespace (`openshift-gitops`). To deploy to other namespaces, you must grant permissions.
@@ -385,8 +336,7 @@ By default, the OpenShift GitOps ArgoCD instance can only manage resources in it
 **Option 1 - Label managed namespaces:**
 
 ```bash
-oc label namespace confluent-dev argocd.argoproj.io/managed-by=openshift-gitops
-oc label namespace confluent-qa argocd.argoproj.io/managed-by=openshift-gitops
+oc label namespace confluent-${ENV} argocd.argoproj.io/managed-by=openshift-gitops
 oc label namespace cert-manager argocd.argoproj.io/managed-by=openshift-gitops
 ```
 
@@ -423,7 +373,7 @@ ARGOCD_NS=openshift-gitops   # or "argocd" for standalone Helm installs
 
 # Update namespace in app definitions (only needed for OpenShift GitOps)
 if [ "${ARGOCD_NS}" != "argocd" ]; then
-  for app in cert-manager confluent-operator confluent-flink-operator confluent-platform confluent-flink; do
+  for app in cert-manager confluent-operator confluent-flink-operator; do
     sed -i "s/namespace: argocd/namespace: ${ARGOCD_NS}/" apps/${app}/${ENV}/app.yaml
   done
 fi
@@ -456,11 +406,7 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-flink-operator-${ENV} \
   -n ${ARGOCD_NS} --timeout=180s
 
-# 3. Platform CRDs and Flink Manager
-oc apply -f apps/confluent-platform/${ENV}/app.yaml
-oc apply -f apps/confluent-flink/${ENV}/app.yaml
-
-# 4. Verify
+# 3. Verify
 echo ""
 echo "=== All Applications ==="
 oc get applications -n ${ARGOCD_NS}

@@ -1,8 +1,10 @@
 # Deploying Operator Apps into an Existing ArgoCD
 
-This guide provides step-by-step instructions for deploying the Confluent Platform and Flink operator applications into a cluster that **already has ArgoCD running**.
+This guide provides step-by-step instructions for deploying **cert-manager**, **Confluent Operator (CFK)**, and **Flink Operator** into a cluster that **already has ArgoCD running**.
 
 If you need to install ArgoCD from scratch, see the main [README.md](README.md).
+
+> **Current scope:** This guide covers operator installation only. Confluent Platform CRDs and Confluent Flink Manager deployment will be covered in a future update.
 
 ---
 
@@ -16,8 +18,6 @@ If you need to install ArgoCD from scratch, see the main [README.md](README.md).
 - [Step 4 - Deploy cert-manager](#step-4---deploy-cert-manager)
 - [Step 5 - Deploy Confluent Operator (CFK)](#step-5---deploy-confluent-operator-cfk)
 - [Step 6 - Deploy Flink Operator](#step-6---deploy-flink-operator)
-- [Step 7 - Deploy Confluent Platform](#step-7---deploy-confluent-platform)
-- [Step 8 - Deploy Confluent Flink Manager](#step-8---deploy-confluent-flink-manager)
 - [Verify All Applications](#verify-all-applications)
 - [Quick Deploy Script](#quick-deploy-script)
 - [Troubleshooting](#troubleshooting)
@@ -46,13 +46,12 @@ kubectl get pods -n argocd
 Applications must be deployed in this order due to dependencies:
 
 ```
-cert-manager  -->  confluent-operator     -->  confluent-platform
-              -->  confluent-flink-operator  -->  confluent-flink
+cert-manager  -->  confluent-operator
+              -->  confluent-flink-operator
 ```
 
 - **cert-manager** must be healthy before the Flink operator (provides TLS certificates for webhooks).
 - **confluent-operator** and **confluent-flink-operator** can be deployed in parallel after cert-manager.
-- **confluent-platform** and **confluent-flink** CRDs require their respective operators to be running.
 
 ---
 
@@ -94,14 +93,22 @@ Key fields to check in each `app.yaml`:
 | `metadata.namespace` | Must match your ArgoCD namespace (default: `argocd`) |
 | `spec.destination.server` | Must point to your target cluster API server (use `https://kubernetes.default.svc` for the local cluster) |
 | `spec.destination.namespace` | Target namespace for the application (e.g., `confluent-dev`) |
-| `spec.source.repoURL` | Git repository URL for this repo (for directory-based apps) or Helm chart URL |
-| `spec.source.targetRevision` | Git branch or Helm chart version |
+| `spec.source.repoURL` | Helm chart repository URL |
+| `spec.source.targetRevision` | Helm chart version |
 
 Example - check a dev app definition:
 
 ```bash
 cat apps/cert-manager/dev/app.yaml
 ```
+
+### Configuration summary
+
+| App | Helm Chart | Key Settings |
+|-----|-----------|--------------|
+| **cert-manager** | `cert-manager` from `charts.jetstack.io` | CRDs enabled, minimal resource requests |
+| **Confluent Operator** | `confluent-for-kubernetes` from `packages.confluent.io/helm` | `namespaced: true`, `kRaftEnabled: true` |
+| **Flink Operator** | `flink-kubernetes-operator` from `packages.confluent.io/helm` | `watchNamespaces` scoped to environment, Prometheus metrics enabled |
 
 ---
 
@@ -141,7 +148,7 @@ cert-manager-webhook-...                   1/1     Running   0          ...
 
 ## Step 5 - Deploy Confluent Operator (CFK)
 
-The Confluent for Kubernetes operator manages Confluent Platform CRDs.
+The Confluent for Kubernetes operator manages Confluent Platform CRDs. It is configured with `namespaced: true` (watches only its target namespace) and `kRaftEnabled: true` (KRaft mode for Kafka).
 
 **Apply the ArgoCD Application resource:**
 
@@ -166,7 +173,7 @@ kubectl get pods -n confluent-dev -l app=confluent-operator
 
 ## Step 6 - Deploy Flink Operator
 
-The Flink Kubernetes operator manages Flink workloads. Requires cert-manager to be running.
+The Flink Kubernetes operator manages Flink workloads. Requires cert-manager to be running. It is configured with `watchNamespaces` scoped to the environment namespace and Prometheus metrics enabled.
 
 **Apply the ArgoCD Application resource:**
 
@@ -196,60 +203,9 @@ flink-kubernetes-operator-...          2/2     Running
 
 ---
 
-## Step 7 - Deploy Confluent Platform
-
-Deploys the full Confluent Platform stack (KRaft, Kafka, Schema Registry, Connect, ksqlDB, Control Center). Requires the Confluent Operator to be running.
-
-**Apply the ArgoCD Application resource:**
-
-```bash
-kubectl apply -f apps/confluent-platform/dev/app.yaml
-```
-
-ArgoCD deploys the CRD manifests in sync-wave order:
-
-| Wave | Components |
-|------|-----------|
-| 0 | KRaftController |
-| 1 | Kafka |
-| 2 | SchemaRegistry, Connect |
-| 3 | ksqlDB, ControlCenter |
-
-**Monitor deployment progress:**
-
-```bash
-kubectl get applications confluent-platform-dev -n argocd -w
-```
-
-**Verify Confluent Platform pods:**
-
-```bash
-kubectl get pods -n confluent-dev
-```
-
----
-
-## Step 8 - Deploy Confluent Flink Manager
-
-Deploys the Confluent Manager for Apache Flink (CMF). Requires the Flink Operator to be running.
-
-**Apply the ArgoCD Application resource:**
-
-```bash
-kubectl apply -f apps/confluent-flink/dev/app.yaml
-```
-
-**Monitor deployment:**
-
-```bash
-kubectl get applications confluent-flink-dev -n argocd -w
-```
-
----
-
 ## Verify All Applications
 
-After all applications are deployed, verify the full stack:
+After all operators are deployed, verify the full stack:
 
 ```bash
 # List all ArgoCD-managed applications
@@ -270,15 +226,13 @@ NAME                            HEALTH    SYNC     NAMESPACE
 cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev
-confluent-platform-dev          Healthy   Synced   confluent-dev
-confluent-flink-dev             Healthy   Synced   confluent-dev
 ```
 
 ---
 
 ## Quick Deploy Script
 
-Deploy all operator apps at once (respecting dependency order):
+Deploy all operators at once (respecting dependency order):
 
 ```bash
 ENV=dev  # Change to qa, stg, or prd as needed
@@ -296,14 +250,14 @@ kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-flink-operator-${ENV} \
   -n argocd --timeout=180s
 
-# 3. Platform CRDs and Flink Manager
-kubectl apply -f apps/confluent-platform/${ENV}/app.yaml
-kubectl apply -f apps/confluent-flink/${ENV}/app.yaml
-
-# 4. Verify
+# 3. Verify
 echo ""
 echo "=== All Applications ==="
 kubectl get applications -n argocd
+echo ""
+echo "=== Operator Pods ==="
+kubectl get pods -n confluent-${ENV}
+kubectl get pods -n cert-manager
 ```
 
 ---
@@ -357,7 +311,7 @@ Replace `dev` with your target environment in all commands:
 # Example for QA
 kubectl apply -f apps/cert-manager/qa/app.yaml
 kubectl apply -f apps/confluent-operator/qa/app.yaml
-# ... etc.
+kubectl apply -f apps/confluent-flink-operator/qa/app.yaml
 ```
 
 Note that `qa`, `stg`, and `prd` environments use **manual sync** by default. You will need to trigger syncs manually via the ArgoCD UI or CLI after applying the Application resources.

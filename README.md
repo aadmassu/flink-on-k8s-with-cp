@@ -2,6 +2,8 @@
 
 GitOps repository for deploying **Confluent Platform**, **Apache Flink** (via Confluent), and supporting infrastructure across multiple environments using **ArgoCD**.
 
+> **Current scope:** This guide covers the installation of **cert-manager**, **Confluent Operator (CFK)**, and **Flink Operator**. Confluent Platform CRDs and Confluent Flink Manager deployment guides will be added in a future update.
+
 ---
 
 ## Table of Contents
@@ -18,13 +20,9 @@ GitOps repository for deploying **Confluent Platform**, **Apache Flink** (via Co
   - [Step 4 - Deploy cert-manager](#step-4---deploy-cert-manager)
   - [Step 5 - Deploy Confluent Operator](#step-5---deploy-confluent-operator)
   - [Step 6 - Deploy Flink Operator](#step-6---deploy-flink-operator)
-  - [Step 7 - Deploy Confluent Platform (CRDs)](#step-7---deploy-confluent-platform-crds)
-  - [Step 8 - Deploy Confluent Flink Manager (CRDs)](#step-8---deploy-confluent-flink-manager-crds)
 - [Full Deploy Script (Dev)](#full-deploy-script-dev)
 - [Tear Down](#tear-down)
 - [Sync Policies](#sync-policies)
-- [Confluent Platform Component Sizing](#confluent-platform-component-sizing)
-- [Confluent Platform Sync Wave Ordering](#confluent-platform-sync-wave-ordering)
 - [Namespace Convention](#namespace-convention)
 - [Helm Charts Reference](#helm-charts-reference)
 - [Troubleshooting](#troubleshooting)
@@ -36,14 +34,14 @@ GitOps repository for deploying **Confluent Platform**, **Apache Flink** (via Co
 
 This repository contains the complete GitOps configuration for:
 
-| Component | Description |
-|-----------|-------------|
-| **ArgoCD** | GitOps continuous delivery tool - manages all other deployments |
-| **cert-manager** | X.509 certificate management - required by Flink operator webhooks |
-| **Confluent Operator (CFK)** | Confluent for Kubernetes operator - manages Confluent Platform CRDs |
-| **Flink Operator** | Confluent's Flink Kubernetes operator - manages Flink workloads |
-| **Confluent Platform** | Kafka, KRaft, Schema Registry, Connect, ksqlDB, Control Center |
-| **Confluent Flink Manager (CMF)** | Manages Flink SQL workloads on Kubernetes |
+| Component | Description | Status |
+|-----------|-------------|--------|
+| **ArgoCD** | GitOps continuous delivery tool - manages all other deployments | Available |
+| **cert-manager** | X.509 certificate management - required by Flink operator webhooks | Available |
+| **Confluent Operator (CFK)** | Confluent for Kubernetes operator - manages Confluent Platform CRDs | Available |
+| **Flink Operator** | Confluent's Flink Kubernetes operator - manages Flink workloads | Available |
+| **Confluent Platform** | Kafka, KRaft, Schema Registry, Connect, ksqlDB, Control Center | Coming soon |
+| **Confluent Flink Manager (CMF)** | Manages Flink SQL workloads on Kubernetes | Coming soon |
 
 All components except ArgoCD itself are deployed **through ArgoCD** as Application resources, achieving full GitOps management.
 
@@ -59,12 +57,12 @@ All components except ArgoCD itself are deployed **through ArgoCD** as Applicati
          |
          | manages (Application CRs)
          |
-    +----+----+--------------------+------------------------+
-    |         |                    |                        |
-    v         v                    v                        v
-cert-manager  confluent-operator   confluent-flink-operator confluent-platform
-(cert-manager (confluent-<env>     (confluent-<env> ns)     (confluent-<env> ns)
- ns)           ns)                                          + confluent-flink
+    +----+----+--------------------+
+    |         |                    |
+    v         v                    v
+cert-manager  confluent-operator   confluent-flink-operator
+(cert-manager (confluent-<env>     (confluent-<env> ns)
+ ns)           ns)
 ```
 
 ArgoCD is the only component installed directly via `helm install`. Everything else is declared as an ArgoCD `Application` resource and applied with `kubectl apply`. ArgoCD then handles the actual deployment, monitoring, and reconciliation.
@@ -92,70 +90,24 @@ Each environment has its own Kubernetes namespace and resource sizing. The clust
 |-- README.md                          # This file
 |-- README-EXISTING-ARGOCD.md          # Guide: deploy into an existing ArgoCD
 |-- README-OPENSHIFT.md                # Guide: deploy on OpenShift
-|-- .gitignore                         # Ignore secrets, IDE files, temp files
 |-- hosts.yaml                         # Cluster inventory
 |-- secrets.yaml                       # Secret reference template
 |
 |-- apps/                              # Application definitions
-|   |
 |   |-- argocd/                        # ArgoCD self-provisioning (Helm)
-|   |   |-- dev/
-|   |   |   |-- app.yaml              #   ArgoCD Application resource
-|   |   |   +-- values.yaml           #   Helm values (replicas, resources, service type)
-|   |   |-- qa/  stg/  prd/           #   Same structure per environment
-|   |
 |   |-- cert-manager/                  # cert-manager (Helm) - Flink prerequisite
-|   |   |-- dev/
-|   |   |   |-- app.yaml              #   ArgoCD Application resource
-|   |   |   +-- values.yaml           #   Helm values (CRDs enabled, resources)
-|   |   |-- qa/  stg/  prd/
-|   |
-|   |-- confluent-operator/           # Confluent for Kubernetes operator (Helm)
-|   |   |-- dev/
-|   |   |   |-- app.yaml              #   ArgoCD Application (valuesObject inline)
-|   |   |   +-- values.yaml           #   Reference values (namespaced, kRaft)
-|   |   |-- qa/  stg/  prd/
-|   |
-|   |-- confluent-flink-operator/     # Flink Kubernetes operator (Helm)
-|   |   |-- dev/
-|   |   |   |-- app.yaml              #   ArgoCD Application (valuesObject inline)
-|   |   |   +-- values.yaml           #   Reference values (watchNamespaces, metrics)
-|   |   |-- qa/  stg/  prd/
-|   |
-|   |-- confluent-platform/           # Confluent Platform CRD manifests
-|   |   |-- dev/
-|   |   |   |-- app.yaml              #   ArgoCD Application (directory source)
-|   |   |   +-- manifests/
-|   |   |       |-- kraft-controller.yaml      # sync-wave: 0
-|   |   |       |-- kafka.yaml                 # sync-wave: 1
-|   |   |       |-- schema-registry.yaml       # sync-wave: 2
-|   |   |       |-- connect.yaml               # sync-wave: 2
-|   |   |       |-- ksqldb.yaml                # sync-wave: 3
-|   |   |       +-- control-center.yaml        # sync-wave: 3
-|   |   |-- qa/  stg/  prd/           #   Same structure, different sizing
-|   |
-|   |-- confluent-flink/              # Confluent Flink Manager CRD manifests
-|   |   |-- dev/
-|   |   |   |-- app.yaml
-|   |   |   +-- manifests/
-|   |   |       +-- confluent-flink-manager.yaml
-|   |   |-- qa/  stg/  prd/
-|   |
-|   +-- gridgain/                     # Reserved for future use
-|       +-- .gitkeep
+|   |-- confluent-operator/            # Confluent for Kubernetes operator (Helm)
+|   |-- confluent-flink-operator/      # Flink Kubernetes operator (Helm)
+|   |-- confluent-platform/            # Confluent Platform CRD manifests (coming soon)
+|   |-- confluent-flink/               # Confluent Flink Manager CRD manifests (coming soon)
+|   +-- gridgain/                      # Reserved for future use
 |
 +-- gitops-config/                     # ArgoCD ApplicationSet definitions
     +-- <region>/
-        |-- dev/
-        |   |-- cert-manager-application-set.yaml
-        |   |-- confluent-operator-application-set.yaml
-        |   |-- confluent-flink-operator-application-set.yaml
-        |   |-- confluent-platform-application-set.yaml
-        |   +-- confluent-flink-application-set.yaml
-        |-- qa/   (same 5 files, manual sync)
-        |-- stg/  (same 5 files, manual sync)
-        +-- prd/  (same 5 files, manual sync)
+        |-- dev/  qa/  stg/  prd/      # Per-environment ApplicationSets
 ```
+
+Each app folder contains a `README.md` with detailed documentation. See the [apps/](apps/) directory.
 
 ### Key directories
 
@@ -163,7 +115,6 @@ Each environment has its own Kubernetes namespace and resource sizing. The clust
 |-----------|---------|
 | `apps/<app>/<env>/app.yaml` | ArgoCD Application resource that tells ArgoCD *what* to deploy and *where* |
 | `apps/<app>/<env>/values.yaml` | Helm values file (reference copy; dev app.yaml uses inline `valuesObject`) |
-| `apps/<app>/<env>/manifests/` | Raw Kubernetes CRD manifests (for confluent-platform and confluent-flink) |
 | `gitops-config/<region>/<env>/` | ArgoCD ApplicationSet resources for multi-cluster orchestration |
 
 ---
@@ -196,14 +147,13 @@ kubectl cluster-info
 The deployment follows a strict ordering due to dependencies:
 
 ```
-ArgoCD  -->  cert-manager  -->  confluent-operator     -->  confluent-platform
-                            -->  confluent-flink-operator  -->  confluent-flink
+ArgoCD  -->  cert-manager  -->  confluent-operator
+                            -->  confluent-flink-operator
 ```
 
 - **ArgoCD** is installed first via Helm (the only direct Helm install).
 - **cert-manager** must be healthy before the Flink operator (it provides TLS certificates for webhooks).
 - **confluent-operator** and **confluent-flink-operator** can be deployed in parallel after cert-manager.
-- **confluent-platform** and **confluent-flink** CRDs require their respective operators to be running.
 
 All steps below use **dev** as the target environment. Replace `dev` with `qa`, `stg`, or `prd` for other environments.
 
@@ -319,6 +269,12 @@ kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-operator-dev -n argocd --timeout=180s
 ```
 
+Verify:
+
+```bash
+kubectl get pods -n confluent-dev -l app=confluent-operator
+```
+
 ---
 
 ### Step 6 - Deploy Flink Operator
@@ -349,35 +305,9 @@ flink-kubernetes-operator-...          2/2     Running
 
 ---
 
-### Step 7 - Deploy Confluent Platform (CRDs)
-
-> Requires the Confluent Operator to be running.
-
-```bash
-kubectl apply -f apps/confluent-platform/dev/app.yaml
-```
-
-ArgoCD will deploy the CRD manifests in sync-wave order:
-1. KRaftController (wave 0)
-2. Kafka (wave 1)
-3. SchemaRegistry + Connect (wave 2)
-4. ksqlDB + ControlCenter (wave 3)
-
----
-
-### Step 8 - Deploy Confluent Flink Manager (CRDs)
-
-> Requires the Flink Operator to be running.
-
-```bash
-kubectl apply -f apps/confluent-flink/dev/app.yaml
-```
-
----
-
 ## Full Deploy Script (Dev)
 
-Copy-paste this block to deploy everything from scratch on a clean cluster:
+Copy-paste this block to deploy the operators from scratch on a clean cluster:
 
 ```bash
 # Add Helm repos (idempotent)
@@ -405,12 +335,14 @@ kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-flink-operator-dev \
   -n argocd --timeout=180s
 
-# 4. Deploy Confluent Platform and Flink Manager CRDs
-kubectl apply -f apps/confluent-platform/dev/app.yaml
-kubectl apply -f apps/confluent-flink/dev/app.yaml
-
-# 5. Show all ArgoCD applications
+# 4. Verify
+echo ""
+echo "=== All Applications ==="
 kubectl get applications -n argocd
+echo ""
+echo "=== Operator Pods ==="
+kubectl get pods -n confluent-dev
+kubectl get pods -n cert-manager
 ```
 
 ---
@@ -449,36 +381,6 @@ All environments use these ArgoCD sync options:
 |--------|-----------|---------|
 | `CreateNamespace=true` | All apps | Auto-create target namespace |
 | `ServerSideApply=true` | Helm-based apps | Handle large CRDs without client-side limits |
-| `SkipDryRunOnMissingResource=true` | CRD manifest apps | Allow applying CRs before CRDs are fully registered |
-
----
-
-## Confluent Platform Component Sizing
-
-| Component | Dev | QA | STG | PRD |
-|-----------|-----|----|-----|-----|
-| KRaftController | 1 replica | 3 | 3 | 3 |
-| Kafka | 1 replica | 3 | 3 | 3 |
-| SchemaRegistry | 1 replica | 2 | 3 | 3 |
-| Connect | 1 replica | 1 | 2 | 2 |
-| ControlCenter | 1 replica | 1 | 1 | 1 |
-| ksqlDB | 1 replica | 1 | 2 | 2 |
-| **Replication Factor** | **1** | **3** | **3** | **3** |
-
-Dev uses `replication.factor=1` and `min.insync.replicas=1` for single-node operation. All other environments use `replication.factor=3` and `min.insync.replicas=2`.
-
----
-
-## Confluent Platform Sync Wave Ordering
-
-ArgoCD deploys Confluent Platform CRDs in a specific order using `argocd.argoproj.io/sync-wave` annotations:
-
-| Wave | Components | Rationale |
-|------|-----------|-----------|
-| 0 | KRaftController | Must be running before Kafka brokers start |
-| 1 | Kafka | Brokers depend on KRaft consensus layer |
-| 2 | SchemaRegistry, Connect | Depend on Kafka bootstrap endpoint |
-| 3 | ksqlDB, ControlCenter | Depend on Kafka, Schema Registry, and Connect |
 
 ---
 
@@ -488,7 +390,8 @@ ArgoCD deploys Confluent Platform CRDs in a specific order using `argocd.argopro
 |-----------|-----------|
 | ArgoCD | `argocd` |
 | cert-manager | `cert-manager` |
-| All Confluent components | `confluent-<env>` (e.g., `confluent-dev`, `confluent-prd`) |
+| Confluent Operator | `confluent-<env>` (e.g., `confluent-dev`, `confluent-prd`) |
+| Flink Operator | `confluent-<env>` (same namespace as Confluent Operator) |
 
 ---
 
@@ -500,7 +403,6 @@ ArgoCD deploys Confluent Platform CRDs in a specific order using `argocd.argopro
 | `cert-manager` | `https://charts.jetstack.io` | TLS certificate management |
 | `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | Confluent Platform operator |
 | `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | Flink Kubernetes operator |
-| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | Flink SQL management (CMF) |
 
 ---
 
