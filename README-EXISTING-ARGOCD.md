@@ -11,6 +11,7 @@ If you need to install ArgoCD from scratch, see the main [README.md](README.md).
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+- [Assumptions](#assumptions)
 - [Deployment Order](#deployment-order)
 - [Step 1 - Verify ArgoCD Is Running](#step-1---verify-argocd-is-running)
 - [Step 2 - Clone This Repository](#step-2---clone-this-repository)
@@ -19,6 +20,7 @@ If you need to install ArgoCD from scratch, see the main [README.md](README.md).
 - [Step 5 - Deploy Confluent Operator (CFK)](#step-5---deploy-confluent-operator-cfk)
 - [Step 6 - Deploy Flink Operator](#step-6---deploy-flink-operator)
 - [Verify All Applications](#verify-all-applications)
+- [CI/CD Pipelines](#cicd-pipelines)
 - [Quick Deploy Script](#quick-deploy-script)
 - [Troubleshooting](#troubleshooting)
 
@@ -38,6 +40,16 @@ Verify your cluster connectivity:
 kubectl cluster-info
 kubectl get pods -n argocd
 ```
+
+---
+
+## Assumptions
+
+- ArgoCD is **already installed and healthy** on the target cluster. If not, see the main [README.md](README.md) for full installation instructions.
+- The deploying user or service account has permissions to create ArgoCD `Application` resources in the ArgoCD namespace and create namespaces on the cluster.
+- Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster (ArgoCD fetches charts directly).
+- The `app.yaml` files contain **placeholder values** for `spec.destination.server`. Update these with your actual cluster API server endpoint (use `https://kubernetes.default.svc` for the local cluster).
+- If ArgoCD is installed in a namespace other than `argocd`, you must update `metadata.namespace` in each `app.yaml` before deploying.
 
 ---
 
@@ -227,6 +239,25 @@ cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev
 ```
+
+---
+
+## CI/CD Pipelines
+
+Instead of running the deployment steps manually, you can use the included CI/CD pipelines. The **"Deploy Operators"** scenario is designed for this use case (existing ArgoCD).
+
+| Platform | Pipeline File | Description |
+|----------|--------------|-------------|
+| **GitHub Actions** | [`.github/workflows/deploy-operators.yaml`](../.github/workflows/deploy-operators.yaml) | Workflow dispatch with environment and ArgoCD namespace inputs |
+| **Azure DevOps** | [`.azure-pipelines/deploy-operators.yaml`](../.azure-pipelines/deploy-operators.yaml) | Pipeline with Kubernetes service connection parameter |
+
+Both pipelines:
+- Verify ArgoCD is running before deploying
+- Automatically update `app.yaml` namespaces if ArgoCD is not in the default `argocd` namespace
+- Deploy cert-manager, Confluent Operator, and Flink Operator in dependency order
+- Wait for health checks and report final status
+
+See the main [README.md](README.md#cicd-pipelines) for full pipeline documentation.
 
 ---
 

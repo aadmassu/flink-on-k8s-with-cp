@@ -11,6 +11,7 @@ For generic Kubernetes instructions, see the main [README.md](README.md).
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+- [Assumptions](#assumptions)
 - [Option A - OpenShift GitOps Operator (Recommended)](#option-a---openshift-gitops-operator-recommended)
   - [A1 - Install OpenShift GitOps Operator](#a1---install-openshift-gitops-operator)
   - [A2 - Verify OpenShift GitOps](#a2---verify-openshift-gitops)
@@ -30,6 +31,7 @@ For generic Kubernetes instructions, see the main [README.md](README.md).
   - [Security Context Constraints (SCCs)](#security-context-constraints-sccs)
   - [OpenShift GitOps Namespace Restrictions](#openshift-gitops-namespace-restrictions)
   - [cert-manager on OpenShift](#cert-manager-on-openshift)
+- [CI/CD Pipelines](#cicd-pipelines)
 - [Quick Deploy Script (OpenShift)](#quick-deploy-script-openshift)
 - [Troubleshooting](#troubleshooting)
 
@@ -51,6 +53,17 @@ oc whoami
 oc cluster-info
 oc version
 ```
+
+---
+
+## Assumptions
+
+- An OpenShift 4.12+ cluster is provisioned and accessible via `oc` CLI.
+- The deploying user or service account has **cluster-admin** privileges (required for creating namespaces, CRDs, SCCs, and ClusterRoles).
+- Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster.
+- The `app.yaml` files contain **placeholder values** for `spec.destination.server`. Update these with your actual cluster API server endpoint (use `https://kubernetes.default.svc` for the local cluster).
+- If using OpenShift GitOps (Option A), you must update `metadata.namespace` from `argocd` to `openshift-gitops` in each `app.yaml`.
+- OpenShift may already have cert-manager installed via the Red Hat cert-manager Operator. If so, skip the cert-manager deployment step.
 
 ---
 
@@ -362,6 +375,26 @@ OpenShift 4.x may include a built-in cert-manager via the **cert-manager Operato
 2. If cert-manager is already running, **skip the cert-manager deployment step**. The existing installation will satisfy the Flink operator's webhook certificate requirements.
 
 3. If you deploy your own cert-manager alongside the OpenShift-provided one, there may be conflicts. Avoid running two cert-manager instances.
+
+---
+
+## CI/CD Pipelines
+
+This repository includes CI/CD pipeline definitions that can be adapted for OpenShift deployments.
+
+| Platform | Scenario | Pipeline File |
+|----------|----------|--------------|
+| **GitHub Actions** | Full Deploy (ArgoCD + Operators) | [`.github/workflows/full-deploy.yaml`](../.github/workflows/full-deploy.yaml) |
+| **GitHub Actions** | Deploy Operators (Existing ArgoCD) | [`.github/workflows/deploy-operators.yaml`](../.github/workflows/deploy-operators.yaml) |
+| **Azure DevOps** | Full Deploy (ArgoCD + Operators) | [`.azure-pipelines/full-deploy.yaml`](../.azure-pipelines/full-deploy.yaml) |
+| **Azure DevOps** | Deploy Operators (Existing ArgoCD) | [`.azure-pipelines/deploy-operators.yaml`](../.azure-pipelines/deploy-operators.yaml) |
+
+**OpenShift adaptation notes:**
+- Update the cluster authentication step to use `oc login` with a service account token
+- If using OpenShift GitOps, set `argocd_namespace` to `openshift-gitops`
+- Add SCC and namespace labeling steps before deploying operators
+
+See the main [README.md](README.md#cicd-pipelines) for full pipeline documentation.
 
 ---
 

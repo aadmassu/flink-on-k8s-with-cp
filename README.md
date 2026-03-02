@@ -11,8 +11,9 @@ GitOps repository for deploying **Confluent Platform**, **Apache Flink** (via Co
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Environments](#environments)
-- [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
+- [Assumptions](#assumptions)
+- [Repository Structure](#repository-structure)
 - [Deployment Guide](#deployment-guide)
   - [Step 1 - Add Helm Repositories](#step-1---add-helm-repositories)
   - [Step 2 - Install ArgoCD](#step-2---install-argocd)
@@ -20,6 +21,7 @@ GitOps repository for deploying **Confluent Platform**, **Apache Flink** (via Co
   - [Step 4 - Deploy cert-manager](#step-4---deploy-cert-manager)
   - [Step 5 - Deploy Confluent Operator](#step-5---deploy-confluent-operator)
   - [Step 6 - Deploy Flink Operator](#step-6---deploy-flink-operator)
+- [CI/CD Pipelines](#cicd-pipelines)
 - [Full Deploy Script (Dev)](#full-deploy-script-dev)
 - [Tear Down](#tear-down)
 - [Sync Policies](#sync-policies)
@@ -82,6 +84,38 @@ Each environment has its own Kubernetes namespace and resource sizing. The clust
 
 ---
 
+## Prerequisites
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| `kubectl` | 1.28+ | Kubernetes CLI |
+| `helm` | 3.14+ / 4.x | Helm package manager |
+| Kubernetes cluster | 1.28+ | Target cluster with admin access |
+
+### Kubeconfig
+
+Ensure your kubeconfig is pointing to the target cluster:
+
+```bash
+# Verify context
+kubectl config get-contexts
+
+# Verify connectivity
+kubectl cluster-info
+```
+
+---
+
+## Assumptions
+
+- A Kubernetes cluster (1.28+) is provisioned and accessible via `kubectl`.
+- The deploying user or service account has **cluster-admin** privileges (required to create namespaces, CRDs, and ClusterRoles).
+- Helm repositories are accessible from the cluster or CI/CD runner (no network restrictions on `argoproj.github.io`, `charts.jetstack.io`, `packages.confluent.io`).
+- The `app.yaml` files contain **placeholder values** for `spec.destination.server`. Update these with your actual cluster API server endpoints before deploying.
+- For CI/CD pipelines, a Kubernetes service connection or kubeconfig secret is configured in your pipeline platform.
+
+---
+
 ## Repository Structure
 
 ```
@@ -93,13 +127,21 @@ Each environment has its own Kubernetes namespace and resource sizing. The clust
 |-- hosts.yaml                         # Cluster inventory
 |-- secrets.yaml                       # Secret reference template
 |
+|-- .github/workflows/                 # GitHub Actions pipelines
+|   |-- full-deploy.yaml               # Scenario 1: ArgoCD + operators
+|   +-- deploy-operators.yaml          # Scenario 2: operators only (existing ArgoCD)
+|
+|-- .azure-pipelines/                  # Azure DevOps pipelines
+|   |-- full-deploy.yaml               # Scenario 1: ArgoCD + operators
+|   +-- deploy-operators.yaml          # Scenario 2: operators only (existing ArgoCD)
+|
 |-- apps/                              # Application definitions
 |   |-- argocd/                        # ArgoCD self-provisioning (Helm)
 |   |-- cert-manager/                  # cert-manager (Helm) - Flink prerequisite
 |   |-- confluent-operator/            # Confluent for Kubernetes operator (Helm)
 |   |-- confluent-flink-operator/      # Flink Kubernetes operator (Helm)
 |   |-- confluent-platform/            # Confluent Platform CRD manifests (coming soon)
-|   |-- confluent-flink/               # Confluent Flink Manager CRD manifests (coming soon)
+|   +-- confluent-flink/               # Confluent Flink Manager CRD manifests (coming soon)
 |
 +-- gitops-config/                     # ArgoCD ApplicationSet definitions
     +-- <region>/
@@ -115,29 +157,6 @@ Each app folder contains a `README.md` with detailed documentation. See the [app
 | `apps/<app>/<env>/app.yaml` | ArgoCD Application resource that tells ArgoCD *what* to deploy and *where* |
 | `apps/<app>/<env>/values.yaml` | Helm values file (reference copy; dev app.yaml uses inline `valuesObject`) |
 | `gitops-config/<region>/<env>/` | ArgoCD ApplicationSet resources for multi-cluster orchestration |
-
----
-
-## Prerequisites
-
-Before deploying, ensure the following tools are installed and configured:
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| `kubectl` | 1.28+ | Kubernetes CLI |
-| `helm` | 3.14+ / 4.x | Helm package manager |
-
-### Kubeconfig
-
-Ensure your kubeconfig is pointing to the target cluster:
-
-```bash
-# Verify context
-kubectl config get-contexts
-
-# Verify connectivity
-kubectl cluster-info
-```
 
 ---
 
@@ -159,6 +178,8 @@ All steps below use **dev** as the target environment. Replace `dev` with `qa`, 
 > **Already have ArgoCD running?** Skip to [README-EXISTING-ARGOCD.md](README-EXISTING-ARGOCD.md) for a streamlined guide.
 >
 > **Deploying on OpenShift?** See [README-OPENSHIFT.md](README-OPENSHIFT.md) for OpenShift-specific instructions.
+>
+> **Prefer CI/CD?** See the [CI/CD Pipelines](#cicd-pipelines) section for GitHub Actions and Azure DevOps options.
 
 ---
 
@@ -301,6 +322,49 @@ Expected:
 confluent-operator-...                 1/1     Running
 flink-kubernetes-operator-...          2/2     Running
 ```
+
+---
+
+## CI/CD Pipelines
+
+This repository includes ready-to-use pipeline definitions for both **GitHub Actions** and **Azure DevOps**. Each platform provides two workflow scenarios.
+
+### Scenarios
+
+| Scenario | Description | When to use |
+|----------|-------------|-------------|
+| **Full Deploy** | Installs ArgoCD via Helm, then deploys all 3 operators | Fresh cluster with no ArgoCD |
+| **Deploy Operators** | Deploys operators into an existing ArgoCD instance | ArgoCD already running on the cluster |
+
+### GitHub Actions
+
+| Workflow | File | Trigger |
+|----------|------|---------|
+| Full Deploy (ArgoCD + Operators) | [`.github/workflows/full-deploy.yaml`](.github/workflows/full-deploy.yaml) | `workflow_dispatch` (manual) |
+| Deploy Operators (Existing ArgoCD) | [`.github/workflows/deploy-operators.yaml`](.github/workflows/deploy-operators.yaml) | `workflow_dispatch` (manual) |
+
+**Usage:** Go to the **Actions** tab in GitHub, select the workflow, choose the target environment and cluster context, then click **Run workflow**.
+
+### Azure DevOps
+
+| Pipeline | File | Trigger |
+|----------|------|---------|
+| Full Deploy (ArgoCD + Operators) | [`.azure-pipelines/full-deploy.yaml`](.azure-pipelines/full-deploy.yaml) | Manual |
+| Deploy Operators (Existing ArgoCD) | [`.azure-pipelines/deploy-operators.yaml`](.azure-pipelines/deploy-operators.yaml) | Manual |
+
+**Usage:** Import the pipeline YAML files in Azure DevOps under **Pipelines > New Pipeline > Existing Azure Pipelines YAML file**. Configure the Kubernetes service connection parameter to point to your cluster.
+
+### Pipeline parameters
+
+Both platforms accept these inputs:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `environment` | Target environment (`dev`, `qa`, `stg`, `prd`) | `dev` |
+| `cluster_context` / `kubernetesServiceConnection` | Cluster access identifier | Required |
+| `argocd_namespace` | ArgoCD namespace (Scenario 2 only) | `argocd` |
+
+> **Note:** The pipelines include a placeholder step for cluster authentication. Update this step with your specific authentication method (cloud CLI, kubeconfig secret, service connection, etc.).
 
 ---
 

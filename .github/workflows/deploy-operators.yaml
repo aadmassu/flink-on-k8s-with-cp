@@ -1,0 +1,133 @@
+# Scenario 2: Deploy operators into an existing ArgoCD
+# Use this workflow when ArgoCD is already installed and running on the cluster.
+#
+# This workflow:
+#   1. Verifies ArgoCD is running
+#   2. Deploys cert-manager (via ArgoCD Application)
+#   3. Deploys Confluent Operator and Flink Operator (via ArgoCD Applications)
+
+name: "Deploy Operators (Existing ArgoCD)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - stg
+          - prd
+        default: dev
+      cluster_context:
+        description: "Kubeconfig context name for the target cluster"
+        required: true
+        type: string
+      argocd_namespace:
+        description: "Namespace where ArgoCD is installed"
+        required: true
+        type: string
+        default: argocd
+
+jobs:
+  deploy:
+    name: "Deploy Operators (${{ inputs.environment }})"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.28.0"
+
+      - name: Configure kubeconfig
+        run: |
+          # Configure cluster access
+          # Replace this step with your cluster authentication method:
+          #   - For EKS: aws eks update-kubeconfig --name <cluster> --region <region>
+          #   - For AKS: az aks get-credentials --resource-group <rg> --name <cluster>
+          #   - For GKE: gcloud container clusters get-credentials <cluster> --region <region>
+          #   - For OpenShift: oc login <server> --token=<token>
+          echo "Configure your cluster authentication here"
+          kubectl config use-context ${{ inputs.cluster_context }}
+
+      - name: Verify ArgoCD is running
+        run: |
+          ARGOCD_NS=${{ inputs.argocd_namespace }}
+
+          echo "Checking ArgoCD in namespace: ${ARGOCD_NS}"
+          kubectl get pods -n ${ARGOCD_NS} | grep argocd
+
+          echo ""
+          echo "Verifying Application CRD exists..."
+          kubectl get crd applications.argoproj.io
+
+      - name: Update app namespace (if not default)
+        if: ${{ inputs.argocd_namespace != 'argocd' }}
+        run: |
+          ENV=${{ inputs.environment }}
+          ARGOCD_NS=${{ inputs.argocd_namespace }}
+
+          echo "Updating metadata.namespace to ${ARGOCD_NS} in app definitions..."
+          for app in cert-manager confluent-operator confluent-flink-operator; do
+            sed -i "s/namespace: argocd/namespace: ${ARGOCD_NS}/" apps/${app}/${ENV}/app.yaml
+          done
+
+      - name: Deploy cert-manager
+        run: |
+          ENV=${{ inputs.environment }}
+          ARGOCD_NS=${{ inputs.argocd_namespace }}
+
+          kubectl apply -f apps/cert-manager/${ENV}/app.yaml
+
+          echo "Waiting for cert-manager to become healthy..."
+          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+            application/cert-manager-${ENV} \
+            -n ${ARGOCD_NS} --timeout=180s
+
+          echo "Verifying cert-manager pods..."
+          kubectl get pods -n cert-manager
+
+      - name: Deploy Confluent Operator
+        run: |
+          ENV=${{ inputs.environment }}
+          ARGOCD_NS=${{ inputs.argocd_namespace }}
+
+          kubectl apply -f apps/confluent-operator/${ENV}/app.yaml
+
+          echo "Waiting for Confluent Operator to become healthy..."
+          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+            application/confluent-operator-${ENV} \
+            -n ${ARGOCD_NS} --timeout=180s
+
+      - name: Deploy Flink Operator
+        run: |
+          ENV=${{ inputs.environment }}
+          ARGOCD_NS=${{ inputs.argocd_namespace }}
+
+          kubectl apply -f apps/confluent-flink-operator/${ENV}/app.yaml
+
+          echo "Waiting for Flink Operator to become healthy..."
+          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+            application/confluent-flink-operator-${ENV} \
+            -n ${ARGOCD_NS} --timeout=180s
+
+      - name: Verify deployment
+        run: |
+          ENV=${{ inputs.environment }}
+          ARGOCD_NS=${{ inputs.argocd_namespace }}
+
+          echo "=== ArgoCD Applications ==="
+          kubectl get applications -n ${ARGOCD_NS} \
+            -o custom-columns=NAME:.metadata.name,HEALTH:.status.health.status,SYNC:.status.sync.status
+
+          echo ""
+          echo "=== Operator Pods ==="
+          kubectl get pods -n confluent-${ENV}
+          kubectl get pods -n cert-manager
