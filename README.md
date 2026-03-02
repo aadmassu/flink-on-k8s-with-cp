@@ -100,7 +100,6 @@ Each environment has its own Kubernetes namespace and resource sizing. The clust
 |   |-- confluent-flink-operator/      # Flink Kubernetes operator (Helm)
 |   |-- confluent-platform/            # Confluent Platform CRD manifests (coming soon)
 |   |-- confluent-flink/               # Confluent Flink Manager CRD manifests (coming soon)
-|   +-- gridgain/                      # Reserved for future use
 |
 +-- gitops-config/                     # ArgoCD ApplicationSet definitions
     +-- <region>/
