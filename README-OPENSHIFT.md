@@ -1,4 +1,4 @@
-# Deploying FCB on OpenShift with ArgoCD
+# Deploying on OpenShift with ArgoCD
 
 This guide covers deploying the Confluent Platform and Flink operator stack on **Red Hat OpenShift**, using either the **OpenShift GitOps Operator** (built-in ArgoCD) or a **standalone ArgoCD** installation.
 

@@ -1,4 +1,4 @@
-# Deploying FCB Operator Apps into an Existing ArgoCD
+# Deploying Operator Apps into an Existing ArgoCD
 
 This guide provides step-by-step instructions for deploying the Confluent Platform and Flink operator applications into a cluster that **already has ArgoCD running**.
 
@@ -77,8 +77,8 @@ Expected: All ArgoCD pods should be in `Running` state and the `applications.arg
 ## Step 2 - Clone This Repository
 
 ```bash
-git clone <your-repo-url> FCB
-cd FCB
+git clone <your-repo-url>
+cd <repo-directory>
 ```
 
 ---

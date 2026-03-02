@@ -1,4 +1,4 @@
-# FCB - Multi-Environment Confluent Platform & Flink on Kubernetes
+# Multi-Environment Confluent Platform & Flink on Kubernetes
 
 GitOps repository for deploying **Confluent Platform**, **Apache Flink** (via Confluent), and supporting infrastructure across multiple environments using **ArgoCD**.
 
@@ -87,7 +87,7 @@ Each environment has its own Kubernetes namespace and resource sizing. The clust
 ## Repository Structure
 
 ```
-FCB/
+.
 |
 |-- README.md                          # This file
 |-- README-EXISTING-ARGOCD.md          # Guide: deploy into an existing ArgoCD
