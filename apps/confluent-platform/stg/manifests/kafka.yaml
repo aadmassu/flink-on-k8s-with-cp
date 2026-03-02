@@ -1,0 +1,22 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: confluent-stg
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 3
+  dataVolumeCapacity: 100Gi
+  configOverrides:
+    server:
+      - default.replication.factor=3
+      - min.insync.replicas=2
+      - offsets.topic.replication.factor=3
+      - transaction.state.log.replication.factor=3
+      - transaction.state.log.min.isr=2
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller

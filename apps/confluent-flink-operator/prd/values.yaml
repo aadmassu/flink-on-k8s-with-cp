@@ -1,0 +1,17 @@
+---
+# Flink Kubernetes Operator values - prd
+
+watchNamespaces:
+  - confluent-prd
+
+metrics:
+  prometheus:
+    enabled: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1
+    memory: 1Gi

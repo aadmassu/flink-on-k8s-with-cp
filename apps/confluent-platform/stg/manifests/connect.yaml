@@ -1,0 +1,13 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Connect
+metadata:
+  name: connect
+  namespace: confluent-stg
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 2
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.confluent-stg.svc.cluster.local:9071

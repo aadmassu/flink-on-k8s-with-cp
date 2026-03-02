@@ -1,0 +1,13 @@
+---
+# Confluent for Kubernetes (CFK) operator values - prd
+
+namespaced: true
+kRaftEnabled: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1
+    memory: 1Gi

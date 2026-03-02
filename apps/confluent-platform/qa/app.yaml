@@ -1,0 +1,24 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: confluent-platform-qa
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/PLACEHOLDER_ORG/FCB.git
+    path: apps/confluent-platform/qa/manifests
+    targetRevision: HEAD
+  destination:
+    server: https://qa-cluster.aws-us-east-2.example.com
+    namespace: confluent-qa
+  ignoreDifferences:
+    - group: platform.confluent.io
+      kind: "*"
+      jsonPointers:
+        - /status
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true

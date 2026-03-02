@@ -1,0 +1,13 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Connect
+metadata:
+  name: connect
+  namespace: confluent-prd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 2
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.confluent-prd.svc.cluster.local:9071

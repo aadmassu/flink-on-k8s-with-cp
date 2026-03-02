@@ -1,0 +1,13 @@
+---
+# Confluent for Kubernetes (CFK) operator values - qa
+
+namespaced: true
+kRaftEnabled: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

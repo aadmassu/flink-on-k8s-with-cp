@@ -1,0 +1,25 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: confluent-flink-manager-stg
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://packages.confluent.io/helm
+    chart: confluent-manager-for-apache-flink
+    targetRevision: 1.*
+    helm:
+      parameters:
+        - name: cmf.sql.production
+          value: "true"
+  destination:
+    server: https://stg-cluster.aws-us-east-2.example.com
+    namespace: confluent-stg
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

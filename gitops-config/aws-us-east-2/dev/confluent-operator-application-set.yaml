@@ -1,0 +1,36 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: confluent-operator-dev
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: dev-cluster
+            url: https://dev-cluster.aws-us-east-2.example.com
+            environment: dev
+  template:
+    metadata:
+      name: "confluent-operator-{{environment}}"
+      namespace: argocd
+    spec:
+      project: default
+      source:
+        repoURL: https://packages.confluent.io/helm
+        chart: confluent-for-kubernetes
+        targetRevision: 0.*
+        helm:
+          valueFiles:
+            - $values/apps/confluent-operator/{{environment}}/values.yaml
+      destination:
+        server: "{{url}}"
+        namespace: "confluent-{{environment}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

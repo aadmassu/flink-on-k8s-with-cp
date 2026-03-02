@@ -1,0 +1,43 @@
+---
+# ArgoCD Helm values for stg environment
+# HA configuration
+
+global:
+  domain: argocd-stg.aws-us-east-2.example.com
+
+server:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+controller:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 2Gi
+
+repoServer:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+applicationSet:
+  replicas: 2
+
+configs:
+  rbac:
+    policy.default: role:readonly

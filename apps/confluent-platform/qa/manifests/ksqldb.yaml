@@ -1,0 +1,14 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KsqlDB
+metadata:
+  name: ksqldb
+  namespace: confluent-qa
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  replicas: 1
+  dataVolumeCapacity: 10Gi
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.confluent-qa.svc.cluster.local:9071

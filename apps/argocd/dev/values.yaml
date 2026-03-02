@@ -1,0 +1,49 @@
+---
+# ArgoCD Helm values for dev environment
+# Single-replica, non-HA configuration
+
+global:
+  domain: argocd-dev.aws-us-east-2.example.com
+
+server:
+  replicas: 1
+  service:
+    type: LoadBalancer
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+applicationSet:
+  replicas: 1
+
+configs:
+  params:
+    server.insecure: true
+  secret:
+    argocdServerAdminPassword: "$2b$12$VaK.s9m3oRuv.Twore1OdOnYPk0VkI3Iav/nKRTOOuTBjRAcNAhvK"
+  rbac:
+    policy.default: role:readonly

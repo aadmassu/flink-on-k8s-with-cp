@@ -1,0 +1,17 @@
+---
+# Flink Kubernetes Operator values - qa
+
+watchNamespaces:
+  - confluent-qa
+
+metrics:
+  prometheus:
+    enabled: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,45 @@
+---
+# ArgoCD Helm values for qa environment
+# Single-replica configuration
+
+global:
+  domain: argocd-qa.aws-us-east-2.example.com
+
+server:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+applicationSet:
+  replicas: 1
+
+configs:
+  params:
+    server.insecure: true
+  rbac:
+    policy.default: role:readonly

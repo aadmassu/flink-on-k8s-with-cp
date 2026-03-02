@@ -1,0 +1,36 @@
+---
+# Cluster inventory for multi-environment Confluent Platform + Flink deployment
+# Region: aws-us-east-2
+
+clusters:
+  dev:
+    name: dev-cluster
+    environment: dev
+    region: aws-us-east-2
+    server: https://dev-cluster.aws-us-east-2.example.com
+    namespace: confluent-dev
+    argocdNamespace: argocd
+
+  qa:
+    name: qa-cluster
+    environment: qa
+    region: aws-us-east-2
+    server: https://qa-cluster.aws-us-east-2.example.com
+    namespace: confluent-qa
+    argocdNamespace: argocd
+
+  stg:
+    name: stg-cluster
+    environment: stg
+    region: aws-us-east-2
+    server: https://stg-cluster.aws-us-east-2.example.com
+    namespace: confluent-stg
+    argocdNamespace: argocd
+
+  prd:
+    name: prd-cluster
+    environment: prd
+    region: aws-us-east-2
+    server: https://prd-cluster.aws-us-east-2.example.com
+    namespace: confluent-prd
+    argocdNamespace: argocd
