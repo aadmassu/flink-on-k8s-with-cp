@@ -82,7 +82,7 @@ openshift-prereqs/
 
 #### Resource 1: Environment-Specific Confluent Binding
 
-This binding grants the SCC to the three service accounts in the environment's Confluent namespace.
+This binding grants the SCC to the two dedicated operator service accounts in the environment's Confluent namespace. The `default` SA is intentionally excluded -- only pods running under an explicitly named operator SA receive `confluent-scc` privileges.
 
 | Key | Value (dev) | Value (qa) | Value (stg) | Value (prd) | Description |
 |-----|-------------|------------|-------------|-------------|-------------|
@@ -93,15 +93,12 @@ This binding grants the SCC to the three service accounts in the environment's C
 | `roleRef.apiGroup` | `rbac.authorization.k8s.io` | `rbac.authorization.k8s.io` | `rbac.authorization.k8s.io` | `rbac.authorization.k8s.io` | API group for the referenced ClusterRole. |
 | `roleRef.kind` | `ClusterRole` | `ClusterRole` | `ClusterRole` | `ClusterRole` | The type of RBAC role being referenced. |
 | `roleRef.name` | `system:openshift:scc:confluent-scc` | `system:openshift:scc:confluent-scc` | `system:openshift:scc:confluent-scc` | `system:openshift:scc:confluent-scc` | Auto-generated ClusterRole that grants `use` verb on the `confluent-scc` SCC. |
-| `subjects[0].kind` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | The default service account in the Confluent namespace. Used by pods that don't specify a custom SA. |
-| `subjects[0].name` | `default` | `default` | `default` | `default` | Service account name. |
+| `subjects[0].kind` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | The Confluent for Kubernetes (CFK) operator service account. |
+| `subjects[0].name` | `confluent-operator` | `confluent-operator` | `confluent-operator` | `confluent-operator` | Service account name for the CFK operator. |
 | `subjects[0].namespace` | `confluent-dev` | `confluent-qa` | `confluent-stg` | `confluent-prd` | Target namespace for this environment. |
-| `subjects[1].kind` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | The Confluent for Kubernetes (CFK) operator service account. |
-| `subjects[1].name` | `confluent-operator` | `confluent-operator` | `confluent-operator` | `confluent-operator` | Service account name for the CFK operator. |
+| `subjects[1].kind` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | The Flink Kubernetes Operator service account. |
+| `subjects[1].name` | `flink-kubernetes-operator` | `flink-kubernetes-operator` | `flink-kubernetes-operator` | `flink-kubernetes-operator` | Service account name for the Flink operator. |
 | `subjects[1].namespace` | `confluent-dev` | `confluent-qa` | `confluent-stg` | `confluent-prd` | Target namespace for this environment. |
-| `subjects[2].kind` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | `ServiceAccount` | The Flink Kubernetes Operator service account. |
-| `subjects[2].name` | `flink-kubernetes-operator` | `flink-kubernetes-operator` | `flink-kubernetes-operator` | `flink-kubernetes-operator` | Service account name for the Flink operator. |
-| `subjects[2].namespace` | `confluent-dev` | `confluent-qa` | `confluent-stg` | `confluent-prd` | Target namespace for this environment. |
 
 #### Resource 2: Cert-Manager Binding (Shared)
 
@@ -143,7 +140,6 @@ All other fields -- including the SCC definition, the cert-manager ClusterRoleBi
 
 | Service Account | Namespace | Purpose |
 |-----------------|-----------|---------|
-| `default` | `confluent-<env>` | Default SA used by Confluent Platform component pods (Kafka, ZooKeeper, Schema Registry, etc.) that do not specify a dedicated service account. |
 | `confluent-operator` | `confluent-<env>` | SA for the Confluent for Kubernetes (CFK) operator, which manages the lifecycle of Confluent Platform components. |
 | `flink-kubernetes-operator` | `confluent-<env>` | SA for the Apache Flink Kubernetes Operator, which manages Flink job deployments and session clusters. |
 | `cert-manager` | `cert-manager` | SA for the core cert-manager controller that issues and renews TLS certificates. |

@@ -4,6 +4,10 @@
 namespaced: true
 kRaftEnabled: true
 
+serviceAccount:
+  create: true
+  name: confluent-operator
+
 resources:
   requests:
     cpu: 200m

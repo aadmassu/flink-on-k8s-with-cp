@@ -4,6 +4,18 @@
 crds:
   enabled: true
 
+serviceAccount:
+  name: cert-manager
+webhook:
+  serviceAccount:
+    name: cert-manager-webhook
+cainjector:
+  serviceAccount:
+    name: cert-manager-cainjector
+startupapicheck:
+  serviceAccount:
+    name: cert-manager-startupapicheck
+
 resources:
   requests:
     cpu: 100m

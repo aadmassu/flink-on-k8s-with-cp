@@ -183,7 +183,6 @@ environment (dev, qa, stg, prd).
 
 ```bash
 # Confluent operator
-oc adm policy add-scc-to-user anyuid -z default -n confluent-<env>
 oc adm policy add-scc-to-user anyuid -z confluent-operator -n confluent-<env>
 
 # Flink operator

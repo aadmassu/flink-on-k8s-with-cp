@@ -433,13 +433,12 @@ The custom SCC (`openshift-prereqs/<env>/manifests/confluent-scc.yaml`) provides
 - Allows volumes: configMap, emptyDir, PVC, projected, secret, downwardAPI
 
 Service account bindings (`openshift-prereqs/<env>/manifests/scc-bindings.yaml`) map:
-- `default`, `confluent-operator`, `flink-kubernetes-operator` in `confluent-<env>` -> `confluent-scc`
+- `confluent-operator`, `flink-kubernetes-operator` in `confluent-<env>` -> `confluent-scc`
 - `cert-manager`, `cert-manager-webhook`, `cert-manager-cainjector` in `cert-manager` -> `confluent-scc`
 
 **Manual alternative** (imperative):
 
 ```bash
-oc adm policy add-scc-to-user anyuid -z default -n confluent-${ENV}
 oc adm policy add-scc-to-user anyuid -z confluent-operator -n confluent-${ENV}
 oc adm policy add-scc-to-user anyuid -z flink-kubernetes-operator -n confluent-${ENV}
 oc adm policy add-scc-to-user anyuid -z cert-manager -n cert-manager

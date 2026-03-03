@@ -11,9 +11,6 @@ roleRef:
   name: system:openshift:scc:confluent-scc
 subjects:
   - kind: ServiceAccount
-    name: default
-    namespace: confluent-stg
-  - kind: ServiceAccount
     name: confluent-operator
     namespace: confluent-stg
   - kind: ServiceAccount
