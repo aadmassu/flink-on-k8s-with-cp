@@ -49,7 +49,7 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 
 ### Wildcard vs. Pinned Version Constraints
 
-The ApplicationSet files use **wildcard semver constraints** (e.g., `0.*`, `1.*`) by default. This is a deliberate trade-off:
+The ApplicationSet files use **wildcard semver constraints** (e.g., `0.*`, `1.*`) in `dev` and `qa`, and **pinned versions** (e.g., `0.1351.59`, `1.130.0`) in `stg` and `prd`. Here is the trade-off between the two approaches:
 
 | Approach | Pros | Cons |
 |---|---|---|
