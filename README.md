@@ -45,8 +45,8 @@ This project follows a **phased approach**:
 | Phase | Scope | Status |
 |-------|-------|--------|
 | **Phase 1** | Operators only -- cert-manager, Confluent Operator (CFK), Flink Operator | **Current** |
-| **Phase 2** | Add Confluent Manager for Apache Flink (CMF) configured to work with external CP on VMs | Planned |
-| **Phase 3** | CMF with CFK-managed Confluent Platform on Kubernetes | Planned |
+| **Phase 2** | CMF + Flink on K8s, CP on VMs (external Kafka) — deploy Confluent Manager for Apache Flink connecting to external Confluent Platform | Planned |
+| **Phase 3** | CMF + Flink + CP on K8s — migrate Confluent Platform onto Kubernetes via CFK, fully managed end-to-end | Planned |
 
 ### Phase 1 Components
 
@@ -559,8 +559,8 @@ oc get application confluent-operator-dev -n ${ARGOCD_NS} -o jsonpath='{.status.
 This repository supports a phased deployment strategy:
 
 - **Phase 1 (current):** Operators only -- cert-manager, CFK, Flink operator. Confluent Platform continues to run on VMs.
-- **Phase 2:** Add Confluent Manager for Apache Flink (CMF), configured to connect to the external CP on VMs. CMF manifests will be added under `apps/confluent-flink/` and a new `confluent-flink-application-set.yaml` will be introduced per environment.
-- **Phase 3:** Migrate Confluent Platform onto Kubernetes via CFK CRDs, with CMF managing Flink SQL workloads end-to-end.
+- **Phase 2 (CMF + Flink on K8s, CP on VMs):** Deploy Confluent Manager for Apache Flink (CMF) on Kubernetes, configured to connect to the external Confluent Platform running on VMs (external Kafka). CMF manifests will be added under `apps/confluent-flink/` and a new `confluent-flink-application-set.yaml` will be introduced per environment.
+- **Phase 3 (CMF + Flink + CP on K8s):** Migrate Confluent Platform onto Kubernetes via CFK CRDs. CMF manages Flink SQL workloads end-to-end with Kafka running on K8s.
 
 ---
 
