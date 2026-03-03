@@ -12,7 +12,7 @@ The Helm chart is pulled directly from the Confluent Helm repository (`https://p
 |-------|-------|
 | **Chart name** | `flink-kubernetes-operator` |
 | **Repository** | `https://packages.confluent.io/helm` |
-| **Version** | `1.130.0` (pinned) |
+| **Version** | `1.130.2` (pinned) |
 
 ---
 
@@ -134,7 +134,7 @@ helm:
 
 The Confluent Flink Operator is deployed using ArgoCD **ApplicationSets** located in `gitops-config/openshift/`. Each ApplicationSet uses the [multiple sources with `$values` ref](https://argo-cd.readthedocs.io/en/stable/user-guide/multiple_sources/#helm-value-files-from-external-git-repository) pattern:
 
-1. **Source 1 -- Helm chart:** Pulls the `flink-kubernetes-operator` chart from `https://packages.confluent.io/helm` with pinned version `1.130.0`.
+1. **Source 1 -- Helm chart:** Pulls the `flink-kubernetes-operator` chart from `https://packages.confluent.io/helm` with pinned version `1.130.2`.
 2. **Source 2 -- Git ref (`$values`):** Clones this Git repository and makes it available as `$values`, allowing `valueFiles` to reference paths like `$values/apps/confluent-flink-operator/dev/values.yaml`.
 
 The ApplicationSet uses a **list generator** with `{{environment}}` as a template parameter, which resolves the correct per-environment `values.yaml` path at generation time.

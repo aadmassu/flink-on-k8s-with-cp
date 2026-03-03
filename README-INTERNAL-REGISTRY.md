@@ -41,8 +41,8 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 | Component | Version | Helm Chart | targetRevision |
 |---|---|---|---|
 | **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.1351.59` |
-| **Flink Kubernetes Operator** | 1.13.0-cp2 | `flink-kubernetes-operator` | `1.130.0` |
-| **cert-manager** | 1.19.4 | `cert-manager` | `1.19.4` |
+| **Flink Kubernetes Operator** | 1.13.0-cp2 | `flink-kubernetes-operator` | `1.130.2` |
+| **cert-manager** | 1.19.4 | `cert-manager` | `v1.19.4` |
 | **ArgoCD** | 3.3.2 | `argo-cd` | `9.4.7` |
 
 > **Versions verified as of March 3, 2026.** Check the [Confluent release notes](https://docs.confluent.io/operator/current/release-notes.html), [cert-manager releases](https://github.com/cert-manager/cert-manager/releases), and [ArgoCD Helm chart releases](https://github.com/argoproj/argo-helm/releases) for updates.
@@ -54,13 +54,13 @@ All environments use **pinned versions** for fully reproducible, auditable deplo
 | Approach | Pros | Cons |
 |---|---|---|
 | **Wildcard** (`1.*`, `0.*`) | Automatically picks up patch/minor fixes on sync; no manual bumps needed; reduces maintenance overhead | May pull in breaking changes on minor bumps; harder to reproduce exact deployments; audit/compliance teams may flag non-deterministic versions |
-| **Pinned** (`0.1351.59`, `1.130.0`) | Fully reproducible deployments; explicit change control; easier to audit and rollback; required for air-gapped mirroring | Requires manual version bumps in Git; easy to fall behind on security patches; more PR churn |
+| **Pinned** (`0.1351.59`, `1.130.2`) | Fully reproducible deployments; explicit change control; easier to audit and rollback; required for air-gapped mirroring | Requires manual version bumps in Git; easy to fall behind on security patches; more PR churn |
 
 This repository uses **pinned versions across all environments** (dev, qa, stg, prd). When upgrading, update the pinned version in `dev` first, validate through `qa` and `stg`, then promote to `prd`.
 
 ```yaml
 # All environments — pinned (explicit, reproducible)
-targetRevision: "1.130.0"
+targetRevision: "1.130.2"
 ```
 
 ### Discover Available Chart Versions
@@ -111,7 +111,9 @@ check() {
   local repo=$1 chart=$2 version=$3
   local found
   found=$(helm search repo "${repo}/${chart}" --version "$version" \
-    --output json 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | cut -d'"' -f4)
+    --output json 2>/dev/null \
+    | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' \
+    | head -1 | cut -d'"' -f4) || true
   if [ "$found" = "$version" ]; then
     printf "%-35s %-15s %-10s\n" "$chart" "$version" "OK"
   else
@@ -119,9 +121,9 @@ check() {
   fi
 }
 
-check jetstack    cert-manager                    "1.19.4"
+check jetstack    cert-manager                    "v1.19.4"
 check confluent   confluent-for-kubernetes        "0.1351.59"
-check confluent   flink-kubernetes-operator       "1.130.0"
+check confluent   flink-kubernetes-operator       "1.130.2"
 check argo-cd     argo-cd                         "9.4.7"
 ```
 
@@ -144,9 +146,9 @@ check argo-cd     argo-cd                         "9.4.7"
 
 | Chart | Source Repository | Pinned Version | Referenced By |
 |---|---|---|---|
-| `cert-manager` | `https://charts.jetstack.io` | `1.19.4` | `gitops-config/openshift/{dev,qa,stg,prd}/cert-manager-application-set.yaml` |
+| `cert-manager` | `https://charts.jetstack.io` | `v1.19.4` | `gitops-config/openshift/{dev,qa,stg,prd}/cert-manager-application-set.yaml` |
 | `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | `0.1351.59` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-operator-application-set.yaml` |
-| `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.130.0` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
+| `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.130.2` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
 | `argo-cd` | `https://argoproj.github.io/argo-helm` | `9.4.7` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines |
 
 ---
@@ -184,7 +186,7 @@ The Helm charts pull the images listed below. No container image registries are 
 
 | Image | Default Registry | Tag |
 |---|---|---|
-| `confluent-flink-kubernetes-operator` | `docker.io/confluentinc/confluent-flink-kubernetes-operator` | `1.130.0` |
+| `confluent-flink-kubernetes-operator` | `docker.io/confluentinc/confluent-flink-kubernetes-operator` | `1.130.2` |
 
 > **Note:** Confluent Platform runs on VMs (not Kubernetes) and CMF will be added in a future phase. Mirror those images when they are needed.
 
@@ -220,9 +222,9 @@ helm repo add argo-cd https://argoproj.github.io/argo-helm
 helm repo update
 
 # Pull charts (latest versions for CP 8.1.1 greenfield deployment)
-helm pull jetstack/cert-manager --version 1.19.4
+helm pull jetstack/cert-manager --version v1.19.4
 helm pull confluent/confluent-for-kubernetes --version 0.1351.59
-helm pull confluent/flink-kubernetes-operator --version 1.130.0
+helm pull confluent/flink-kubernetes-operator --version 1.130.2
 helm pull argo-cd/argo-cd --version 9.4.7
 
 # Upload to Artifactory local repo
@@ -313,8 +315,8 @@ IMAGES=(
   "docker.io/confluentinc/confluent-operator:0.1351.59"
   "docker.io/confluentinc/confluent-init-container:3.1.1"
 
-  # Flink Operator (1.130.0)
-  "docker.io/confluentinc/confluent-flink-kubernetes-operator:1.130.0"
+  # Flink Operator (1.130.2)
+  "docker.io/confluentinc/confluent-flink-kubernetes-operator:1.130.2"
 
 )
 
@@ -823,7 +825,7 @@ helm search repo internal/<chart-name>
 If the chart is missing:
 - Verify it was uploaded / proxied correctly
 - Run `helm repo update` to refresh the index
-- Check that the pinned version (e.g., `1.130.0`) exists in the repository index
+- Check that the pinned version (e.g., `1.130.2`) exists in the repository index
 
 ### ArgoCD cannot pull Helm chart (authentication error)
 

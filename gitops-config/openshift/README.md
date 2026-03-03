@@ -58,7 +58,7 @@ gitops-config/openshift/
 
 **Source type:** Multi-source (Helm chart + Git values)
 
-**What it deploys:** The `cert-manager` Helm chart from `https://charts.jetstack.io` at version `1.19.4`, with values from:
+**What it deploys:** The `cert-manager` Helm chart from `https://charts.jetstack.io` at version `v1.19.4`, with values from:
 1. `apps/cert-manager/{{environment}}/values.yaml` -- environment-specific values
 2. `apps/cert-manager/openshift-overlay.yaml` -- OpenShift-specific overrides (disables PodSecurityPolicy since OpenShift uses SCCs instead)
 
@@ -78,7 +78,7 @@ gitops-config/openshift/
 | `spec.template.spec.project` | `default` | ArgoCD project that governs access controls |
 | `spec.template.spec.sources[0].repoURL` | `https://charts.jetstack.io` | Helm chart repository URL for cert-manager |
 | `spec.template.spec.sources[0].chart` | `cert-manager` | Name of the Helm chart to install |
-| `spec.template.spec.sources[0].targetRevision` | `1.19.4` | Helm chart version (pinned) |
+| `spec.template.spec.sources[0].targetRevision` | `v1.19.4` | Helm chart version (pinned) |
 | `spec.template.spec.sources[0].helm.valueFiles[0]` | `$values/apps/cert-manager/{{environment}}/values.yaml` | Environment-specific Helm values file, referenced via the `$values` Git repo alias |
 | `spec.template.spec.sources[0].helm.valueFiles[1]` | `$values/apps/cert-manager/openshift-overlay.yaml` | OpenShift-specific overrides (disables `global.podSecurityPolicy.enabled`) |
 | `spec.template.spec.sources[1].repoURL` | `git@github.com:aadmassu/flink-on-k8s-with-cp.git` | Git repository providing the Helm values files |
@@ -140,7 +140,7 @@ gitops-config/openshift/
 
 **Source type:** Multi-source (Helm chart + Git values)
 
-**What it deploys:** The `flink-kubernetes-operator` Helm chart from `https://packages.confluent.io/helm` at version `1.130.0`, with values from:
+**What it deploys:** The `flink-kubernetes-operator` Helm chart from `https://packages.confluent.io/helm` at version `1.130.2`, with values from:
 1. `apps/confluent-flink-operator/{{environment}}/values.yaml` -- environment-specific values
 2. `apps/confluent-flink-operator/openshift-overlay.yaml` -- OpenShift-specific overrides (nullifies `runAsUser`, `runAsGroup`, and `fsGroup` in `podSecurityContext`)
 
@@ -160,7 +160,7 @@ gitops-config/openshift/
 | `spec.template.spec.project` | `default` | ArgoCD project that governs access controls |
 | `spec.template.spec.sources[0].repoURL` | `https://packages.confluent.io/helm` | Confluent Helm chart repository URL |
 | `spec.template.spec.sources[0].chart` | `flink-kubernetes-operator` | Name of the Flink operator Helm chart |
-| `spec.template.spec.sources[0].targetRevision` | `1.130.0` | Helm chart version (pinned) |
+| `spec.template.spec.sources[0].targetRevision` | `1.130.2` | Helm chart version (pinned) |
 | `spec.template.spec.sources[0].helm.valueFiles[0]` | `$values/apps/confluent-flink-operator/{{environment}}/values.yaml` | Environment-specific Helm values file |
 | `spec.template.spec.sources[0].helm.valueFiles[1]` | `$values/apps/confluent-flink-operator/openshift-overlay.yaml` | OpenShift-specific overrides (nullifies `podSecurityContext.runAsUser`, `runAsGroup`, `fsGroup`) |
 | `spec.template.spec.sources[1].repoURL` | `git@github.com:aadmassu/flink-on-k8s-with-cp.git` | Git repository providing the Helm values files |

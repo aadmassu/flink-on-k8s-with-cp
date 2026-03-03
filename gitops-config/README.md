@@ -119,9 +119,9 @@ These three ApplicationSet types are present in every environment:
 
 | ApplicationSet | File Name | Source Type | Helm Chart | Target Namespace | syncOptions |
 |---|---|---|---|---|---|
-| **cert-manager** | `cert-manager-application-set.yaml` | Helm (multi-source) | `cert-manager` from `charts.jetstack.io` (`1.19.4`) | `cert-manager` | `CreateNamespace=true`, `ServerSideApply=true` |
+| **cert-manager** | `cert-manager-application-set.yaml` | Helm (multi-source) | `cert-manager` from `charts.jetstack.io` (`v1.19.4`) | `cert-manager` | `CreateNamespace=true`, `ServerSideApply=true` |
 | **confluent-operator** | `confluent-operator-application-set.yaml` | Helm (multi-source) | `confluent-for-kubernetes` from `packages.confluent.io/helm` (`0.1351.59`) | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
-| **confluent-flink-operator** | `confluent-flink-operator-application-set.yaml` | Helm (multi-source) | `flink-kubernetes-operator` from `packages.confluent.io/helm` (`1.130.0`) | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
+| **confluent-flink-operator** | `confluent-flink-operator-application-set.yaml` | Helm (multi-source) | `flink-kubernetes-operator` from `packages.confluent.io/helm` (`1.130.2`) | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
 
 ### Source Type Details
 
