@@ -36,7 +36,7 @@ ArgoCD Helm values and self-management Application manifests for deploying a sta
 |-------|-------|
 | **Chart** | `argo-cd` |
 | **Repository** | `https://argoproj.github.io/argo-helm` |
-| **Version** | `7.*` (latest patch within major version 7) |
+| **Version** | `9.*` (dev/qa) / `9.4.7` (stg/prd) |
 
 ---
 
@@ -104,7 +104,7 @@ ArgoCD `Application` resource that enables **self-management** of the ArgoCD ins
 | `spec.project` | `default` | ArgoCD project that this Application belongs to |
 | `spec.source.repoURL` | `https://argoproj.github.io/argo-helm` | Helm chart repository URL |
 | `spec.source.chart` | `argo-cd` | Helm chart name |
-| `spec.source.targetRevision` | `7.*` | Helm chart version constraint (latest 7.x patch) |
+| `spec.source.targetRevision` | `9.*` | Helm chart version constraint (latest 9.x patch) |
 | `spec.source.helm.valueFiles[0]` | `values.yaml` | Path to the Helm values file used for rendering |
 | `spec.destination.server` | `https://dev-cluster.example.com` | OpenShift API server URL for the dev cluster |
 | `spec.destination.namespace` | `argocd` | Target namespace for the ArgoCD installation |
@@ -152,7 +152,7 @@ ArgoCD `Application` resource for self-management in the QA environment. Does **
 | `spec.project` | `default` | ArgoCD project that this Application belongs to |
 | `spec.source.repoURL` | `https://argoproj.github.io/argo-helm` | Helm chart repository URL |
 | `spec.source.chart` | `argo-cd` | Helm chart name |
-| `spec.source.targetRevision` | `7.*` | Helm chart version constraint |
+| `spec.source.targetRevision` | `9.*` | Helm chart version constraint |
 | `spec.source.helm.valueFiles[0]` | `values.yaml` | Path to the Helm values file |
 | `spec.destination.server` | `https://qa-cluster.example.com` | OpenShift API server URL for the QA cluster |
 | `spec.destination.namespace` | `argocd` | Target namespace for the ArgoCD installation |
@@ -197,7 +197,7 @@ ArgoCD `Application` resource for self-management in the staging environment. Ma
 | `spec.project` | `default` | ArgoCD project that this Application belongs to |
 | `spec.source.repoURL` | `https://argoproj.github.io/argo-helm` | Helm chart repository URL |
 | `spec.source.chart` | `argo-cd` | Helm chart name |
-| `spec.source.targetRevision` | `7.*` | Helm chart version constraint |
+| `spec.source.targetRevision` | `9.4.7` | Helm chart version (pinned for staging) |
 | `spec.source.helm.valueFiles[0]` | `values.yaml` | Path to the Helm values file |
 | `spec.destination.server` | `https://stg-cluster.example.com` | OpenShift API server URL for the staging cluster |
 | `spec.destination.namespace` | `argocd` | Target namespace for the ArgoCD installation |
@@ -242,7 +242,7 @@ ArgoCD `Application` resource for self-management in the production environment.
 | `spec.project` | `default` | ArgoCD project that this Application belongs to |
 | `spec.source.repoURL` | `https://argoproj.github.io/argo-helm` | Helm chart repository URL |
 | `spec.source.chart` | `argo-cd` | Helm chart name |
-| `spec.source.targetRevision` | `7.*` | Helm chart version constraint |
+| `spec.source.targetRevision` | `9.4.7` | Helm chart version (pinned for production) |
 | `spec.source.helm.valueFiles[0]` | `values.yaml` | Path to the Helm values file |
 | `spec.destination.server` | `https://prd-cluster.example.com` | OpenShift API server URL for the production cluster |
 | `spec.destination.namespace` | `argocd` | Target namespace for the ArgoCD installation |

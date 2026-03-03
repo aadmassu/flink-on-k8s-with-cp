@@ -39,9 +39,11 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 | Component | Version | Helm Chart | dev/qa | stg/prd |
 |---|---|---|---|---|
 | **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.*` | `0.1351.59` |
-| **Flink Kubernetes Operator** | 1.13.x | `flink-kubernetes-operator` | `1.*` | `1.130.0` |
+| **Flink Kubernetes Operator** | 1.13.0-cp2 | `flink-kubernetes-operator` | `1.*` | `1.130.0` |
 | **cert-manager** | 1.19.4 | `cert-manager` | `1.*` | `1.19.4` |
-| **ArgoCD** | 2.14.x | `argo-cd` | `7.*` | `7.8.0` |
+| **ArgoCD** | 3.3.2 | `argo-cd` | `9.*` | `9.4.7` |
+
+> **Versions verified as of March 3, 2026.** Check the [Confluent release notes](https://docs.confluent.io/operator/current/release-notes.html), [cert-manager releases](https://github.com/cert-manager/cert-manager/releases), and [ArgoCD Helm chart releases](https://github.com/argoproj/argo-helm/releases) for updates.
 
 ### Wildcard vs. Pinned Version Constraints
 
@@ -117,7 +119,7 @@ resolve() {
 resolve jetstack    cert-manager                    "1.*"
 resolve confluent   confluent-for-kubernetes        "0.*"
 resolve confluent   flink-kubernetes-operator       "1.*"
-resolve argo-cd     argo-cd                         "7.*"
+resolve argo-cd     argo-cd                         "9.*"
 ```
 
 > Verify exact chart versions with `helm search repo <repo>/<chart> --versions` after adding the public repos.
@@ -142,7 +144,7 @@ resolve argo-cd     argo-cd                         "7.*"
 | `cert-manager` | `https://charts.jetstack.io` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/cert-manager-application-set.yaml` |
 | `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | `0.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-operator-application-set.yaml` |
 | `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
-| `argo-cd` | `https://argoproj.github.io/argo-helm` | `7.*` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines |
+| `argo-cd` | `https://argoproj.github.io/argo-helm` | `9.*` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines |
 
 ---
 
@@ -164,7 +166,7 @@ The Helm charts pull the images listed below. No container image registries are 
 
 | Image | Default Registry | Tag |
 |---|---|---|
-| `argocd` | `quay.io/argoproj/argocd` | `v2.14.0` |
+| `argocd` | `quay.io/argoproj/argocd` | `v3.3.2` |
 | `dex` | `ghcr.io/dexidp/dex` | `v2.41.1` |
 | `redis` | `docker.io/library/redis` | `7.4.2-alpine` |
 
@@ -218,7 +220,7 @@ helm repo update
 helm pull jetstack/cert-manager --version 1.19.4
 helm pull confluent/confluent-for-kubernetes --version 0.1351.59
 helm pull confluent/flink-kubernetes-operator --version 1.130.0
-helm pull argo-cd/argo-cd --version 7.8.0
+helm pull argo-cd/argo-cd --version 9.4.7
 
 # Upload to Artifactory local repo
 for tgz in *.tgz; do
@@ -299,8 +301,8 @@ IMAGES=(
   "quay.io/jetstack/cert-manager-startupapicheck:v1.19.4"
   "quay.io/jetstack/cert-manager-acmesolver:v1.19.4"
 
-  # ArgoCD (v2.14.0)
-  "quay.io/argoproj/argocd:v2.14.0"
+  # ArgoCD (v3.3.2)
+  "quay.io/argoproj/argocd:v3.3.2"
   "ghcr.io/dexidp/dex:v2.41.1"
   "docker.io/library/redis:7.4.2-alpine"
 
