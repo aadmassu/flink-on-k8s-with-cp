@@ -7,7 +7,6 @@ This guide explains how to redirect all Helm chart downloads and container image
 ## Table of Contents
 
 - [When to Use This Guide](#when-to-use-this-guide)
-- [Overview of Changes](#overview-of-changes)
 - [Prerequisites](#prerequisites)
 - [Inventory: Helm Charts to Mirror](#inventory-helm-charts-to-mirror)
 - [Inventory: Container Images to Mirror](#inventory-container-images-to-mirror)
@@ -44,20 +43,84 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 | **cert-manager** | 1.19.4 | `cert-manager` | `1.*` (latest: `1.19.4`) |
 | **ArgoCD** | 2.14.x | `argo-cd` | `7.*` (latest: `7.8.0`) |
 
-> Verify exact chart versions with `helm search repo <repo>/<chart> --versions` after adding the public repos.
+### Wildcard vs. Pinned Version Constraints
 
----
+The ApplicationSet files use **wildcard semver constraints** (e.g., `0.*`, `1.*`) by default. This is a deliberate trade-off:
 
-## Overview of Changes
-
-| What Changes | Which Files | Nature of Change |
+| Approach | Pros | Cons |
 |---|---|---|
-| Helm chart source URLs | ApplicationSet YAMLs, ArgoCD app manifests, CI/CD pipelines, scripts | Replace public `repoURL` with internal URL |
-| Container image registries | Helm `values.yaml` files | Add `image.registry` / `image.repository` overrides |
-| Image pull credentials | Kubernetes secrets | Create `imagePullSecret` per namespace |
-| ArgoCD repo credentials | Kubernetes secret | Add auth for internal Helm repo |
+| **Wildcard** (`1.*`, `0.*`) | Automatically picks up patch/minor fixes on sync; no manual bumps needed; reduces maintenance overhead | May pull in breaking changes on minor bumps; harder to reproduce exact deployments; audit/compliance teams may flag non-deterministic versions |
+| **Pinned** (`0.1351.59`, `1.130.0`) | Fully reproducible deployments; explicit change control; easier to audit and rollback; required for air-gapped mirroring | Requires manual version bumps in Git; easy to fall behind on security patches; more PR churn |
 
-> **Placeholder convention:** This guide uses `registry.example.com` as the internal registry hostname throughout. Replace it with your actual registry (e.g., `artifactory.mycompany.com`, `nexus.mycompany.com`).
+**Recommendation:** Use **pinned versions** for production (`stg`, `prd`) and **wildcards** for lower environments (`dev`, `qa`) where auto-upgrade is acceptable. To pin a version, replace the wildcard in the ApplicationSet's `targetRevision` field:
+
+```yaml
+# Wildcard (default)
+targetRevision: "1.*"
+
+# Pinned
+targetRevision: "1.130.0"
+```
+
+### Discover Available Chart Versions
+
+Add the public Helm repos and query each chart to find the latest available versions:
+
+```bash
+# Add repos
+helm repo add jetstack https://charts.jetstack.io
+helm repo add confluent https://packages.confluent.io/helm
+helm repo add argo-cd https://argoproj.github.io/argo-helm
+helm repo update
+
+# Query latest versions
+echo "=== cert-manager ==="
+helm search repo jetstack/cert-manager --versions | head -5
+
+echo ""
+echo "=== confluent-for-kubernetes (CFK) ==="
+helm search repo confluent/confluent-for-kubernetes --versions | head -5
+
+echo ""
+echo "=== flink-kubernetes-operator ==="
+helm search repo confluent/flink-kubernetes-operator --versions | head -5
+
+echo ""
+echo "=== argo-cd ==="
+helm search repo argo-cd/argo-cd --versions | head -5
+```
+
+### Validate Resolved Versions Against ApplicationSets
+
+Use this script to show exactly which chart version each wildcard constraint would resolve to. Run it before deploying to confirm there are no unexpected jumps:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Ensure repos are up to date
+helm repo update >/dev/null 2>&1
+
+echo "ApplicationSet Version Resolution"
+echo "=================================="
+printf "%-35s %-15s %-15s\n" "CHART" "CONSTRAINT" "RESOLVED"
+echo "----------------------------------+--------------+--------------"
+
+resolve() {
+  local repo=$1 chart=$2 constraint=$3
+  local resolved
+  resolved=$(helm search repo "${repo}/${chart}" --version "$constraint" \
+    --output json 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | cut -d'"' -f4)
+  printf "%-35s %-15s %-15s\n" "$chart" "$constraint" "${resolved:-NOT FOUND}"
+}
+
+resolve jetstack    cert-manager                    "1.*"
+resolve confluent   confluent-for-kubernetes        "0.*"
+resolve confluent   flink-kubernetes-operator       "1.*"
+resolve argo-cd     argo-cd                         "7.*"
+```
+
+> Verify exact chart versions with `helm search repo <repo>/<chart> --versions` after adding the public repos.
 
 ---
 
