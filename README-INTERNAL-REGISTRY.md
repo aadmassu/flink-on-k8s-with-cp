@@ -8,10 +8,10 @@ This guide explains how to redirect all Helm chart downloads and container image
 
 - [When to Use This Guide](#when-to-use-this-guide)
 - [Prerequisites](#prerequisites)
-- [Inventory: Helm Charts to Mirror](#inventory-helm-charts-to-mirror)
-- [Inventory: Container Images to Mirror](#inventory-container-images-to-mirror)
-- [Step 1 — Mirror Helm Charts](#step-1--mirror-helm-charts)
-- [Step 2 — Mirror Container Images](#step-2--mirror-container-images)
+- [Inventory: Helm Charts](#inventory-helm-charts)
+- [Inventory: Container Images](#inventory-container-images)
+- [Step 1 — Pull and Upload Helm Charts](#step-1--pull-and-upload-helm-charts)
+- [Step 2 — Pull, Tag, and Push Container Images](#step-2--pull-tag-and-push-container-images)
 - [Step 3 — Create Image Pull Secrets](#step-3--create-image-pull-secrets)
 - [Step 4 — Update ApplicationSet Files (Helm Chart URLs)](#step-4--update-applicationset-files-helm-chart-urls)
 - [Step 5 — Update Helm Values Files (Container Image Overrides)](#step-5--update-helm-values-files-container-image-overrides)
@@ -36,7 +36,7 @@ In short, if your environment cannot — or your organization prefers not to —
 
 ## Target Versions
 
-This guide targets the latest versions for a greenfield deployment. Mirror these specific versions (or newer) to your internal registries.
+This guide targets the latest versions for a greenfield deployment. Pull, tag, and push these specific versions (or newer) to your internal registries.
 
 | Component | Version | Helm Chart | targetRevision |
 |---|---|---|---|
@@ -54,7 +54,7 @@ All environments use **pinned versions** for fully reproducible, auditable deplo
 | Approach | Pros | Cons |
 |---|---|---|
 | **Wildcard** (`1.*`, `0.*`) | Automatically picks up patch/minor fixes on sync; no manual bumps needed; reduces maintenance overhead | May pull in breaking changes on minor bumps; harder to reproduce exact deployments; audit/compliance teams may flag non-deterministic versions |
-| **Pinned** (`0.1351.59`, `1.130.2`) | Fully reproducible deployments; explicit change control; easier to audit and rollback; required for air-gapped mirroring | Requires manual version bumps in Git; easy to fall behind on security patches; more PR churn |
+| **Pinned** (`0.1351.59`, `1.130.2`) | Fully reproducible deployments; explicit change control; easier to audit and rollback; required for air-gapped environments | Requires manual version bumps in Git; easy to fall behind on security patches; more PR churn |
 
 This repository uses **pinned versions across all environments** (dev, qa, stg, prd). When upgrading, update the pinned version in `dev` first, validate through `qa` and `stg`, then promote to `prd`.
 
@@ -138,11 +138,11 @@ check argo-cd     argo-cd                         "9.4.7"
 | Internal Helm repository | JFrog Artifactory, Sonatype Nexus, Harbor, or any OCI/HTTP Helm repo |
 | Internal container registry | Same tool, or a dedicated container registry (ECR, GCR, ACR, etc.) |
 | CLI tools | `docker` or `podman`, `helm` 3.14+, `oc` |
-| Registry credentials | Push access (for mirroring) and pull access (for Kubernetes nodes) |
+| Registry credentials | Push access (for uploading) and pull access (for Kubernetes nodes) |
 
 ---
 
-## Inventory: Helm Charts to Mirror
+## Inventory: Helm Charts
 
 | Chart | Source Repository | Pinned Version | Referenced By |
 |---|---|---|---|
@@ -153,9 +153,9 @@ check argo-cd     argo-cd                         "9.4.7"
 
 ---
 
-## Inventory: Container Images to Mirror
+## Inventory: Container Images
 
-The Helm charts pull the images listed below. No container image registries are referenced directly in this repository — they are embedded in the upstream charts. You must mirror these images so that your cluster nodes can pull them.
+The Helm charts pull the images listed below. No container image registries are referenced directly in this repository — they are embedded in the upstream charts. You must pull, tag, and push these images to your internal registry so that your cluster nodes can access them.
 
 ### cert-manager
 
@@ -188,68 +188,39 @@ The Helm charts pull the images listed below. No container image registries are 
 |---|---|---|
 | `confluent-flink-kubernetes-operator` | `docker.io/confluentinc/confluent-flink-kubernetes-operator` | `1.130.2` |
 
-> **Note:** Confluent Platform runs on VMs (not Kubernetes) and CMF will be added in a future phase. Mirror those images when they are needed.
+> **Note:** Confluent Platform runs on VMs (not Kubernetes) and CMF will be added in a future phase. Pull and push those images when they are needed.
 
 ---
 
-## Step 1 — Mirror Helm Charts
+## Step 1 — Pull and Upload Helm Charts
 
-### JFrog Artifactory
-
-**Option A — Remote (proxy) repository** (non-air-gapped)
-
-Create a remote Helm repository in Artifactory that proxies the upstream source. Artifactory caches charts on first request.
-
-1. In Artifactory, create a **Remote** repository of type **Helm** for each upstream:
-   - `helm-jetstack-remote` → `https://charts.jetstack.io`
-   - `helm-confluent-remote` → `https://packages.confluent.io/helm`
-   - `helm-argoproj-remote` → `https://argoproj.github.io/argo-helm`
-2. Optionally create a **Virtual** repository (`helm-virtual`) that aggregates all three remotes.
-3. Use the virtual repo URL as your single internal Helm URL:
-   ```
-   https://registry.example.com/artifactory/helm-virtual
-   ```
-
-**Option B — Local (hosted) repository** (air-gapped)
-
-Download each chart and upload it manually.
+Pull each chart from the public repository and upload it to your internal Helm repository.
 
 ```bash
-# Add public repos temporarily on a machine with internet access
+# Add public repos on a machine with internet access
 helm repo add jetstack https://charts.jetstack.io
 helm repo add confluent https://packages.confluent.io/helm
 helm repo add argo-cd https://argoproj.github.io/argo-helm
 helm repo update
 
-# Pull charts (latest versions for CP 8.1.1 greenfield deployment)
+# Pull charts
 helm pull jetstack/cert-manager --version v1.19.4
 helm pull confluent/confluent-for-kubernetes --version 0.1351.59
 helm pull confluent/flink-kubernetes-operator --version 1.130.2
 helm pull argo-cd/argo-cd --version 9.4.7
+```
 
-# Upload to Artifactory local repo
+Upload the `.tgz` files to your internal Helm repository:
+
+```bash
+# JFrog Artifactory
 for tgz in *.tgz; do
   curl -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
     -T "$tgz" \
     "https://registry.example.com/artifactory/helm-local/$tgz"
 done
-```
 
-> Adjust chart versions to match your target versions.
-
-### Sonatype Nexus
-
-**Option A — Proxy repository** (non-air-gapped)
-
-1. In Nexus, create a **Proxy** repository of type **helm (proxy)** for each upstream.
-2. Create a **Group** repository that combines them.
-3. Use the group repo URL: `https://registry.example.com/repository/helm-group`
-
-**Option B — Hosted repository** (air-gapped)
-
-```bash
-# Pull charts (same as Artifactory Option B above)
-# Then upload to Nexus hosted repo:
+# Sonatype Nexus
 for tgz in *.tgz; do
   curl -u "$NEXUS_USER:$NEXUS_PASSWORD" \
     --upload-file "$tgz" \
@@ -257,7 +228,7 @@ for tgz in *.tgz; do
 done
 ```
 
-### Verify Mirrored Charts
+### Verify Charts in Internal Repo
 
 ```bash
 helm repo add internal https://registry.example.com/helm \
@@ -274,9 +245,9 @@ All four charts should appear with the expected versions.
 
 ---
 
-## Step 2 — Mirror Container Images
+## Step 2 — Pull, Tag, and Push Container Images
 
-### Pull, Tag, and Push (single image example)
+### Single Image Example
 
 ```bash
 # Pull from public registry
@@ -290,7 +261,7 @@ docker tag quay.io/jetstack/cert-manager-controller:v1.19.4 \
 docker push registry.example.com/jetstack/cert-manager-controller:v1.19.4
 ```
 
-### Bulk Mirror Script
+### Bulk Pull, Tag, and Push Script
 
 ```bash
 #!/usr/bin/env bash
@@ -326,27 +297,16 @@ for img in "${IMAGES[@]}"; do
   src_without_registry="${img#*/}"
   internal_img="${INTERNAL_REGISTRY}/${src_without_registry}"
 
-  echo "==> Mirroring: ${img} -> ${internal_img}"
+  echo "==> Pushing: ${img} -> ${internal_img}"
   docker pull "$img"
   docker tag "$img" "$internal_img"
   docker push "$internal_img"
 done
 
-echo "Done. Mirrored ${#IMAGES[@]} images."
+echo "Done. Pushed ${#IMAGES[@]} images."
 ```
 
 > Adjust image tags/versions to match the versions you are deploying.
-
-### skopeo Alternative (air-gapped, registry-to-registry)
-
-If you cannot use a Docker daemon (e.g., no root access), use `skopeo` to copy directly between registries:
-
-```bash
-skopeo copy \
-  docker://quay.io/jetstack/cert-manager-controller:v1.19.4 \
-  docker://registry.example.com/jetstack/cert-manager-controller:v1.19.4 \
-  --dest-creds "$REGISTRY_USER:$REGISTRY_TOKEN"
-```
 
 ---
 
@@ -706,7 +666,7 @@ This allows ArgoCD to authenticate when fetching Helm charts from `https://regis
 
 ## Verification
 
-After completing all steps, verify the migration:
+After completing all steps, verify:
 
 **1. Helm charts resolve from internal repo:**
 
@@ -813,7 +773,7 @@ oc describe pod <pod-name> -n <namespace>
 
 Check the Events section for the exact error. Common causes:
 - Image pull secret not created in the target namespace (Step 3)
-- Image not mirrored to internal registry (Step 2)
+- Image not pushed to internal registry (Step 2)
 - Wrong image path in values override (typo in registry or repository)
 
 ### Helm chart not found in internal repo
@@ -837,9 +797,9 @@ Check if the credential secret exists:
 oc get secret -n openshift-gitops -l argocd.argoproj.io/secret-type=repository
 ```
 
-### Pinned version not found in hosted repos
+### Pinned version not found in internal repo
 
-Hosted/local Helm repos (as opposed to proxy repos) must have the exact chart version uploaded. Ensure the pinned version exists in the repository index.
+Your internal Helm repository must have the exact chart version uploaded. Ensure the chart `.tgz` was uploaded (Step 1) and the repository index includes it.
 
 ```bash
 # Verify what's in the repo
