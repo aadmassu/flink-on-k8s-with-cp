@@ -22,7 +22,7 @@ spec:
             fsGroup: null
             runAsUser: null
   destination:
-    server: https://dev-cluster.aws-us-east-2.example.com
+    server: https://dev-cluster.example.com
     namespace: confluent-dev
   syncPolicy:
     automated:

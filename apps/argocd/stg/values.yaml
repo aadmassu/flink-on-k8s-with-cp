@@ -3,7 +3,7 @@
 # HA configuration
 
 global:
-  domain: argocd-stg.aws-us-east-2.example.com
+  domain: argocd-stg.example.com
 
 server:
   replicas: 2

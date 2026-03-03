@@ -1,6 +1,6 @@
 # GitOps Config -- ArgoCD ApplicationSet Definitions
 
-This directory contains **ArgoCD ApplicationSet** definitions that drive the multi-cluster, multi-platform deployment of Confluent Platform and Confluent Flink on Kubernetes. ApplicationSets are organized by **platform** (the target Kubernetes distribution) and **environment** (dev, qa, stg, prd), enabling a single Git repository to declaratively manage deployments across all clusters.
+This directory contains **ArgoCD ApplicationSet** definitions that drive the multi-cluster deployment of Confluent Platform and Confluent Flink on **Red Hat OpenShift**. ApplicationSets are organized by **environment** (dev, qa, stg, prd), enabling a single Git repository to declaratively manage deployments across all clusters.
 
 Each ApplicationSet uses a **list generator** to enumerate target clusters. When applied to the ArgoCD management cluster, it produces one ArgoCD `Application` resource per cluster entry, substituting template variables (`{{cluster}}`, `{{url}}`, `{{environment}}`) into the generated Application spec.
 
@@ -9,8 +9,7 @@ Each ApplicationSet uses a **list generator** to enumerate target clusters. When
 ## Table of Contents
 
 - [Directory Structure](#directory-structure)
-- [Platforms](#platforms)
-- [Platform Comparison](#platform-comparison)
+- [OpenShift Platform Details](#openshift-platform-details)
 - [Environments and Sync Policies](#environments-and-sync-policies)
 - [ApplicationSet Types](#applicationset-types)
 - [Deployment Order](#deployment-order)
@@ -27,56 +26,26 @@ Each ApplicationSet uses a **list generator** to enumerate target clusters. When
 gitops-config/
 |-- README.md                          # <-- You are here
 |
-|-- aws-us-east-2/                     # Platform: vanilla Kubernetes on AWS (us-east-2 region)
-|   |-- dev/
-|   |   |-- cert-manager-application-set.yaml
-|   |   |-- confluent-operator-application-set.yaml
-|   |   |-- confluent-flink-operator-application-set.yaml
-|   |   |-- confluent-platform-application-set.yaml
-|   |   +-- confluent-flink-application-set.yaml
-|   |-- qa/
-|   |   |-- cert-manager-application-set.yaml
-|   |   |-- confluent-operator-application-set.yaml
-|   |   |-- confluent-flink-operator-application-set.yaml
-|   |   |-- confluent-platform-application-set.yaml
-|   |   +-- confluent-flink-application-set.yaml
-|   |-- stg/
-|   |   |-- cert-manager-application-set.yaml
-|   |   |-- confluent-operator-application-set.yaml
-|   |   |-- confluent-flink-operator-application-set.yaml
-|   |   |-- confluent-platform-application-set.yaml
-|   |   +-- confluent-flink-application-set.yaml
-|   +-- prd/
-|       |-- cert-manager-application-set.yaml
-|       |-- confluent-operator-application-set.yaml
-|       |-- confluent-flink-operator-application-set.yaml
-|       |-- confluent-platform-application-set.yaml
-|       +-- confluent-flink-application-set.yaml
-|
 +-- openshift/                         # Platform: Red Hat OpenShift
     |-- dev/
-    |   |-- openshift-prereqs-application-set.yaml
     |   |-- cert-manager-application-set.yaml
     |   |-- confluent-operator-application-set.yaml
     |   |-- confluent-flink-operator-application-set.yaml
     |   |-- confluent-platform-application-set.yaml
     |   +-- confluent-flink-application-set.yaml
     |-- qa/
-    |   |-- openshift-prereqs-application-set.yaml
     |   |-- cert-manager-application-set.yaml
     |   |-- confluent-operator-application-set.yaml
     |   |-- confluent-flink-operator-application-set.yaml
     |   |-- confluent-platform-application-set.yaml
     |   +-- confluent-flink-application-set.yaml
     |-- stg/
-    |   |-- openshift-prereqs-application-set.yaml
     |   |-- cert-manager-application-set.yaml
     |   |-- confluent-operator-application-set.yaml
     |   |-- confluent-flink-operator-application-set.yaml
     |   |-- confluent-platform-application-set.yaml
     |   +-- confluent-flink-application-set.yaml
     +-- prd/
-        |-- openshift-prereqs-application-set.yaml
         |-- cert-manager-application-set.yaml
         |-- confluent-operator-application-set.yaml
         |-- confluent-flink-operator-application-set.yaml
@@ -84,50 +53,22 @@ gitops-config/
         +-- confluent-flink-application-set.yaml
 ```
 
-**File counts:**
-
-| Platform | Files per environment | Total files |
-|---|---|---|
-| `aws-us-east-2` | 5 | 20 |
-| `openshift` | 6 (includes `openshift-prereqs`) | 24 |
+Each environment contains **5 ApplicationSets**, for a total of **20 files**.
 
 ---
 
-## Platforms
+## OpenShift Platform Details
 
-### `aws-us-east-2/` -- Vanilla Kubernetes on AWS
+These ApplicationSets target OpenShift clusters managed by **OpenShift GitOps** (the Red Hat-supported ArgoCD distribution). Key characteristics:
 
-Targets standard (non-OpenShift) Kubernetes clusters running in the **AWS us-east-2** region. Uses the community ArgoCD installation with namespace `argocd`. Helm-based ApplicationSets reference only the per-environment `values.yaml` files -- no platform overlay is needed.
-
-### `openshift/` -- Red Hat OpenShift
-
-Targets OpenShift clusters managed by **OpenShift GitOps** (the Red Hat-supported ArgoCD distribution). Key differences from the AWS variant:
-
-- ArgoCD namespace is `openshift-gitops` instead of `argocd`.
+- ArgoCD namespace is `openshift-gitops`.
 - Helm-based charts layer an **OpenShift overlay** values file on top of the per-environment values (e.g., `openshift-overlay.yaml`).
-- An additional `openshift-prereqs` ApplicationSet deploys platform prerequisites (SCCs, ClusterRoles, etc.) that are specific to OpenShift.
-- The `confluent-flink` ApplicationSet sources manifests from an OpenShift-specific path (`apps/confluent-flink/openshift/{{environment}}/manifests`) rather than the generic path.
-
----
-
-## Platform Comparison
-
-| Aspect | `aws-us-east-2` | `openshift` |
-|---|---|---|
-| **ArgoCD namespace** | `argocd` | `openshift-gitops` |
-| **ArgoCD distribution** | Community ArgoCD | OpenShift GitOps (Red Hat) |
-| **ApplicationSets per env** | 5 | 6 (adds `openshift-prereqs`) |
-| **Helm overlay files** | None (env values only) | `openshift-overlay.yaml` for cert-manager, confluent-operator, confluent-flink-operator |
-| **Confluent Flink manifests path** | `apps/confluent-flink/{{environment}}/manifests` | `apps/confluent-flink/openshift/{{environment}}/manifests` |
-| **Confluent Platform manifests path** | `apps/confluent-platform/{{environment}}/manifests` | `apps/confluent-platform/{{environment}}/manifests` (same) |
-| **Cluster URL pattern (dev)** | `https://kubernetes.default.svc` (in-cluster) | `https://kubernetes.default.svc` (in-cluster) |
-| **Cluster URL pattern (qa)** | `https://qa-cluster.aws-us-east-2.example.com` | `https://qa-cluster.aws-us-east-2.example.com` |
-| **Cluster URL pattern (stg)** | `https://stg-cluster.aws-us-east-2.example.com` | `https://stg-cluster.aws-us-east-2.example.com` |
-| **Cluster URL pattern (prd)** | `https://prd-cluster.aws-us-east-2.example.com` | `https://prd-cluster.aws-us-east-2.example.com` |
+- OpenShift prerequisites (SCCs, ClusterRoleBindings) are applied separately via `oc apply -f openshift-prereqs/<env>/manifests/` -- they are **not** managed by ArgoCD. See [`../openshift-prereqs/`](../openshift-prereqs/).
+- The `confluent-flink` ApplicationSet sources manifests from an OpenShift-specific path (`apps/confluent-flink/openshift/{{environment}}/manifests`) rather than a generic path.
 
 ### OpenShift Overlay Files
 
-The following Helm-based ApplicationSets in the `openshift/` platform include an additional overlay values file that adjusts configuration for OpenShift compatibility (e.g., security contexts, service account annotations, route/ingress configuration):
+The following Helm-based ApplicationSets include an additional overlay values file that adjusts configuration for OpenShift compatibility (e.g., security contexts, service account annotations, route/ingress configuration):
 
 | ApplicationSet | Overlay file referenced |
 |---|---|
@@ -141,14 +82,14 @@ The `confluent-platform` and `confluent-flink` ApplicationSets do not use Helm o
 
 ## Environments and Sync Policies
 
-Each platform contains four environment subdirectories. The key difference across environments is the **sync policy** and the **target cluster URL**.
+Each environment subdirectory differs primarily in its **sync policy** and **target cluster URL**.
 
 | Environment | Directory | Sync Policy | Cluster URL | Description |
 |---|---|---|---|---|
 | **dev** | `dev/` | **Automated** (`prune: true`, `selfHeal: true`) | `https://kubernetes.default.svc` (in-cluster) | Development -- changes sync automatically, drift is auto-corrected |
-| **qa** | `qa/` | **Manual** (syncOptions only, no `automated` block) | `https://qa-cluster.aws-us-east-2.example.com` | QA -- requires manual sync trigger in ArgoCD UI or CLI |
-| **stg** | `stg/` | **Manual** (syncOptions only, no `automated` block) | `https://stg-cluster.aws-us-east-2.example.com` | Staging -- requires manual sync, pre-production validation |
-| **prd** | `prd/` | **Manual** (syncOptions only, no `automated` block) | `https://prd-cluster.aws-us-east-2.example.com` | Production -- requires manual sync, change-controlled |
+| **qa** | `qa/` | **Manual** (syncOptions only, no `automated` block) | `https://qa-cluster.example.com` | QA -- requires manual sync trigger in ArgoCD UI or CLI |
+| **stg** | `stg/` | **Manual** (syncOptions only, no `automated` block) | `https://stg-cluster.example.com` | Staging -- requires manual sync, pre-production validation |
+| **prd** | `prd/` | **Manual** (syncOptions only, no `automated` block) | `https://prd-cluster.example.com` | Production -- requires manual sync, change-controlled |
 
 ### Sync Policy Details
 
@@ -179,15 +120,13 @@ syncPolicy:
 - No `automated` block -- sync must be triggered explicitly via `argocd app sync` or the ArgoCD UI.
 - This prevents unintended changes from reaching higher environments without human review.
 
-> **Note:** The cluster URLs in qa, stg, and prd files are placeholder values (e.g., `https://prd-cluster.aws-us-east-2.example.com`). Replace these with your actual Kubernetes API server endpoints before applying.
+> **Note:** The cluster URLs in qa, stg, and prd files are placeholder values (e.g., `https://prd-cluster.example.com`). Replace these with your actual OpenShift API server endpoints before applying.
 
 ---
 
 ## ApplicationSet Types
 
-### Shared Across Both Platforms
-
-These five ApplicationSet types are present in every environment on both `aws-us-east-2` and `openshift`:
+These five ApplicationSet types are present in every environment:
 
 | ApplicationSet | File Name | Source Type | Helm Chart / Git Path | Target Namespace | syncOptions |
 |---|---|---|---|---|---|
@@ -195,13 +134,7 @@ These five ApplicationSet types are present in every environment on both `aws-us
 | **confluent-operator** | `confluent-operator-application-set.yaml` | Helm (multi-source) | Chart: `confluent-for-kubernetes` from `packages.confluent.io/helm` (`0.*`) | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
 | **confluent-flink-operator** | `confluent-flink-operator-application-set.yaml` | Helm (multi-source) | Chart: `flink-kubernetes-operator` from `packages.confluent.io/helm` (`1.*`) | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
 | **confluent-platform** | `confluent-platform-application-set.yaml` | Git directory | `apps/confluent-platform/{{environment}}/manifests` | `confluent-{{environment}}` | `CreateNamespace=true`, `SkipDryRunOnMissingResource=true` |
-| **confluent-flink** | `confluent-flink-application-set.yaml` | Git directory | `apps/confluent-flink/{{environment}}/manifests` (AWS) or `apps/confluent-flink/openshift/{{environment}}/manifests` (OpenShift) | `confluent-{{environment}}` | `CreateNamespace=true`, `SkipDryRunOnMissingResource=true` |
-
-### OpenShift-Only
-
-| ApplicationSet | File Name | Source Type | Git Path | Target Namespace | syncOptions |
-|---|---|---|---|---|---|
-| **openshift-prereqs** | `openshift-prereqs-application-set.yaml` | Git directory | `apps/openshift-prereqs/{{environment}}/manifests` | `openshift-gitops` | `CreateNamespace=true`, `SkipDryRunOnMissingResource=true` |
+| **confluent-flink** | `confluent-flink-application-set.yaml` | Git directory | `apps/confluent-flink/openshift/{{environment}}/manifests` | `confluent-{{environment}}` | `CreateNamespace=true`, `SkipDryRunOnMissingResource=true` |
 
 ### Source Type Details
 
@@ -232,28 +165,16 @@ This instructs ArgoCD to ignore `/status` differences on all Confluent Platform 
 
 The ApplicationSets must be applied in a specific order due to inter-component dependencies. Operators and prerequisites must be running before their dependent CRD-based resources can be deployed.
 
-### AWS (`aws-us-east-2`)
+> **Prerequisite:** Before applying any ApplicationSets, apply the OpenShift prerequisites (SCCs + ClusterRoleBindings) directly via `oc apply -f openshift-prereqs/<env>/manifests/`. See [`../openshift-prereqs/`](../openshift-prereqs/) for details.
 
 ```
+0. (one-time) oc apply -f openshift-prereqs/<env>/manifests/   (SCCs + ClusterRoleBindings)
 1. cert-manager                  (TLS certificate management -- required by Confluent components)
 2. confluent-operator            (Installs the CFK operator -- manages Confluent Platform CRDs)
 3. confluent-flink-operator      (Installs the Flink K8s operator -- manages Flink CRDs)
 4. confluent-platform            (Deploys Confluent Platform components via CRDs)
 5. confluent-flink               (Deploys Confluent Flink Manager via CRDs)
 ```
-
-### OpenShift (`openshift`)
-
-```
-1. openshift-prereqs             (SCCs, ClusterRoles, and other OpenShift-specific prerequisites)
-2. cert-manager                  (TLS certificate management -- required by Confluent components)
-3. confluent-operator            (Installs the CFK operator -- manages Confluent Platform CRDs)
-4. confluent-flink-operator      (Installs the Flink K8s operator -- manages Flink CRDs)
-5. confluent-platform            (Deploys Confluent Platform components via CRDs)
-6. confluent-flink               (Deploys Confluent Flink Manager via CRDs)
-```
-
-> **Important:** On OpenShift, `openshift-prereqs` must be applied **first**. It provisions SecurityContextConstraints (SCCs) and RBAC resources that the operators and workloads depend on.
 
 ---
 
@@ -274,7 +195,6 @@ Where `<component>` is one of:
 | `confluent-flink-operator` | Confluent Flink Kubernetes operator |
 | `confluent-platform` | Confluent Platform CRD instances |
 | `confluent-flink` | Confluent Flink Manager CRD instances |
-| `openshift-prereqs` | OpenShift prerequisites (SCCs, RBAC) |
 
 The Kubernetes `metadata.name` for each ApplicationSet follows the pattern `<component>-<environment>` (e.g., `cert-manager-dev`, `confluent-operator-prd`).
 
@@ -302,7 +222,7 @@ The generator variables are substituted into the template:
 | Variable | Description | Example value |
 |---|---|---|
 | `{{cluster}}` | Logical cluster name | `dev-cluster` |
-| `{{url}}` | Kubernetes API server URL | `https://kubernetes.default.svc` |
+| `{{url}}` | OpenShift API server URL | `https://kubernetes.default.svc` |
 | `{{environment}}` | Environment identifier | `dev` |
 
 These variables appear in:
@@ -337,20 +257,13 @@ ArgoCD will generate a separate Application for each cluster entry.
 ### Applying a Single ApplicationSet
 
 ```bash
-# AWS platform, dev environment
-kubectl apply -f gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
-
-# OpenShift platform, dev environment
-oc apply -f gitops-config/openshift/dev/openshift-prereqs-application-set.yaml
+oc apply -f gitops-config/openshift/dev/cert-manager-application-set.yaml
 ```
 
 ### Applying All ApplicationSets for an Environment
 
 ```bash
-# AWS dev -- all 5 ApplicationSets
-kubectl apply -f gitops-config/aws-us-east-2/dev/
-
-# OpenShift dev -- all 6 ApplicationSets
+# OpenShift dev -- all 5 ApplicationSets
 oc apply -f gitops-config/openshift/dev/
 ```
 
@@ -358,10 +271,11 @@ oc apply -f gitops-config/openshift/dev/
 
 Before applying ApplicationSets, ensure:
 
-1. **ArgoCD is installed** in the correct namespace (`argocd` for AWS, `openshift-gitops` for OpenShift).
-2. **Cluster URLs are updated** -- replace placeholder URLs (e.g., `https://prd-cluster.aws-us-east-2.example.com`) with actual Kubernetes API server endpoints.
-3. **Git repository access is configured** -- ArgoCD must have credentials to clone `git@github.com:aadmassu/flink-on-k8s-with-cp.git`.
-4. **Helm repositories are accessible** -- ArgoCD must be able to reach `charts.jetstack.io` and `packages.confluent.io/helm`.
+1. **OpenShift GitOps is installed** in the `openshift-gitops` namespace.
+2. **OpenShift prerequisites are applied** -- run `oc apply -f openshift-prereqs/<env>/manifests/` for each target environment.
+3. **Cluster URLs are updated** -- replace placeholder URLs (e.g., `https://prd-cluster.example.com`) with actual OpenShift API server endpoints.
+4. **Git repository access is configured** -- ArgoCD must have credentials to clone `git@github.com:aadmassu/flink-on-k8s-with-cp.git`.
+5. **Helm repositories are accessible** -- ArgoCD must be able to reach `charts.jetstack.io` and `packages.confluent.io/helm`.
 
 ---
 
@@ -375,6 +289,4 @@ Before applying ApplicationSets, ensure:
 | Flink operator values | [`apps/confluent-flink-operator/`](../apps/confluent-flink-operator/) | Per-environment values and OpenShift overlay for Flink operator |
 | Confluent Platform manifests | [`apps/confluent-platform/`](../apps/confluent-platform/) | CRD manifests for Confluent Platform components |
 | Confluent Flink manifests | [`apps/confluent-flink/`](../apps/confluent-flink/) | CRD manifests for Confluent Flink Manager (includes `openshift/` subdirectory) |
-| OpenShift prerequisites | [`apps/openshift-prereqs/`](../apps/openshift-prereqs/) | SCCs, ClusterRoles, and other OpenShift-specific resources |
-
-> **Subdirectory READMEs:** If platform-specific READMEs exist, see [`gitops-config/openshift/README.md`](openshift/README.md) and [`gitops-config/aws-us-east-2/README.md`](aws-us-east-2/README.md) for platform-level details.
+| OpenShift prerequisites | [`../openshift-prereqs/`](../openshift-prereqs/) | SCCs and ClusterRoleBindings (applied directly via `oc apply`, not via ArgoCD) |

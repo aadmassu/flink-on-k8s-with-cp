@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains the **Helm values files** for deploying the [Confluent Flink Kubernetes Operator](https://docs.confluent.io/confluent-operator/current/flink-operator.html) via ArgoCD ApplicationSets. The Flink Kubernetes Operator manages the full lifecycle of Apache Flink workloads on Kubernetes -- it watches for Flink custom resources (`FlinkDeployment`, `FlinkSessionJob`, etc.) and handles deployment, scaling, upgrades, and teardown of Flink applications.
+This directory contains the **Helm values files** for deploying the [Confluent Flink Kubernetes Operator](https://docs.confluent.io/confluent-operator/current/flink-operator.html) via ArgoCD ApplicationSets on OpenShift. The Flink Kubernetes Operator manages the full lifecycle of Apache Flink workloads on OpenShift -- it watches for Flink custom resources (`FlinkDeployment`, `FlinkSessionJob`, etc.) and handles deployment, scaling, upgrades, and teardown of Flink applications.
 
 The Helm chart is pulled directly from the Confluent Helm repository (`https://packages.confluent.io/helm`) at deploy time. The files in this directory only supply the **values overrides**; the chart itself is not vendored into this repository.
 
@@ -44,7 +44,7 @@ Each environment directory (`dev/`, `qa/`, `stg/`, `prd/`) contains a `values.ya
 |-----|-------|-------------|
 | `watchNamespaces[0]` | `confluent-dev` | Restricts the operator to only watch for Flink custom resources in the `confluent-dev` namespace, providing environment isolation. |
 | `metrics.prometheus.enabled` | `true` | Enables the Prometheus metrics endpoint on the operator pod, allowing scraping of operator health and Flink job metrics. |
-| `resources.requests.cpu` | `100m` | Minimum CPU reservation for the operator pod. Kubernetes scheduler uses this to place the pod on a node with sufficient capacity. |
+| `resources.requests.cpu` | `100m` | Minimum CPU reservation for the operator pod. The scheduler uses this to place the pod on a node with sufficient capacity. |
 | `resources.requests.memory` | `256Mi` | Minimum memory reservation for the operator pod. |
 | `resources.limits.cpu` | `500m` | Maximum CPU the operator pod is allowed to consume. The container will be throttled if it exceeds this. |
 | `resources.limits.memory` | `512Mi` | Maximum memory the operator pod is allowed to consume. The container will be OOM-killed if it exceeds this. |
@@ -105,7 +105,7 @@ The following table highlights what varies across the four environments. Fields 
 
 ### Purpose
 
-On OpenShift clusters, pod security is managed by [Security Context Constraints (SCCs)](https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html) rather than Kubernetes-native `securityContext` fields. When a Helm chart sets explicit `runAsUser`, `runAsGroup`, or `fsGroup` values, those can conflict with the UID/GID ranges assigned by the OpenShift SCC admission controller.
+On OpenShift clusters, pod security is managed by [Security Context Constraints (SCCs)](https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html) rather than native `securityContext` fields. When a Helm chart sets explicit `runAsUser`, `runAsGroup`, or `fsGroup` values, those can conflict with the UID/GID ranges assigned by the OpenShift SCC admission controller.
 
 The `openshift-overlay.yaml` file **nulls out** all pod-level security context fields so that OpenShift's SCC mechanism can assign the correct values automatically. This overlay is layered **on top of** the per-environment `values.yaml` using Helm's multi-value-file merging (last file wins).
 
@@ -117,11 +117,9 @@ The `openshift-overlay.yaml` file **nulls out** all pod-level security context f
 | `podSecurityContext.runAsGroup` | `null` | Removes any explicit group ID so OpenShift SCC can assign the GID from the namespace's allowed range. |
 | `podSecurityContext.fsGroup` | `null` | Removes any explicit filesystem group ID so OpenShift SCC can assign the `fsGroup` from the namespace's allowed range. Affects volume ownership for any mounted volumes. |
 
-### When Is the Overlay Applied?
+### How the Overlay Is Applied
 
-The overlay is **only** included in the OpenShift ApplicationSets (under `gitops-config/openshift/`). The standard Kubernetes ApplicationSets (under `gitops-config/aws-us-east-2/`) do **not** reference this file.
-
-**OpenShift ApplicationSet `valueFiles` (two files merged in order):**
+The OpenShift ApplicationSets include the overlay as a second values file, merged on top of the per-environment values:
 
 ```yaml
 helm:
@@ -130,19 +128,11 @@ helm:
     - $values/apps/confluent-flink-operator/openshift-overlay.yaml
 ```
 
-**AWS/Standard Kubernetes ApplicationSet `valueFiles` (one file only):**
-
-```yaml
-helm:
-  valueFiles:
-    - $values/apps/confluent-flink-operator/{{environment}}/values.yaml
-```
-
 ---
 
 ## How These Values Are Consumed by the ApplicationSet
 
-The Confluent Flink Operator is deployed using ArgoCD **ApplicationSets** located in `gitops-config/`. Each ApplicationSet uses the [multiple sources with `$values` ref](https://argo-cd.readthedocs.io/en/stable/user-guide/multiple_sources/#helm-value-files-from-external-git-repository) pattern:
+The Confluent Flink Operator is deployed using ArgoCD **ApplicationSets** located in `gitops-config/openshift/`. Each ApplicationSet uses the [multiple sources with `$values` ref](https://argo-cd.readthedocs.io/en/stable/user-guide/multiple_sources/#helm-value-files-from-external-git-repository) pattern:
 
 1. **Source 1 -- Helm chart:** Pulls the `flink-kubernetes-operator` chart from `https://packages.confluent.io/helm` with version constraint `1.*`.
 2. **Source 2 -- Git ref (`$values`):** Clones this Git repository and makes it available as `$values`, allowing `valueFiles` to reference paths like `$values/apps/confluent-flink-operator/dev/values.yaml`.
@@ -151,16 +141,12 @@ The ApplicationSet uses a **list generator** with `{{environment}}` as a templat
 
 ### ApplicationSet Locations
 
-| Platform | Environment | ApplicationSet Path |
-|----------|-------------|---------------------|
-| AWS (us-east-2) | dev | `gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml` |
-| AWS (us-east-2) | qa | `gitops-config/aws-us-east-2/qa/confluent-flink-operator-application-set.yaml` |
-| AWS (us-east-2) | stg | `gitops-config/aws-us-east-2/stg/confluent-flink-operator-application-set.yaml` |
-| AWS (us-east-2) | prd | `gitops-config/aws-us-east-2/prd/confluent-flink-operator-application-set.yaml` |
-| OpenShift | dev | `gitops-config/openshift/dev/confluent-flink-operator-application-set.yaml` |
-| OpenShift | qa | `gitops-config/openshift/qa/confluent-flink-operator-application-set.yaml` |
-| OpenShift | stg | `gitops-config/openshift/stg/confluent-flink-operator-application-set.yaml` |
-| OpenShift | prd | `gitops-config/openshift/prd/confluent-flink-operator-application-set.yaml` |
+| Environment | ApplicationSet Path |
+|-------------|---------------------|
+| dev | `gitops-config/openshift/dev/confluent-flink-operator-application-set.yaml` |
+| qa | `gitops-config/openshift/qa/confluent-flink-operator-application-set.yaml` |
+| stg | `gitops-config/openshift/stg/confluent-flink-operator-application-set.yaml` |
+| prd | `gitops-config/openshift/prd/confluent-flink-operator-application-set.yaml` |
 
 ---
 
@@ -180,11 +166,11 @@ no matches for kind "Certificate" in version "cert-manager.io/v1"
 
 ```bash
 # Wait for the cert-manager ArgoCD application to report Healthy
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/cert-manager-dev -n argocd --timeout=180s
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/cert-manager-dev -n openshift-gitops --timeout=180s
 ```
 
-The ApplicationSets in `gitops-config/` rely on deploying cert-manager **first** (via its own ApplicationSet) before applying the Flink operator ApplicationSet.
+The ApplicationSets in `gitops-config/openshift/` rely on deploying cert-manager **first** (via its own ApplicationSet) before applying the Flink operator ApplicationSet.
 
 ---
 
@@ -209,12 +195,10 @@ All environments use `ServerSideApply=true` to avoid field-manager conflicts wit
 
 ## Sync Options
 
-Both AWS and OpenShift ApplicationSets share the same sync options:
-
 | Sync Option | Value | Description |
 |-------------|-------|-------------|
 | `CreateNamespace` | `true` | Automatically creates the target namespace (`confluent-<env>`) if it does not exist. |
-| `ServerSideApply` | `true` | Uses Kubernetes server-side apply for resource reconciliation, which avoids annotation size limits and handles field ownership conflicts. |
+| `ServerSideApply` | `true` | Uses server-side apply for resource reconciliation, which avoids annotation size limits and handles field ownership conflicts. |
 
 ---
 
@@ -223,40 +207,23 @@ Both AWS and OpenShift ApplicationSets share the same sync options:
 | Direction | Component | Relationship |
 |-----------|-----------|--------------|
 | **Depends on** | cert-manager | Provides the `Certificate` and `Issuer` CRDs required for webhook TLS certificates. |
-| **Depends on** | ArgoCD / OpenShift GitOps | Deploys and reconciles the Helm release via ApplicationSets. |
+| **Depends on** | OpenShift GitOps | Deploys and reconciles the Helm release via ApplicationSets. |
 | **Required by** | Confluent Flink Manager CRDs | The Flink Manager requires the operator to be running before Flink workloads can be submitted. |
 
 ---
 
 ## Deployment
 
-### Standard Kubernetes (AWS)
-
 ```bash
 # 1. Ensure cert-manager is healthy
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/cert-manager-dev -n argocd --timeout=180s
-
-# 2. Apply the ApplicationSet
-kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml
-
-# 3. Wait for the Flink operator application to become Healthy
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-flink-operator-dev -n argocd --timeout=180s
-```
-
-### OpenShift
-
-```bash
-# 1. Ensure cert-manager is healthy
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/cert-manager-dev -n openshift-gitops --timeout=180s
 
 # 2. Apply the ApplicationSet
-kubectl apply -f gitops-config/openshift/dev/confluent-flink-operator-application-set.yaml
+oc apply -f gitops-config/openshift/dev/confluent-flink-operator-application-set.yaml
 
 # 3. Wait for the Flink operator application to become Healthy
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-flink-operator-dev -n openshift-gitops --timeout=180s
 ```
 
@@ -266,10 +233,10 @@ kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
 
 ```bash
 # Check that the operator pod is running (2/2 containers: operator + webhook)
-kubectl get pods -n confluent-dev -l app.kubernetes.io/name=flink-kubernetes-operator
+oc get pods -n confluent-dev -l app.kubernetes.io/name=flink-kubernetes-operator
 
 # Check the ArgoCD application status
-kubectl get application confluent-flink-operator-dev -n argocd -o jsonpath='{.status.health.status}'
+oc get application confluent-flink-operator-dev -n openshift-gitops -o jsonpath='{.status.health.status}'
 ```
 
 Expected output: the `flink-kubernetes-operator-*` pod should show `2/2` containers in `Running` state (the operator container and the webhook sidecar).

@@ -15,7 +15,7 @@ If you need to install ArgoCD from scratch, see the main [README.md](README.md).
 - [Step 2 - Clone This Repository](#step-2---clone-this-repository)
 - [Step 3 - Review and Customize ApplicationSet Definitions](#step-3---review-and-customize-applicationset-definitions)
 - [Step 4 - Create and Label Namespaces](#step-4---create-and-label-namespaces)
-- [Step 5 - Deploy OpenShift Prerequisites (SCCs)](#step-5---deploy-openshift-prerequisites-sccs)
+- [Step 5 - Apply OpenShift Prerequisites (SCCs)](#step-5---apply-openshift-prerequisites-sccs)
 - [Step 6 - Deploy cert-manager](#step-6---deploy-cert-manager)
 - [Step 7 - Deploy Confluent Operator (CFK) and Flink Operator](#step-7---deploy-confluent-operator-cfk-and-flink-operator)
 - [Step 8 - Deploy Confluent Platform](#step-8---deploy-confluent-platform)
@@ -57,11 +57,11 @@ oc get pods -n openshift-gitops   # or your ArgoCD namespace
 ## Deployment Order
 
 ```
-Namespaces + Labels  -->  SCCs  -->  cert-manager  -->  Operators  -->  CP  -->  CMF
+Namespaces + Labels  -->  SCCs (direct oc apply)  -->  cert-manager  -->  Operators  -->  CP  -->  CMF
 ```
 
 - **Namespaces** must be created and labeled before ArgoCD can manage them.
-- **SCCs** must be in place before operator pods can start.
+- **SCCs** must be applied directly (one-time cluster prerequisite, not an ArgoCD app).
 - **cert-manager** must be healthy before the Flink operator (webhook certificates).
 - **Confluent Operator** and **Flink Operator** can be deployed in parallel after cert-manager.
 - **Confluent Platform** requires the Confluent Operator.
@@ -123,12 +123,19 @@ oc label namespace cert-manager argocd.argoproj.io/managed-by=${ARGOCD_NS} --ove
 
 ---
 
-## Step 5 - Deploy OpenShift Prerequisites (SCCs)
+## Step 5 - Apply OpenShift Prerequisites (SCCs)
+
+Apply the SCC and ClusterRoleBindings directly (one-time cluster prerequisite, not managed by ArgoCD):
 
 ```bash
-oc apply -f gitops-config/openshift/${ENV}/openshift-prereqs-application-set.yaml
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/openshift-prereqs-${ENV} -n ${ARGOCD_NS} --timeout=120s
+oc apply -f openshift-prereqs/${ENV}/manifests/
+```
+
+Verify:
+
+```bash
+oc get scc confluent-scc
+oc get clusterrolebinding | grep confluent-scc
 ```
 
 ---
@@ -195,7 +202,6 @@ Expected output:
 
 ```
 NAME                            HEALTH    SYNC     NAMESPACE
-openshift-prereqs-dev           Healthy   Synced   openshift-gitops
 cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev

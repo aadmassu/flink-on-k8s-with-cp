@@ -27,7 +27,7 @@ parameters:
   - name: argocdNamespace
     displayName: "ArgoCD Namespace"
     type: string
-    default: argocd
+    default: openshift-gitops
 
 variables:
   ENV: ${{ parameters.environment }}
@@ -60,8 +60,8 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl cluster-info
-                kubectl get nodes
+                oc cluster-info
+                oc get nodes
 
           - task: Bash@3
             displayName: "Add Helm repositories"
@@ -90,7 +90,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl wait --for=condition=Ready pod \
+                oc wait --for=condition=Ready pod \
                   -l app.kubernetes.io/part-of=argocd \
                   -n $(ARGOCD_NS) --timeout=300s
 
@@ -99,25 +99,25 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/cert-manager-application-set.yaml
+                oc apply -f gitops-config/openshift/$(ENV)/cert-manager-application-set.yaml
 
                 echo "Waiting for cert-manager to become healthy..."
-                kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+                oc wait --for=jsonpath='{.status.health.status}'=Healthy \
                   application/cert-manager-$(ENV) \
                   -n $(ARGOCD_NS) --timeout=180s
 
                 echo "Verifying cert-manager pods..."
-                kubectl get pods -n cert-manager
+                oc get pods -n cert-manager
 
           - task: Bash@3
             displayName: "Deploy Confluent Operator"
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/confluent-operator-application-set.yaml
+                oc apply -f gitops-config/openshift/$(ENV)/confluent-operator-application-set.yaml
 
                 echo "Waiting for Confluent Operator to become healthy..."
-                kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+                oc wait --for=jsonpath='{.status.health.status}'=Healthy \
                   application/confluent-operator-$(ENV) \
                   -n $(ARGOCD_NS) --timeout=180s
 
@@ -126,10 +126,10 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/confluent-flink-operator-application-set.yaml
+                oc apply -f gitops-config/openshift/$(ENV)/confluent-flink-operator-application-set.yaml
 
                 echo "Waiting for Flink Operator to become healthy..."
-                kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+                oc wait --for=jsonpath='{.status.health.status}'=Healthy \
                   application/confluent-flink-operator-$(ENV) \
                   -n $(ARGOCD_NS) --timeout=180s
 
@@ -139,10 +139,10 @@ stages:
               targetType: inline
               script: |
                 echo "=== ArgoCD Applications ==="
-                kubectl get applications -n $(ARGOCD_NS) \
+                oc get applications -n $(ARGOCD_NS) \
                   -o custom-columns=NAME:.metadata.name,HEALTH:.status.health.status,SYNC:.status.sync.status
 
                 echo ""
                 echo "=== Operator Pods ==="
-                kubectl get pods -n confluent-$(ENV)
-                kubectl get pods -n cert-manager
+                oc get pods -n confluent-$(ENV)
+                oc get pods -n cert-manager

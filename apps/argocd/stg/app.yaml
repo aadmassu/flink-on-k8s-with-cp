@@ -14,7 +14,7 @@ spec:
       valueFiles:
         - values.yaml
   destination:
-    server: https://stg-cluster.aws-us-east-2.example.com
+    server: https://stg-cluster.example.com
     namespace: argocd
   syncPolicy:
     syncOptions:

@@ -14,7 +14,7 @@ spec:
       valueFiles:
         - values.yaml
   destination:
-    server: https://dev-cluster.aws-us-east-2.example.com
+    server: https://dev-cluster.example.com
     namespace: argocd
   syncPolicy:
     automated:

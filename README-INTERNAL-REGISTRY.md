@@ -71,7 +71,7 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 |---|---|
 | Internal Helm repository | JFrog Artifactory, Sonatype Nexus, Harbor, or any OCI/HTTP Helm repo |
 | Internal container registry | Same tool, or a dedicated container registry (ECR, GCR, ACR, etc.) |
-| CLI tools | `docker` or `podman`, `helm` 3.14+, `kubectl` |
+| CLI tools | `docker` or `podman`, `helm` 3.14+, `oc` |
 | Registry credentials | Push access (for mirroring) and pull access (for Kubernetes nodes) |
 
 ---
@@ -84,7 +84,7 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 | `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | `0.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-operator-application-set.yaml` |
 | `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
 | `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | `1.*` | `apps/confluent-flink/openshift/{dev,qa,stg,prd}/manifests/confluent-flink-manager.yaml` |
-| `argo-cd` | `https://argoproj.github.io/argo-helm` | `7.*` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines, `scripts/deploy-dev.sh` |
+| `argo-cd` | `https://argoproj.github.io/argo-helm` | `7.*` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines |
 
 ---
 
@@ -559,7 +559,7 @@ Add/merge these keys. Note that `global:` already exists in these files (it cont
 
 ```yaml
 global:
-  # domain: argocd-dev.aws-us-east-2.example.com   # <-- already present, keep it
+  # domain: argocd-dev.example.com   # <-- already present, keep it
   image:
     registry: registry.example.com
     repository: argoproj/argocd
@@ -716,7 +716,7 @@ The `helm upgrade --install argocd argo-cd/argo-cd` command on line 79 does not 
 
 **`.github/workflows/deploy-operators.yaml`**
 
-This workflow does not add Helm repos (it only runs `kubectl apply`), so no changes are needed.
+This workflow does not add Helm repos (it only runs `oc apply`), so no changes are needed.
 
 ### 8b. Azure DevOps (2 files)
 
@@ -728,21 +728,11 @@ Same change as GitHub Actions — replace the three `helm repo add` URLs with in
 
 No Helm repos referenced — no changes needed.
 
-### 8c. Scripts (1 file)
+### 8c. Scripts
 
-**`scripts/deploy-dev.sh`** (lines 27–29)
+**`scripts/deploy-openshift-dev.sh`**
 
-```bash
-# Before
-helm repo add argo-cd https://argoproj.github.io/argo-helm 2>/dev/null || true
-helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
-helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
-
-# After
-helm repo add argo-cd https://registry.example.com/helm --username "$REGISTRY_USER" --password "$REGISTRY_TOKEN" 2>/dev/null || true
-helm repo add confluent https://registry.example.com/helm --username "$REGISTRY_USER" --password "$REGISTRY_TOKEN" 2>/dev/null || true
-helm repo add jetstack https://registry.example.com/helm --username "$REGISTRY_USER" --password "$REGISTRY_TOKEN" 2>/dev/null || true
-```
+This script deploys via ArgoCD ApplicationSets and does not call `helm repo add` directly. Helm repository URLs are defined inside the ApplicationSet YAML files (updated in Steps 1–4 above), so no changes are needed in the script itself.
 
 ---
 
@@ -855,14 +845,14 @@ All applications should show `Healthy` / `Synced`.
 | 30 | `apps/argocd/qa/app.yaml` | `repoURL` |
 | 31 | `apps/argocd/stg/app.yaml` | `repoURL` |
 | 32 | `apps/argocd/prd/app.yaml` | `repoURL` |
-| 33 | `apps/confluent-flink/dev/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
-| 34 | `apps/confluent-flink/qa/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
-| 35 | `apps/confluent-flink/stg/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
-| 36 | `apps/confluent-flink/prd/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
+| 33 | `apps/confluent-flink/openshift/dev/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
+| 34 | `apps/confluent-flink/openshift/qa/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
+| 35 | `apps/confluent-flink/openshift/stg/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
+| 36 | `apps/confluent-flink/openshift/prd/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
 | | **CI/CD pipelines and scripts** | |
 | 37 | `.github/workflows/full-deploy.yaml` | `helm repo add` URLs |
 | 38 | `.azure-pipelines/full-deploy.yaml` | `helm repo add` URLs |
-| 39 | `scripts/deploy-dev.sh` | `helm repo add` URLs |
+| 39 | `scripts/deploy-openshift-dev.sh` | No changes needed (uses ApplicationSets) |
 | | **Documentation** | |
 | 40 | `README.md` | Update references if needed |
 

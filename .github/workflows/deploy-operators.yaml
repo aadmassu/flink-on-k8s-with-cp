@@ -29,7 +29,7 @@ on:
         description: "Namespace where ArgoCD is installed"
         required: true
         type: string
-        default: argocd
+        default: openshift-gitops
 
 jobs:
   deploy:
@@ -41,42 +41,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: "v1.28.0"
-
-      - name: Configure kubeconfig
+      - name: Configure cluster access
         run: |
-          # Configure cluster access
-          # Replace this step with your cluster authentication method:
-          #   - For EKS: aws eks update-kubeconfig --name <cluster> --region <region>
-          #   - For AKS: az aks get-credentials --resource-group <rg> --name <cluster>
-          #   - For GKE: gcloud container clusters get-credentials <cluster> --region <region>
-          #   - For OpenShift: oc login <server> --token=<token>
-          echo "Configure your cluster authentication here"
-          kubectl config use-context ${{ inputs.cluster_context }}
+          # Configure OpenShift cluster access
+          # Replace with your authentication method:
+          #   - oc login <server> --token=<token>
+          #   - oc login <server> -u <user> -p <password>
+          echo "Configure your OpenShift cluster authentication here"
+          oc config use-context ${{ inputs.cluster_context }}
 
       - name: Verify ArgoCD is running
         run: |
           ARGOCD_NS=${{ inputs.argocd_namespace }}
 
           echo "Checking ArgoCD in namespace: ${ARGOCD_NS}"
-          kubectl get pods -n ${ARGOCD_NS} | grep argocd
+          oc get pods -n ${ARGOCD_NS} | grep argocd
 
           echo ""
           echo "Verifying Application CRD exists..."
-          kubectl get crd applications.argoproj.io
+          oc get crd applications.argoproj.io
 
       - name: Update ApplicationSet namespace (if not default)
-        if: ${{ inputs.argocd_namespace != 'argocd' }}
+        if: ${{ inputs.argocd_namespace != 'openshift-gitops' }}
         run: |
           ENV=${{ inputs.environment }}
           ARGOCD_NS=${{ inputs.argocd_namespace }}
 
           echo "Updating metadata.namespace to ${ARGOCD_NS} in ApplicationSet definitions..."
           for app in cert-manager confluent-operator confluent-flink-operator; do
-            sed -i "s/namespace: argocd/namespace: ${ARGOCD_NS}/" gitops-config/aws-us-east-2/${ENV}/${app}-application-set.yaml
+            sed -i "s/namespace: openshift-gitops/namespace: ${ARGOCD_NS}/" gitops-config/openshift/${ENV}/${app}-application-set.yaml
           done
 
       - name: Deploy cert-manager
@@ -84,25 +77,25 @@ jobs:
           ENV=${{ inputs.environment }}
           ARGOCD_NS=${{ inputs.argocd_namespace }}
 
-          kubectl apply -f gitops-config/aws-us-east-2/${ENV}/cert-manager-application-set.yaml
+          oc apply -f gitops-config/openshift/${ENV}/cert-manager-application-set.yaml
 
           echo "Waiting for cert-manager to become healthy..."
-          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+          oc wait --for=jsonpath='{.status.health.status}'=Healthy \
             application/cert-manager-${ENV} \
             -n ${ARGOCD_NS} --timeout=180s
 
           echo "Verifying cert-manager pods..."
-          kubectl get pods -n cert-manager
+          oc get pods -n cert-manager
 
       - name: Deploy Confluent Operator
         run: |
           ENV=${{ inputs.environment }}
           ARGOCD_NS=${{ inputs.argocd_namespace }}
 
-          kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-operator-application-set.yaml
+          oc apply -f gitops-config/openshift/${ENV}/confluent-operator-application-set.yaml
 
           echo "Waiting for Confluent Operator to become healthy..."
-          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+          oc wait --for=jsonpath='{.status.health.status}'=Healthy \
             application/confluent-operator-${ENV} \
             -n ${ARGOCD_NS} --timeout=180s
 
@@ -111,10 +104,10 @@ jobs:
           ENV=${{ inputs.environment }}
           ARGOCD_NS=${{ inputs.argocd_namespace }}
 
-          kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-flink-operator-application-set.yaml
+          oc apply -f gitops-config/openshift/${ENV}/confluent-flink-operator-application-set.yaml
 
           echo "Waiting for Flink Operator to become healthy..."
-          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+          oc wait --for=jsonpath='{.status.health.status}'=Healthy \
             application/confluent-flink-operator-${ENV} \
             -n ${ARGOCD_NS} --timeout=180s
 
@@ -124,10 +117,10 @@ jobs:
           ARGOCD_NS=${{ inputs.argocd_namespace }}
 
           echo "=== ArgoCD Applications ==="
-          kubectl get applications -n ${ARGOCD_NS} \
+          oc get applications -n ${ARGOCD_NS} \
             -o custom-columns=NAME:.metadata.name,HEALTH:.status.health.status,SYNC:.status.sync.status
 
           echo ""
           echo "=== Operator Pods ==="
-          kubectl get pods -n confluent-${ENV}
-          kubectl get pods -n cert-manager
+          oc get pods -n confluent-${ENV}
+          oc get pods -n cert-manager

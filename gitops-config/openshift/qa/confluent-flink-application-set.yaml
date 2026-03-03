@@ -9,7 +9,7 @@ spec:
     - list:
         elements:
           - cluster: qa-cluster
-            url: https://qa-cluster.aws-us-east-2.example.com
+            url: https://qa-cluster.example.com
             environment: qa
   template:
     metadata:

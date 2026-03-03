@@ -1,6 +1,6 @@
 # cert-manager
 
-X.509 certificate management for Kubernetes. This directory contains the per-environment Helm values and an OpenShift overlay for the [cert-manager](https://cert-manager.io/) Helm chart. cert-manager is a **prerequisite** for the Flink Kubernetes Operator, which uses it to provision TLS certificates for its webhook endpoints.
+X.509 certificate management for OpenShift. This directory contains the per-environment Helm values and an OpenShift overlay for the [cert-manager](https://cert-manager.io/) Helm chart. cert-manager is a **prerequisite** for the Flink Kubernetes Operator, which uses it to provision TLS certificates for its webhook endpoints.
 
 ## Helm Chart
 
@@ -42,7 +42,7 @@ Each environment directory contains a `values.yaml` that is passed to the cert-m
 
 ### Purpose
 
-On OpenShift clusters, this overlay file is applied **after** the environment-specific `values.yaml`. It disables PodSecurityPolicy (PSP) resources because OpenShift uses Security Context Constraints (SCCs) instead of Kubernetes PodSecurityPolicies. Applying PSPs on OpenShift is unnecessary and can cause conflicts with the SCC admission controller.
+On OpenShift clusters, this overlay file is applied **after** the environment-specific `values.yaml`. It disables PodSecurityPolicy (PSP) resources because OpenShift uses Security Context Constraints (SCCs) instead of PodSecurityPolicies. Applying PSPs on OpenShift is unnecessary and can cause conflicts with the SCC admission controller.
 
 ### How It Is Applied
 
@@ -55,7 +55,7 @@ helm:
     - $values/apps/cert-manager/openshift-overlay.yaml
 ```
 
-Because Helm merges value files in order, keys in `openshift-overlay.yaml` override any matching keys from the environment `values.yaml`. The standard (AWS) ApplicationSets do **not** reference this overlay.
+Because Helm merges value files in order, keys in `openshift-overlay.yaml` override any matching keys from the environment `values.yaml`.
 
 ### Fields
 
@@ -82,7 +82,7 @@ The following table shows every field and how its value varies across the four e
 
 ## How These Values Are Consumed by the ApplicationSet
 
-The cert-manager ApplicationSets live under `gitops-config/` and use the ArgoCD **multi-source** pattern with `$values/` references:
+The cert-manager ApplicationSets live under `gitops-config/openshift/` and use the ArgoCD **multi-source** pattern with `$values/` references:
 
 1. **Source 1 -- Helm chart:** Points to the remote Helm repository (`https://charts.jetstack.io`, chart `cert-manager`, version `1.*`). The `helm.valueFiles` field references paths resolved via the `$values` ref.
 2. **Source 2 -- Git repo (ref: values):** Points to this Git repository at `HEAD`. This source is aliased as `values`, making the repo root available under the `$values/` prefix.
@@ -91,27 +91,23 @@ At sync time, ArgoCD resolves `$values/apps/cert-manager/{{environment}}/values.
 
 ### ApplicationSet Locations
 
-| Platform | Environment | ApplicationSet Path |
-|----------|-------------|---------------------|
-| AWS (us-east-2) | dev | `gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml` |
-| AWS (us-east-2) | qa | `gitops-config/aws-us-east-2/qa/cert-manager-application-set.yaml` |
-| AWS (us-east-2) | stg | `gitops-config/aws-us-east-2/stg/cert-manager-application-set.yaml` |
-| AWS (us-east-2) | prd | `gitops-config/aws-us-east-2/prd/cert-manager-application-set.yaml` |
-| OpenShift | dev | `gitops-config/openshift/dev/cert-manager-application-set.yaml` |
-| OpenShift | qa | `gitops-config/openshift/qa/cert-manager-application-set.yaml` |
-| OpenShift | stg | `gitops-config/openshift/stg/cert-manager-application-set.yaml` |
-| OpenShift | prd | `gitops-config/openshift/prd/cert-manager-application-set.yaml` |
+| Environment | ApplicationSet Path |
+|-------------|---------------------|
+| dev | `gitops-config/openshift/dev/cert-manager-application-set.yaml` |
+| qa | `gitops-config/openshift/qa/cert-manager-application-set.yaml` |
+| stg | `gitops-config/openshift/stg/cert-manager-application-set.yaml` |
+| prd | `gitops-config/openshift/prd/cert-manager-application-set.yaml` |
 
 ### Sync Policy
+
+All environments use automated sync with prune and self-heal enabled.
 
 | Environment | Sync Policy | Prune | Self-Heal | Sync Options |
 |-------------|-------------|-------|-----------|--------------|
 | dev | Automated | Yes | Yes | `CreateNamespace=true`, `ServerSideApply=true` |
-| qa | Manual | N/A | N/A | `CreateNamespace=true`, `ServerSideApply=true` |
-| stg | Manual | N/A | N/A | `CreateNamespace=true`, `ServerSideApply=true` |
-| prd | Manual | N/A | N/A | `CreateNamespace=true`, `ServerSideApply=true` |
-
-> **Note:** On OpenShift, all environments (dev/qa/stg/prd) use automated sync with prune and self-heal enabled.
+| qa | Automated | Yes | Yes | `CreateNamespace=true`, `ServerSideApply=true` |
+| stg | Automated | Yes | Yes | `CreateNamespace=true`, `ServerSideApply=true` |
+| prd | Automated | Yes | Yes | `CreateNamespace=true`, `ServerSideApply=true` |
 
 ## Target Namespace
 
@@ -120,22 +116,9 @@ Deployed to the `cert-manager` namespace. The namespace is created automatically
 ## Dependencies
 
 - **Required by:** Flink Kubernetes Operator (for webhook TLS certificates)
-- **Depends on:** ArgoCD / OpenShift GitOps (must be running to process the ApplicationSet resource)
+- **Depends on:** OpenShift GitOps (must be running to process the ApplicationSet resource)
 
 ## Deployment
-
-### AWS (standard Kubernetes)
-
-```bash
-# Apply the ApplicationSet for your target environment (e.g., dev)
-kubectl apply -f gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
-
-# Wait for the application to become healthy
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/cert-manager-dev -n argocd --timeout=180s
-```
-
-### OpenShift
 
 ```bash
 # Apply the ApplicationSet for your target environment (e.g., dev)
@@ -150,7 +133,7 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
 
 ```bash
 # List cert-manager pods
-kubectl get pods -n cert-manager
+oc get pods -n cert-manager
 ```
 
 Expected output: 3 pods running -- `cert-manager` (controller), `cert-manager-cainjector`, and `cert-manager-webhook`.

@@ -9,7 +9,7 @@ spec:
     - list:
         elements:
           - cluster: stg-cluster
-            url: https://stg-cluster.aws-us-east-2.example.com
+            url: https://stg-cluster.example.com
             environment: stg
   template:
     metadata:

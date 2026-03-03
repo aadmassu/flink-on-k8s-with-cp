@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Tears down everything deployed by deploy-openshift-dev.sh:
 #   - ArgoCD ApplicationSets (reverse order)
+#   - OpenShift prerequisites (SCC + ClusterRoleBindings)
 #   - Namespaces: confluent-dev, cert-manager
 #
 # Note: OpenShift GitOps Operator and its namespace (openshift-gitops)
@@ -25,7 +26,6 @@ oc delete applicationset confluent-platform-$ENV -n "$ARGOCD_NS" --ignore-not-fo
 oc delete applicationset confluent-flink-operator-$ENV -n "$ARGOCD_NS" --ignore-not-found
 oc delete applicationset confluent-operator-$ENV -n "$ARGOCD_NS" --ignore-not-found
 oc delete applicationset cert-manager-$ENV -n "$ARGOCD_NS" --ignore-not-found
-oc delete applicationset openshift-prereqs-$ENV -n "$ARGOCD_NS" --ignore-not-found
 
 echo "    Waiting for application resources to be cleaned up..."
 oc wait --for=delete applicationset/confluent-flink-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
@@ -33,7 +33,14 @@ oc wait --for=delete applicationset/confluent-platform-$ENV -n "$ARGOCD_NS" --ti
 oc wait --for=delete applicationset/confluent-flink-operator-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
 oc wait --for=delete applicationset/confluent-operator-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
 oc wait --for=delete applicationset/cert-manager-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
-oc wait --for=delete applicationset/openshift-prereqs-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
+
+# ── Step 2: Delete OpenShift prerequisites (SCC + bindings) ───────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+echo ""
+echo "==> Deleting OpenShift prerequisites (SCC + ClusterRoleBindings)..."
+oc delete -f "$REPO_ROOT/openshift-prereqs/$ENV/manifests/" --ignore-not-found
 
 # ── Step 2: Delete namespaces ────────────────────────────────────────────────
 echo ""

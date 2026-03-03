@@ -1,8 +1,8 @@
 # ArgoCD
 
-ArgoCD Helm values and self-management Application manifests for deploying ArgoCD itself across all environments. This is the **only component installed directly via `helm install`** (or `helm upgrade --install`). Once running, ArgoCD manages every other application in this repository through ApplicationSet resources.
+ArgoCD Helm values and self-management Application manifests for deploying a standalone ArgoCD instance on OpenShift. These files support **Option B -- Standalone ArgoCD via Helm**, which is an alternative to the recommended approach of using the OpenShift GitOps Operator.
 
-On OpenShift clusters using the **OpenShift GitOps Operator**, ArgoCD is pre-installed by the operator and these Helm values are **not used**. In that scenario the operator manages the ArgoCD instance in the `openshift-gitops` namespace. See [OpenShift GitOps Operator Relationship](#openshift-gitops-operator-relationship) for details.
+> **Recommended path:** Install the **OpenShift GitOps Operator** from OperatorHub. When using the operator, ArgoCD is pre-installed and managed in the `openshift-gitops` namespace, and these Helm values are **not used**. See [OpenShift GitOps Operator Relationship](#openshift-gitops-operator-relationship) for details.
 
 ---
 
@@ -69,9 +69,9 @@ Helm values for the **dev** environment. Single-replica, non-HA configuration wi
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `global.domain` | `argocd-dev.aws-us-east-2.example.com` | The external domain name for the ArgoCD UI in dev |
+| `global.domain` | `argocd-dev.example.com` | The external domain name for the ArgoCD UI in dev |
 | `server.replicas` | `1` | Number of ArgoCD API server replicas |
-| `server.service.type` | `LoadBalancer` | Kubernetes Service type used to expose the ArgoCD server |
+| `server.service.type` | `LoadBalancer` | Service type used to expose the ArgoCD server |
 | `server.resources.requests.cpu` | `250m` | CPU request for each ArgoCD server pod |
 | `server.resources.requests.memory` | `256Mi` | Memory request for each ArgoCD server pod |
 | `server.resources.limits.cpu` | `500m` | CPU limit for each ArgoCD server pod |
@@ -87,7 +87,7 @@ Helm values for the **dev** environment. Single-replica, non-HA configuration wi
 | `repoServer.resources.limits.cpu` | `500m` | CPU limit for each repo server pod |
 | `repoServer.resources.limits.memory` | `512Mi` | Memory limit for each repo server pod |
 | `applicationSet.replicas` | `1` | Number of ApplicationSet controller replicas |
-| `configs.params.server.insecure` | `true` | Allows HTTP access to the ArgoCD server (TLS is terminated at the load balancer or ingress/route) |
+| `configs.params.server.insecure` | `true` | Allows HTTP access to the ArgoCD server (TLS is terminated at the Route or ingress) |
 | `configs.secret.argocdServerAdminPassword` | `$2b$12$VaK...` (bcrypt hash) | Bcrypt-hashed admin password for the ArgoCD `admin` user |
 | `configs.rbac.policy.default` | `role:readonly` | Default RBAC policy applied to unauthenticated or unmapped users |
 
@@ -106,7 +106,7 @@ ArgoCD `Application` resource that enables **self-management** of the ArgoCD ins
 | `spec.source.chart` | `argo-cd` | Helm chart name |
 | `spec.source.targetRevision` | `7.*` | Helm chart version constraint (latest 7.x patch) |
 | `spec.source.helm.valueFiles[0]` | `values.yaml` | Path to the Helm values file used for rendering |
-| `spec.destination.server` | `https://dev-cluster.aws-us-east-2.example.com` | Kubernetes API server URL for the dev cluster |
+| `spec.destination.server` | `https://dev-cluster.example.com` | OpenShift API server URL for the dev cluster |
 | `spec.destination.namespace` | `argocd` | Target namespace for the ArgoCD installation |
 | `spec.syncPolicy.automated.prune` | `true` | Automatically delete resources that are no longer defined in Git |
 | `spec.syncPolicy.automated.selfHeal` | `true` | Automatically revert manual changes made to live resources |
@@ -119,7 +119,7 @@ Helm values for the **QA** environment. Single-replica configuration with resour
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `global.domain` | `argocd-qa.aws-us-east-2.example.com` | The external domain name for the ArgoCD UI in QA |
+| `global.domain` | `argocd-qa.example.com` | The external domain name for the ArgoCD UI in QA |
 | `server.replicas` | `1` | Number of ArgoCD API server replicas |
 | `server.resources.requests.cpu` | `250m` | CPU request for each ArgoCD server pod |
 | `server.resources.requests.memory` | `256Mi` | Memory request for each ArgoCD server pod |
@@ -154,7 +154,7 @@ ArgoCD `Application` resource for self-management in the QA environment. Does **
 | `spec.source.chart` | `argo-cd` | Helm chart name |
 | `spec.source.targetRevision` | `7.*` | Helm chart version constraint |
 | `spec.source.helm.valueFiles[0]` | `values.yaml` | Path to the Helm values file |
-| `spec.destination.server` | `https://qa-cluster.aws-us-east-2.example.com` | Kubernetes API server URL for the QA cluster |
+| `spec.destination.server` | `https://qa-cluster.example.com` | OpenShift API server URL for the QA cluster |
 | `spec.destination.namespace` | `argocd` | Target namespace for the ArgoCD installation |
 | `spec.syncPolicy.syncOptions[0]` | `CreateNamespace=true` | Create the target namespace if it does not exist |
 | `spec.syncPolicy.syncOptions[1]` | `ServerSideApply=true` | Use server-side apply for resource reconciliation |
@@ -165,7 +165,7 @@ Helm values for the **staging** environment. HA configuration with 2 replicas fo
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `global.domain` | `argocd-stg.aws-us-east-2.example.com` | The external domain name for the ArgoCD UI in staging |
+| `global.domain` | `argocd-stg.example.com` | The external domain name for the ArgoCD UI in staging |
 | `server.replicas` | `2` | Number of ArgoCD API server replicas (HA) |
 | `server.resources.requests.cpu` | `500m` | CPU request for each ArgoCD server pod |
 | `server.resources.requests.memory` | `512Mi` | Memory request for each ArgoCD server pod |
@@ -199,7 +199,7 @@ ArgoCD `Application` resource for self-management in the staging environment. Ma
 | `spec.source.chart` | `argo-cd` | Helm chart name |
 | `spec.source.targetRevision` | `7.*` | Helm chart version constraint |
 | `spec.source.helm.valueFiles[0]` | `values.yaml` | Path to the Helm values file |
-| `spec.destination.server` | `https://stg-cluster.aws-us-east-2.example.com` | Kubernetes API server URL for the staging cluster |
+| `spec.destination.server` | `https://stg-cluster.example.com` | OpenShift API server URL for the staging cluster |
 | `spec.destination.namespace` | `argocd` | Target namespace for the ArgoCD installation |
 | `spec.syncPolicy.syncOptions[0]` | `CreateNamespace=true` | Create the target namespace if it does not exist |
 | `spec.syncPolicy.syncOptions[1]` | `ServerSideApply=true` | Use server-side apply for resource reconciliation |
@@ -210,7 +210,7 @@ Helm values for the **production** environment. HA configuration identical to st
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `global.domain` | `argocd-prd.aws-us-east-2.example.com` | The external domain name for the ArgoCD UI in production |
+| `global.domain` | `argocd-prd.example.com` | The external domain name for the ArgoCD UI in production |
 | `server.replicas` | `2` | Number of ArgoCD API server replicas (HA) |
 | `server.resources.requests.cpu` | `500m` | CPU request for each ArgoCD server pod |
 | `server.resources.requests.memory` | `512Mi` | Memory request for each ArgoCD server pod |
@@ -244,7 +244,7 @@ ArgoCD `Application` resource for self-management in the production environment.
 | `spec.source.chart` | `argo-cd` | Helm chart name |
 | `spec.source.targetRevision` | `7.*` | Helm chart version constraint |
 | `spec.source.helm.valueFiles[0]` | `values.yaml` | Path to the Helm values file |
-| `spec.destination.server` | `https://prd-cluster.aws-us-east-2.example.com` | Kubernetes API server URL for the production cluster |
+| `spec.destination.server` | `https://prd-cluster.example.com` | OpenShift API server URL for the production cluster |
 | `spec.destination.namespace` | `argocd` | Target namespace for the ArgoCD installation |
 | `spec.syncPolicy.syncOptions[0]` | `CreateNamespace=true` | Create the target namespace if it does not exist |
 | `spec.syncPolicy.syncOptions[1]` | `ServerSideApply=true` | Use server-side apply for resource reconciliation |
@@ -283,7 +283,7 @@ ArgoCD `Application` resource for self-management in the production environment.
 
 | Setting | dev | qa | stg | prd |
 |---------|-----|----|-----|-----|
-| `global.domain` | `argocd-dev.aws-us-east-2.example.com` | `argocd-qa.aws-us-east-2.example.com` | `argocd-stg.aws-us-east-2.example.com` | `argocd-prd.aws-us-east-2.example.com` |
+| `global.domain` | `argocd-dev.example.com` | `argocd-qa.example.com` | `argocd-stg.example.com` | `argocd-prd.example.com` |
 | `server.service.type` | `LoadBalancer` | _(not set -- chart default)_ | _(not set -- chart default)_ | _(not set -- chart default)_ |
 | `configs.params.server.insecure` | `true` | `true` | _(not set -- defaults to `false`)_ | _(not set -- defaults to `false`)_ |
 | `configs.secret.argocdServerAdminPassword` | bcrypt hash (set) | _(not set -- auto-generated)_ | _(not set -- auto-generated)_ | _(not set -- auto-generated)_ |
@@ -297,7 +297,7 @@ ArgoCD `Application` resource for self-management in the production environment.
 | `syncPolicy.automated.selfHeal` | `true` | _(not set)_ | _(not set)_ | _(not set)_ |
 | `syncOptions: CreateNamespace` | `true` | `true` | `true` | `true` |
 | `syncOptions: ServerSideApply` | `true` | `true` | `true` | `true` |
-| `destination.server` | `https://dev-cluster.aws-us-east-2.example.com` | `https://qa-cluster.aws-us-east-2.example.com` | `https://stg-cluster.aws-us-east-2.example.com` | `https://prd-cluster.aws-us-east-2.example.com` |
+| `destination.server` | `https://dev-cluster.example.com` | `https://qa-cluster.example.com` | `https://stg-cluster.example.com` | `https://prd-cluster.example.com` |
 
 > **Note:** Only dev has automated sync with prune and self-heal enabled on the ArgoCD self-management Application. QA, staging, and production require manual sync triggers, providing an additional safety gate for ArgoCD upgrades in higher environments.
 
@@ -305,11 +305,11 @@ ArgoCD `Application` resource for self-management in the production environment.
 
 ## How These Values Are Consumed
 
-These files are consumed in three ways:
+These files are consumed only when using **Option B -- Standalone ArgoCD via Helm** on OpenShift. If you are using the OpenShift GitOps Operator (Option A, recommended), these files are not needed.
 
 ### 1. Initial Bootstrap via Helm CLI
 
-ArgoCD is the only component in this repository that is installed **directly via `helm install`** rather than through an ArgoCD Application. The `values.yaml` for the target environment is passed to the Helm CLI:
+ArgoCD is installed directly via `helm install` using the `values.yaml` for the target environment:
 
 ```bash
 helm upgrade --install argocd argo-cd/argo-cd \
@@ -319,8 +319,7 @@ helm upgrade --install argocd argo-cd/argo-cd \
   --wait --timeout 5m
 ```
 
-This is performed by:
-- `scripts/deploy-dev.sh` -- local dev deployment script
+This can be performed by:
 - `.github/workflows/full-deploy.yaml` -- GitHub Actions CI/CD pipeline
 - `.azure-pipelines/full-deploy.yaml` -- Azure DevOps CI/CD pipeline
 
@@ -329,7 +328,7 @@ This is performed by:
 After the initial Helm bootstrap, the `app.yaml` in each environment directory can be applied to enable **ArgoCD self-management** (the "App of Apps" pattern for ArgoCD itself):
 
 ```bash
-kubectl apply -f apps/argocd/<env>/app.yaml
+oc apply -f apps/argocd/<env>/app.yaml
 ```
 
 Once applied, ArgoCD monitors its own Helm chart and values, automatically (dev) or manually (qa/stg/prd) reconciling any drift between the desired state in Git and the live state on the cluster.
@@ -342,9 +341,9 @@ In air-gapped or restricted network environments, the `values.yaml` files may ne
 
 ## OpenShift GitOps Operator Relationship
 
-When deploying on **Red Hat OpenShift**, there are two supported approaches for ArgoCD:
+There are two supported approaches for running ArgoCD on OpenShift:
 
-### Option A -- OpenShift GitOps Operator (Recommended for OpenShift)
+### Option A -- OpenShift GitOps Operator (Recommended)
 
 The OpenShift GitOps Operator installs and manages its own ArgoCD instance in the `openshift-gitops` namespace. In this scenario:
 
@@ -352,32 +351,36 @@ The OpenShift GitOps Operator installs and manages its own ArgoCD instance in th
 - ArgoCD is managed by the OpenShift operator, not by Helm or by itself.
 - The deployment script `scripts/deploy-openshift-dev.sh` skips the Helm install step entirely and instead **verifies** that the OpenShift GitOps ArgoCD server is already running.
 - Namespaces must be labeled with `argocd.argoproj.io/managed-by=openshift-gitops` to allow the operator-managed ArgoCD to deploy into them.
-- ApplicationSet resources are deployed from `gitops-config/openshift/` (not `gitops-config/aws-us-east-2/`).
+- ApplicationSet resources are deployed from `gitops-config/openshift/<env>/`.
 - The ArgoCD UI is accessible via an OpenShift Route rather than a LoadBalancer Service.
 - The admin password is stored in the `openshift-gitops-cluster` Secret, not set via Helm values.
 
 ### Option B -- Standalone ArgoCD via Helm
 
-On non-OpenShift Kubernetes clusters (EKS, AKS, GKE, etc.), ArgoCD is installed using the Helm chart with the values from this directory. This is the scenario where `apps/argocd/` is directly consumed.
+If you prefer to manage ArgoCD yourself rather than using the operator, you can install it using the Helm chart with the values from this directory. This is the scenario where `apps/argocd/` is directly consumed.
 
-### Summary
-
-| Aspect | Standalone Helm (Option B) | OpenShift GitOps (Option A) |
-|--------|---------------------------|----------------------------|
-| ArgoCD installed by | `helm install` using `apps/argocd/<env>/values.yaml` | OpenShift GitOps Operator (OperatorHub) |
-| ArgoCD namespace | `argocd` | `openshift-gitops` |
-| Self-management | Via `apps/argocd/<env>/app.yaml` | Managed by the operator |
-| UI exposure | `LoadBalancer` Service (dev) or Ingress | OpenShift Route (auto-created by operator) |
-| Admin password | Set via `configs.secret.argocdServerAdminPassword` in values.yaml | Auto-generated in `openshift-gitops-cluster` Secret |
-| ApplicationSet location | `gitops-config/aws-us-east-2/<env>/` | `gitops-config/openshift/<env>/` |
-| Deploy script | `scripts/deploy-dev.sh` | `scripts/deploy-openshift-dev.sh` |
-| `apps/argocd/` files used? | Yes | No |
+- ArgoCD is installed into the `argocd` namespace via `helm install`.
+- Self-management is enabled by applying the per-environment `app.yaml`.
+- You are responsible for upgrades and lifecycle management.
+- ApplicationSet resources are still deployed from `gitops-config/openshift/<env>/`.
 
 ---
 
 ## Installation
 
-### Standalone Helm Install (non-OpenShift)
+### Option A -- OpenShift GitOps Operator (Recommended)
+
+```bash
+# 1. Install the OpenShift GitOps Operator from OperatorHub (via UI or CLI)
+
+# 2. Verify the operator-managed ArgoCD is running
+oc get pods -n openshift-gitops -l app.kubernetes.io/name=openshift-gitops-server
+
+# 3. Proceed directly to deploying ApplicationSets from gitops-config/openshift/<env>/
+#    The apps/argocd/ values are not needed.
+```
+
+### Option B -- Standalone ArgoCD via Helm
 
 ```bash
 # Add the Helm repository
@@ -392,16 +395,5 @@ helm install argocd argo-cd/argo-cd \
   --wait --timeout 5m
 
 # (Optional) Enable self-management
-kubectl apply -f apps/argocd/dev/app.yaml
-```
-
-### OpenShift GitOps (OpenShift)
-
-```bash
-# 1. Install the OpenShift GitOps Operator from OperatorHub (via UI or CLI)
-# 2. Verify the operator-managed ArgoCD is running
-oc get pods -n openshift-gitops -l app.kubernetes.io/name=openshift-gitops-server
-
-# 3. Proceed directly to deploying ApplicationSets from gitops-config/openshift/
-#    The apps/argocd/ values are not needed.
+oc apply -f apps/argocd/dev/app.yaml
 ```

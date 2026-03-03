@@ -3,7 +3,7 @@
 # Single-replica, non-HA configuration
 
 global:
-  domain: argocd-dev.aws-us-east-2.example.com
+  domain: argocd-dev.example.com
 
 server:
   replicas: 1

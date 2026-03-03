@@ -14,7 +14,7 @@ spec:
       valueFiles:
         - values.yaml
   destination:
-    server: https://prd-cluster.aws-us-east-2.example.com
+    server: https://prd-cluster.example.com
     namespace: argocd
   syncPolicy:
     syncOptions:

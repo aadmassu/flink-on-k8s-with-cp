@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Full deploy script for the dev environment on OpenShift.
 # Uses the OpenShift GitOps Operator (ArgoCD in openshift-gitops namespace)
-# to deploy SCCs, cert-manager, operators, Confluent Platform, and CMF.
+# to deploy cert-manager, operators, Confluent Platform, and CMF.
+# SCCs are applied directly (one-time cluster prerequisite, not managed by ArgoCD).
 #
 # Usage:
 #   ./scripts/deploy-openshift-dev.sh
@@ -41,13 +42,11 @@ for NS in "confluent-$ENV" "cert-manager"; do
   echo "    Namespace $NS labeled for OpenShift GitOps management."
 done
 
-# ── Step 3: Deploy OpenShift prerequisites (SCC + bindings) ──────────────────
+# ── Step 3: Apply OpenShift prerequisites (SCC + bindings) ───────────────────
 echo ""
-echo "==> Deploying OpenShift prerequisites (SCC + bindings)..."
-oc apply -f "$REPO_ROOT/gitops-config/openshift/$ENV/openshift-prereqs-application-set.yaml"
-echo "    Waiting for openshift-prereqs to become Healthy..."
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/openshift-prereqs-$ENV -n "$ARGOCD_NS" --timeout=120s
+echo "==> Applying OpenShift prerequisites (SCC + bindings)..."
+oc apply -f "$REPO_ROOT/openshift-prereqs/$ENV/manifests/"
+echo "    SCC and ClusterRoleBindings applied."
 
 # ── Step 4: Deploy cert-manager (skip if already installed) ──────────────────
 echo ""

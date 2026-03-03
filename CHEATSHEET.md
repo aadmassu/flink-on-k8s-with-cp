@@ -1,22 +1,22 @@
 # Command Cheatsheet
 
-Quick reference for all kubectl, helm, and oc commands used in this project.
+Quick reference for `oc` and `helm` commands used in this project on OpenShift.
 
 ---
 
 ## Cluster Connectivity
 
 ```bash
-# Verify current context
-kubectl config get-contexts
-
-# Check cluster info
-kubectl cluster-info
-
-# OpenShift: verify login
+# Verify OpenShift login
 oc whoami
 oc cluster-info
 oc version
+
+# Verify current context
+oc config get-contexts
+
+# Check current project
+oc project
 ```
 
 ---
@@ -25,7 +25,6 @@ oc version
 
 ```bash
 # Add all required repos
-helm repo add argo-cd https://argoproj.github.io/argo-helm
 helm repo add confluent https://packages.confluent.io/helm
 helm repo add jetstack https://charts.jetstack.io
 helm repo update
@@ -33,70 +32,34 @@ helm repo update
 
 ---
 
-## ArgoCD
+## OpenShift GitOps (ArgoCD)
 
-### Install
+The OpenShift GitOps Operator is installed via OperatorHub, not Helm. These
+commands verify the operator-managed instance.
+
+### Verify OpenShift GitOps
 
 ```bash
-helm install argocd argo-cd/argo-cd \
-  --namespace argocd \
-  --create-namespace \
-  -f apps/argocd/<env>/values.yaml \
-  --wait --timeout 5m
+# Check the operator subscription
+oc get subscription openshift-gitops-operator -n openshift-operators
+
+# Check that the GitOps pods are running
+oc get pods -n openshift-gitops
+
+# Check the ArgoCD instance
+oc get argocd -n openshift-gitops
 ```
 
-### Upgrade
+### Get Route URL
 
 ```bash
-helm upgrade argocd argo-cd/argo-cd \
-  --namespace argocd \
-  -f apps/argocd/<env>/values.yaml \
-  --wait --timeout 5m
-```
-
-### Uninstall
-
-```bash
-helm uninstall argocd --namespace argocd
-```
-
-### Verify
-
-```bash
-kubectl get pods -n argocd
-kubectl get svc argocd-server -n argocd
-```
-
-### Get URL (LoadBalancer)
-
-```bash
-kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+oc get route openshift-gitops-server -n openshift-gitops -o jsonpath='{.spec.host}'
 ```
 
 ### Get Admin Password
 
 ```bash
-# Standard ArgoCD
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-
-# OpenShift GitOps
 oc -n openshift-gitops get secret openshift-gitops-cluster -o jsonpath='{.data.admin\.password}' | base64 -d
-```
-
-### OpenShift Route
-
-```bash
-# Create Route
-oc create route passthrough argocd-server \
-  --service=argocd-server \
-  --port=https \
-  --namespace=argocd
-
-# Get Route URL
-oc get route argocd-server -n argocd -o jsonpath='{.spec.host}'
-
-# OpenShift GitOps Route
-oc get route openshift-gitops-server -n openshift-gitops -o jsonpath='{.spec.host}'
 ```
 
 ---
@@ -106,34 +69,34 @@ oc get route openshift-gitops-server -n openshift-gitops -o jsonpath='{.spec.hos
 ### cert-manager
 
 ```bash
-kubectl apply -f gitops-config/aws-us-east-2/<env>/cert-manager-application-set.yaml
+oc apply -f gitops-config/openshift/<env>/cert-manager-application-set.yaml
 
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/cert-manager-<env> -n argocd --timeout=180s
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/cert-manager-<env> -n openshift-gitops --timeout=180s
 
-kubectl get pods -n cert-manager
+oc get pods -n cert-manager
 ```
 
 ### Confluent Operator
 
 ```bash
-kubectl apply -f gitops-config/aws-us-east-2/<env>/confluent-operator-application-set.yaml
+oc apply -f gitops-config/openshift/<env>/confluent-operator-application-set.yaml
 
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-operator-<env> -n argocd --timeout=180s
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-operator-<env> -n openshift-gitops --timeout=180s
 
-kubectl get pods -n confluent-<env> -l app=confluent-operator
+oc get pods -n confluent-<env> -l app=confluent-operator
 ```
 
 ### Flink Operator
 
 ```bash
-kubectl apply -f gitops-config/aws-us-east-2/<env>/confluent-flink-operator-application-set.yaml
+oc apply -f gitops-config/openshift/<env>/confluent-flink-operator-application-set.yaml
 
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-flink-operator-<env> -n argocd --timeout=180s
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-flink-operator-<env> -n openshift-gitops --timeout=180s
 
-kubectl get pods -n confluent-<env>
+oc get pods -n confluent-<env>
 ```
 
 ---
@@ -142,23 +105,23 @@ kubectl get pods -n confluent-<env>
 
 ```bash
 # List all applications
-kubectl get applications -n argocd
+oc get applications -n openshift-gitops
 
 # Detailed status table
-kubectl get applications -n argocd -o custom-columns=\
+oc get applications -n openshift-gitops -o custom-columns=\
 NAME:.metadata.name,\
 HEALTH:.status.health.status,\
 SYNC:.status.sync.status,\
 NAMESPACE:.spec.destination.namespace
 
 # Describe a specific application
-kubectl describe application <app-name> -n argocd
+oc describe application <app-name> -n openshift-gitops
 
 # Get sync status
-kubectl get application <app-name> -n argocd -o jsonpath='{.status.sync.status}'
+oc get application <app-name> -n openshift-gitops -o jsonpath='{.status.sync.status}'
 
 # Get health status
-kubectl get application <app-name> -n argocd -o jsonpath='{.status.health.status}'
+oc get application <app-name> -n openshift-gitops -o jsonpath='{.status.health.status}'
 ```
 
 ---
@@ -167,13 +130,13 @@ kubectl get application <app-name> -n argocd -o jsonpath='{.status.health.status
 
 ```bash
 # ArgoCD Application CRD
-kubectl get crd applications.argoproj.io
+oc get crd applications.argoproj.io
 
 # cert-manager CRDs
-kubectl get crd certificates.cert-manager.io
+oc get crd certificates.cert-manager.io
 
 # Confluent Platform CRDs
-kubectl get crd kafkas.platform.confluent.io
+oc get crd kafkas.platform.confluent.io
 ```
 
 ---
@@ -181,29 +144,42 @@ kubectl get crd kafkas.platform.confluent.io
 ## Troubleshooting
 
 ```bash
-# Find ArgoCD namespace
-kubectl get pods --all-namespaces | grep argocd
+# Check OpenShift GitOps pods
+oc get pods -n openshift-gitops
 
 # ArgoCD controller logs
-kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller --tail=50
+oc logs -n openshift-gitops -l app.kubernetes.io/name=openshift-gitops-application-controller --tail=50
 
 # cert-manager webhook status
-kubectl get pods -n cert-manager -l app.kubernetes.io/component=webhook
+oc get pods -n cert-manager -l app.kubernetes.io/component=webhook
 
 # List registered clusters in ArgoCD
-kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=cluster
+oc get secrets -n openshift-gitops -l argocd.argoproj.io/secret-type=cluster
 
 # Check pod events (for debugging failures)
-kubectl describe pod <pod-name> -n <namespace>
+oc describe pod <pod-name> -n <namespace>
 
 # Check operator logs
-kubectl logs -n confluent-<env> -l app=confluent-operator --tail=50
-kubectl logs -n confluent-<env> -l app.kubernetes.io/name=flink-kubernetes-operator --tail=50
+oc logs -n confluent-<env> -l app=confluent-operator --tail=50
+oc logs -n confluent-<env> -l app.kubernetes.io/name=flink-kubernetes-operator --tail=50
 ```
 
 ---
 
 ## OpenShift SCC Permissions
+
+### Declarative (recommended)
+
+Apply the pre-built SCC and ClusterRoleBinding manifests for each environment:
+
+```bash
+oc apply -f openshift-prereqs/<env>/manifests/
+```
+
+This applies `confluent-scc.yaml` and `scc-bindings.yaml` for the target
+environment (dev, qa, stg, prd).
+
+### Imperative (alternative)
 
 ```bash
 # Confluent operator
@@ -217,7 +193,11 @@ oc adm policy add-scc-to-user anyuid -z flink-kubernetes-operator -n confluent-<
 oc adm policy add-scc-to-user anyuid -z cert-manager -n cert-manager
 oc adm policy add-scc-to-user anyuid -z cert-manager-webhook -n cert-manager
 oc adm policy add-scc-to-user anyuid -z cert-manager-cainjector -n cert-manager
+```
 
+### Inspect SCC assignments
+
+```bash
 # Check which SCC a pod is using
 oc get pod <pod-name> -n <namespace> -o jsonpath='{.metadata.annotations.openshift\.io/scc}'
 
@@ -243,15 +223,28 @@ oc adm policy add-cluster-role-to-user cluster-admin \
 
 ## Tear Down
 
+### Automated
+
+```bash
+./scripts/destroy-openshift-dev.sh
+```
+
+This script deletes ApplicationSets (in reverse order), removes the SCC
+prerequisites, and deletes the `confluent-dev` and `cert-manager` namespaces.
+The OpenShift GitOps Operator and `openshift-gitops` namespace are **not**
+removed -- they are managed by the OperatorHub subscription.
+
+### Manual
+
 ```bash
 # Delete all ArgoCD-managed applications
-kubectl delete applications --all -n argocd
+oc delete applications --all -n openshift-gitops
 
-# Uninstall ArgoCD
-helm uninstall argocd --namespace argocd
+# Delete OpenShift prerequisites (SCC + bindings)
+oc delete -f openshift-prereqs/<env>/manifests/ --ignore-not-found
 
 # Delete namespaces
-kubectl delete ns argocd confluent-<env> cert-manager --wait --timeout=120s
+oc delete ns confluent-<env> cert-manager --wait --timeout=120s
 ```
 
 ---
@@ -263,10 +256,15 @@ Most commands in this project follow this pattern. Set `ENV` once and reuse:
 ```bash
 ENV=dev   # Change to: qa, stg, prd
 
-kubectl apply -f gitops-config/aws-us-east-2/${ENV}/cert-manager-application-set.yaml
-kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-operator-application-set.yaml
-kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-flink-operator-application-set.yaml
+# Apply SCC prerequisites
+oc apply -f openshift-prereqs/${ENV}/manifests/
 
-kubectl get pods -n confluent-${ENV}
-kubectl get applications -n argocd
+# Deploy ApplicationSets
+oc apply -f gitops-config/openshift/${ENV}/cert-manager-application-set.yaml
+oc apply -f gitops-config/openshift/${ENV}/confluent-operator-application-set.yaml
+oc apply -f gitops-config/openshift/${ENV}/confluent-flink-operator-application-set.yaml
+
+# Verify
+oc get pods -n confluent-${ENV}
+oc get applications -n openshift-gitops
 ```

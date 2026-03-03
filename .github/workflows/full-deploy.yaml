@@ -27,7 +27,7 @@ on:
         type: string
 
 env:
-  ARGOCD_NAMESPACE: argocd
+  ARGOCD_NAMESPACE: openshift-gitops
 
 jobs:
   deploy:
@@ -44,26 +44,19 @@ jobs:
         with:
           version: "v3.14.0"
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: "v1.28.0"
-
-      - name: Configure kubeconfig
+      - name: Configure cluster access
         run: |
-          # Configure cluster access
-          # Replace this step with your cluster authentication method:
-          #   - For EKS: aws eks update-kubeconfig --name <cluster> --region <region>
-          #   - For AKS: az aks get-credentials --resource-group <rg> --name <cluster>
-          #   - For GKE: gcloud container clusters get-credentials <cluster> --region <region>
-          #   - For OpenShift: oc login <server> --token=<token>
-          echo "Configure your cluster authentication here"
-          kubectl config use-context ${{ inputs.cluster_context }}
+          # Configure OpenShift cluster access
+          # Replace with your authentication method:
+          #   - oc login <server> --token=<token>
+          #   - oc login <server> -u <user> -p <password>
+          echo "Configure your OpenShift cluster authentication here"
+          oc config use-context ${{ inputs.cluster_context }}
 
       - name: Verify cluster connectivity
         run: |
-          kubectl cluster-info
-          kubectl get nodes
+          oc cluster-info
+          oc get nodes
 
       - name: Add Helm repositories
         run: |
@@ -83,7 +76,7 @@ jobs:
             --wait --timeout 5m
 
           echo "Waiting for ArgoCD pods to be ready..."
-          kubectl wait --for=condition=Ready pod \
+          oc wait --for=condition=Ready pod \
             -l app.kubernetes.io/part-of=argocd \
             -n ${ARGOCD_NAMESPACE} --timeout=300s
 
@@ -91,24 +84,24 @@ jobs:
         run: |
           ENV=${{ inputs.environment }}
 
-          kubectl apply -f gitops-config/aws-us-east-2/${ENV}/cert-manager-application-set.yaml
+          oc apply -f gitops-config/openshift/${ENV}/cert-manager-application-set.yaml
 
           echo "Waiting for cert-manager to become healthy..."
-          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+          oc wait --for=jsonpath='{.status.health.status}'=Healthy \
             application/cert-manager-${ENV} \
             -n ${ARGOCD_NAMESPACE} --timeout=180s
 
           echo "Verifying cert-manager pods..."
-          kubectl get pods -n cert-manager
+          oc get pods -n cert-manager
 
       - name: Deploy Confluent Operator
         run: |
           ENV=${{ inputs.environment }}
 
-          kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-operator-application-set.yaml
+          oc apply -f gitops-config/openshift/${ENV}/confluent-operator-application-set.yaml
 
           echo "Waiting for Confluent Operator to become healthy..."
-          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+          oc wait --for=jsonpath='{.status.health.status}'=Healthy \
             application/confluent-operator-${ENV} \
             -n ${ARGOCD_NAMESPACE} --timeout=180s
 
@@ -116,10 +109,10 @@ jobs:
         run: |
           ENV=${{ inputs.environment }}
 
-          kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-flink-operator-application-set.yaml
+          oc apply -f gitops-config/openshift/${ENV}/confluent-flink-operator-application-set.yaml
 
           echo "Waiting for Flink Operator to become healthy..."
-          kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+          oc wait --for=jsonpath='{.status.health.status}'=Healthy \
             application/confluent-flink-operator-${ENV} \
             -n ${ARGOCD_NAMESPACE} --timeout=180s
 
@@ -128,10 +121,10 @@ jobs:
           ENV=${{ inputs.environment }}
 
           echo "=== ArgoCD Applications ==="
-          kubectl get applications -n ${ARGOCD_NAMESPACE} \
+          oc get applications -n ${ARGOCD_NAMESPACE} \
             -o custom-columns=NAME:.metadata.name,HEALTH:.status.health.status,SYNC:.status.sync.status
 
           echo ""
           echo "=== Operator Pods ==="
-          kubectl get pods -n confluent-${ENV}
-          kubectl get pods -n cert-manager
+          oc get pods -n confluent-${ENV}
+          oc get pods -n cert-manager

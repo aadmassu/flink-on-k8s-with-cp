@@ -9,14 +9,14 @@ This directory contains the OpenShift-specific prerequisites required before dep
 
 OpenShift enforces SCCs as the mechanism to control pod privileges (analogous to Kubernetes Pod Security Standards). Without these resources, Confluent Platform pods, Flink Operator pods, and cert-manager pods will fail to schedule due to SCC admission violations.
 
-These manifests are organized per environment (`dev`, `qa`, `stg`, `prd`) and are designed to be deployed via Argo CD ApplicationSets, with sync-wave annotations ensuring correct ordering.
+These manifests are organized per environment (`dev`, `qa`, `stg`, `prd`) and are applied directly via `oc apply` as a **one-time cluster prerequisite** before deploying any ArgoCD-managed applications. They are not managed by ArgoCD.
 
 ---
 
 ## Directory Structure
 
 ```
-apps/openshift-prereqs/
+openshift-prereqs/
 ├── README.md                          # This file
 ├── dev/
 │   └── manifests/
@@ -152,24 +152,22 @@ All other fields -- including the SCC definition, the cert-manager ClusterRoleBi
 
 ---
 
-## Deployment Order (Sync-Wave Annotations)
+## Usage
 
-These manifests use [Argo CD sync-wave annotations](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/) to enforce creation order:
+Apply the prerequisites for your target environment before deploying any ArgoCD applications:
 
-| Wave | Resource | Reason |
-|------|----------|--------|
-| `0` | `SecurityContextConstraints/confluent-scc` | The SCC must exist first, because OpenShift auto-generates the corresponding ClusterRole `system:openshift:scc:confluent-scc` when the SCC is created. |
-| `1` | `ClusterRoleBinding/confluent-scc-confluent-<env>` | Binds the auto-generated ClusterRole to the Confluent/Flink service accounts. Must come after wave `0` so the ClusterRole exists. |
-| `1` | `ClusterRoleBinding/confluent-scc-cert-manager` | Binds the auto-generated ClusterRole to the cert-manager service accounts. Must come after wave `0` so the ClusterRole exists. |
-
-**Deployment flow:**
-
-```
-Wave 0: confluent-scc (SCC created --> OpenShift auto-generates ClusterRole)
-   |
-   v
-Wave 1: confluent-scc-confluent-<env> (binds SCC to Confluent/Flink SAs)
-         confluent-scc-cert-manager    (binds SCC to cert-manager SAs)
+```bash
+# Replace <env> with dev, qa, stg, or prd
+oc apply -f openshift-prereqs/<env>/manifests/
 ```
 
-> **Important:** These prerequisites must be fully synced before deploying Confluent Platform, Flink Operator, or cert-manager workloads. In an Argo CD ApplicationSet setup, the `openshift-prereqs` application should have a lower sync-wave than the applications that deploy the actual workloads.
+Verify:
+
+```bash
+oc get scc confluent-scc
+oc get clusterrolebinding | grep confluent-scc
+```
+
+The SCC manifest (`confluent-scc.yaml`) should be applied before the bindings (`scc-bindings.yaml`). When applied together via `oc apply -f <directory>/`, Kubernetes processes them in alphabetical order, and the sync-wave annotations (wave `0` for SCC, wave `1` for bindings) provide ordering guidance for tools that respect them.
+
+> **Important:** These prerequisites must be applied before deploying any Confluent Platform, Flink Operator, or cert-manager workloads. They are a one-time cluster setup and are **not** managed by ArgoCD.

@@ -17,7 +17,7 @@ GitOps repository for deploying **Confluent Platform**, **Confluent Flink Manage
   - [Option B - Standalone ArgoCD via Helm](#option-b---standalone-argocd-via-helm)
 - [Deployment Guide](#deployment-guide)
   - [Step 1 - Create and Label Namespaces](#step-1---create-and-label-namespaces)
-  - [Step 2 - Deploy OpenShift Prerequisites (SCCs)](#step-2---deploy-openshift-prerequisites-sccs)
+  - [Step 2 - Apply OpenShift Prerequisites (SCCs)](#step-2---apply-openshift-prerequisites-sccs)
   - [Step 3 - Deploy cert-manager](#step-3---deploy-cert-manager)
   - [Step 4 - Deploy Confluent Operator (CFK) and Flink Operator](#step-4---deploy-confluent-operator-cfk-and-flink-operator)
   - [Step 5 - Deploy Confluent Platform](#step-5---deploy-confluent-platform)
@@ -46,20 +46,28 @@ This repository contains the complete GitOps configuration for deploying the ful
 
 | Component | Description |
 |-----------|-------------|
-| **OpenShift Prerequisites** | Custom SCCs and ClusterRoleBindings for Confluent workloads |
 | **cert-manager** | X.509 certificate management - required by Flink operator webhooks |
 | **Confluent Operator (CFK)** | Confluent for Kubernetes operator - manages Confluent Platform CRDs |
 | **Flink Operator** | Confluent's Flink Kubernetes operator - manages Flink workloads |
 | **Confluent Platform** | Kafka (KRaft), Schema Registry, Connect, ksqlDB, Control Center |
 | **Confluent Flink Manager (CMF)** | Manages Flink SQL workloads on Kubernetes |
 
-All components are deployed **through ArgoCD** via ApplicationSet resources in `gitops-config/openshift/`.
+All components except SCCs are deployed **through ArgoCD** via ApplicationSet resources in `gitops-config/openshift/`. OpenShift prerequisites (SCCs + ClusterRoleBindings) are applied directly as a one-time cluster setup.
 
 ---
 
 ## Architecture
 
 ```
++---------------------------+
+|  Cluster Admin (one-time) |
++------------+--------------+
+             |
+             | oc apply -f openshift-prereqs/<env>/manifests/
+             v
+     SCC + ClusterRoleBindings
+     (cluster-scoped)
+
 +----------------------+
 |  OpenShift GitOps    |  <-- ArgoCD (openshift-gitops ns)
 |  (ArgoCD)            |
@@ -70,17 +78,12 @@ All components are deployed **through ArgoCD** via ApplicationSet resources in `
    +------+------+--------------------+---------------------+
    |             |                    |                     |
    v             v                    v                     v
-openshift-    cert-manager       confluent-operator     confluent-flink-
-prereqs       (cert-manager ns)  (confluent-<env> ns)   operator
-(SCC +                                                  (confluent-<env> ns)
- bindings)        |                    |
-                  |                    v
-                  |              confluent-platform
-                  |              (confluent-<env> ns)
-                  |                    |
-                  |                    v
-                  |              confluent-flink-manager
-                  |              (confluent-<env> ns)
+cert-manager  confluent-operator   confluent-flink-      confluent-platform
+(cert-manager (confluent-<env> ns) operator              (confluent-<env> ns)
+ ns)                               (confluent-<env> ns)        |
+                                                               v
+                                                         confluent-flink-manager
+                                                         (confluent-<env> ns)
 ```
 
 ---
@@ -104,7 +107,7 @@ Each environment has its own Kubernetes namespace and resource sizing. The clust
 |-------------|---------|
 | **OpenShift** | 4.12+ cluster with cluster-admin access |
 | **oc** | OpenShift CLI, logged in (`oc login`) |
-| **kubectl** | 1.28+ (bundled with `oc`) |
+| **kubectl** | 1.28+ (bundled with `oc`, used interchangeably) |
 | **helm** | 3.14+ / 4.x |
 
 Verify connectivity:
@@ -135,21 +138,23 @@ oc version
 |-- README.md                                # This file
 |-- README-EXISTING-ARGOCD.md                # Guide: deploy into an existing ArgoCD
 |-- README-INTERNAL-REGISTRY.md              # Guide: air-gapped / internal registries
-|-- CHEATSHEET.md                            # kubectl/helm/oc command reference
+|-- CHEATSHEET.md                            # oc/helm command reference
 |-- hosts.yaml                               # Cluster inventory
 |-- secrets.yaml                             # Secret reference template
 |
-|-- apps/                                    # Application definitions
+|-- openshift-prereqs/                       # SCC + ClusterRoleBindings (one-time, not ArgoCD)
+|   |-- dev/  qa/  stg/  prd/               # Per-environment manifests
+|
+|-- apps/                                    # Application definitions (ArgoCD-managed)
 |   |-- argocd/                              # ArgoCD self-provisioning (Helm)
 |   |-- cert-manager/                        # cert-manager values + OpenShift overlay
 |   |-- confluent-operator/                  # CFK operator values + OpenShift overlay
 |   |-- confluent-flink-operator/            # Flink operator values + OpenShift overlay
 |   |-- confluent-platform/                  # Confluent Platform CRD manifests
-|   |-- confluent-flink/                     # CMF manifests (base + openshift/)
-|   +-- openshift-prereqs/                   # SCC + ClusterRoleBinding manifests
+|   +-- confluent-flink/                     # CMF manifests (base + openshift/)
 |
 |-- gitops-config/openshift/                 # ArgoCD ApplicationSets for OpenShift
-|   |-- dev/  qa/  stg/  prd/               # Per-environment (6 ApplicationSets each)
+|   |-- dev/  qa/  stg/  prd/               # Per-environment (5 ApplicationSets each)
 |
 |-- scripts/
 |   |-- deploy-openshift-dev.sh              # Full OpenShift deploy script
@@ -166,7 +171,7 @@ oc version
 | `gitops-config/openshift/<env>/` | ArgoCD ApplicationSet resources - the entry point for deploying all components |
 | `apps/<app>/<env>/values.yaml` | Helm values files referenced by ApplicationSets via `$values/` |
 | `apps/<app>/openshift-overlay.yaml` | OpenShift-specific Helm overrides (null security contexts, disable PSP) |
-| `apps/openshift-prereqs/<env>/manifests/` | Custom SCC and per-env ClusterRoleBindings |
+| `openshift-prereqs/<env>/manifests/` | Custom SCC and per-env ClusterRoleBindings (applied directly, not via ArgoCD) |
 | `apps/confluent-flink/openshift/<env>/manifests/` | CMF manifests with `namespace: openshift-gitops` |
 
 ---
@@ -267,19 +272,24 @@ oc label namespace confluent-${ENV} argocd.argoproj.io/managed-by=${ARGOCD_NS} -
 oc label namespace cert-manager argocd.argoproj.io/managed-by=${ARGOCD_NS} --overwrite
 ```
 
-### Step 2 - Deploy OpenShift Prerequisites (SCCs)
+### Step 2 - Apply OpenShift Prerequisites (SCCs)
 
-Deploy the custom Security Context Constraints and service account bindings:
+Apply the custom Security Context Constraints and service account bindings directly (one-time cluster setup, not managed by ArgoCD):
 
 ```bash
-oc apply -f gitops-config/openshift/${ENV}/openshift-prereqs-application-set.yaml
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/openshift-prereqs-${ENV} -n ${ARGOCD_NS} --timeout=120s
+oc apply -f openshift-prereqs/${ENV}/manifests/
 ```
 
 This creates:
 - **`confluent-scc`** -- a custom SCC with `RunAsAny` for UID/GID/FSGroup, drops ALL capabilities
 - **ClusterRoleBindings** -- binds service accounts in `confluent-${ENV}` and `cert-manager` to the custom SCC
+
+Verify:
+
+```bash
+oc get scc confluent-scc
+oc get clusterrolebinding | grep confluent-scc
+```
 
 ### Step 3 - Deploy cert-manager
 
@@ -338,7 +348,6 @@ Expected output:
 
 ```
 NAME                            HEALTH    SYNC     NAMESPACE
-openshift-prereqs-dev           Healthy   Synced   openshift-gitops
 cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev
@@ -516,15 +525,15 @@ All environments use these ArgoCD sync options:
 
 ### Security Context Constraints (SCCs)
 
-OpenShift enforces SCCs that restrict pod security settings. This repository uses a **declarative approach** -- a custom `confluent-scc` SCC and ClusterRoleBindings are deployed via the `openshift-prereqs` ArgoCD ApplicationSet.
+OpenShift enforces SCCs that restrict pod security settings. This repository includes a custom `confluent-scc` SCC and ClusterRoleBindings under `openshift-prereqs/`, applied directly as a **one-time cluster prerequisite** (not managed by ArgoCD).
 
-The custom SCC (`apps/openshift-prereqs/<env>/manifests/confluent-scc.yaml`) provides:
+The custom SCC (`openshift-prereqs/<env>/manifests/confluent-scc.yaml`) provides:
 - `runAsUser: RunAsAny` -- allows containers to run as any UID
 - `fsGroup: RunAsAny` -- allows any fsGroup
 - Drops ALL capabilities
 - Allows volumes: configMap, emptyDir, PVC, projected, secret, downwardAPI
 
-Service account bindings (`apps/openshift-prereqs/<env>/manifests/scc-bindings.yaml`) map:
+Service account bindings (`openshift-prereqs/<env>/manifests/scc-bindings.yaml`) map:
 - `default`, `confluent-operator`, `flink-kubernetes-operator` in `confluent-<env>` -> `confluent-scc`
 - `cert-manager`, `cert-manager-webhook`, `cert-manager-cainjector` in `cert-manager` -> `confluent-scc`
 
@@ -679,4 +688,4 @@ oc get application confluent-operator-dev -n ${ARGOCD_NS} -o jsonpath='{.status.
 |-------|-------------|
 | [README-EXISTING-ARGOCD.md](README-EXISTING-ARGOCD.md) | Deploy into an existing OpenShift GitOps / ArgoCD instance |
 | [README-INTERNAL-REGISTRY.md](README-INTERNAL-REGISTRY.md) | Use internal Helm and container registries (air-gapped, JFrog, Nexus) |
-| [CHEATSHEET.md](CHEATSHEET.md) | kubectl, helm, and oc command reference |
+| [CHEATSHEET.md](CHEATSHEET.md) | oc and helm command reference |

@@ -1,8 +1,8 @@
 # Confluent Operator (CFK) -- Helm Values
 
-This directory contains the **Helm values files** for deploying the [Confluent for Kubernetes (CFK)](https://docs.confluent.io/operator/current/overview.html) operator across all environments. CFK is the Kubernetes operator that manages the full lifecycle of Confluent Platform components -- it watches for custom resources such as `KRaftController`, `Kafka`, `SchemaRegistry`, `Connect`, `ksqlDB`, and `ControlCenter`, and reconciles them to the desired state.
+This directory contains the **Helm values files** for deploying the [Confluent for Kubernetes (CFK)](https://docs.confluent.io/operator/current/overview.html) operator across all environments on OpenShift. CFK is the Kubernetes operator that manages the full lifecycle of Confluent Platform components -- it watches for custom resources such as `KRaftController`, `Kafka`, `SchemaRegistry`, `Connect`, `ksqlDB`, and `ControlCenter`, and reconciles them to the desired state.
 
-The values files here are **not applied directly**. They are consumed by ArgoCD ApplicationSets in `gitops-config/` via the Helm multi-source `$values/` reference pattern.
+The values files here are **not applied directly**. They are consumed by ArgoCD ApplicationSets in `gitops-config/openshift/` via the Helm multi-source `$values/` reference pattern.
 
 ## Helm Chart
 
@@ -38,7 +38,7 @@ Each per-environment `values.yaml` configures the CFK operator Helm chart. The t
 |-----|-------|-------------|
 | `namespaced` | `true` | Restricts the operator to watch only its own namespace instead of the entire cluster. Each environment gets its own isolated operator instance deployed into `confluent-<env>`. |
 | `kRaftEnabled` | `true` | Enables KRaft consensus mode for Kafka clusters managed by this operator. Eliminates the dependency on ZooKeeper, reducing operational complexity. |
-| `resources.requests.cpu` | `100m` (dev) / `200m` (qa, stg, prd) | CPU resource request for the operator pod. Kubernetes scheduler uses this to place the pod on a node with sufficient capacity. |
+| `resources.requests.cpu` | `100m` (dev) / `200m` (qa, stg, prd) | CPU resource request for the operator pod. The scheduler uses this to place the pod on a node with sufficient capacity. |
 | `resources.requests.memory` | `256Mi` | Memory resource request for the operator pod. Identical across all environments. |
 | `resources.limits.cpu` | `500m` (dev, qa) / `1` (stg, prd) | Maximum CPU the operator pod may consume. Higher environments use a full core to handle larger reconciliation workloads. |
 | `resources.limits.memory` | `512Mi` (dev, qa) / `1Gi` (stg, prd) | Maximum memory the operator pod may consume. Higher environments double the limit to accommodate more concurrent CRD reconciliation. |
@@ -60,7 +60,7 @@ The `openshift-overlay.yaml` file **nulls out** the security context fields so t
 
 ### How It Is Applied
 
-On OpenShift clusters, the ApplicationSet adds this file as a **second** values file after the per-environment values file. Because Helm merges values files in order (last wins), the overlay's `null` values overwrite any defaults baked into the upstream chart:
+The ApplicationSet adds this file as a **second** values file after the per-environment values file. Because Helm merges values files in order (last wins), the overlay's `null` values overwrite any defaults baked into the upstream chart:
 
 ```yaml
 helm:
@@ -105,12 +105,14 @@ Lower environments use minimal resources to reduce cost. Staging and production 
 
 ## How These Values Are Consumed by the ApplicationSet
 
-The CFK operator is deployed through ArgoCD **ApplicationSets** located under `gitops-config/`. There are two platform variants:
+The CFK operator is deployed through ArgoCD **ApplicationSets** located under `gitops-config/openshift/`:
 
-| Platform | ApplicationSet Location | Values Files Used |
-|----------|------------------------|-------------------|
-| AWS (EKS) | `gitops-config/aws-us-east-2/<env>/confluent-operator-application-set.yaml` | `apps/confluent-operator/<env>/values.yaml` |
-| OpenShift | `gitops-config/openshift/<env>/confluent-operator-application-set.yaml` | `apps/confluent-operator/<env>/values.yaml` + `apps/confluent-operator/openshift-overlay.yaml` |
+| Environment | ApplicationSet Location | Values Files Used |
+|-------------|------------------------|-------------------|
+| dev | `gitops-config/openshift/dev/confluent-operator-application-set.yaml` | `apps/confluent-operator/dev/values.yaml` + `apps/confluent-operator/openshift-overlay.yaml` |
+| qa | `gitops-config/openshift/qa/confluent-operator-application-set.yaml` | `apps/confluent-operator/qa/values.yaml` + `apps/confluent-operator/openshift-overlay.yaml` |
+| stg | `gitops-config/openshift/stg/confluent-operator-application-set.yaml` | `apps/confluent-operator/stg/values.yaml` + `apps/confluent-operator/openshift-overlay.yaml` |
+| prd | `gitops-config/openshift/prd/confluent-operator-application-set.yaml` | `apps/confluent-operator/prd/values.yaml` + `apps/confluent-operator/openshift-overlay.yaml` |
 
 Each ApplicationSet uses the ArgoCD **multi-source** pattern with a `$values` ref:
 
@@ -150,24 +152,11 @@ The namespace is created automatically by ArgoCD via the `CreateNamespace=true` 
 | Direction | Component | Relationship |
 |-----------|-----------|-------------|
 | **Required by** | Confluent Platform CRDs (`KRaftController`, `Kafka`, `SchemaRegistry`, `Connect`, `ksqlDB`, `ControlCenter`) | The operator must be running before any Confluent Platform custom resources can be reconciled. |
-| **Depends on** | ArgoCD / OpenShift GitOps | Must be running to process the ApplicationSet and deploy the operator. |
+| **Depends on** | OpenShift GitOps | Must be running to process the ApplicationSet and deploy the operator. |
 
 ---
 
 ## Deployment
-
-### Via ArgoCD (AWS / EKS)
-
-```bash
-# Apply the ApplicationSet for the desired environment
-kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-operator-application-set.yaml
-
-# Wait for the Application to become healthy
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-operator-dev -n argocd --timeout=180s
-```
-
-### Via OpenShift GitOps
 
 ```bash
 # Apply the ApplicationSet for the desired environment
@@ -182,7 +171,7 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
 
 ```bash
 # Check the operator pod is running
-kubectl get pods -n confluent-dev -l app=confluent-operator
+oc get pods -n confluent-dev -l app=confluent-operator
 
 # Expected: 1 pod in Running state
 ```
