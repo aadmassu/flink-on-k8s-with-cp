@@ -3,8 +3,8 @@
 #
 # This pipeline:
 #   1. Installs ArgoCD via Helm
-#   2. Deploys cert-manager (via ArgoCD Application)
-#   3. Deploys Confluent Operator and Flink Operator (via ArgoCD Applications)
+#   2. Deploys cert-manager (via ArgoCD ApplicationSet)
+#   3. Deploys Confluent Operator and Flink Operator (via ArgoCD ApplicationSets)
 
 trigger: none
 
@@ -99,7 +99,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f apps/cert-manager/$(ENV)/app.yaml
+                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/cert-manager-application-set.yaml
 
                 echo "Waiting for cert-manager to become healthy..."
                 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
@@ -114,7 +114,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f apps/confluent-operator/$(ENV)/app.yaml
+                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/confluent-operator-application-set.yaml
 
                 echo "Waiting for Confluent Operator to become healthy..."
                 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
@@ -126,7 +126,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f apps/confluent-flink-operator/$(ENV)/app.yaml
+                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/confluent-flink-operator-application-set.yaml
 
                 echo "Waiting for Flink Operator to become healthy..."
                 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \

@@ -45,7 +45,7 @@ This repository contains the complete GitOps configuration for:
 | **Confluent Platform** | Kafka, KRaft, Schema Registry, Connect, ksqlDB, Control Center | Coming soon |
 | **Confluent Flink Manager (CMF)** | Manages Flink SQL workloads on Kubernetes | Coming soon |
 
-All components except ArgoCD itself are deployed **through ArgoCD** as Application resources, achieving full GitOps management.
+All components except ArgoCD itself are deployed **through ArgoCD** via ApplicationSet resources in `gitops-config/`, achieving full GitOps management.
 
 ---
 
@@ -67,7 +67,7 @@ cert-manager  confluent-operator   confluent-flink-operator
  ns)           ns)
 ```
 
-ArgoCD is the only component installed directly via `helm install`. Everything else is declared as an ArgoCD `Application` resource and applied with `kubectl apply`. ArgoCD then handles the actual deployment, monitoring, and reconciliation.
+ArgoCD is the only component installed directly via `helm install`. Everything else is declared as an ArgoCD `ApplicationSet` resource in `gitops-config/` and applied with `kubectl apply`. ArgoCD then generates the corresponding Application resources and handles deployment, monitoring, and reconciliation.
 
 ---
 
@@ -111,7 +111,7 @@ kubectl cluster-info
 - A Kubernetes cluster (1.28+) is provisioned and accessible via `kubectl`.
 - The deploying user or service account has **cluster-admin** privileges (required to create namespaces, CRDs, and ClusterRoles).
 - Helm repositories are accessible from the cluster or CI/CD runner (no network restrictions on `argoproj.github.io`, `charts.jetstack.io`, `packages.confluent.io`).
-- The `app.yaml` files contain **placeholder values** for `spec.destination.server`. Update these with your actual cluster API server endpoints before deploying.
+- The ApplicationSet files in `gitops-config/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoints before deploying (dev is pre-configured to `https://kubernetes.default.svc`).
 - For CI/CD pipelines, a Kubernetes service connection or kubeconfig secret is configured in your pipeline platform.
 
 ---
@@ -154,9 +154,8 @@ Each app folder contains a `README.md` with detailed documentation. See the [app
 
 | Directory | Purpose |
 |-----------|---------|
-| `apps/<app>/<env>/app.yaml` | ArgoCD Application resource that tells ArgoCD *what* to deploy and *where* |
-| `apps/<app>/<env>/values.yaml` | Helm values file (reference copy; dev app.yaml uses inline `valuesObject`) |
-| `gitops-config/<region>/<env>/` | ArgoCD ApplicationSet resources for multi-cluster orchestration |
+| `gitops-config/<region>/<env>/` | ArgoCD ApplicationSet resources — the entry point for deploying all components |
+| `apps/<app>/<env>/values.yaml` | Helm values file referenced by ApplicationSets via `$values/` |
 
 ---
 
@@ -256,7 +255,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 cert-manager is required **before** the Flink operator. It provides TLS certificates for Flink operator webhook endpoints.
 
 ```bash
-kubectl apply -f apps/cert-manager/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
 ```
 
 Wait for it to become healthy:
@@ -279,7 +278,7 @@ Expected: 3 pods running (cert-manager, cainjector, webhook).
 ### Step 5 - Deploy Confluent Operator
 
 ```bash
-kubectl apply -f apps/confluent-operator/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-operator-application-set.yaml
 ```
 
 Wait for healthy:
@@ -300,7 +299,7 @@ kubectl get pods -n confluent-dev -l app=confluent-operator
 ### Step 6 - Deploy Flink Operator
 
 ```bash
-kubectl apply -f apps/confluent-flink-operator/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml
 ```
 
 Wait for healthy:
@@ -386,13 +385,13 @@ helm install argocd argo-cd/argo-cd \
   --wait --timeout 5m
 
 # 2. Deploy cert-manager (required before Flink operator)
-kubectl apply -f apps/cert-manager/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/cert-manager-dev -n argocd --timeout=180s
 
 # 3. Deploy both operators
-kubectl apply -f apps/confluent-operator/dev/app.yaml
-kubectl apply -f apps/confluent-flink-operator/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-operator-application-set.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-operator-dev \
   application/confluent-flink-operator-dev \

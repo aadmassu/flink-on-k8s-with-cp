@@ -61,8 +61,8 @@ oc version
 - An OpenShift 4.12+ cluster is provisioned and accessible via `oc` CLI.
 - The deploying user or service account has **cluster-admin** privileges (required for creating namespaces, CRDs, SCCs, and ClusterRoles).
 - Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster.
-- The `app.yaml` files contain **placeholder values** for `spec.destination.server`. Update these with your actual cluster API server endpoint (use `https://kubernetes.default.svc` for the local cluster).
-- If using OpenShift GitOps (Option A), you must update `metadata.namespace` from `argocd` to `openshift-gitops` in each `app.yaml`.
+- The ApplicationSet files in `gitops-config/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
+- If using OpenShift GitOps (Option A), you must update `metadata.namespace` from `argocd` to `openshift-gitops` in each ApplicationSet file.
 - OpenShift may already have cert-manager installed via the Red Hat cert-manager Operator. If so, skip the cert-manager deployment step.
 
 ---
@@ -133,7 +133,7 @@ oc -n openshift-gitops get secret openshift-gitops-cluster -o jsonpath='{.data.a
 | **Username** | `admin` |
 | **Password** | Retrieved from the secret above |
 
-> **Note:** When using OpenShift GitOps, the ArgoCD namespace is `openshift-gitops` (not `argocd`). You will need to update the `metadata.namespace` field in each `app.yaml` accordingly.
+> **Note:** When using OpenShift GitOps, the ArgoCD namespace is `openshift-gitops` (not `argocd`). You will need to update the `metadata.namespace` field in each ApplicationSet file accordingly.
 
 ---
 
@@ -212,14 +212,14 @@ ARGOCD_NS=openshift-gitops   # or "argocd" for standalone Helm installs
 ENV=dev                       # Change to qa, stg, or prd as needed
 ```
 
-### Step 1 - Prepare App Definitions for OpenShift
+### Step 1 - Prepare ApplicationSet Definitions for OpenShift
 
-If using OpenShift GitOps (Option A), update the namespace in each `app.yaml` to `openshift-gitops`:
+If using OpenShift GitOps (Option A), update the namespace in each ApplicationSet to `openshift-gitops`:
 
 ```bash
-# Update namespace in all app.yaml files for your environment
+# Update namespace in all ApplicationSet files for your environment
 for app in cert-manager confluent-operator confluent-flink-operator; do
-  sed -i "s/namespace: argocd/namespace: ${ARGOCD_NS}/" apps/${app}/${ENV}/app.yaml
+  sed -i "s/namespace: argocd/namespace: ${ARGOCD_NS}/" gitops-config/aws-us-east-2/${ENV}/${app}-application-set.yaml
 done
 ```
 
@@ -236,7 +236,7 @@ cert-manager provides TLS certificates required by the Flink operator webhooks.
 > If cert-manager is already running, skip this step.
 
 ```bash
-oc apply -f apps/cert-manager/${ENV}/app.yaml
+oc apply -f gitops-config/aws-us-east-2/${ENV}/cert-manager-application-set.yaml
 ```
 
 Wait for it to become healthy:
@@ -257,7 +257,7 @@ Expected: 3 pods running (cert-manager, cainjector, webhook).
 ### Step 3 - Deploy Confluent Operator (CFK)
 
 ```bash
-oc apply -f apps/confluent-operator/${ENV}/app.yaml
+oc apply -f gitops-config/aws-us-east-2/${ENV}/confluent-operator-application-set.yaml
 ```
 
 Wait for healthy:
@@ -272,7 +272,7 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
 Requires cert-manager to be running.
 
 ```bash
-oc apply -f apps/confluent-flink-operator/${ENV}/app.yaml
+oc apply -f gitops-config/aws-us-east-2/${ENV}/confluent-flink-operator-application-set.yaml
 ```
 
 Wait for healthy:
@@ -407,7 +407,7 @@ ARGOCD_NS=openshift-gitops   # or "argocd" for standalone Helm installs
 # Update namespace in app definitions (only needed for OpenShift GitOps)
 if [ "${ARGOCD_NS}" != "argocd" ]; then
   for app in cert-manager confluent-operator confluent-flink-operator; do
-    sed -i "s/namespace: argocd/namespace: ${ARGOCD_NS}/" apps/${app}/${ENV}/app.yaml
+    sed -i "s/namespace: argocd/namespace: ${ARGOCD_NS}/" gitops-config/aws-us-east-2/${ENV}/${app}-application-set.yaml
   done
 fi
 
@@ -424,7 +424,7 @@ oc label namespace cert-manager argocd.argoproj.io/managed-by=${ARGOCD_NS} --ove
 
 # 1. cert-manager (skip if already installed on OpenShift)
 if ! oc get pods -n cert-manager 2>/dev/null | grep -q Running; then
-  oc apply -f apps/cert-manager/${ENV}/app.yaml
+  oc apply -f gitops-config/aws-us-east-2/${ENV}/cert-manager-application-set.yaml
   oc wait --for=jsonpath='{.status.health.status}'=Healthy \
     application/cert-manager-${ENV} -n ${ARGOCD_NS} --timeout=180s
 else
@@ -432,8 +432,8 @@ else
 fi
 
 # 2. Both operators
-oc apply -f apps/confluent-operator/${ENV}/app.yaml
-oc apply -f apps/confluent-flink-operator/${ENV}/app.yaml
+oc apply -f gitops-config/aws-us-east-2/${ENV}/confluent-operator-application-set.yaml
+oc apply -f gitops-config/aws-us-east-2/${ENV}/confluent-flink-operator-application-set.yaml
 oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-operator-${ENV} \
   application/confluent-flink-operator-${ENV} \

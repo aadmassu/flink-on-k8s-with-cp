@@ -54,7 +54,7 @@ Template variables (`{{environment}}`, `{{url}}`, `{{cluster}}`) are substituted
 
 ## Usage
 
-ApplicationSets are an alternative to applying individual `app.yaml` files. Apply an ApplicationSet to have ArgoCD automatically generate the corresponding Application:
+Apply an ApplicationSet to have ArgoCD automatically generate the corresponding Application:
 
 ```bash
 kubectl apply -f gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml

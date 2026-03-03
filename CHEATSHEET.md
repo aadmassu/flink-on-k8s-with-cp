@@ -106,7 +106,7 @@ oc get route openshift-gitops-server -n openshift-gitops -o jsonpath='{.spec.hos
 ### cert-manager
 
 ```bash
-kubectl apply -f apps/cert-manager/<env>/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/<env>/cert-manager-application-set.yaml
 
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/cert-manager-<env> -n argocd --timeout=180s
@@ -117,7 +117,7 @@ kubectl get pods -n cert-manager
 ### Confluent Operator
 
 ```bash
-kubectl apply -f apps/confluent-operator/<env>/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/<env>/confluent-operator-application-set.yaml
 
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-operator-<env> -n argocd --timeout=180s
@@ -128,7 +128,7 @@ kubectl get pods -n confluent-<env> -l app=confluent-operator
 ### Flink Operator
 
 ```bash
-kubectl apply -f apps/confluent-flink-operator/<env>/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/<env>/confluent-flink-operator-application-set.yaml
 
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-flink-operator-<env> -n argocd --timeout=180s
@@ -263,9 +263,9 @@ Most commands in this project follow this pattern. Set `ENV` once and reuse:
 ```bash
 ENV=dev   # Change to: qa, stg, prd
 
-kubectl apply -f apps/cert-manager/${ENV}/app.yaml
-kubectl apply -f apps/confluent-operator/${ENV}/app.yaml
-kubectl apply -f apps/confluent-flink-operator/${ENV}/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/${ENV}/cert-manager-application-set.yaml
+kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-operator-application-set.yaml
+kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-flink-operator-application-set.yaml
 
 kubectl get pods -n confluent-${ENV}
 kubectl get applications -n argocd

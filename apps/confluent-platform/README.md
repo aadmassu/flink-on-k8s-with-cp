@@ -20,7 +20,6 @@ Confluent Platform CRD manifests for deploying the full Kafka ecosystem. Require
 ```
 confluent-platform/
 |-- dev/
-|   |-- app.yaml       # ArgoCD Application resource (directory source)
 |   +-- manifests/     # Kubernetes CRD manifest files
 |       |-- kraft-controller.yaml
 |       |-- kafka.yaml

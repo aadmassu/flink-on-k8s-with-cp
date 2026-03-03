@@ -15,8 +15,7 @@ The **Confluent Flink Kubernetes Operator** manages the lifecycle of Apache Flin
 ```
 confluent-flink-operator/
 |-- dev/
-|   |-- app.yaml       # ArgoCD Application resource
-|   +-- values.yaml    # Helm values (reference copy)
+|   +-- values.yaml    # Helm values referenced by ApplicationSets via $values/
 |-- qa/
 |-- stg/
 +-- prd/
@@ -24,7 +23,7 @@ confluent-flink-operator/
 
 ## Configuration
 
-The `app.yaml` uses inline `valuesObject` for Helm values. The `values.yaml` is a reference copy.
+Helm values are defined in `values.yaml` and referenced by the ApplicationSet in `gitops-config/` via the `$values/` multi-source pattern.
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
@@ -72,7 +71,7 @@ kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/cert-manager-dev -n argocd --timeout=180s
 
 # Deploy the Flink operator
-kubectl apply -f apps/confluent-flink-operator/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml
 
 # Wait for healthy
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \

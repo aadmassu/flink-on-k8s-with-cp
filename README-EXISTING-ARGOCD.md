@@ -46,10 +46,10 @@ kubectl get pods -n argocd
 ## Assumptions
 
 - ArgoCD is **already installed and healthy** on the target cluster. If not, see the main [README.md](README.md) for full installation instructions.
-- The deploying user or service account has permissions to create ArgoCD `Application` resources in the ArgoCD namespace and create namespaces on the cluster.
+- The deploying user or service account has permissions to create ArgoCD `ApplicationSet` resources in the ArgoCD namespace and create namespaces on the cluster.
 - Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster (ArgoCD fetches charts directly).
-- The `app.yaml` files contain **placeholder values** for `spec.destination.server`. Update these with your actual cluster API server endpoint (use `https://kubernetes.default.svc` for the local cluster).
-- If ArgoCD is installed in a namespace other than `argocd`, you must update `metadata.namespace` in each `app.yaml` before deploying.
+- The ApplicationSet files in `gitops-config/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
+- If ArgoCD is installed in a namespace other than `argocd`, you must update `metadata.namespace` in each ApplicationSet file before deploying.
 
 ---
 
@@ -81,7 +81,7 @@ kubectl get crd applications.argoproj.io
 
 Expected: All ArgoCD pods should be in `Running` state and the `applications.argoproj.io` CRD should exist.
 
-> **Note:** If ArgoCD is installed in a namespace other than `argocd`, update the `metadata.namespace` field in each `app.yaml` file before proceeding.
+> **Note:** If ArgoCD is installed in a namespace other than `argocd`, update the `metadata.namespace` field in each ApplicationSet file before proceeding.
 
 ---
 
@@ -94,24 +94,24 @@ cd <repo-directory>
 
 ---
 
-## Step 3 - Review and Customize App Definitions
+## Step 3 - Review and Customize ApplicationSet Definitions
 
-Before deploying, review and update the Application resources for your environment. Each app is defined in `apps/<app-name>/<env>/app.yaml`.
+Before deploying, review and update the ApplicationSet resources for your environment. Each component is defined in `gitops-config/aws-us-east-2/<env>/<component>-application-set.yaml`.
 
-Key fields to check in each `app.yaml`:
+Key fields to check in each ApplicationSet:
 
 | Field | What to verify |
 |-------|----------------|
 | `metadata.namespace` | Must match your ArgoCD namespace (default: `argocd`) |
-| `spec.destination.server` | Must point to your target cluster API server (use `https://kubernetes.default.svc` for the local cluster) |
-| `spec.destination.namespace` | Target namespace for the application (e.g., `confluent-dev`) |
-| `spec.source.repoURL` | Helm chart repository URL |
-| `spec.source.targetRevision` | Helm chart version |
+| Generator `url` | Must point to your target cluster API server (dev is pre-configured to `https://kubernetes.default.svc`) |
+| `spec.template.spec.destination.namespace` | Target namespace for the application (e.g., `confluent-dev`) |
+| `spec.template.spec.sources[0].repoURL` | Helm chart repository URL |
+| `spec.template.spec.sources[0].targetRevision` | Helm chart version |
 
-Example - check a dev app definition:
+Example - check a dev ApplicationSet definition:
 
 ```bash
-cat apps/cert-manager/dev/app.yaml
+cat gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
 ```
 
 ### Configuration summary
@@ -128,10 +128,10 @@ cat apps/cert-manager/dev/app.yaml
 
 cert-manager provides TLS certificates required by the Flink operator webhooks. Deploy it first.
 
-**Apply the ArgoCD Application resource:**
+**Apply the ArgoCD ApplicationSet resource:**
 
 ```bash
-kubectl apply -f apps/cert-manager/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
 ```
 
 **Wait for cert-manager to become healthy:**
@@ -162,10 +162,10 @@ cert-manager-webhook-...                   1/1     Running   0          ...
 
 The Confluent for Kubernetes operator manages Confluent Platform CRDs. It is configured with `namespaced: true` (watches only its target namespace) and `kRaftEnabled: true` (KRaft mode for Kafka).
 
-**Apply the ArgoCD Application resource:**
+**Apply the ArgoCD ApplicationSet resource:**
 
 ```bash
-kubectl apply -f apps/confluent-operator/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-operator-application-set.yaml
 ```
 
 **Wait for healthy:**
@@ -187,10 +187,10 @@ kubectl get pods -n confluent-dev -l app=confluent-operator
 
 The Flink Kubernetes operator manages Flink workloads. Requires cert-manager to be running. It is configured with `watchNamespaces` scoped to the environment namespace and Prometheus metrics enabled.
 
-**Apply the ArgoCD Application resource:**
+**Apply the ArgoCD ApplicationSet resource:**
 
 ```bash
-kubectl apply -f apps/confluent-flink-operator/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml
 ```
 
 **Wait for healthy:**
@@ -253,7 +253,7 @@ Instead of running the deployment steps manually, you can use the included CI/CD
 
 Both pipelines:
 - Verify ArgoCD is running before deploying
-- Automatically update `app.yaml` namespaces if ArgoCD is not in the default `argocd` namespace
+- Automatically update ApplicationSet namespaces if ArgoCD is not in the default `argocd` namespace
 - Deploy cert-manager, Confluent Operator, and Flink Operator in dependency order
 - Wait for health checks and report final status
 
@@ -269,13 +269,13 @@ Deploy all operators at once (respecting dependency order):
 ENV=dev  # Change to qa, stg, or prd as needed
 
 # 1. cert-manager (must be first)
-kubectl apply -f apps/cert-manager/${ENV}/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/${ENV}/cert-manager-application-set.yaml
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/cert-manager-${ENV} -n argocd --timeout=180s
 
 # 2. Both operators (can run in parallel)
-kubectl apply -f apps/confluent-operator/${ENV}/app.yaml
-kubectl apply -f apps/confluent-flink-operator/${ENV}/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-operator-application-set.yaml
+kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-flink-operator-application-set.yaml
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-operator-${ENV} \
   application/confluent-flink-operator-${ENV} \
@@ -297,7 +297,7 @@ kubectl get pods -n cert-manager
 
 ### ArgoCD namespace mismatch
 
-If you see `Error from server (NotFound): applications.argoproj.io "..." not found`, your ArgoCD may be in a different namespace. Update `metadata.namespace` in each `app.yaml`:
+If you see `Error from server (NotFound): applications.argoproj.io "..." not found`, your ArgoCD may be in a different namespace. Update `metadata.namespace` in each ApplicationSet file:
 
 ```bash
 # Find where ArgoCD is running
@@ -340,9 +340,9 @@ Replace `dev` with your target environment in all commands:
 
 ```bash
 # Example for QA
-kubectl apply -f apps/cert-manager/qa/app.yaml
-kubectl apply -f apps/confluent-operator/qa/app.yaml
-kubectl apply -f apps/confluent-flink-operator/qa/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/qa/cert-manager-application-set.yaml
+kubectl apply -f gitops-config/aws-us-east-2/qa/confluent-operator-application-set.yaml
+kubectl apply -f gitops-config/aws-us-east-2/qa/confluent-flink-operator-application-set.yaml
 ```
 
-Note that `qa`, `stg`, and `prd` environments use **manual sync** by default. You will need to trigger syncs manually via the ArgoCD UI or CLI after applying the Application resources.
+Note that `qa`, `stg`, and `prd` environments use **manual sync** by default. You will need to trigger syncs manually via the ArgoCD UI or CLI after applying the ApplicationSet resources.

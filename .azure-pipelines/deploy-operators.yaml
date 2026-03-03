@@ -3,8 +3,8 @@
 #
 # This pipeline:
 #   1. Verifies ArgoCD is running
-#   2. Deploys cert-manager (via ArgoCD Application)
-#   3. Deploys Confluent Operator and Flink Operator (via ArgoCD Applications)
+#   2. Deploys cert-manager (via ArgoCD ApplicationSet)
+#   3. Deploys Confluent Operator and Flink Operator (via ArgoCD ApplicationSets)
 
 trigger: none
 
@@ -63,14 +63,14 @@ stages:
                 kubectl get crd applications.argoproj.io
 
           - task: Bash@3
-            displayName: "Update app namespace (if not default)"
+            displayName: "Update ApplicationSet namespace (if not default)"
             condition: ne('${{ parameters.argocdNamespace }}', 'argocd')
             inputs:
               targetType: inline
               script: |
-                echo "Updating metadata.namespace to $(ARGOCD_NS) in app definitions..."
+                echo "Updating metadata.namespace to $(ARGOCD_NS) in ApplicationSet definitions..."
                 for app in cert-manager confluent-operator confluent-flink-operator; do
-                  sed -i "s/namespace: argocd/namespace: $(ARGOCD_NS)/" apps/${app}/$(ENV)/app.yaml
+                  sed -i "s/namespace: argocd/namespace: $(ARGOCD_NS)/" gitops-config/aws-us-east-2/$(ENV)/${app}-application-set.yaml
                 done
 
           - task: Bash@3
@@ -78,7 +78,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f apps/cert-manager/$(ENV)/app.yaml
+                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/cert-manager-application-set.yaml
 
                 echo "Waiting for cert-manager to become healthy..."
                 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
@@ -93,7 +93,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f apps/confluent-operator/$(ENV)/app.yaml
+                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/confluent-operator-application-set.yaml
 
                 echo "Waiting for Confluent Operator to become healthy..."
                 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
@@ -105,7 +105,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                kubectl apply -f apps/confluent-flink-operator/$(ENV)/app.yaml
+                kubectl apply -f gitops-config/aws-us-east-2/$(ENV)/confluent-flink-operator-application-set.yaml
 
                 echo "Waiting for Flink Operator to become healthy..."
                 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \

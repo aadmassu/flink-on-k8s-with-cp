@@ -17,13 +17,16 @@ spec:
       namespace: argocd
     spec:
       project: default
-      source:
-        repoURL: https://packages.confluent.io/helm
-        chart: confluent-for-kubernetes
-        targetRevision: 0.*
-        helm:
-          valueFiles:
-            - $values/apps/confluent-operator/{{environment}}/values.yaml
+      sources:
+        - repoURL: https://packages.confluent.io/helm
+          chart: confluent-for-kubernetes
+          targetRevision: 0.*
+          helm:
+            valueFiles:
+              - $values/apps/confluent-operator/{{environment}}/values.yaml
+        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+          targetRevision: HEAD
+          ref: values
       destination:
         server: "{{url}}"
         namespace: "confluent-{{environment}}"

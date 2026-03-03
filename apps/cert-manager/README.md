@@ -15,8 +15,7 @@ X.509 certificate management for Kubernetes. Required as a **prerequisite** for 
 ```
 cert-manager/
 |-- dev/
-|   |-- app.yaml       # ArgoCD Application resource
-|   +-- values.yaml    # Helm values (reference copy)
+|   +-- values.yaml    # Helm values referenced by ApplicationSets via $values/
 |-- qa/
 |-- stg/
 +-- prd/
@@ -24,7 +23,7 @@ cert-manager/
 
 ## Configuration
 
-The `app.yaml` uses inline `valuesObject` for Helm values. The `values.yaml` is a reference copy.
+Helm values are defined in `values.yaml` and referenced by the ApplicationSet in `gitops-config/` via the `$values/` multi-source pattern.
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
@@ -53,7 +52,7 @@ Deployed to the `cert-manager` namespace (created automatically via `CreateNames
 ## Deployment
 
 ```bash
-kubectl apply -f apps/cert-manager/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
 
 # Wait for healthy
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \

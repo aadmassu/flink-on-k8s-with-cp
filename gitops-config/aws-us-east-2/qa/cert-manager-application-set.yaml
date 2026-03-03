@@ -17,13 +17,16 @@ spec:
       namespace: argocd
     spec:
       project: default
-      source:
-        repoURL: https://charts.jetstack.io
-        chart: cert-manager
-        targetRevision: 1.*
-        helm:
-          valueFiles:
-            - $values/apps/cert-manager/{{environment}}/values.yaml
+      sources:
+        - repoURL: https://charts.jetstack.io
+          chart: cert-manager
+          targetRevision: 1.*
+          helm:
+            valueFiles:
+              - $values/apps/cert-manager/{{environment}}/values.yaml
+        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+          targetRevision: HEAD
+          ref: values
       destination:
         server: "{{url}}"
         namespace: cert-manager

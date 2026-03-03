@@ -18,7 +18,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/PLACEHOLDER_ORG/FCB.git
+        repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
         path: "apps/confluent-flink/{{environment}}/manifests"
         targetRevision: HEAD
       destination:

@@ -9,7 +9,6 @@ Confluent Manager for Apache Flink (CMF) CRD manifests for managing Flink SQL wo
 ```
 confluent-flink/
 |-- dev/
-|   |-- app.yaml       # ArgoCD Application resource (directory source)
 |   +-- manifests/     # Kubernetes CRD manifest files
 |       +-- confluent-flink-manager.yaml
 |-- qa/

@@ -15,8 +15,7 @@ The **Confluent for Kubernetes (CFK)** operator manages the lifecycle of Conflue
 ```
 confluent-operator/
 |-- dev/
-|   |-- app.yaml       # ArgoCD Application resource
-|   +-- values.yaml    # Helm values (reference copy)
+|   +-- values.yaml    # Helm values referenced by ApplicationSets via $values/
 |-- qa/
 |-- stg/
 +-- prd/
@@ -24,7 +23,7 @@ confluent-operator/
 
 ## Configuration
 
-The `app.yaml` uses inline `valuesObject` for Helm values. The `values.yaml` is a reference copy.
+Helm values are defined in `values.yaml` and referenced by the ApplicationSet in `gitops-config/` via the `$values/` multi-source pattern.
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
@@ -59,7 +58,7 @@ Deployed to `confluent-<env>` (e.g., `confluent-dev`, `confluent-prd`). Created 
 ## Deployment
 
 ```bash
-kubectl apply -f apps/confluent-operator/dev/app.yaml
+kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-operator-application-set.yaml
 
 # Wait for healthy
 kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
