@@ -44,9 +44,13 @@ This project follows a **phased approach**:
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| **Phase-I** | **Operators only** -- cert-manager, Confluent Operator (CFK), Flink Operator | **Current** |
-| **Phase-II** | **CMF + Flink on K8s, CP on VMs (external Kafka)** -- deploy Confluent Manager for Apache Flink connecting to external Confluent Platform | Planned |
-| **Phase-III** | **CMF + Flink + CP on K8s** -- migrate Confluent Platform onto Kubernetes via CFK, fully managed end-to-end | Planned |
+| **Phase-I** | **Operators only** | **Current** |
+| **Phase-II** | **CMF + Flink on K8s, CP on VMs (external Kafka)** | Planned |
+| **Phase-III** | **CMF + Flink + CP on K8s** | Planned |
+
+- **Phase-I:** Deploy cert-manager, Confluent Operator (CFK), and Flink Operator. Confluent Platform continues to run on VMs.
+- **Phase-II:** Deploy Confluent Manager for Apache Flink (CMF) on Kubernetes, connecting to the external Confluent Platform on VMs.
+- **Phase-III:** Migrate Confluent Platform onto Kubernetes via CFK. CMF manages Flink SQL workloads end-to-end.
 
 ### Phase-I Components
 
