@@ -135,7 +135,7 @@ oc get crd applications.argoproj.io
 # cert-manager CRDs
 oc get crd certificates.cert-manager.io
 
-# Confluent Platform CRDs
+# Confluent Operator CRDs (CFK)
 oc get crd kafkas.platform.confluent.io
 ```
 

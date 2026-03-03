@@ -1,6 +1,6 @@
 # Deploying into an Existing OpenShift GitOps / ArgoCD
 
-This guide provides step-by-step instructions for deploying the full Confluent stack into an OpenShift cluster that **already has ArgoCD running** (via OpenShift GitOps Operator or standalone).
+This guide provides step-by-step instructions for deploying the Confluent and Flink operators into an OpenShift cluster that **already has ArgoCD running** (via OpenShift GitOps Operator or standalone).
 
 If you need to install ArgoCD from scratch, see the main [README.md](README.md).
 
@@ -18,8 +18,6 @@ If you need to install ArgoCD from scratch, see the main [README.md](README.md).
 - [Step 5 - Apply OpenShift Prerequisites (SCCs)](#step-5---apply-openshift-prerequisites-sccs)
 - [Step 6 - Deploy cert-manager](#step-6---deploy-cert-manager)
 - [Step 7 - Deploy Confluent Operator (CFK) and Flink Operator](#step-7---deploy-confluent-operator-cfk-and-flink-operator)
-- [Step 8 - Deploy Confluent Platform](#step-8---deploy-confluent-platform)
-- [Step 9 - Deploy Confluent Flink Manager (CMF)](#step-9---deploy-confluent-flink-manager-cmf)
 - [Verify All Applications](#verify-all-applications)
 - [CI/CD Pipelines](#cicd-pipelines)
 - [Quick Deploy Script](#quick-deploy-script)
@@ -57,15 +55,13 @@ oc get pods -n openshift-gitops   # or your ArgoCD namespace
 ## Deployment Order
 
 ```
-Namespaces + Labels  -->  SCCs (direct oc apply)  -->  cert-manager  -->  Operators  -->  CP  -->  CMF
+Namespaces + Labels  -->  SCCs (direct oc apply)  -->  cert-manager  -->  Operators (CFK + Flink)
 ```
 
 - **Namespaces** must be created and labeled before ArgoCD can manage them.
 - **SCCs** must be applied directly (one-time cluster prerequisite, not an ArgoCD app).
 - **cert-manager** must be healthy before the Flink operator (webhook certificates).
 - **Confluent Operator** and **Flink Operator** can be deployed in parallel after cert-manager.
-- **Confluent Platform** requires the Confluent Operator.
-- **CMF** can be deployed after the Flink Operator.
 
 ---
 
@@ -168,26 +164,6 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
 
 ---
 
-## Step 8 - Deploy Confluent Platform
-
-```bash
-oc apply -f gitops-config/openshift/${ENV}/confluent-platform-application-set.yaml
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-platform-${ENV} -n ${ARGOCD_NS} --timeout=600s
-```
-
----
-
-## Step 9 - Deploy Confluent Flink Manager (CMF)
-
-```bash
-oc apply -f gitops-config/openshift/${ENV}/confluent-flink-application-set.yaml
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-flink-${ENV} -n ${ARGOCD_NS} --timeout=300s
-```
-
----
-
 ## Verify All Applications
 
 ```bash
@@ -205,9 +181,6 @@ NAME                            HEALTH    SYNC     NAMESPACE
 cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev
-confluent-platform-dev          Healthy   Synced   confluent-dev
-confluent-flink-dev             Healthy   Synced   confluent-dev
-confluent-flink-manager-dev     Healthy   Synced   confluent-dev
 ```
 
 ---
@@ -234,7 +207,7 @@ Adapt for OpenShift:
 ./scripts/deploy-openshift-dev.sh
 ```
 
-This script handles all steps including namespace creation, labeling, SCC deployment, and the full Confluent stack. See the main [README.md](README.md#quick-deploy-script) for details.
+This script handles all steps including namespace creation, labeling, SCC deployment, and operator installation. See the main [README.md](README.md#quick-deploy-script) for details.
 
 ---
 

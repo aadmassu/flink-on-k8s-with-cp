@@ -17,9 +17,8 @@ This guide explains how to redirect all Helm chart downloads and container image
 - [Step 4 — Update ApplicationSet Files (Helm Chart URLs)](#step-4--update-applicationset-files-helm-chart-urls)
 - [Step 5 — Update Helm Values Files (Container Image Overrides)](#step-5--update-helm-values-files-container-image-overrides)
 - [Step 6 — Update ArgoCD Application Manifests](#step-6--update-argocd-application-manifests)
-- [Step 7 — Update Confluent Platform CRD Manifests (Optional)](#step-7--update-confluent-platform-crd-manifests-optional)
-- [Step 8 — Update CI/CD Pipelines and Scripts](#step-8--update-cicd-pipelines-and-scripts)
-- [Step 9 — Configure ArgoCD Repository Credentials](#step-9--configure-argocd-repository-credentials)
+- [Step 7 — Update CI/CD Pipelines and Scripts](#step-7--update-cicd-pipelines-and-scripts)
+- [Step 8 — Configure ArgoCD Repository Credentials](#step-8--configure-argocd-repository-credentials)
 - [Verification](#verification)
 - [Complete File Change Checklist](#complete-file-change-checklist)
 - [Troubleshooting](#troubleshooting)
@@ -40,11 +39,8 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 
 | Component | Version | Helm Chart | Chart Version |
 |---|---|---|---|
-| **Confluent Platform** | 8.1.1 | — (deployed via CFK CRDs) | — |
 | **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.*` (latest: `0.1351.59`) |
 | **Flink Kubernetes Operator** | 1.13.x | `flink-kubernetes-operator` | `1.*` (latest: `~1.130.0`) |
-| **Confluent Manager for Apache Flink (CMF)** | 2.2.x | `confluent-manager-for-apache-flink` | `2.*` (latest: `~2.2.0`) |
-| **Apache Flink runtime** | 1.18.x – 2.1.x | — (job images) | — |
 | **cert-manager** | 1.19.4 | `cert-manager` | `1.*` (latest: `1.19.4`) |
 | **ArgoCD** | 2.14.x | `argo-cd` | `7.*` (latest: `7.8.0`) |
 
@@ -83,7 +79,6 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 | `cert-manager` | `https://charts.jetstack.io` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/cert-manager-application-set.yaml` |
 | `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | `0.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-operator-application-set.yaml` |
 | `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
-| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | `1.*` | `apps/confluent-flink/openshift/{dev,qa,stg,prd}/manifests/confluent-flink-manager.yaml` |
 | `argo-cd` | `https://argoproj.github.io/argo-helm` | `7.*` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines |
 
 ---
@@ -123,26 +118,7 @@ The Helm charts pull the images listed below. No container image registries are 
 |---|---|---|
 | `confluent-flink-kubernetes-operator` | `docker.io/confluentinc/confluent-flink-kubernetes-operator` | `1.130.0` |
 
-### Confluent Manager for Apache Flink (CMF)
-
-| Image | Default Registry | Tag |
-|---|---|---|
-| `cp-cmf` | `docker.io/confluentinc/cp-cmf` | `2.2.0` |
-
-### Confluent Platform (managed by CFK operator)
-
-| Image | Default Registry | Tag |
-|---|---|---|
-| `cp-server` (Kafka / KRaft) | `docker.io/confluentinc/cp-server` | `8.1.1` |
-| `cp-enterprise-control-center-next-gen` | `docker.io/confluentinc/cp-enterprise-control-center-next-gen` | `8.1.1` |
-| `cp-enterprise-control-center` (classic) | `docker.io/confluentinc/cp-enterprise-control-center` | `8.1.1` |
-| `cp-schema-registry` | `docker.io/confluentinc/cp-schema-registry` | `8.1.1` |
-| `cp-server-connect` | `docker.io/confluentinc/cp-server-connect` | `8.1.1` |
-| `cp-ksqldb-server` | `docker.io/confluentinc/cp-ksqldb-server` | `8.1.1` |
-| `cp-kafka-rest` | `docker.io/confluentinc/cp-kafka-rest` | `8.1.1` |
-| `confluent-init-container` | `docker.io/confluentinc/confluent-init-container` | `3.1.1` |
-
-> **Key:** CFK controls Confluent Platform images via the `global.provider.registry.fqdn` Helm value on the operator chart. Setting this value once (Step 5b) means the CRD manifests (`kafka.yaml`, `schema-registry.yaml`, etc.) do **not** need individual image overrides.
+> **Note:** Confluent Platform runs on VMs (not Kubernetes) and CMF will be added in a future phase. Mirror those images when they are needed.
 
 ---
 
@@ -179,7 +155,6 @@ helm repo update
 helm pull jetstack/cert-manager --version 1.19.4
 helm pull confluent/confluent-for-kubernetes --version 0.1351.59
 helm pull confluent/flink-kubernetes-operator --version 1.130.0
-helm pull confluent/confluent-manager-for-apache-flink --version 2.2.0
 helm pull argo-cd/argo-cd --version 7.8.0
 
 # Upload to Artifactory local repo
@@ -222,11 +197,10 @@ helm repo update
 helm search repo internal/cert-manager
 helm search repo internal/confluent-for-kubernetes
 helm search repo internal/flink-kubernetes-operator
-helm search repo internal/confluent-manager-for-apache-flink
 helm search repo internal/argo-cd
 ```
 
-All five charts should appear with the expected versions.
+All four charts should appear with the expected versions.
 
 ---
 
@@ -274,17 +248,6 @@ IMAGES=(
   # Flink Operator (1.130.0)
   "docker.io/confluentinc/confluent-flink-kubernetes-operator:1.130.0"
 
-  # Confluent Manager for Apache Flink (2.2.0)
-  "docker.io/confluentinc/cp-cmf:2.2.0"
-
-  # Confluent Platform (8.1.1)
-  "docker.io/confluentinc/cp-server:8.1.1"
-  "docker.io/confluentinc/cp-enterprise-control-center-next-gen:8.1.1"
-  "docker.io/confluentinc/cp-enterprise-control-center:8.1.1"
-  "docker.io/confluentinc/cp-schema-registry:8.1.1"
-  "docker.io/confluentinc/cp-server-connect:8.1.1"
-  "docker.io/confluentinc/cp-ksqldb-server:8.1.1"
-  "docker.io/confluentinc/cp-kafka-rest:8.1.1"
 )
 
 for img in "${IMAGES[@]}"; do
@@ -443,7 +406,7 @@ sed -i 's|repoURL: https://packages.confluent.io/helm|repoURL: https://registry.
   gitops-config/openshift/*/confluent-flink-operator-application-set.yaml
 ```
 
-> **Note:** The `confluent-platform-application-set.yaml` and `confluent-flink-application-set.yaml` files point to a **Git** repository (not a Helm repo) — no change needed.
+> **Note:** Only the three operator ApplicationSets reference Helm repos. Other ApplicationSets (added in future phases) may point to Git repositories and would not need this change.
 
 ---
 
@@ -507,19 +470,9 @@ image:
   registry: registry.example.com
   repository: confluentinc/confluent-operator
 
-# This single setting controls images for ALL Confluent Platform
-# components (Kafka, KRaft, Schema Registry, Connect, ksqlDB,
-# Control Center) deployed via CFK CRD manifests.
-global:
-  provider:
-    registry:
-      fqdn: registry.example.com
-
 imagePullSecrets:
   - name: internal-registry
 ```
-
-> **Key:** Setting `global.provider.registry.fqdn` means the CRD manifests under `apps/confluent-platform/` do **not** need individual image overrides. CFK automatically prefixes this registry to all Confluent Platform component images.
 
 ### 5c. Flink Operator (4 files)
 
@@ -581,7 +534,7 @@ redis:
 
 ## Step 6 — Update ArgoCD Application Manifests
 
-### 6a. ArgoCD Self-Management (4 files)
+### ArgoCD Self-Management (4 files)
 
 Files:
 
@@ -606,93 +559,17 @@ Change:
     chart: argo-cd
 ```
 
-### 6b. Confluent Flink Manager (4 files)
-
-Files:
-
-```
-apps/confluent-flink/openshift/dev/manifests/confluent-flink-manager.yaml
-apps/confluent-flink/openshift/qa/manifests/confluent-flink-manager.yaml
-apps/confluent-flink/openshift/stg/manifests/confluent-flink-manager.yaml
-apps/confluent-flink/openshift/prd/manifests/confluent-flink-manager.yaml
-```
-
-Change the `repoURL` and add image override parameters:
-
-```yaml
-# Before
-  source:
-    repoURL: https://packages.confluent.io/helm
-    chart: confluent-manager-for-apache-flink
-    targetRevision: 1.*
-    helm:
-      parameters:
-        - name: cmf.sql.production
-          value: "false"
-
-# After
-  source:
-    repoURL: https://registry.example.com/helm
-    chart: confluent-manager-for-apache-flink
-    targetRevision: 1.*
-    helm:
-      parameters:
-        - name: cmf.sql.production
-          value: "false"
-        - name: image.registry
-          value: registry.example.com
-        - name: image.repository
-          value: confluentinc/cp-cmf
-        - name: imagePullSecrets[0].name
-          value: internal-registry
-```
-
 ### Bulk sed for repoURL changes
 
 ```bash
 # ArgoCD app manifests
 sed -i 's|repoURL: https://argoproj.github.io/argo-helm|repoURL: https://registry.example.com/helm|' \
   apps/argocd/*/app.yaml
-
-# Confluent Flink Manager manifests
-sed -i 's|repoURL: https://packages.confluent.io/helm|repoURL: https://registry.example.com/helm|' \
-  apps/confluent-flink/openshift/*/manifests/confluent-flink-manager.yaml
 ```
-
-> The image override parameters for CMF must be added manually (see diff above).
 
 ---
 
-## Step 7 — Update Confluent Platform CRD Manifests (Optional)
-
-If you set `global.provider.registry.fqdn` in the Confluent Operator values (Step 5b), the CRD manifests under `apps/confluent-platform/` do **not** require changes. CFK automatically applies the internal registry to all managed component images.
-
-However, if you need **per-component** image control (e.g., different tags per component), you can add explicit overrides to individual CRD manifests:
-
-```yaml
-# Example: apps/confluent-platform/dev/manifests/kafka.yaml
-apiVersion: platform.confluent.io/v1beta1
-kind: Kafka
-metadata:
-  name: kafka
-  namespace: confluent-dev
-spec:
-  replicas: 1
-  image:
-    application: registry.example.com/confluentinc/cp-server:8.1.1
-    init: registry.example.com/confluentinc/confluent-init-container:3.1.1
-  podTemplate:
-    spec:
-      imagePullSecrets:
-        - name: internal-registry
-  # ... rest of spec unchanged
-```
-
-This is optional and only needed for fine-grained control beyond what `global.provider.registry.fqdn` provides.
-
----
-
-## Step 8 — Update CI/CD Pipelines and Scripts
+## Step 7 — Update CI/CD Pipelines and Scripts
 
 ### 8a. GitHub Actions (2 files)
 
@@ -736,7 +613,7 @@ This script deploys via ArgoCD ApplicationSets and does not call `helm repo add`
 
 ---
 
-## Step 9 — Configure ArgoCD Repository Credentials
+## Step 8 — Configure ArgoCD Repository Credentials
 
 If your internal Helm repository requires authentication, ArgoCD needs credentials to pull charts. Create a Kubernetes secret with the `argocd.argoproj.io/secret-type: repository` label:
 
@@ -828,10 +705,10 @@ All applications should show `Healthy` / `Synced`.
 | 14 | `apps/cert-manager/qa/values.yaml` | Image registry + pull secret |
 | 15 | `apps/cert-manager/stg/values.yaml` | Image registry + pull secret |
 | 16 | `apps/cert-manager/prd/values.yaml` | Image registry + pull secret |
-| 17 | `apps/confluent-operator/dev/values.yaml` | Image registry + `global.provider.registry.fqdn` + pull secret |
-| 18 | `apps/confluent-operator/qa/values.yaml` | Image registry + `global.provider.registry.fqdn` + pull secret |
-| 19 | `apps/confluent-operator/stg/values.yaml` | Image registry + `global.provider.registry.fqdn` + pull secret |
-| 20 | `apps/confluent-operator/prd/values.yaml` | Image registry + `global.provider.registry.fqdn` + pull secret |
+| 17 | `apps/confluent-operator/dev/values.yaml` | Image registry + pull secret |
+| 18 | `apps/confluent-operator/qa/values.yaml` | Image registry + pull secret |
+| 19 | `apps/confluent-operator/stg/values.yaml` | Image registry + pull secret |
+| 20 | `apps/confluent-operator/prd/values.yaml` | Image registry + pull secret |
 | 21 | `apps/confluent-flink-operator/dev/values.yaml` | Image repository + pull secret |
 | 22 | `apps/confluent-flink-operator/qa/values.yaml` | Image repository + pull secret |
 | 23 | `apps/confluent-flink-operator/stg/values.yaml` | Image repository + pull secret |
@@ -845,18 +722,14 @@ All applications should show `Healthy` / `Synced`.
 | 30 | `apps/argocd/qa/app.yaml` | `repoURL` |
 | 31 | `apps/argocd/stg/app.yaml` | `repoURL` |
 | 32 | `apps/argocd/prd/app.yaml` | `repoURL` |
-| 33 | `apps/confluent-flink/openshift/dev/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
-| 34 | `apps/confluent-flink/openshift/qa/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
-| 35 | `apps/confluent-flink/openshift/stg/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
-| 36 | `apps/confluent-flink/openshift/prd/manifests/confluent-flink-manager.yaml` | `repoURL` + image params |
 | | **CI/CD pipelines and scripts** | |
-| 37 | `.github/workflows/full-deploy.yaml` | `helm repo add` URLs |
-| 38 | `.azure-pipelines/full-deploy.yaml` | `helm repo add` URLs |
-| 39 | `scripts/deploy-openshift-dev.sh` | No changes needed (uses ApplicationSets) |
+| 33 | `.github/workflows/full-deploy.yaml` | `helm repo add` URLs |
+| 34 | `.azure-pipelines/full-deploy.yaml` | `helm repo add` URLs |
+| 35 | `scripts/deploy-openshift-dev.sh` | No changes needed (uses ApplicationSets) |
 | | **Documentation** | |
-| 40 | `README.md` | Update references if needed |
+| 36 | `README.md` | Update references if needed |
 
-> Total: **~40 files**. The `deploy-operators.yaml` pipelines (GitHub + Azure) and `confluent-platform/` CRD manifests do not require changes.
+> Total: **~36 files**. The `deploy-operators.yaml` pipelines (GitHub + Azure) do not require changes.
 
 ---
 
@@ -886,7 +759,7 @@ If the chart is missing:
 
 ### ArgoCD cannot pull Helm chart (authentication error)
 
-ArgoCD needs repository credentials for authenticated Helm repos. See [Step 9](#step-9--configure-argocd-repository-credentials).
+ArgoCD needs repository credentials for authenticated Helm repos. See [Step 8](#step-8--configure-argocd-repository-credentials).
 
 Check if the credential secret exists:
 
@@ -903,21 +776,3 @@ Hosted/local Helm repos (as opposed to proxy repos) must have the exact chart ve
 helm search repo internal/<chart-name> --versions
 ```
 
-### Confluent Platform pods still pulling from docker.io
-
-This means `global.provider.registry.fqdn` was not set in the Confluent Operator values. Verify:
-
-```bash
-oc get application confluent-operator-dev -n openshift-gitops -o jsonpath='{.status.sync.status}'
-```
-
-Look for:
-
-```yaml
-global:
-  provider:
-    registry:
-      fqdn: registry.example.com
-```
-
-If missing, update `apps/confluent-operator/<env>/values.yaml` and sync the ArgoCD application.

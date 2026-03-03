@@ -21,15 +21,11 @@ oc cluster-info || { echo "ERROR: Cannot reach the cluster. Check your kubeconfi
 # ── Step 1: Delete ArgoCD ApplicationSets (reverse order of deploy) ──────────
 echo ""
 echo "==> Deleting ArgoCD ApplicationSets..."
-oc delete applicationset confluent-flink-$ENV -n "$ARGOCD_NS" --ignore-not-found
-oc delete applicationset confluent-platform-$ENV -n "$ARGOCD_NS" --ignore-not-found
 oc delete applicationset confluent-flink-operator-$ENV -n "$ARGOCD_NS" --ignore-not-found
 oc delete applicationset confluent-operator-$ENV -n "$ARGOCD_NS" --ignore-not-found
 oc delete applicationset cert-manager-$ENV -n "$ARGOCD_NS" --ignore-not-found
 
 echo "    Waiting for application resources to be cleaned up..."
-oc wait --for=delete applicationset/confluent-flink-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
-oc wait --for=delete applicationset/confluent-platform-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
 oc wait --for=delete applicationset/confluent-flink-operator-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
 oc wait --for=delete applicationset/confluent-operator-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
 oc wait --for=delete applicationset/cert-manager-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true

@@ -1,6 +1,6 @@
-# Confluent Platform & Flink on OpenShift
+# Flink on OpenShift with Confluent
 
-GitOps repository for deploying **Confluent Platform**, **Confluent Flink Manager (CMF)**, and all supporting operators on **Red Hat OpenShift** using **ArgoCD** (OpenShift GitOps).
+GitOps repository for deploying **Confluent and Flink operators** on **Red Hat OpenShift** using **ArgoCD** (OpenShift GitOps). Confluent Platform runs externally on VMs; this repo manages only the Kubernetes operators needed for Flink workloads.
 
 ---
 
@@ -20,11 +20,8 @@ GitOps repository for deploying **Confluent Platform**, **Confluent Flink Manage
   - [Step 2 - Apply OpenShift Prerequisites (SCCs)](#step-2---apply-openshift-prerequisites-sccs)
   - [Step 3 - Deploy cert-manager](#step-3---deploy-cert-manager)
   - [Step 4 - Deploy Confluent Operator (CFK) and Flink Operator](#step-4---deploy-confluent-operator-cfk-and-flink-operator)
-  - [Step 5 - Deploy Confluent Platform](#step-5---deploy-confluent-platform)
-  - [Step 6 - Deploy Confluent Flink Manager (CMF)](#step-6---deploy-confluent-flink-manager-cmf)
 - [Verify All Applications](#verify-all-applications)
 - [Deployment Order](#deployment-order)
-- [OpenShift Routes for External Access](#openshift-routes-for-external-access)
 - [Quick Deploy Script](#quick-deploy-script)
 - [Tear Down](#tear-down)
 - [Sync Policies](#sync-policies)
@@ -36,21 +33,28 @@ GitOps repository for deploying **Confluent Platform**, **Confluent Flink Manage
   - [cert-manager on OpenShift](#cert-manager-on-openshift)
 - [CI/CD Pipelines](#cicd-pipelines)
 - [Troubleshooting](#troubleshooting)
+- [Phased Rollout](#phased-rollout)
 - [Additional Guides](#additional-guides)
 
 ---
 
 ## Overview
 
-This repository contains the complete GitOps configuration for deploying the full Confluent stack on OpenShift:
+This project follows a **phased approach**:
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 1** | Operators only -- cert-manager, Confluent Operator (CFK), Flink Operator | **Current** |
+| **Phase 2** | Add Confluent Manager for Apache Flink (CMF) configured to work with external CP on VMs | Planned |
+| **Phase 3** | CMF with CFK-managed Confluent Platform on Kubernetes | Planned |
+
+### Phase 1 Components
 
 | Component | Description |
 |-----------|-------------|
-| **cert-manager** | X.509 certificate management - required by Flink operator webhooks |
-| **Confluent Operator (CFK)** | Confluent for Kubernetes operator - manages Confluent Platform CRDs |
-| **Flink Operator** | Confluent's Flink Kubernetes operator - manages Flink workloads |
-| **Confluent Platform** | Kafka (KRaft), Schema Registry, Connect, ksqlDB, Control Center |
-| **Confluent Flink Manager (CMF)** | Manages Flink SQL workloads on Kubernetes |
+| **cert-manager** | X.509 certificate management -- required by Flink operator webhooks |
+| **Confluent Operator (CFK)** | Confluent for Kubernetes operator -- manages Confluent Platform CRDs |
+| **Flink Operator** | Confluent's Flink Kubernetes operator -- manages Flink workloads |
 
 All components except SCCs are deployed **through ArgoCD** via ApplicationSet resources in `gitops-config/openshift/`. OpenShift prerequisites (SCCs + ClusterRoleBindings) are applied directly as a one-time cluster setup.
 
@@ -66,15 +70,11 @@ flowchart TD
     cm["cert-manager\n(cert-manager ns)"]
     cop["confluent-operator\n(confluent-&lt;env&gt; ns)"]
     fop["confluent-flink-operator\n(confluent-&lt;env&gt; ns)"]
-    cp["confluent-platform\n(confluent-&lt;env&gt; ns)"]
-    cmf["confluent-flink-manager\n(confluent-&lt;env&gt; ns)"]
 
     admin -- "oc apply -f openshift-prereqs/&lt;env&gt;/manifests/" --> scc
     argocd -- "ApplicationSet" --> cm
     argocd -- "ApplicationSet" --> cop
     argocd -- "ApplicationSet" --> fop
-    argocd -- "ApplicationSet" --> cp
-    cp -- "depends on" --> cmf
 ```
 
 ---
@@ -118,6 +118,7 @@ oc version
 - Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster. For air-gapped or restricted environments, see the [Internal Registry Guide](README-INTERNAL-REGISTRY.md).
 - The ApplicationSet files in `gitops-config/openshift/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
 - OpenShift may already have cert-manager installed via the Red Hat cert-manager Operator. If so, skip the cert-manager deployment step.
+- **Confluent Platform runs on VMs**, not on Kubernetes. This repo deploys only the operators needed for Flink workloads.
 
 ---
 
@@ -141,11 +142,10 @@ oc version
 |   |-- cert-manager/                        # cert-manager values + OpenShift overlay
 |   |-- confluent-operator/                  # CFK operator values + OpenShift overlay
 |   |-- confluent-flink-operator/            # Flink operator values + OpenShift overlay
-|   |-- confluent-platform/                  # Confluent Platform CRD manifests
-|   +-- confluent-flink/                     # CMF manifests (base + openshift/)
+|   +-- confluent-flink/                     # CMF manifests (Phase 2 -- not yet populated)
 |
 |-- gitops-config/openshift/                 # ArgoCD ApplicationSets for OpenShift
-|   |-- dev/  qa/  stg/  prd/               # Per-environment (5 ApplicationSets each)
+|   |-- dev/  qa/  stg/  prd/               # Per-environment (3 ApplicationSets each)
 |
 |-- scripts/
 |   |-- deploy-openshift-dev.sh              # Full OpenShift deploy script
@@ -159,11 +159,10 @@ oc version
 
 | Directory | Purpose |
 |-----------|---------|
-| `gitops-config/openshift/<env>/` | ArgoCD ApplicationSet resources - the entry point for deploying all components |
+| `gitops-config/openshift/<env>/` | ArgoCD ApplicationSet resources -- the entry point for deploying all components |
 | `apps/<app>/<env>/values.yaml` | Helm values files referenced by ApplicationSets via `$values/` |
 | `apps/<app>/openshift-overlay.yaml` | OpenShift-specific Helm overrides (null security contexts, disable PSP) |
 | `openshift-prereqs/<env>/manifests/` | Custom SCC and per-env ClusterRoleBindings (applied directly, not via ArgoCD) |
-| `apps/confluent-flink/openshift/<env>/manifests/` | CMF manifests with `namespace: openshift-gitops` |
 
 ---
 
@@ -307,22 +306,6 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   -n ${ARGOCD_NS} --timeout=180s
 ```
 
-### Step 5 - Deploy Confluent Platform
-
-```bash
-oc apply -f gitops-config/openshift/${ENV}/confluent-platform-application-set.yaml
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-platform-${ENV} -n ${ARGOCD_NS} --timeout=600s
-```
-
-### Step 6 - Deploy Confluent Flink Manager (CMF)
-
-```bash
-oc apply -f gitops-config/openshift/${ENV}/confluent-flink-application-set.yaml
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-flink-${ENV} -n ${ARGOCD_NS} --timeout=300s
-```
-
 ---
 
 ## Verify All Applications
@@ -342,9 +325,6 @@ NAME                            HEALTH    SYNC     NAMESPACE
 cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev
-confluent-platform-dev          Healthy   Synced   confluent-dev
-confluent-flink-dev             Healthy   Synced   confluent-dev
-confluent-flink-manager-dev     Healthy   Synced   confluent-dev
 ```
 
 ---
@@ -370,82 +350,8 @@ confluent-flink-manager-dev     Healthy   Synced   confluent-dev
 ┌──────────────────▼──────────────────────────┐
 │  4. Confluent Operator + Flink Operator     │
 │     (deploy in parallel)                    │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  5. Confluent Platform                      │
-│     (KRaft → Kafka → SR/Connect → ksqlDB)  │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  6. Confluent Flink Manager (CMF)           │
 └─────────────────────────────────────────────┘
 ```
-
----
-
-## OpenShift Routes for External Access
-
-OpenShift uses Routes instead of Ingress/LoadBalancer for external access. Examples:
-
-### Kafka Bootstrap Route
-
-```yaml
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: kafka-bootstrap
-  namespace: confluent-dev
-spec:
-  host: kafka-bootstrap.apps.example.com
-  port:
-    targetPort: external
-  tls:
-    termination: passthrough
-  to:
-    kind: Service
-    name: kafka-bootstrap
-```
-
-### Schema Registry Route
-
-```yaml
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: schemaregistry
-  namespace: confluent-dev
-spec:
-  host: schema-registry.apps.example.com
-  port:
-    targetPort: external
-  tls:
-    termination: edge
-  to:
-    kind: Service
-    name: schemaregistry
-```
-
-### Control Center Route
-
-```yaml
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: controlcenter
-  namespace: confluent-dev
-spec:
-  host: controlcenter.apps.example.com
-  port:
-    targetPort: external
-  tls:
-    termination: edge
-  to:
-    kind: Service
-    name: controlcenter
-```
-
-> **Note:** Routes are optional and customer-specific. Adjust `host`, `tls.termination`, and `targetPort` to match your environment.
 
 ---
 
@@ -455,7 +361,7 @@ spec:
 ./scripts/deploy-openshift-dev.sh
 ```
 
-This script automates all deployment steps (1-6) and prints ArgoCD access info when done.
+This script automates all deployment steps (1-4) and prints ArgoCD access info when done.
 
 ---
 
@@ -484,7 +390,6 @@ All environments use these ArgoCD sync options:
 |--------|-----------|---------|
 | `CreateNamespace=true` | All apps | Auto-create target namespace |
 | `ServerSideApply=true` | Helm-based apps | Handle large CRDs without client-side limits |
-| `SkipDryRunOnMissingResource=true` | Manifest-based apps | Allow CRDs to be applied before their definitions exist |
 
 ---
 
@@ -496,8 +401,6 @@ All environments use these ArgoCD sync options:
 | cert-manager | `cert-manager` |
 | Confluent Operator | `confluent-<env>` (e.g., `confluent-dev`) |
 | Flink Operator | `confluent-<env>` (same namespace) |
-| Confluent Platform | `confluent-<env>` |
-| Confluent Flink Manager | `confluent-<env>` |
 
 ---
 
@@ -508,7 +411,6 @@ All environments use these ArgoCD sync options:
 | `cert-manager` | `https://charts.jetstack.io` | TLS certificate management |
 | `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | Confluent Platform operator |
 | `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | Flink Kubernetes operator |
-| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | CMF (deployed as nested ArgoCD Application) |
 
 ---
 
@@ -619,27 +521,6 @@ Label the namespace:
 oc label namespace confluent-dev argocd.argoproj.io/managed-by=openshift-gitops
 ```
 
-### Confluent Platform pods stuck in Pending
-
-```
-0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims
-```
-
-Verify a default StorageClass exists:
-
-```bash
-oc get storageclass
-```
-
-### CMF Application shows "Missing" in ArgoCD
-
-Check the nested Application and ArgoCD repo-server logs:
-
-```bash
-oc get application confluent-flink-manager-${ENV} -n openshift-gitops
-oc logs deployment/openshift-gitops-repo-server -n openshift-gitops
-```
-
 ### OpenShift GitOps admin password not working
 
 ```bash
@@ -670,6 +551,16 @@ oc get applications -n ${ARGOCD_NS}
 oc describe application confluent-operator-dev -n ${ARGOCD_NS}
 oc get application confluent-operator-dev -n ${ARGOCD_NS} -o jsonpath='{.status.sync.status}'
 ```
+
+---
+
+## Phased Rollout
+
+This repository supports a phased deployment strategy:
+
+- **Phase 1 (current):** Operators only -- cert-manager, CFK, Flink operator. Confluent Platform continues to run on VMs.
+- **Phase 2:** Add Confluent Manager for Apache Flink (CMF), configured to connect to the external CP on VMs. CMF manifests will be added under `apps/confluent-flink/` and a new `confluent-flink-application-set.yaml` will be introduced per environment.
+- **Phase 3:** Migrate Confluent Platform onto Kubernetes via CFK CRDs, with CMF managing Flink SQL workloads end-to-end.
 
 ---
 

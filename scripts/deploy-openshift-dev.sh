@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Full deploy script for the dev environment on OpenShift.
 # Uses the OpenShift GitOps Operator (ArgoCD in openshift-gitops namespace)
-# to deploy cert-manager, operators, Confluent Platform, and CMF.
+# to deploy cert-manager, Confluent Operator (CFK), and Flink Operator.
 # SCCs are applied directly (one-time cluster prerequisite, not managed by ArgoCD).
 #
 # Usage:
@@ -75,23 +75,7 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-flink-operator-$ENV \
   -n "$ARGOCD_NS" --timeout=180s
 
-# ── Step 6: Deploy Confluent Platform ────────────────────────────────────────
-echo ""
-echo "==> Deploying Confluent Platform..."
-oc apply -f "$REPO_ROOT/gitops-config/openshift/$ENV/confluent-platform-application-set.yaml"
-echo "    Waiting for Confluent Platform to become Healthy..."
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-platform-$ENV -n "$ARGOCD_NS" --timeout=600s
-
-# ── Step 7: Deploy Confluent Flink Manager (CMF) ────────────────────────────
-echo ""
-echo "==> Deploying Confluent Flink Manager..."
-oc apply -f "$REPO_ROOT/gitops-config/openshift/$ENV/confluent-flink-application-set.yaml"
-echo "    Waiting for Confluent Flink Manager to become Healthy..."
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-flink-$ENV -n "$ARGOCD_NS" --timeout=300s
-
-# ── Step 8: Print summary ───────────────────────────────────────────────────
+# ── Step 6: Print summary ───────────────────────────────────────────────────
 echo ""
 echo "========================================"
 echo "  OpenShift Deployment complete!"
