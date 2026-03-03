@@ -38,31 +38,28 @@ In short, if your environment cannot — or your organization prefers not to —
 
 This guide targets the latest versions for a greenfield deployment. Mirror these specific versions (or newer) to your internal registries.
 
-| Component | Version | Helm Chart | dev/qa | stg/prd |
-|---|---|---|---|---|
-| **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.*` | `0.1351.59` |
-| **Flink Kubernetes Operator** | 1.13.0-cp2 | `flink-kubernetes-operator` | `1.*` | `1.130.0` |
-| **cert-manager** | 1.19.4 | `cert-manager` | `1.*` | `1.19.4` |
-| **ArgoCD** | 3.3.2 | `argo-cd` | `9.*` | `9.4.7` |
+| Component | Version | Helm Chart | targetRevision |
+|---|---|---|---|
+| **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.1351.59` |
+| **Flink Kubernetes Operator** | 1.13.0-cp2 | `flink-kubernetes-operator` | `1.130.0` |
+| **cert-manager** | 1.19.4 | `cert-manager` | `1.19.4` |
+| **ArgoCD** | 3.3.2 | `argo-cd` | `9.4.7` |
 
 > **Versions verified as of March 3, 2026.** Check the [Confluent release notes](https://docs.confluent.io/operator/current/release-notes.html), [cert-manager releases](https://github.com/cert-manager/cert-manager/releases), and [ArgoCD Helm chart releases](https://github.com/argoproj/argo-helm/releases) for updates.
 
 ### Wildcard vs. Pinned Version Constraints
 
-The ApplicationSet files use **wildcard semver constraints** (e.g., `0.*`, `1.*`) in `dev` and `qa`, and **pinned versions** (e.g., `0.1351.59`, `1.130.0`) in `stg` and `prd`. Here is the trade-off between the two approaches:
+All environments use **pinned versions** for fully reproducible, auditable deployments. The table below compares the two approaches for reference:
 
 | Approach | Pros | Cons |
 |---|---|---|
 | **Wildcard** (`1.*`, `0.*`) | Automatically picks up patch/minor fixes on sync; no manual bumps needed; reduces maintenance overhead | May pull in breaking changes on minor bumps; harder to reproduce exact deployments; audit/compliance teams may flag non-deterministic versions |
 | **Pinned** (`0.1351.59`, `1.130.0`) | Fully reproducible deployments; explicit change control; easier to audit and rollback; required for air-gapped mirroring | Requires manual version bumps in Git; easy to fall behind on security patches; more PR churn |
 
-**Recommendation:** This repository uses **pinned versions** for `stg` and `prd` and **wildcards** for `dev` and `qa`. Wildcards in lower environments surface new releases early so they can be validated before promoting pinned versions to upper environments. When upgrading, update the pinned version in `stg` first, validate, then promote to `prd`.
+This repository uses **pinned versions across all environments** (dev, qa, stg, prd). When upgrading, update the pinned version in `dev` first, validate through `qa` and `stg`, then promote to `prd`.
 
 ```yaml
-# dev / qa — wildcard (auto-picks latest within major)
-targetRevision: "1.*"
-
-# stg / prd — pinned (explicit, reproducible)
+# All environments — pinned (explicit, reproducible)
 targetRevision: "1.130.0"
 ```
 
@@ -96,7 +93,7 @@ helm search repo argo-cd/argo-cd --versions | head -5
 
 ### Validate Resolved Versions Against ApplicationSets
 
-Use this script to show exactly which chart version each wildcard constraint would resolve to. Run it before deploying to confirm there are no unexpected jumps:
+Use this script to verify that the pinned chart versions exist in the upstream repos. Run it before deploying to confirm availability:
 
 ```bash
 #!/usr/bin/env bash
@@ -105,26 +102,30 @@ set -euo pipefail
 # Ensure repos are up to date
 helm repo update >/dev/null 2>&1
 
-echo "ApplicationSet Version Resolution"
-echo "=================================="
-printf "%-35s %-15s %-15s\n" "CHART" "CONSTRAINT" "RESOLVED"
-echo "----------------------------------+--------------+--------------"
+echo "ApplicationSet Pinned Version Check"
+echo "===================================="
+printf "%-35s %-15s %-10s\n" "CHART" "PINNED" "STATUS"
+echo "-----------------------------------+--------------+----------"
 
-resolve() {
-  local repo=$1 chart=$2 constraint=$3
-  local resolved
-  resolved=$(helm search repo "${repo}/${chart}" --version "$constraint" \
+check() {
+  local repo=$1 chart=$2 version=$3
+  local found
+  found=$(helm search repo "${repo}/${chart}" --version "$version" \
     --output json 2>/dev/null | grep -o '"version":"[^"]*"' | head -1 | cut -d'"' -f4)
-  printf "%-35s %-15s %-15s\n" "$chart" "$constraint" "${resolved:-NOT FOUND}"
+  if [ "$found" = "$version" ]; then
+    printf "%-35s %-15s %-10s\n" "$chart" "$version" "OK"
+  else
+    printf "%-35s %-15s %-10s\n" "$chart" "$version" "NOT FOUND"
+  fi
 }
 
-resolve jetstack    cert-manager                    "1.*"
-resolve confluent   confluent-for-kubernetes        "0.*"
-resolve confluent   flink-kubernetes-operator       "1.*"
-resolve argo-cd     argo-cd                         "9.*"
+check jetstack    cert-manager                    "1.19.4"
+check confluent   confluent-for-kubernetes        "0.1351.59"
+check confluent   flink-kubernetes-operator       "1.130.0"
+check argo-cd     argo-cd                         "9.4.7"
 ```
 
-> Verify exact chart versions with `helm search repo <repo>/<chart> --versions` after adding the public repos.
+> Verify available versions with `helm search repo <repo>/<chart> --versions` after adding the public repos.
 
 ---
 
@@ -141,12 +142,12 @@ resolve argo-cd     argo-cd                         "9.*"
 
 ## Inventory: Helm Charts to Mirror
 
-| Chart | Source Repository | Version Constraint | Referenced By |
+| Chart | Source Repository | Pinned Version | Referenced By |
 |---|---|---|---|
-| `cert-manager` | `https://charts.jetstack.io` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/cert-manager-application-set.yaml` |
-| `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | `0.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-operator-application-set.yaml` |
-| `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
-| `argo-cd` | `https://argoproj.github.io/argo-helm` | `9.*` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines |
+| `cert-manager` | `https://charts.jetstack.io` | `1.19.4` | `gitops-config/openshift/{dev,qa,stg,prd}/cert-manager-application-set.yaml` |
+| `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | `0.1351.59` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-operator-application-set.yaml` |
+| `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.130.0` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
+| `argo-cd` | `https://argoproj.github.io/argo-helm` | `9.4.7` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines |
 
 ---
 
@@ -822,7 +823,7 @@ helm search repo internal/<chart-name>
 If the chart is missing:
 - Verify it was uploaded / proxied correctly
 - Run `helm repo update` to refresh the index
-- Check that the version constraint (e.g., `1.*`) resolves to an available version
+- Check that the pinned version (e.g., `1.130.0`) exists in the repository index
 
 ### ArgoCD cannot pull Helm chart (authentication error)
 
@@ -834,9 +835,9 @@ Check if the credential secret exists:
 oc get secret -n openshift-gitops -l argocd.argoproj.io/secret-type=repository
 ```
 
-### Version wildcards don't resolve in hosted repos
+### Pinned version not found in hosted repos
 
-Hosted/local Helm repos (as opposed to proxy repos) must have the exact chart version uploaded. Version wildcards like `1.*` resolve against the repository index — ensure the index includes your uploaded version.
+Hosted/local Helm repos (as opposed to proxy repos) must have the exact chart version uploaded. Ensure the pinned version exists in the repository index.
 
 ```bash
 # Verify what's in the repo

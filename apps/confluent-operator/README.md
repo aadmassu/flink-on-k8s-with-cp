@@ -10,7 +10,7 @@ The values files here are **not applied directly**. They are consumed by ArgoCD 
 |-------|-------|
 | **Chart** | `confluent-for-kubernetes` |
 | **Repository** | `https://packages.confluent.io/helm` |
-| **Version** | `0.*` (latest 0.x release) |
+| **Version** | `0.1351.59` (pinned) |
 
 ## Directory Structure
 
@@ -116,7 +116,7 @@ The CFK operator is deployed through ArgoCD **ApplicationSets** located under `g
 
 Each ApplicationSet uses the ArgoCD **multi-source** pattern with a `$values` ref:
 
-1. **Source 1 (Helm chart):** Points to `https://packages.confluent.io/helm` with `chart: confluent-for-kubernetes` and `targetRevision: 0.*`. The `helm.valueFiles` array references paths under `$values/apps/confluent-operator/`.
+1. **Source 1 (Helm chart):** Points to `https://packages.confluent.io/helm` with `chart: confluent-for-kubernetes` and `targetRevision: 0.1351.59`. The `helm.valueFiles` array references paths under `$values/apps/confluent-operator/`.
 2. **Source 2 (Git ref):** Points to this Git repository and is aliased as `ref: values`. This allows Source 1 to resolve `$values/` paths against the repo contents.
 
 ### Sync Policy

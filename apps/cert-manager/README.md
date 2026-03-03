@@ -8,7 +8,7 @@ X.509 certificate management for OpenShift. This directory contains the per-envi
 |-------|-------|
 | **Chart** | `cert-manager` |
 | **Repository** | `https://charts.jetstack.io` |
-| **Version** | `1.*` (latest 1.x) |
+| **Version** | `1.19.4` (pinned) |
 
 ## Directory Structure
 
@@ -84,7 +84,7 @@ The following table shows every field and how its value varies across the four e
 
 The cert-manager ApplicationSets live under `gitops-config/openshift/` and use the ArgoCD **multi-source** pattern with `$values/` references:
 
-1. **Source 1 -- Helm chart:** Points to the remote Helm repository (`https://charts.jetstack.io`, chart `cert-manager`, version `1.*`). The `helm.valueFiles` field references paths resolved via the `$values` ref.
+1. **Source 1 -- Helm chart:** Points to the remote Helm repository (`https://charts.jetstack.io`, chart `cert-manager`, version `1.19.4`). The `helm.valueFiles` field references paths resolved via the `$values` ref.
 2. **Source 2 -- Git repo (ref: values):** Points to this Git repository at `HEAD`. This source is aliased as `values`, making the repo root available under the `$values/` prefix.
 
 At sync time, ArgoCD resolves `$values/apps/cert-manager/{{environment}}/values.yaml` to the actual file in this repository, reads its contents, and passes them to `helm template` / `helm install`.
