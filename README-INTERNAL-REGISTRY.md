@@ -29,8 +29,26 @@ This guide explains how to redirect all Helm chart downloads and container image
 ## When to Use This Guide
 
 - **Air-gapped / disconnected clusters** — your Kubernetes nodes cannot reach the public internet.
-- **Security and compliance** — corporate policy requires image scanning, SBOM tracking, or supply-chain controls before deployment.
+- **Security and compliance** — corporate policy requires image scanning, Software Bill of Materials (SBOM) tracking, or supply-chain controls before deployment.
 - **Performance and reliability** — avoid Docker Hub rate limits, reduce image pull latency, and eliminate external dependencies during deployments.
+
+---
+
+## Target Versions
+
+This guide targets the latest versions for a greenfield deployment. Mirror these specific versions (or newer) to your internal registries.
+
+| Component | Version | Helm Chart | Chart Version |
+|---|---|---|---|
+| **Confluent Platform** | 8.1.1 | — (deployed via CFK CRDs) | — |
+| **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.*` (latest: `0.1351.59`) |
+| **Flink Kubernetes Operator** | 1.13.x | `flink-kubernetes-operator` | `1.*` (latest: `~1.130.0`) |
+| **Confluent Manager for Apache Flink (CMF)** | 2.2.x | `confluent-manager-for-apache-flink` | `2.*` (latest: `~2.2.0`) |
+| **Apache Flink runtime** | 1.18.x – 2.1.x | — (job images) | — |
+| **cert-manager** | 1.19.4 | `cert-manager` | `1.*` (latest: `1.19.4`) |
+| **ArgoCD** | 2.14.x | `argo-cd` | `7.*` (latest: `7.8.0`) |
+
+> Verify exact chart versions with `helm search repo <repo>/<chart> --versions` after adding the public repos.
 
 ---
 
@@ -76,50 +94,53 @@ The Helm charts pull the images listed below. No container image registries are 
 
 ### cert-manager
 
-| Image | Default Registry |
-|---|---|
-| `cert-manager-controller` | `quay.io/jetstack/cert-manager-controller` |
-| `cert-manager-webhook` | `quay.io/jetstack/cert-manager-webhook` |
-| `cert-manager-cainjector` | `quay.io/jetstack/cert-manager-cainjector` |
-| `cert-manager-startupapicheck` | `quay.io/jetstack/cert-manager-startupapicheck` |
-| `cert-manager-acmesolver` | `quay.io/jetstack/cert-manager-acmesolver` |
+| Image | Default Registry | Tag |
+|---|---|---|
+| `cert-manager-controller` | `quay.io/jetstack/cert-manager-controller` | `v1.19.4` |
+| `cert-manager-webhook` | `quay.io/jetstack/cert-manager-webhook` | `v1.19.4` |
+| `cert-manager-cainjector` | `quay.io/jetstack/cert-manager-cainjector` | `v1.19.4` |
+| `cert-manager-startupapicheck` | `quay.io/jetstack/cert-manager-startupapicheck` | `v1.19.4` |
+| `cert-manager-acmesolver` | `quay.io/jetstack/cert-manager-acmesolver` | `v1.19.4` |
 
 ### ArgoCD
 
-| Image | Default Registry |
-|---|---|
-| `argocd` | `quay.io/argoproj/argocd` |
-| `dex` | `ghcr.io/dexidp/dex` |
-| `redis` | `docker.io/library/redis` |
+| Image | Default Registry | Tag |
+|---|---|---|
+| `argocd` | `quay.io/argoproj/argocd` | `v2.14.0` |
+| `dex` | `ghcr.io/dexidp/dex` | `v2.41.1` |
+| `redis` | `docker.io/library/redis` | `7.4.2-alpine` |
 
 ### Confluent for Kubernetes Operator (CFK)
 
-| Image | Default Registry |
-|---|---|
-| `confluent-operator` | `docker.io/confluentinc/confluent-operator` |
+| Image | Default Registry | Tag |
+|---|---|---|
+| `confluent-operator` | `docker.io/confluentinc/confluent-operator` | `0.1351.59` |
+| `confluent-init-container` | `docker.io/confluentinc/confluent-init-container` | `3.1.1` |
 
 ### Flink Kubernetes Operator
 
-| Image | Default Registry |
-|---|---|
-| `confluent-flink-kubernetes-operator` | `docker.io/confluentinc/confluent-flink-kubernetes-operator` |
+| Image | Default Registry | Tag |
+|---|---|---|
+| `confluent-flink-kubernetes-operator` | `docker.io/confluentinc/confluent-flink-kubernetes-operator` | `1.130.0` |
 
 ### Confluent Manager for Apache Flink (CMF)
 
-| Image | Default Registry |
-|---|---|
-| `confluent-manager-for-apache-flink` | `docker.io/confluentinc/confluent-manager-for-apache-flink` |
+| Image | Default Registry | Tag |
+|---|---|---|
+| `cp-cmf` | `docker.io/confluentinc/cp-cmf` | `2.2.0` |
 
 ### Confluent Platform (managed by CFK operator)
 
-| Image | Default Registry |
-|---|---|
-| `confluent-server` (Kafka / KRaft) | `docker.io/confluentinc/confluent-server` |
-| `confluent-control-center` | `docker.io/confluentinc/confluent-control-center` |
-| `cp-schema-registry` | `docker.io/confluentinc/cp-schema-registry` |
-| `cp-server-connect` | `docker.io/confluentinc/cp-server-connect` |
-| `cp-ksqldb-server` | `docker.io/confluentinc/cp-ksqldb-server` |
-| `confluent-init-container` | `docker.io/confluentinc/confluent-init-container` |
+| Image | Default Registry | Tag |
+|---|---|---|
+| `cp-server` (Kafka / KRaft) | `docker.io/confluentinc/cp-server` | `8.1.1` |
+| `cp-enterprise-control-center-next-gen` | `docker.io/confluentinc/cp-enterprise-control-center-next-gen` | `8.1.1` |
+| `cp-enterprise-control-center` (classic) | `docker.io/confluentinc/cp-enterprise-control-center` | `8.1.1` |
+| `cp-schema-registry` | `docker.io/confluentinc/cp-schema-registry` | `8.1.1` |
+| `cp-server-connect` | `docker.io/confluentinc/cp-server-connect` | `8.1.1` |
+| `cp-ksqldb-server` | `docker.io/confluentinc/cp-ksqldb-server` | `8.1.1` |
+| `cp-kafka-rest` | `docker.io/confluentinc/cp-kafka-rest` | `8.1.1` |
+| `confluent-init-container` | `docker.io/confluentinc/confluent-init-container` | `3.1.1` |
 
 > **Key:** CFK controls Confluent Platform images via the `global.provider.registry.fqdn` Helm value on the operator chart. Setting this value once (Step 5b) means the CRD manifests (`kafka.yaml`, `schema-registry.yaml`, etc.) do **not** need individual image overrides.
 
@@ -154,11 +175,11 @@ helm repo add confluent https://packages.confluent.io/helm
 helm repo add argo-cd https://argoproj.github.io/argo-helm
 helm repo update
 
-# Pull charts
-helm pull jetstack/cert-manager --version 1.16.3
-helm pull confluent/confluent-for-kubernetes --version 0.1054.4
-helm pull confluent/flink-kubernetes-operator --version 1.10.0
-helm pull confluent/confluent-manager-for-apache-flink --version 1.2.0
+# Pull charts (latest versions for CP 8.1.1 greenfield deployment)
+helm pull jetstack/cert-manager --version 1.19.4
+helm pull confluent/confluent-for-kubernetes --version 0.1351.59
+helm pull confluent/flink-kubernetes-operator --version 1.130.0
+helm pull confluent/confluent-manager-for-apache-flink --version 2.2.0
 helm pull argo-cd/argo-cd --version 7.8.0
 
 # Upload to Artifactory local repo
@@ -215,14 +236,14 @@ All five charts should appear with the expected versions.
 
 ```bash
 # Pull from public registry
-docker pull quay.io/jetstack/cert-manager-controller:v1.16.3
+docker pull quay.io/jetstack/cert-manager-controller:v1.19.4
 
 # Tag for internal registry
-docker tag quay.io/jetstack/cert-manager-controller:v1.16.3 \
-  registry.example.com/jetstack/cert-manager-controller:v1.16.3
+docker tag quay.io/jetstack/cert-manager-controller:v1.19.4 \
+  registry.example.com/jetstack/cert-manager-controller:v1.19.4
 
 # Push to internal registry
-docker push registry.example.com/jetstack/cert-manager-controller:v1.16.3
+docker push registry.example.com/jetstack/cert-manager-controller:v1.19.4
 ```
 
 ### Bulk Mirror Script
@@ -234,34 +255,36 @@ set -euo pipefail
 INTERNAL_REGISTRY="registry.example.com"
 
 IMAGES=(
-  # cert-manager
-  "quay.io/jetstack/cert-manager-controller:v1.16.3"
-  "quay.io/jetstack/cert-manager-webhook:v1.16.3"
-  "quay.io/jetstack/cert-manager-cainjector:v1.16.3"
-  "quay.io/jetstack/cert-manager-startupapicheck:v1.16.3"
-  "quay.io/jetstack/cert-manager-acmesolver:v1.16.3"
+  # cert-manager (v1.19.4)
+  "quay.io/jetstack/cert-manager-controller:v1.19.4"
+  "quay.io/jetstack/cert-manager-webhook:v1.19.4"
+  "quay.io/jetstack/cert-manager-cainjector:v1.19.4"
+  "quay.io/jetstack/cert-manager-startupapicheck:v1.19.4"
+  "quay.io/jetstack/cert-manager-acmesolver:v1.19.4"
 
-  # ArgoCD
+  # ArgoCD (v2.14.0)
   "quay.io/argoproj/argocd:v2.14.0"
   "ghcr.io/dexidp/dex:v2.41.1"
   "docker.io/library/redis:7.4.2-alpine"
 
-  # Confluent Operator
-  "docker.io/confluentinc/confluent-operator:0.1054.4"
+  # CFK Operator (3.1.1)
+  "docker.io/confluentinc/confluent-operator:0.1351.59"
+  "docker.io/confluentinc/confluent-init-container:3.1.1"
 
-  # Flink Operator
-  "docker.io/confluentinc/confluent-flink-kubernetes-operator:1.10.0"
+  # Flink Operator (1.130.0)
+  "docker.io/confluentinc/confluent-flink-kubernetes-operator:1.130.0"
 
-  # Confluent Manager for Apache Flink
-  "docker.io/confluentinc/confluent-manager-for-apache-flink:1.2.0"
+  # Confluent Manager for Apache Flink (2.2.0)
+  "docker.io/confluentinc/cp-cmf:2.2.0"
 
-  # Confluent Platform
-  "docker.io/confluentinc/confluent-server:7.8.0"
-  "docker.io/confluentinc/confluent-control-center:7.8.0"
-  "docker.io/confluentinc/cp-schema-registry:7.8.0"
-  "docker.io/confluentinc/cp-server-connect:7.8.0"
-  "docker.io/confluentinc/cp-ksqldb-server:7.8.0"
-  "docker.io/confluentinc/confluent-init-container:2.10.0"
+  # Confluent Platform (8.1.1)
+  "docker.io/confluentinc/cp-server:8.1.1"
+  "docker.io/confluentinc/cp-enterprise-control-center-next-gen:8.1.1"
+  "docker.io/confluentinc/cp-enterprise-control-center:8.1.1"
+  "docker.io/confluentinc/cp-schema-registry:8.1.1"
+  "docker.io/confluentinc/cp-server-connect:8.1.1"
+  "docker.io/confluentinc/cp-ksqldb-server:8.1.1"
+  "docker.io/confluentinc/cp-kafka-rest:8.1.1"
 )
 
 for img in "${IMAGES[@]}"; do
@@ -287,8 +310,8 @@ If you cannot use a Docker daemon (e.g., no root access), use `skopeo` to copy d
 
 ```bash
 skopeo copy \
-  docker://quay.io/jetstack/cert-manager-controller:v1.16.3 \
-  docker://registry.example.com/jetstack/cert-manager-controller:v1.16.3 \
+  docker://quay.io/jetstack/cert-manager-controller:v1.19.4 \
+  docker://registry.example.com/jetstack/cert-manager-controller:v1.19.4 \
   --dest-creds "$REGISTRY_USER:$REGISTRY_TOKEN"
 ```
 
@@ -619,7 +642,7 @@ Change the `repoURL` and add image override parameters:
         - name: image.registry
           value: registry.example.com
         - name: image.repository
-          value: confluentinc/confluent-manager-for-apache-flink
+          value: confluentinc/cp-cmf
         - name: imagePullSecrets[0].name
           value: internal-registry
 ```
@@ -656,8 +679,8 @@ metadata:
 spec:
   replicas: 1
   image:
-    application: registry.example.com/confluentinc/confluent-server:7.8.0
-    init: registry.example.com/confluentinc/confluent-init-container:2.10.0
+    application: registry.example.com/confluentinc/cp-server:8.1.1
+    init: registry.example.com/confluentinc/confluent-init-container:3.1.1
   podTemplate:
     spec:
       imagePullSecrets:
@@ -759,8 +782,8 @@ All five charts should be listed.
 **2. Container images are accessible:**
 
 ```bash
-docker pull registry.example.com/jetstack/cert-manager-controller:v1.16.3
-docker pull registry.example.com/confluentinc/confluent-operator:0.1054.4
+docker pull registry.example.com/jetstack/cert-manager-controller:v1.19.4
+docker pull registry.example.com/confluentinc/confluent-operator:0.1351.59
 ```
 
 **3. Running pods use internal images:**
