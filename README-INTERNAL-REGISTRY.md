@@ -80,10 +80,10 @@ This guide targets the latest versions for a greenfield deployment. Mirror these
 
 | Chart | Source Repository | Version Constraint | Referenced By |
 |---|---|---|---|
-| `cert-manager` | `https://charts.jetstack.io` | `1.*` | `gitops-config/aws-us-east-2/{dev,qa,stg,prd}/cert-manager-application-set.yaml` |
-| `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | `0.*` | `gitops-config/aws-us-east-2/{dev,qa,stg,prd}/confluent-operator-application-set.yaml` |
-| `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.*` | `gitops-config/aws-us-east-2/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
-| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | `1.*` | `apps/confluent-flink/{dev,qa,stg,prd}/manifests/confluent-flink-manager.yaml` |
+| `cert-manager` | `https://charts.jetstack.io` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/cert-manager-application-set.yaml` |
+| `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | `0.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-operator-application-set.yaml` |
+| `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.*` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
+| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | `1.*` | `apps/confluent-flink/openshift/{dev,qa,stg,prd}/manifests/confluent-flink-manager.yaml` |
 | `argo-cd` | `https://argoproj.github.io/argo-helm` | `7.*` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines, `scripts/deploy-dev.sh` |
 
 ---
@@ -323,22 +323,22 @@ Each namespace that runs pods needs a pull secret for your internal registry.
 
 ```bash
 # cert-manager namespace
-kubectl create secret docker-registry internal-registry \
+oc create secret docker-registry internal-registry \
   --docker-server=registry.example.com \
   --docker-username="$REGISTRY_USER" \
   --docker-password="$REGISTRY_TOKEN" \
   -n cert-manager
 
-# ArgoCD namespace
-kubectl create secret docker-registry internal-registry \
+# ArgoCD namespace (OpenShift GitOps)
+oc create secret docker-registry internal-registry \
   --docker-server=registry.example.com \
   --docker-username="$REGISTRY_USER" \
   --docker-password="$REGISTRY_TOKEN" \
-  -n argocd
+  -n openshift-gitops
 
 # Per-environment Confluent namespaces
 for ENV in dev qa stg prd; do
-  kubectl create secret docker-registry internal-registry \
+  oc create secret docker-registry internal-registry \
     --docker-server=registry.example.com \
     --docker-username="$REGISTRY_USER" \
     --docker-password="$REGISTRY_TOKEN" \
@@ -366,10 +366,10 @@ These files tell ArgoCD where to fetch each Helm chart.
 Files:
 
 ```
-gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
-gitops-config/aws-us-east-2/qa/cert-manager-application-set.yaml
-gitops-config/aws-us-east-2/stg/cert-manager-application-set.yaml
-gitops-config/aws-us-east-2/prd/cert-manager-application-set.yaml
+gitops-config/openshift/dev/cert-manager-application-set.yaml
+gitops-config/openshift/qa/cert-manager-application-set.yaml
+gitops-config/openshift/stg/cert-manager-application-set.yaml
+gitops-config/openshift/prd/cert-manager-application-set.yaml
 ```
 
 Change:
@@ -389,10 +389,10 @@ Change:
 Files:
 
 ```
-gitops-config/aws-us-east-2/dev/confluent-operator-application-set.yaml
-gitops-config/aws-us-east-2/qa/confluent-operator-application-set.yaml
-gitops-config/aws-us-east-2/stg/confluent-operator-application-set.yaml
-gitops-config/aws-us-east-2/prd/confluent-operator-application-set.yaml
+gitops-config/openshift/dev/confluent-operator-application-set.yaml
+gitops-config/openshift/qa/confluent-operator-application-set.yaml
+gitops-config/openshift/stg/confluent-operator-application-set.yaml
+gitops-config/openshift/prd/confluent-operator-application-set.yaml
 ```
 
 Change:
@@ -412,10 +412,10 @@ Change:
 Files:
 
 ```
-gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml
-gitops-config/aws-us-east-2/qa/confluent-flink-operator-application-set.yaml
-gitops-config/aws-us-east-2/stg/confluent-flink-operator-application-set.yaml
-gitops-config/aws-us-east-2/prd/confluent-flink-operator-application-set.yaml
+gitops-config/openshift/dev/confluent-flink-operator-application-set.yaml
+gitops-config/openshift/qa/confluent-flink-operator-application-set.yaml
+gitops-config/openshift/stg/confluent-flink-operator-application-set.yaml
+gitops-config/openshift/prd/confluent-flink-operator-application-set.yaml
 ```
 
 Change:
@@ -435,12 +435,12 @@ Change:
 ```bash
 # cert-manager
 sed -i 's|repoURL: https://charts.jetstack.io|repoURL: https://registry.example.com/helm|' \
-  gitops-config/aws-us-east-2/*/cert-manager-application-set.yaml
+  gitops-config/openshift/*/cert-manager-application-set.yaml
 
 # Confluent Operator + Flink Operator
 sed -i 's|repoURL: https://packages.confluent.io/helm|repoURL: https://registry.example.com/helm|' \
-  gitops-config/aws-us-east-2/*/confluent-operator-application-set.yaml \
-  gitops-config/aws-us-east-2/*/confluent-flink-operator-application-set.yaml
+  gitops-config/openshift/*/confluent-operator-application-set.yaml \
+  gitops-config/openshift/*/confluent-flink-operator-application-set.yaml
 ```
 
 > **Note:** The `confluent-platform-application-set.yaml` and `confluent-flink-application-set.yaml` files point to a **Git** repository (not a Helm repo) — no change needed.
@@ -611,10 +611,10 @@ Change:
 Files:
 
 ```
-apps/confluent-flink/dev/manifests/confluent-flink-manager.yaml
-apps/confluent-flink/qa/manifests/confluent-flink-manager.yaml
-apps/confluent-flink/stg/manifests/confluent-flink-manager.yaml
-apps/confluent-flink/prd/manifests/confluent-flink-manager.yaml
+apps/confluent-flink/openshift/dev/manifests/confluent-flink-manager.yaml
+apps/confluent-flink/openshift/qa/manifests/confluent-flink-manager.yaml
+apps/confluent-flink/openshift/stg/manifests/confluent-flink-manager.yaml
+apps/confluent-flink/openshift/prd/manifests/confluent-flink-manager.yaml
 ```
 
 Change the `repoURL` and add image override parameters:
@@ -656,7 +656,7 @@ sed -i 's|repoURL: https://argoproj.github.io/argo-helm|repoURL: https://registr
 
 # Confluent Flink Manager manifests
 sed -i 's|repoURL: https://packages.confluent.io/helm|repoURL: https://registry.example.com/helm|' \
-  apps/confluent-flink/*/manifests/confluent-flink-manager.yaml
+  apps/confluent-flink/openshift/*/manifests/confluent-flink-manager.yaml
 ```
 
 > The image override parameters for CMF must be added manually (see diff above).
@@ -751,19 +751,19 @@ helm repo add jetstack https://registry.example.com/helm --username "$REGISTRY_U
 If your internal Helm repository requires authentication, ArgoCD needs credentials to pull charts. Create a Kubernetes secret with the `argocd.argoproj.io/secret-type: repository` label:
 
 ```bash
-kubectl create secret generic internal-helm-repo \
-  --namespace argocd \
+oc create secret generic internal-helm-repo \
+  --namespace openshift-gitops \
   --from-literal=type=helm \
   --from-literal=name=internal-helm \
   --from-literal=url=https://registry.example.com/helm \
   --from-literal=username="$REGISTRY_USER" \
   --from-literal=password="$REGISTRY_TOKEN"
 
-kubectl label secret internal-helm-repo -n argocd \
+oc label secret internal-helm-repo -n openshift-gitops \
   argocd.argoproj.io/secret-type=repository
 ```
 
-This allows ArgoCD to authenticate when fetching Helm charts from `https://registry.example.com/helm` for all ApplicationSets and Application resources.
+This allows ArgoCD to authenticate when fetching Helm charts from `https://registry.example.com/helm`.
 
 ---
 
@@ -789,9 +789,9 @@ docker pull registry.example.com/confluentinc/confluent-operator:0.1351.59
 **3. Running pods use internal images:**
 
 ```bash
-kubectl get pods -n cert-manager -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
-kubectl get pods -n argocd -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
-kubectl get pods -n confluent-dev -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
+oc get pods -n cert-manager -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
+oc get pods -n openshift-gitops -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
+oc get pods -n confluent-dev -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
 ```
 
 All images should show `registry.example.com/...` prefixes.
@@ -808,7 +808,7 @@ This should return no results.
 **5. ArgoCD applications are healthy:**
 
 ```bash
-kubectl get applications -n argocd \
+oc get applications -n openshift-gitops \
   -o custom-columns=NAME:.metadata.name,HEALTH:.status.health.status,SYNC:.status.sync.status
 ```
 
@@ -821,18 +821,18 @@ All applications should show `Healthy` / `Synced`.
 | # | File | Change Type |
 |---|---|---|
 | | **ApplicationSets — Helm chart URLs** | |
-| 1 | `gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml` | `repoURL` |
-| 2 | `gitops-config/aws-us-east-2/qa/cert-manager-application-set.yaml` | `repoURL` |
-| 3 | `gitops-config/aws-us-east-2/stg/cert-manager-application-set.yaml` | `repoURL` |
-| 4 | `gitops-config/aws-us-east-2/prd/cert-manager-application-set.yaml` | `repoURL` |
-| 5 | `gitops-config/aws-us-east-2/dev/confluent-operator-application-set.yaml` | `repoURL` |
-| 6 | `gitops-config/aws-us-east-2/qa/confluent-operator-application-set.yaml` | `repoURL` |
-| 7 | `gitops-config/aws-us-east-2/stg/confluent-operator-application-set.yaml` | `repoURL` |
-| 8 | `gitops-config/aws-us-east-2/prd/confluent-operator-application-set.yaml` | `repoURL` |
-| 9 | `gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml` | `repoURL` |
-| 10 | `gitops-config/aws-us-east-2/qa/confluent-flink-operator-application-set.yaml` | `repoURL` |
-| 11 | `gitops-config/aws-us-east-2/stg/confluent-flink-operator-application-set.yaml` | `repoURL` |
-| 12 | `gitops-config/aws-us-east-2/prd/confluent-flink-operator-application-set.yaml` | `repoURL` |
+| 1 | `gitops-config/openshift/dev/cert-manager-application-set.yaml` | `repoURL` |
+| 2 | `gitops-config/openshift/qa/cert-manager-application-set.yaml` | `repoURL` |
+| 3 | `gitops-config/openshift/stg/cert-manager-application-set.yaml` | `repoURL` |
+| 4 | `gitops-config/openshift/prd/cert-manager-application-set.yaml` | `repoURL` |
+| 5 | `gitops-config/openshift/dev/confluent-operator-application-set.yaml` | `repoURL` |
+| 6 | `gitops-config/openshift/qa/confluent-operator-application-set.yaml` | `repoURL` |
+| 7 | `gitops-config/openshift/stg/confluent-operator-application-set.yaml` | `repoURL` |
+| 8 | `gitops-config/openshift/prd/confluent-operator-application-set.yaml` | `repoURL` |
+| 9 | `gitops-config/openshift/dev/confluent-flink-operator-application-set.yaml` | `repoURL` |
+| 10 | `gitops-config/openshift/qa/confluent-flink-operator-application-set.yaml` | `repoURL` |
+| 11 | `gitops-config/openshift/stg/confluent-flink-operator-application-set.yaml` | `repoURL` |
+| 12 | `gitops-config/openshift/prd/confluent-flink-operator-application-set.yaml` | `repoURL` |
 | | **Helm values — container image overrides** | |
 | 13 | `apps/cert-manager/dev/values.yaml` | Image registry + pull secret |
 | 14 | `apps/cert-manager/qa/values.yaml` | Image registry + pull secret |
@@ -864,7 +864,7 @@ All applications should show `Healthy` / `Synced`.
 | 38 | `.azure-pipelines/full-deploy.yaml` | `helm repo add` URLs |
 | 39 | `scripts/deploy-dev.sh` | `helm repo add` URLs |
 | | **Documentation** | |
-| 40 | `README.md` | Assumptions bullet + Additional Guides link |
+| 40 | `README.md` | Update references if needed |
 
 > Total: **~40 files**. The `deploy-operators.yaml` pipelines (GitHub + Azure) and `confluent-platform/` CRD manifests do not require changes.
 
@@ -875,7 +875,7 @@ All applications should show `Healthy` / `Synced`.
 ### ImagePullBackOff after switching registries
 
 ```bash
-kubectl describe pod <pod-name> -n <namespace>
+oc describe pod <pod-name> -n <namespace>
 ```
 
 Check the Events section for the exact error. Common causes:
@@ -901,7 +901,7 @@ ArgoCD needs repository credentials for authenticated Helm repos. See [Step 9](#
 Check if the credential secret exists:
 
 ```bash
-kubectl get secret -n argocd -l argocd.argoproj.io/secret-type=repository
+oc get secret -n openshift-gitops -l argocd.argoproj.io/secret-type=repository
 ```
 
 ### Version wildcards don't resolve in hosted repos
@@ -918,7 +918,7 @@ helm search repo internal/<chart-name> --versions
 This means `global.provider.registry.fqdn` was not set in the Confluent Operator values. Verify:
 
 ```bash
-helm get values confluent-for-kubernetes -n confluent-dev
+oc get application confluent-operator-dev -n openshift-gitops -o jsonpath='{.status.sync.status}'
 ```
 
 Look for:

@@ -1,10 +1,8 @@
-# Deploying Operator Apps into an Existing ArgoCD
+# Deploying into an Existing OpenShift GitOps / ArgoCD
 
-This guide provides step-by-step instructions for deploying **cert-manager**, **Confluent Operator (CFK)**, and **Flink Operator** into a cluster that **already has ArgoCD running**.
+This guide provides step-by-step instructions for deploying the full Confluent stack into an OpenShift cluster that **already has ArgoCD running** (via OpenShift GitOps Operator or standalone).
 
 If you need to install ArgoCD from scratch, see the main [README.md](README.md).
-
-> **Current scope:** This guide covers operator installation only. Confluent Platform CRDs and Confluent Flink Manager deployment will be covered in a future update.
 
 ---
 
@@ -15,10 +13,13 @@ If you need to install ArgoCD from scratch, see the main [README.md](README.md).
 - [Deployment Order](#deployment-order)
 - [Step 1 - Verify ArgoCD Is Running](#step-1---verify-argocd-is-running)
 - [Step 2 - Clone This Repository](#step-2---clone-this-repository)
-- [Step 3 - Review and Customize App Definitions](#step-3---review-and-customize-app-definitions)
-- [Step 4 - Deploy cert-manager](#step-4---deploy-cert-manager)
-- [Step 5 - Deploy Confluent Operator (CFK)](#step-5---deploy-confluent-operator-cfk)
-- [Step 6 - Deploy Flink Operator](#step-6---deploy-flink-operator)
+- [Step 3 - Review and Customize ApplicationSet Definitions](#step-3---review-and-customize-applicationset-definitions)
+- [Step 4 - Create and Label Namespaces](#step-4---create-and-label-namespaces)
+- [Step 5 - Deploy OpenShift Prerequisites (SCCs)](#step-5---deploy-openshift-prerequisites-sccs)
+- [Step 6 - Deploy cert-manager](#step-6---deploy-cert-manager)
+- [Step 7 - Deploy Confluent Operator (CFK) and Flink Operator](#step-7---deploy-confluent-operator-cfk-and-flink-operator)
+- [Step 8 - Deploy Confluent Platform](#step-8---deploy-confluent-platform)
+- [Step 9 - Deploy Confluent Flink Manager (CMF)](#step-9---deploy-confluent-flink-manager-cmf)
 - [Verify All Applications](#verify-all-applications)
 - [CI/CD Pipelines](#cicd-pipelines)
 - [Quick Deploy Script](#quick-deploy-script)
@@ -30,58 +31,55 @@ If you need to install ArgoCD from scratch, see the main [README.md](README.md).
 
 | Requirement | Details |
 |-------------|---------|
-| **ArgoCD** | Running and accessible in your cluster (namespace `argocd` or your custom namespace) |
-| **kubectl** | 1.28+ configured with access to the target cluster |
-| **Cluster access** | Permissions to create namespaces, CRDs, and ArgoCD Application resources |
+| **ArgoCD** | Running and accessible (OpenShift GitOps in `openshift-gitops` or standalone in custom namespace) |
+| **oc / kubectl** | Configured with access to the target cluster |
+| **Cluster access** | Permissions to create namespaces, CRDs, SCCs, and ArgoCD ApplicationSet resources |
 
 Verify your cluster connectivity:
 
 ```bash
-kubectl cluster-info
-kubectl get pods -n argocd
+oc cluster-info
+oc get pods -n openshift-gitops   # or your ArgoCD namespace
 ```
 
 ---
 
 ## Assumptions
 
-- ArgoCD is **already installed and healthy** on the target cluster. If not, see the main [README.md](README.md) for full installation instructions.
-- The deploying user or service account has permissions to create ArgoCD `ApplicationSet` resources in the ArgoCD namespace and create namespaces on the cluster.
-- Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster (ArgoCD fetches charts directly).
-- The ApplicationSet files in `gitops-config/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
-- If ArgoCD is installed in a namespace other than `argocd`, you must update `metadata.namespace` in each ApplicationSet file before deploying.
+- ArgoCD is **already installed and healthy** on the target OpenShift cluster. If not, see the main [README.md](README.md).
+- The deploying user has permissions to create ArgoCD `ApplicationSet` resources in the ArgoCD namespace and create namespaces/SCCs on the cluster.
+- Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster.
+- The ApplicationSet files in `gitops-config/openshift/` are configured with `namespace: openshift-gitops`. If ArgoCD is in a different namespace, update accordingly.
+- The ApplicationSet files contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint.
 
 ---
 
 ## Deployment Order
 
-Applications must be deployed in this order due to dependencies:
-
 ```
-cert-manager  -->  confluent-operator
-              -->  confluent-flink-operator
+Namespaces + Labels  -->  SCCs  -->  cert-manager  -->  Operators  -->  CP  -->  CMF
 ```
 
-- **cert-manager** must be healthy before the Flink operator (provides TLS certificates for webhooks).
-- **confluent-operator** and **confluent-flink-operator** can be deployed in parallel after cert-manager.
+- **Namespaces** must be created and labeled before ArgoCD can manage them.
+- **SCCs** must be in place before operator pods can start.
+- **cert-manager** must be healthy before the Flink operator (webhook certificates).
+- **Confluent Operator** and **Flink Operator** can be deployed in parallel after cert-manager.
+- **Confluent Platform** requires the Confluent Operator.
+- **CMF** can be deployed after the Flink Operator.
 
 ---
 
 ## Step 1 - Verify ArgoCD Is Running
 
-Confirm ArgoCD is healthy and the Application CRD is available:
-
 ```bash
-# Check ArgoCD pods are running
-kubectl get pods -n argocd
+# Check ArgoCD pods
+oc get pods -n openshift-gitops
 
-# Verify the Application CRD exists
-kubectl get crd applications.argoproj.io
+# Verify the ApplicationSet CRD exists
+oc get crd applicationsets.argoproj.io
 ```
 
-Expected: All ArgoCD pods should be in `Running` state and the `applications.argoproj.io` CRD should exist.
-
-> **Note:** If ArgoCD is installed in a namespace other than `argocd`, update the `metadata.namespace` field in each ApplicationSet file before proceeding.
+Expected: All ArgoCD pods in `Running` state and the `applicationsets.argoproj.io` CRD exists.
 
 ---
 
@@ -96,135 +94,97 @@ cd <repo-directory>
 
 ## Step 3 - Review and Customize ApplicationSet Definitions
 
-Before deploying, review and update the ApplicationSet resources for your environment. Each component is defined in `gitops-config/aws-us-east-2/<env>/<component>-application-set.yaml`.
+Set environment variables:
 
-Key fields to check in each ApplicationSet:
+```bash
+ARGOCD_NS=openshift-gitops   # Update if ArgoCD is in a different namespace
+ENV=dev                       # Change to qa, stg, or prd as needed
+```
+
+Key fields to check in each ApplicationSet under `gitops-config/openshift/${ENV}/`:
 
 | Field | What to verify |
 |-------|----------------|
-| `metadata.namespace` | Must match your ArgoCD namespace (default: `argocd`) |
-| Generator `url` | Must point to your target cluster API server (dev is pre-configured to `https://kubernetes.default.svc`) |
-| `spec.template.spec.destination.namespace` | Target namespace for the application (e.g., `confluent-dev`) |
-| `spec.template.spec.sources[0].repoURL` | Helm chart repository URL |
-| `spec.template.spec.sources[0].targetRevision` | Helm chart version |
-
-Example - check a dev ApplicationSet definition:
-
-```bash
-cat gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
-```
-
-### Configuration summary
-
-| App | Helm Chart | Key Settings |
-|-----|-----------|--------------|
-| **cert-manager** | `cert-manager` from `charts.jetstack.io` | CRDs enabled, minimal resource requests |
-| **Confluent Operator** | `confluent-for-kubernetes` from `packages.confluent.io/helm` | `namespaced: true`, `kRaftEnabled: true` |
-| **Flink Operator** | `flink-kubernetes-operator` from `packages.confluent.io/helm` | `watchNamespaces` scoped to environment, Prometheus metrics enabled |
+| `metadata.namespace` | Must match your ArgoCD namespace (default: `openshift-gitops`) |
+| Generator `url` | Must point to your target cluster API server |
+| `spec.template.spec.destination.namespace` | Target namespace for the application |
 
 ---
 
-## Step 4 - Deploy cert-manager
-
-cert-manager provides TLS certificates required by the Flink operator webhooks. Deploy it first.
-
-**Apply the ArgoCD ApplicationSet resource:**
+## Step 4 - Create and Label Namespaces
 
 ```bash
-kubectl apply -f gitops-config/aws-us-east-2/dev/cert-manager-application-set.yaml
-```
+oc create namespace confluent-${ENV} --dry-run=client -o yaml | oc apply -f -
+oc create namespace cert-manager --dry-run=client -o yaml | oc apply -f -
 
-**Wait for cert-manager to become healthy:**
-
-```bash
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/cert-manager-dev -n argocd --timeout=180s
-```
-
-**Verify pods are running:**
-
-```bash
-kubectl get pods -n cert-manager
-```
-
-Expected output:
-
-```
-NAME                                       READY   STATUS    RESTARTS   AGE
-cert-manager-...                           1/1     Running   0          ...
-cert-manager-cainjector-...                1/1     Running   0          ...
-cert-manager-webhook-...                   1/1     Running   0          ...
+oc label namespace confluent-${ENV} argocd.argoproj.io/managed-by=${ARGOCD_NS} --overwrite
+oc label namespace cert-manager argocd.argoproj.io/managed-by=${ARGOCD_NS} --overwrite
 ```
 
 ---
 
-## Step 5 - Deploy Confluent Operator (CFK)
-
-The Confluent for Kubernetes operator manages Confluent Platform CRDs. It is configured with `namespaced: true` (watches only its target namespace) and `kRaftEnabled: true` (KRaft mode for Kafka).
-
-**Apply the ArgoCD ApplicationSet resource:**
+## Step 5 - Deploy OpenShift Prerequisites (SCCs)
 
 ```bash
-kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-operator-application-set.yaml
-```
-
-**Wait for healthy:**
-
-```bash
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-operator-dev -n argocd --timeout=180s
-```
-
-**Verify:**
-
-```bash
-kubectl get pods -n confluent-dev -l app=confluent-operator
+oc apply -f gitops-config/openshift/${ENV}/openshift-prereqs-application-set.yaml
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/openshift-prereqs-${ENV} -n ${ARGOCD_NS} --timeout=120s
 ```
 
 ---
 
-## Step 6 - Deploy Flink Operator
+## Step 6 - Deploy cert-manager
 
-The Flink Kubernetes operator manages Flink workloads. Requires cert-manager to be running. It is configured with `watchNamespaces` scoped to the environment namespace and Prometheus metrics enabled.
-
-**Apply the ArgoCD ApplicationSet resource:**
-
-```bash
-kubectl apply -f gitops-config/aws-us-east-2/dev/confluent-flink-operator-application-set.yaml
-```
-
-**Wait for healthy:**
+> **Note:** Skip if OpenShift already has cert-manager running:
+> ```bash
+> oc get pods -n cert-manager 2>/dev/null || oc get pods -n openshift-cert-manager 2>/dev/null
+> ```
 
 ```bash
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-flink-operator-dev -n argocd --timeout=180s
+oc apply -f gitops-config/openshift/${ENV}/cert-manager-application-set.yaml
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/cert-manager-${ENV} -n ${ARGOCD_NS} --timeout=180s
 ```
 
-**Verify both operators:**
+---
+
+## Step 7 - Deploy Confluent Operator (CFK) and Flink Operator
 
 ```bash
-kubectl get pods -n confluent-dev
+oc apply -f gitops-config/openshift/${ENV}/confluent-operator-application-set.yaml
+oc apply -f gitops-config/openshift/${ENV}/confluent-flink-operator-application-set.yaml
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-operator-${ENV} \
+  application/confluent-flink-operator-${ENV} \
+  -n ${ARGOCD_NS} --timeout=180s
 ```
 
-Expected:
+---
 
+## Step 8 - Deploy Confluent Platform
+
+```bash
+oc apply -f gitops-config/openshift/${ENV}/confluent-platform-application-set.yaml
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-platform-${ENV} -n ${ARGOCD_NS} --timeout=600s
 ```
-confluent-operator-...                 1/1     Running
-flink-kubernetes-operator-...          2/2     Running
+
+---
+
+## Step 9 - Deploy Confluent Flink Manager (CMF)
+
+```bash
+oc apply -f gitops-config/openshift/${ENV}/confluent-flink-application-set.yaml
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-flink-${ENV} -n ${ARGOCD_NS} --timeout=300s
 ```
 
 ---
 
 ## Verify All Applications
 
-After all operators are deployed, verify the full stack:
-
 ```bash
-# List all ArgoCD-managed applications
-kubectl get applications -n argocd
-
-# Check health and sync status
-kubectl get applications -n argocd -o custom-columns=\
+oc get applications -n ${ARGOCD_NS} -o custom-columns=\
 NAME:.metadata.name,\
 HEALTH:.status.health.status,\
 SYNC:.status.sync.status,\
@@ -235,61 +195,40 @@ Expected output:
 
 ```
 NAME                            HEALTH    SYNC     NAMESPACE
+openshift-prereqs-dev           Healthy   Synced   openshift-gitops
 cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev
+confluent-platform-dev          Healthy   Synced   confluent-dev
+confluent-flink-dev             Healthy   Synced   confluent-dev
+confluent-flink-manager-dev     Healthy   Synced   confluent-dev
 ```
 
 ---
 
 ## CI/CD Pipelines
 
-Instead of running the deployment steps manually, you can use the included CI/CD pipelines. The **"Deploy Operators"** scenario is designed for this use case (existing ArgoCD).
+The **"Deploy Operators"** pipeline scenario is designed for this use case (existing ArgoCD).
 
-| Platform | Pipeline File | Description |
-|----------|--------------|-------------|
-| **GitHub Actions** | [`.github/workflows/deploy-operators.yaml`](../.github/workflows/deploy-operators.yaml) | Workflow dispatch with environment and ArgoCD namespace inputs |
-| **Azure DevOps** | [`.azure-pipelines/deploy-operators.yaml`](../.azure-pipelines/deploy-operators.yaml) | Pipeline with Kubernetes service connection parameter |
+| Platform | Pipeline File |
+|----------|--------------|
+| **GitHub Actions** | [`.github/workflows/deploy-operators.yaml`](.github/workflows/deploy-operators.yaml) |
+| **Azure DevOps** | [`.azure-pipelines/deploy-operators.yaml`](.azure-pipelines/deploy-operators.yaml) |
 
-Both pipelines:
-- Verify ArgoCD is running before deploying
-- Automatically update ApplicationSet namespaces if ArgoCD is not in the default `argocd` namespace
-- Deploy cert-manager, Confluent Operator, and Flink Operator in dependency order
-- Wait for health checks and report final status
-
-See the main [README.md](README.md#cicd-pipelines) for full pipeline documentation.
+Adapt for OpenShift:
+- Use `oc login` for cluster authentication
+- Set `argocd_namespace` to `openshift-gitops`
+- Update ApplicationSet paths to `gitops-config/openshift/`
 
 ---
 
 ## Quick Deploy Script
 
-Deploy all operators at once (respecting dependency order):
-
 ```bash
-ENV=dev  # Change to qa, stg, or prd as needed
-
-# 1. cert-manager (must be first)
-kubectl apply -f gitops-config/aws-us-east-2/${ENV}/cert-manager-application-set.yaml
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/cert-manager-${ENV} -n argocd --timeout=180s
-
-# 2. Both operators (can run in parallel)
-kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-operator-application-set.yaml
-kubectl apply -f gitops-config/aws-us-east-2/${ENV}/confluent-flink-operator-application-set.yaml
-kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-operator-${ENV} \
-  application/confluent-flink-operator-${ENV} \
-  -n argocd --timeout=180s
-
-# 3. Verify
-echo ""
-echo "=== All Applications ==="
-kubectl get applications -n argocd
-echo ""
-echo "=== Operator Pods ==="
-kubectl get pods -n confluent-${ENV}
-kubectl get pods -n cert-manager
+./scripts/deploy-openshift-dev.sh
 ```
+
+This script handles all steps including namespace creation, labeling, SCC deployment, and the full Confluent stack. See the main [README.md](README.md#quick-deploy-script) for details.
 
 ---
 
@@ -297,52 +236,42 @@ kubectl get pods -n cert-manager
 
 ### ArgoCD namespace mismatch
 
-If you see `Error from server (NotFound): applications.argoproj.io "..." not found`, your ArgoCD may be in a different namespace. Update `metadata.namespace` in each ApplicationSet file:
+If you see `Error from server (NotFound): applications.argoproj.io "..." not found`, ArgoCD may be in a different namespace. Update `metadata.namespace` in each ApplicationSet file:
 
 ```bash
-# Find where ArgoCD is running
-kubectl get pods --all-namespaces | grep argocd
+oc get pods --all-namespaces | grep argocd
 ```
 
 ### Application stuck in "Unknown" health
 
-The ArgoCD Application was created but ArgoCD hasn't processed it yet. Check ArgoCD controller logs:
+Check ArgoCD controller logs:
 
 ```bash
-kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller --tail=50
+oc logs -n openshift-gitops -l app.kubernetes.io/name=openshift-gitops-application-controller --tail=50
+```
+
+### SCC-related pod failures
+
+```bash
+oc get scc confluent-scc
+oc get pod <pod-name> -n <namespace> -o jsonpath='{.metadata.annotations.openshift\.io/scc}'
 ```
 
 ### cert-manager CRDs not ready
 
-If deploying the Flink operator fails with CRD errors, cert-manager may not be fully initialized:
-
 ```bash
-# Check cert-manager webhook is ready
-kubectl get pods -n cert-manager -l app.kubernetes.io/component=webhook
-
-# Verify CRDs are registered
-kubectl get crd certificates.cert-manager.io
-```
-
-### Destination cluster not reachable
-
-If apps show `ComparisonError`, verify the destination cluster is registered with ArgoCD:
-
-```bash
-# For local cluster, use: https://kubernetes.default.svc
-# List registered clusters
-kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=cluster
+oc get pods -n cert-manager -l app.kubernetes.io/component=webhook
+oc get crd certificates.cert-manager.io
 ```
 
 ### Deploying to a different environment
 
-Replace `dev` with your target environment in all commands:
+Replace `dev` with your target environment:
 
 ```bash
-# Example for QA
-kubectl apply -f gitops-config/aws-us-east-2/qa/cert-manager-application-set.yaml
-kubectl apply -f gitops-config/aws-us-east-2/qa/confluent-operator-application-set.yaml
-kubectl apply -f gitops-config/aws-us-east-2/qa/confluent-flink-operator-application-set.yaml
+for file in gitops-config/openshift/qa/*.yaml; do
+  oc apply -f "$file"
+done
 ```
 
-Note that `qa`, `stg`, and `prd` environments use **manual sync** by default. You will need to trigger syncs manually via the ArgoCD UI or CLI after applying the ApplicationSet resources.
+Note that `qa`, `stg`, and `prd` use **manual sync**. Trigger syncs via the ArgoCD UI or CLI.
