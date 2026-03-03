@@ -58,11 +58,6 @@ All environments use **pinned versions** for fully reproducible, auditable deplo
 
 This repository uses **pinned versions across all environments** (dev, qa, stg, prd). When upgrading, update the pinned version in `dev` first, validate through `qa` and `stg`, then promote to `prd`.
 
-```yaml
-# All environments — pinned (explicit, reproducible)
-targetRevision: "1.130.2"
-```
-
 ### Discover Available Chart Versions
 
 Add the public Helm repos and query each chart to find the latest available versions:
