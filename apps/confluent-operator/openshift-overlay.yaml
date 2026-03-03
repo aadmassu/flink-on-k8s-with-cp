@@ -1,0 +1,4 @@
+podSecurity:
+  securityContext:
+    fsGroup: null
+    runAsUser: null

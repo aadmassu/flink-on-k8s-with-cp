@@ -1,0 +1,37 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cert-manager-stg
+  namespace: openshift-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: stg-cluster
+            url: https://stg-cluster.aws-us-east-2.example.com
+            environment: stg
+  template:
+    metadata:
+      name: "cert-manager-{{environment}}"
+      namespace: openshift-gitops
+    spec:
+      project: default
+      sources:
+        - repoURL: https://charts.jetstack.io
+          chart: cert-manager
+          targetRevision: 1.*
+          helm:
+            valueFiles:
+              - $values/apps/cert-manager/{{environment}}/values.yaml
+              - $values/apps/cert-manager/openshift-overlay.yaml
+        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{url}}"
+        namespace: cert-manager
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

@@ -1,0 +1,35 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: confluent-platform-stg
+  namespace: openshift-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: stg-cluster
+            url: https://stg-cluster.aws-us-east-2.example.com
+            environment: stg
+  template:
+    metadata:
+      name: "confluent-platform-{{environment}}"
+      namespace: openshift-gitops
+    spec:
+      project: default
+      source:
+        repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+        path: "apps/confluent-platform/{{environment}}/manifests"
+        targetRevision: HEAD
+      destination:
+        server: "{{url}}"
+        namespace: "confluent-{{environment}}"
+      ignoreDifferences:
+        - group: platform.confluent.io
+          kind: "*"
+          jsonPointers:
+            - /status
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - SkipDryRunOnMissingResource=true

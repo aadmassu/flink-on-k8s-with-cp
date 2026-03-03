@@ -1,0 +1,42 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: confluent-scc-confluent-stg
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:confluent-scc
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: confluent-stg
+  - kind: ServiceAccount
+    name: confluent-operator
+    namespace: confluent-stg
+  - kind: ServiceAccount
+    name: flink-kubernetes-operator
+    namespace: confluent-stg
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: confluent-scc-cert-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:confluent-scc
+subjects:
+  - kind: ServiceAccount
+    name: cert-manager
+    namespace: cert-manager
+  - kind: ServiceAccount
+    name: cert-manager-webhook
+    namespace: cert-manager
+  - kind: ServiceAccount
+    name: cert-manager-cainjector
+    namespace: cert-manager

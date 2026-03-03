@@ -1,0 +1,30 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: openshift-prereqs-prd
+  namespace: openshift-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: prd-cluster
+            url: https://prd-cluster.aws-us-east-2.example.com
+            environment: prd
+  template:
+    metadata:
+      name: "openshift-prereqs-{{environment}}"
+      namespace: openshift-gitops
+    spec:
+      project: default
+      source:
+        repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+        path: "apps/openshift-prereqs/{{environment}}/manifests"
+        targetRevision: HEAD
+      destination:
+        server: "{{url}}"
+        namespace: "openshift-gitops"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - SkipDryRunOnMissingResource=true

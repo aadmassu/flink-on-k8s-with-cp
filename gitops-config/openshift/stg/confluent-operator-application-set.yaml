@@ -1,0 +1,37 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: confluent-operator-stg
+  namespace: openshift-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: stg-cluster
+            url: https://stg-cluster.aws-us-east-2.example.com
+            environment: stg
+  template:
+    metadata:
+      name: "confluent-operator-{{environment}}"
+      namespace: openshift-gitops
+    spec:
+      project: default
+      sources:
+        - repoURL: https://packages.confluent.io/helm
+          chart: confluent-for-kubernetes
+          targetRevision: 0.*
+          helm:
+            valueFiles:
+              - $values/apps/confluent-operator/{{environment}}/values.yaml
+              - $values/apps/confluent-operator/openshift-overlay.yaml
+        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{url}}"
+        namespace: "confluent-{{environment}}"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
