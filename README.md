@@ -110,7 +110,7 @@ kubectl cluster-info
 
 - A Kubernetes cluster (1.28+) is provisioned and accessible via `kubectl`.
 - The deploying user or service account has **cluster-admin** privileges (required to create namespaces, CRDs, and ClusterRoles).
-- Helm repositories are accessible from the cluster or CI/CD runner (no network restrictions on `argoproj.github.io`, `charts.jetstack.io`, `packages.confluent.io`).
+- Helm repositories are accessible from the cluster or CI/CD runner (no network restrictions on `argoproj.github.io`, `charts.jetstack.io`, `packages.confluent.io`). For air-gapped or restricted environments, see the [Internal Registry Guide](README-INTERNAL-REGISTRY.md).
 - The ApplicationSet files in `gitops-config/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoints before deploying (dev is pre-configured to `https://kubernetes.default.svc`).
 - For CI/CD pipelines, a Kubernetes service connection or kubeconfig secret is configured in your pipeline platform.
 
@@ -511,3 +511,4 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 |-------|-------------|
 | [README-EXISTING-ARGOCD.md](README-EXISTING-ARGOCD.md) | Deploy operator apps into an existing ArgoCD instance |
 | [README-OPENSHIFT.md](README-OPENSHIFT.md) | Deploy on OpenShift with ArgoCD (OpenShift GitOps or standalone) |
+| [README-INTERNAL-REGISTRY.md](README-INTERNAL-REGISTRY.md) | Use internal Helm and container registries (air-gapped, JFrog, Nexus) |
