@@ -30,6 +30,8 @@ This guide explains how to redirect all Helm chart downloads and container image
 - **Security and compliance** — corporate policy requires image scanning, Software Bill of Materials (SBOM) tracking, or supply-chain controls before deployment.
 - **Performance and reliability** — avoid Docker Hub rate limits, reduce image pull latency, and eliminate external dependencies during deployments.
 
+In short, if your environment cannot — or your organization prefers not to — pull container images and Helm charts directly from public registries (e.g., Confluent's Docker image repository, Helm package repositories, Docker Hub), and you instead need to host those artifacts in a self-managed or enterprise-managed registry (such as JFrog Artifactory, Harbor, or Nexus), this guide is for you.
+
 ---
 
 ## Target Versions
