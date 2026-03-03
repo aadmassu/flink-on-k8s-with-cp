@@ -58,32 +58,23 @@ All components except SCCs are deployed **through ArgoCD** via ApplicationSet re
 
 ## Architecture
 
-```
-+---------------------------+
-|  Cluster Admin (one-time) |
-+------------+--------------+
-             |
-             | oc apply -f openshift-prereqs/<env>/manifests/
-             v
-     SCC + ClusterRoleBindings
-     (cluster-scoped)
+```mermaid
+flowchart TD
+    admin["Cluster Admin (one-time)"]
+    scc["SCC + ClusterRoleBindings\n(cluster-scoped)"]
+    argocd["OpenShift GitOps — ArgoCD\n(openshift-gitops ns)"]
+    cm["cert-manager\n(cert-manager ns)"]
+    cop["confluent-operator\n(confluent-&lt;env&gt; ns)"]
+    fop["confluent-flink-operator\n(confluent-&lt;env&gt; ns)"]
+    cp["confluent-platform\n(confluent-&lt;env&gt; ns)"]
+    cmf["confluent-flink-manager\n(confluent-&lt;env&gt; ns)"]
 
-+----------------------+
-|  OpenShift GitOps    |  <-- ArgoCD (openshift-gitops ns)
-|  (ArgoCD)            |
-+---------+------------+
-          |
-          | manages (ApplicationSet CRs)
-          |
-   +------+------+--------------------+---------------------+
-   |             |                    |                     |
-   v             v                    v                     v
-cert-manager  confluent-operator   confluent-flink-      confluent-platform
-(cert-manager (confluent-<env> ns) operator              (confluent-<env> ns)
- ns)                               (confluent-<env> ns)        |
-                                                               v
-                                                         confluent-flink-manager
-                                                         (confluent-<env> ns)
+    admin -- "oc apply -f openshift-prereqs/&lt;env&gt;/manifests/" --> scc
+    argocd -- "ApplicationSet" --> cm
+    argocd -- "ApplicationSet" --> cop
+    argocd -- "ApplicationSet" --> fop
+    argocd -- "ApplicationSet" --> cp
+    cp -- "depends on" --> cmf
 ```
 
 ---
