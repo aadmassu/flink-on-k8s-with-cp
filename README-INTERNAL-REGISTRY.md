@@ -36,12 +36,12 @@ This guide explains how to redirect all Helm chart downloads and container image
 
 This guide targets the latest versions for a greenfield deployment. Mirror these specific versions (or newer) to your internal registries.
 
-| Component | Version | Helm Chart | Chart Version |
-|---|---|---|---|
-| **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.*` (latest: `0.1351.59`) |
-| **Flink Kubernetes Operator** | 1.13.x | `flink-kubernetes-operator` | `1.*` (latest: `~1.130.0`) |
-| **cert-manager** | 1.19.4 | `cert-manager` | `1.*` (latest: `1.19.4`) |
-| **ArgoCD** | 2.14.x | `argo-cd` | `7.*` (latest: `7.8.0`) |
+| Component | Version | Helm Chart | dev/qa | stg/prd |
+|---|---|---|---|---|
+| **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.*` | `0.1351.59` |
+| **Flink Kubernetes Operator** | 1.13.x | `flink-kubernetes-operator` | `1.*` | `1.130.0` |
+| **cert-manager** | 1.19.4 | `cert-manager` | `1.*` | `1.19.4` |
+| **ArgoCD** | 2.14.x | `argo-cd` | `7.*` | `7.8.0` |
 
 ### Wildcard vs. Pinned Version Constraints
 
@@ -52,13 +52,13 @@ The ApplicationSet files use **wildcard semver constraints** (e.g., `0.*`, `1.*`
 | **Wildcard** (`1.*`, `0.*`) | Automatically picks up patch/minor fixes on sync; no manual bumps needed; reduces maintenance overhead | May pull in breaking changes on minor bumps; harder to reproduce exact deployments; audit/compliance teams may flag non-deterministic versions |
 | **Pinned** (`0.1351.59`, `1.130.0`) | Fully reproducible deployments; explicit change control; easier to audit and rollback; required for air-gapped mirroring | Requires manual version bumps in Git; easy to fall behind on security patches; more PR churn |
 
-**Recommendation:** Use **pinned versions** for production (`stg`, `prd`) and **wildcards** for lower environments (`dev`, `qa`) where auto-upgrade is acceptable. To pin a version, replace the wildcard in the ApplicationSet's `targetRevision` field:
+**Recommendation:** This repository uses **pinned versions** for `stg` and `prd` and **wildcards** for `dev` and `qa`. Wildcards in lower environments surface new releases early so they can be validated before promoting pinned versions to upper environments. When upgrading, update the pinned version in `stg` first, validate, then promote to `prd`.
 
 ```yaml
-# Wildcard (default)
+# dev / qa — wildcard (auto-picks latest within major)
 targetRevision: "1.*"
 
-# Pinned
+# stg / prd — pinned (explicit, reproducible)
 targetRevision: "1.130.0"
 ```
 

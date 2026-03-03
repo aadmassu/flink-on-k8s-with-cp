@@ -20,7 +20,7 @@ spec:
       sources:
         - repoURL: https://packages.confluent.io/helm
           chart: flink-kubernetes-operator
-          targetRevision: 1.*
+          targetRevision: 1.130.0
           helm:
             valueFiles:
               - $values/apps/confluent-flink-operator/{{environment}}/values.yaml
