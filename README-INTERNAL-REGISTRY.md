@@ -133,6 +133,12 @@ argo-cd                             9.4.7          OK
 | `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | `1.130.2` | `gitops-config/openshift/{dev,qa,stg,prd}/confluent-flink-operator-application-set.yaml` |
 | `argo-cd` | `https://argoproj.github.io/argo-helm` | `9.4.7` | `apps/argocd/{dev,qa,stg,prd}/app.yaml`, CI/CD pipelines |
 
+**Phase 2 (add when deploying CMF + Flink on K8s):**
+
+| Chart | Source Repository | Pinned Version | Notes |
+|---|---|---|---|
+| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | `<pinned CMF version>` | CMF Helm chart; add when Phase 2 begins |
+
 ---
 
 ## Inventory: Container Images
@@ -165,8 +171,12 @@ The Helm charts pull the images listed below. No container image registries are 
 | Image | Default Registry | Tag |
 |---|---|---|
 | `argocd` | `quay.io/argoproj/argocd` | `v3.3.2` |
-| `dex` | `ghcr.io/dexidp/dex` | `v2.41.1` |
-| `redis` | `docker.io/library/redis` | `7.4.2-alpine` |
+| `dex` | `ghcr.io/dexidp/dex` | `v2.44.0` |
+| `redis` | `public.ecr.aws/docker/library/redis` | `7.4.2-alpine` |
+
+> **Verify the Redis registry string.** The ArgoCD chart changed its default Redis image
+> source across versions. Run `helm template` with your pinned chart version to confirm
+> the exact registry and tag before mirroring.
 
 ### Confluent for Kubernetes Operator (CFK)
 
@@ -179,9 +189,33 @@ The Helm charts pull the images listed below. No container image registries are 
 
 | Image | Default Registry | Tag |
 |---|---|---|
-| `confluent-flink-kubernetes-operator` | `docker.io/confluentinc/confluent-flink-kubernetes-operator` | `1.130.2` |
+| `cp-flink-kubernetes-operator` | `docker.io/confluentinc/cp-flink-kubernetes-operator` | `1.13.0-cp2` |
 
-> **Note:** Confluent Platform runs on VMs (not Kubernetes) and CMF will be added in a future phase. Pull and push those images when they are needed.
+### Phase 2/3 Images (mirror when needed)
+
+The images above cover **Phase 1 (operators only)**. When you move to later phases, you must also mirror these additional images into Artifactory.
+
+**Phase 2 — CMF + Flink on K8s** (Confluent Platform stays on VMs):
+
+| Image | Default Registry | Tag | Notes |
+|---|---|---|---|
+| `cp-cmf` | `docker.io/confluentinc/cp-cmf` | `<pinned CMF version>` | Confluent Manager for Apache Flink; pin to your chart version |
+| `cp-flink` | `docker.io/confluentinc/cp-flink` | `<pinned Flink runtime tag>` | Flink runtime image used by `FlinkApplication` CRs |
+
+**Phase 3 — Confluent Platform on K8s via CFK** (add to Phase 1 + 2):
+
+| Image | Default Registry | Tag | Notes |
+|---|---|---|---|
+| `cp-server` | `docker.io/confluentinc/cp-server` | `<cp-version>` | Kafka broker (Confluent Server) |
+| `cp-schema-registry` | `docker.io/confluentinc/cp-schema-registry` | `<cp-version>` | Schema Registry |
+| `cp-kafka-connect` | `docker.io/confluentinc/cp-kafka-connect` | `<cp-version>` | Kafka Connect (if needed) |
+| `cp-enterprise-control-center` | `docker.io/confluentinc/cp-enterprise-control-center` | `<cp-version>` | Control Center (if needed) |
+| `cp-kafka-rest` | `docker.io/confluentinc/cp-kafka-rest` | `<cp-version>` | REST Proxy (optional) |
+| `cp-zookeeper` | `docker.io/confluentinc/cp-zookeeper` | `<cp-version>` | Only if not using KRaft |
+
+> **Tip:** Use `scripts/discover-charts-and-images.sh --phase 2` or `--phase 3` to generate the
+> complete image list for each phase. The script outputs one image per line, suitable for
+> feeding directly into a bulk mirror script.
 
 ---
 
@@ -289,15 +323,14 @@ IMAGES=(
 
   # ArgoCD (v3.3.2)
   "quay.io/argoproj/argocd:v3.3.2"
-  "ghcr.io/dexidp/dex:v2.41.1"
-  "docker.io/library/redis:7.4.2-alpine"
+  "ghcr.io/dexidp/dex:v2.44.0"
+  "public.ecr.aws/docker/library/redis:7.4.2-alpine"
 
-  # CFK Operator (3.1.1)
+  # CFK Operator (0.1351.59)
   "docker.io/confluentinc/confluent-operator:0.1351.59"
-  "docker.io/confluentinc/confluent-init-container:3.1.1"
 
-  # Flink Operator (1.130.2)
-  "docker.io/confluentinc/confluent-flink-kubernetes-operator:1.130.2"
+  # Flink Operator (1.13.0-cp2)
+  "docker.io/confluentinc/cp-flink-kubernetes-operator:1.13.0-cp2"
 
 )
 
@@ -539,7 +572,7 @@ Add these keys (merge with existing content):
 
 ```yaml
 image:
-  repository: artifactory.example.com/confluentinc/confluent-flink-kubernetes-operator
+  repository: artifactory.example.com/confluentinc/cp-flink-kubernetes-operator
 
 imagePullSecrets:
   - name: internal-registry
@@ -577,7 +610,7 @@ dex:
 redis:
   image:
     registry: artifactory.example.com
-    repository: library/redis
+    repository: docker/library/redis
 ```
 
 ---
