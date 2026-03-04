@@ -45,18 +45,18 @@ Planning document for Phase-II: deploying **Confluent Manager for Apache Flink (
 ```mermaid
 flowchart TD
     subgraph cluster["OpenShift Cluster"]
-        subgraph phase1["Phase-I (operators)"]
+        subgraph phase1["Phase-I — Operators"]
             cm["cert-manager"]
-            cfk["CFK<br>(confluent-operator)"]
+            cfk["CFK · confluent-operator"]
             fop["Flink Kubernetes Operator"]
         end
 
-        subgraph phase2["Phase-II (CMF + Flink workloads)"]
-            cmf["CMF CR<br>(kind: CMF)"]
-            restclass["CMFRestClass<br>(mTLS → :7778)"]
+        subgraph phase2["Phase-II — CMF + Flink Workloads"]
+            cmf["CMF CR · kind: CMF"]
+            restclass["CMFRestClass · mTLS :7778"]
             fenv["FlinkEnvironment"]
             fapp["FlinkApplication"]
-            flink_pods["Flink JobManager<br>+ TaskManager pods"]
+            flink_pods["Flink JobManager + TaskManager pods"]
         end
 
         cm -- "issues mTLS certs" --> cfk
