@@ -38,6 +38,8 @@ In short, if your environment cannot — or your organization prefers not to —
 
 All deployments use **pinned versions** for reproducibility and audit compliance. The discovery scripts in this repository are informational — the deployment always uses the pinned versions below. Pull, tag, and push these exact versions to Artifactory.
 
+**Phase 1 — Operators:**
+
 | Component | Version | Helm Chart | targetRevision |
 |---|---|---|---|
 | **Confluent for Kubernetes (CFK)** | 3.1.1 | `confluent-for-kubernetes` | `0.1351.59` |
@@ -45,7 +47,21 @@ All deployments use **pinned versions** for reproducibility and audit compliance
 | **cert-manager** | 1.19.4 | `cert-manager` | `v1.19.4` |
 | **ArgoCD** | 3.3.2 | `argo-cd` | `9.4.7` |
 
-> **Versions verified as of March 3, 2026.** Check the [Confluent release notes](https://docs.confluent.io/operator/current/release-notes.html), [cert-manager releases](https://github.com/cert-manager/cert-manager/releases), and [ArgoCD Helm chart releases](https://github.com/argoproj/argo-helm/releases) for updates.
+**Phase 2 — CMF + Flink Runtime** (add when deploying Flink on K8s):
+
+| Component | Version | Helm Chart | Notes |
+|---|---|---|---|
+| **Confluent Manager for Apache Flink (CMF)** | 2.2.0 | `confluent-manager-for-apache-flink` | CMF operator |
+| **Flink SQL Runtime** | 1.19.4-cp1 | — | Runtime image used by `FlinkApplication` / SQL statements |
+
+**Phase 3 — Confluent Platform on K8s** (add when moving CP from VMs to K8s):
+
+| Component | Version | Notes |
+|---|---|---|
+| **Confluent Platform** | 8.1.1 | CP component images (cp-server, cp-schema-registry, etc.) |
+| **CFK init container** | 3.1.1 | `confluent-init-container` — used by CFK-managed CRs |
+
+> **Versions verified as of March 2026.** CFK 3.1.1 aligns with CP 8.1.1 per [Confluent release notes](https://docs.confluent.io/operator/current/release-notes.html). CMF 2.2.0 per [Flink changelog](https://docs.confluent.io/cloud/current/flink/changelog.html). Check [cert-manager releases](https://github.com/cert-manager/cert-manager/releases) and [ArgoCD Helm chart releases](https://github.com/argoproj/argo-helm/releases) for updates.
 
 ### Wildcard vs. Pinned Version Constraints
 
@@ -137,7 +153,7 @@ argo-cd                             9.4.7          OK
 
 | Chart | Source Repository | Pinned Version | Notes |
 |---|---|---|---|
-| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | `<pinned CMF version>` | CMF Helm chart; add when Phase 2 begins |
+| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | `2.2.0` | CMF Helm chart; add when Phase 2 begins |
 
 ---
 
@@ -147,14 +163,17 @@ The Helm charts pull the images listed below. No container image registries are 
 
 ### Image Inventory Is Generated, Not Curated
 
-> **Do not hand-maintain the image list.** The authoritative image inventory is the output of
-> `helm template` with pinned chart versions and the repository's values/overlay files.
-> Run [`scripts/discover-charts-and-images.sh`](scripts/discover-charts-and-images.sh) to
-> regenerate the full list at any time. The tables below are a **reference snapshot** for
-> readability — if they diverge from the script output, **trust the script**.
+> **The tables below are examples, not the source of truth.** Charts embed image references
+> that change across versions — the only reliable inventory is the output of `helm template`
+> with your pinned chart versions and values files.
 >
-> This approach prevents `ImagePullBackOff` failures caused by charts embedding images
-> that don't appear in a hand-maintained list.
+> Run [`scripts/discover-charts-and-images.sh`](scripts/discover-charts-and-images.sh) to
+> generate the authoritative image list. The script also writes `images-phase{1,2,3}.txt`
+> files that can be fed directly into a bulk mirror script.
+>
+> **Always mirror what the script outputs, not what these tables say.** This prevents
+> `ImagePullBackOff` failures caused by charts embedding images (e.g., a different Redis
+> registry, updated dex version) that don't appear in a hand-maintained list.
 
 ### cert-manager
 
@@ -193,29 +212,34 @@ The Helm charts pull the images listed below. No container image registries are 
 
 ### Phase 2/3 Images (mirror when needed)
 
-The images above cover **Phase 1 (operators only)**. When you move to later phases, you must also mirror these additional images into Artifactory.
+The images above cover **Phase 1 (operators only)**. When you move to later phases, you must also mirror these additional images into Artifactory. **Always regenerate from the script** — the tables below are examples.
 
 **Phase 2 — CMF + Flink on K8s** (Confluent Platform stays on VMs):
 
 | Image | Default Registry | Tag | Notes |
 |---|---|---|---|
-| `cp-cmf` | `docker.io/confluentinc/cp-cmf` | `<pinned CMF version>` | Confluent Manager for Apache Flink; pin to your chart version |
-| `cp-flink` | `docker.io/confluentinc/cp-flink` | `<pinned Flink runtime tag>` | Flink runtime image used by `FlinkApplication` CRs |
+| `cp-cmf` | `docker.io/confluentinc/cp-cmf` | `2.2.0` | Confluent Manager for Apache Flink |
+| `cp-flink` | `docker.io/confluentinc/cp-flink` | `1.19.4-cp1` | Flink SQL runtime image used by `FlinkApplication` CRs and SQL statements |
 
 **Phase 3 — Confluent Platform on K8s via CFK** (add to Phase 1 + 2):
 
 | Image | Default Registry | Tag | Notes |
 |---|---|---|---|
-| `cp-server` | `docker.io/confluentinc/cp-server` | `<cp-version>` | Kafka broker (Confluent Server) |
-| `cp-schema-registry` | `docker.io/confluentinc/cp-schema-registry` | `<cp-version>` | Schema Registry |
-| `cp-kafka-connect` | `docker.io/confluentinc/cp-kafka-connect` | `<cp-version>` | Kafka Connect (if needed) |
-| `cp-enterprise-control-center` | `docker.io/confluentinc/cp-enterprise-control-center` | `<cp-version>` | Control Center (if needed) |
-| `cp-kafka-rest` | `docker.io/confluentinc/cp-kafka-rest` | `<cp-version>` | REST Proxy (optional) |
-| `cp-zookeeper` | `docker.io/confluentinc/cp-zookeeper` | `<cp-version>` | Only if not using KRaft |
+| `confluent-init-container` | `docker.io/confluentinc/confluent-init-container` | `3.1.1` | CFK init container for all CP CRs |
+| `cp-server` | `docker.io/confluentinc/cp-server` | `8.1.1` | Kafka broker (Confluent Server) |
+| `cp-schema-registry` | `docker.io/confluentinc/cp-schema-registry` | `8.1.1` | Schema Registry |
+| `cp-kafka-connect` | `docker.io/confluentinc/cp-kafka-connect` | `8.1.1` | Kafka Connect (if needed) |
+| `cp-enterprise-control-center` | `docker.io/confluentinc/cp-enterprise-control-center` | `8.1.1` | Control Center (if needed) |
+| `cp-ksqldb-server` | `docker.io/confluentinc/cp-ksqldb-server` | `8.1.1` | ksqlDB (if needed) |
+| `cp-kafka-rest` | `docker.io/confluentinc/cp-kafka-rest` | `8.1.1` | REST Proxy (optional) |
+| `cp-zookeeper` | `docker.io/confluentinc/cp-zookeeper` | `8.1.1` | Only if not using KRaft |
 
-> **Tip:** Use `scripts/discover-charts-and-images.sh --phase 2` or `--phase 3` to generate the
-> complete image list for each phase. The script outputs one image per line, suitable for
-> feeding directly into a bulk mirror script.
+> **Generate the mirror manifest, don't copy-paste the tables:**
+> ```bash
+> ./scripts/discover-charts-and-images.sh --phase 2    # outputs images-phase2.txt
+> ./scripts/discover-charts-and-images.sh --phase 3    # outputs images-phase3.txt
+> ```
+> Feed the generated `.txt` files directly into your bulk mirror script.
 
 ---
 

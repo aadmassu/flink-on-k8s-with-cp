@@ -27,5 +27,8 @@ Thumbs.db
 *.tgz
 charts/
 
+# Generated image manifests (output of discover-charts-and-images.sh)
+images-phase*.txt
+
 # Temporary
 tmp/

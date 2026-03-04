@@ -3,9 +3,9 @@ set -euo pipefail
 
 # ============================================================================
 # Discover pinned Helm chart versions and container images for:
-#   - Operators (cert-manager, CFK, Flink Operator, ArgoCD)
-#   - Phase 2: CMF + Flink runtime
-#   - Phase 3: Confluent Platform components
+#   - Phase 1: Operators (cert-manager, CFK, Flink Operator, ArgoCD)
+#   - Phase 2: Phase 1 + CMF + Flink SQL runtime
+#   - Phase 3: Phase 2 + Confluent Platform components on K8s
 #
 # Usage:
 #   ./discover-charts-and-images.sh              # Phase 1 (operators only)
@@ -20,8 +20,14 @@ set -euo pipefail
 #   maintained lists or registry API queries that can drift.
 #
 # Output:
-#   Prints chart versions and images to stdout. The deduplicated image list
-#   at the end can be piped to a bulk mirror script.
+#   - Prints chart versions and images to stdout
+#   - Writes images-phase{1,2,3}.txt to the repo root (one image per line)
+#     These files are the authoritative mirror manifests for JFrog.
+#
+# Environment variable overrides (optional):
+#   CMF_VERSION       CMF chart version        (default: 2.2.0)
+#   CP_FLINK_VERSION  Flink SQL runtime tag    (default: 1.19.4-cp1)
+#   CP_VERSION        Confluent Platform tag   (default: 8.1.1)
 # ============================================================================
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -46,16 +52,19 @@ if [[ "$PHASE" != "1" && "$PHASE" != "2" && "$PHASE" != "3" ]]; then
   exit 1
 fi
 
-# --- Pinned chart versions (single source of truth) ---
+# --- Pinned versions (single source of truth) ---
+# Phase 1 — Operators
 CERT_MANAGER_VERSION="v1.19.4"
 CFK_VERSION="0.1351.59"
 FLINK_OPERATOR_VERSION="1.130.2"
 ARGOCD_VERSION="9.4.7"
 
-# Phase 2/3 versions — update these when you pin specific versions
-CMF_VERSION="${CMF_VERSION:-}"          # e.g. "0.xxx.yy"
-CP_FLINK_VERSION="${CP_FLINK_VERSION:-}"  # e.g. "1.19-cp1"
-CP_VERSION="${CP_VERSION:-}"            # e.g. "7.8.0"
+# Phase 2 — CMF + Flink runtime
+CMF_VERSION="${CMF_VERSION:-2.2.0}"
+CP_FLINK_VERSION="${CP_FLINK_VERSION:-1.19.4-cp1}"
+
+# Phase 3 — Confluent Platform on K8s (CFK 3.1.1 aligns with CP 8.1.1)
+CP_VERSION="${CP_VERSION:-8.1.1}"
 
 # ========================================
 #  Helm Chart Versions
@@ -114,7 +123,6 @@ trap 'rm -f "$ALL_IMAGES"' EXIT
 extract_images() {
   local label="$1"
   shift
-  # Run helm template; extract image: fields; clean up whitespace and quotes
   local images
   images=$(helm template "$@" 2>/dev/null \
     | grep -E '^\s+image:|^\s+- image:' \
@@ -154,33 +162,33 @@ add_static_image() {
 echo "=== Phase 1: Operators ==="
 echo ""
 
-# --- cert-manager ---
 extract_images "cert-manager (${CERT_MANAGER_VERSION})" \
   cert-manager jetstack/cert-manager \
   --version "$CERT_MANAGER_VERSION" \
   -f "${REPO_ROOT}/apps/cert-manager/dev/values.yaml" \
   -f "${REPO_ROOT}/apps/cert-manager/openshift-overlay.yaml"
 
-# --- Confluent for Kubernetes (CFK) ---
 extract_images "confluent-for-kubernetes (${CFK_VERSION})" \
   confluent-operator confluent/confluent-for-kubernetes \
   --version "$CFK_VERSION" \
   -f "${REPO_ROOT}/apps/confluent-operator/dev/values.yaml" \
   -f "${REPO_ROOT}/apps/confluent-operator/openshift-overlay.yaml"
 
-# --- Flink Kubernetes Operator ---
 extract_images "flink-kubernetes-operator (${FLINK_OPERATOR_VERSION})" \
   flink-operator confluent/flink-kubernetes-operator \
   --version "$FLINK_OPERATOR_VERSION" \
   -f "${REPO_ROOT}/apps/confluent-flink-operator/dev/values.yaml" \
   -f "${REPO_ROOT}/apps/confluent-flink-operator/openshift-overlay.yaml"
 
-# --- ArgoCD ---
-# ArgoCD has no openshift-overlay file; render with env values only
 extract_images "argo-cd (${ARGOCD_VERSION})" \
   argocd argo-cd/argo-cd \
   --version "$ARGOCD_VERSION" \
   -f "${REPO_ROOT}/apps/argocd/dev/values.yaml"
+
+# Write Phase 1 manifest
+sort -u "$ALL_IMAGES" > "${REPO_ROOT}/images-phase1.txt"
+echo "  >> Wrote ${REPO_ROOT}/images-phase1.txt ($(wc -l < "${REPO_ROOT}/images-phase1.txt" | tr -d ' ') images)"
+echo ""
 
 # ========================================
 #  Phase 2 — CMF + Flink Runtime
@@ -188,26 +196,20 @@ extract_images "argo-cd (${ARGOCD_VERSION})" \
 
 if [[ "$PHASE" -ge 2 ]]; then
   echo "=== Phase 2: CMF + Flink Runtime ==="
+  echo "  CMF_VERSION=${CMF_VERSION}  CP_FLINK_VERSION=${CP_FLINK_VERSION}"
   echo ""
 
-  if [ -n "$CMF_VERSION" ]; then
-    extract_images "confluent-manager-for-apache-flink (${CMF_VERSION})" \
-      cmf confluent/confluent-manager-for-apache-flink \
-      --version "$CMF_VERSION"
-  else
-    echo "  NOTE: CMF_VERSION not set. Set CMF_VERSION env var to render CMF chart images."
-    echo "  Example: CMF_VERSION=0.xxx.yy $0 --phase 2"
-    echo ""
-  fi
+  extract_images "confluent-manager-for-apache-flink (${CMF_VERSION})" \
+    cmf confluent/confluent-manager-for-apache-flink \
+    --version "$CMF_VERSION"
 
-  if [ -n "$CP_FLINK_VERSION" ]; then
-    add_static_image "cp-flink runtime (${CP_FLINK_VERSION})" \
-      "docker.io/confluentinc/cp-flink:${CP_FLINK_VERSION}"
-  else
-    echo "  NOTE: CP_FLINK_VERSION not set. Set CP_FLINK_VERSION env var to include the Flink runtime image."
-    echo "  Example: CP_FLINK_VERSION=1.19-cp1 $0 --phase 2"
-    echo ""
-  fi
+  add_static_image "cp-flink SQL runtime (${CP_FLINK_VERSION})" \
+    "docker.io/confluentinc/cp-flink:${CP_FLINK_VERSION}"
+
+  # Write Phase 2 manifest (superset of Phase 1)
+  sort -u "$ALL_IMAGES" > "${REPO_ROOT}/images-phase2.txt"
+  echo "  >> Wrote ${REPO_ROOT}/images-phase2.txt ($(wc -l < "${REPO_ROOT}/images-phase2.txt" | tr -d ' ') images)"
+  echo ""
 fi
 
 # ========================================
@@ -215,19 +217,23 @@ fi
 # ========================================
 
 if [[ "$PHASE" -ge 3 ]]; then
-  echo "=== Phase 3: Confluent Platform Components ==="
+  echo "=== Phase 3: Confluent Platform Components (CP ${CP_VERSION}) ==="
   echo ""
 
-  if [ -n "$CP_VERSION" ]; then
-    for component in cp-server cp-schema-registry cp-kafka-connect cp-enterprise-control-center cp-kafka-rest cp-zookeeper; do
-      add_static_image "${component} (${CP_VERSION})" \
-        "docker.io/confluentinc/${component}:${CP_VERSION}"
-    done
-  else
-    echo "  NOTE: CP_VERSION not set. Set CP_VERSION env var to include Confluent Platform images."
-    echo "  Example: CP_VERSION=7.8.0 $0 --phase 3"
-    echo ""
-  fi
+  # CFK init container — required for all CFK-managed CRs
+  add_static_image "confluent-init-container (3.1.1)" \
+    "docker.io/confluentinc/confluent-init-container:3.1.1"
+
+  # CP component images
+  for component in cp-server cp-schema-registry cp-kafka-connect cp-enterprise-control-center cp-ksqldb-server cp-kafka-rest cp-zookeeper; do
+    add_static_image "${component} (${CP_VERSION})" \
+      "docker.io/confluentinc/${component}:${CP_VERSION}"
+  done
+
+  # Write Phase 3 manifest (superset of Phase 1 + 2)
+  sort -u "$ALL_IMAGES" > "${REPO_ROOT}/images-phase3.txt"
+  echo "  >> Wrote ${REPO_ROOT}/images-phase3.txt ($(wc -l < "${REPO_ROOT}/images-phase3.txt" | tr -d ' ') images)"
+  echo ""
 fi
 
 # ========================================
