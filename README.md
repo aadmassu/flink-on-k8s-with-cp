@@ -346,31 +346,15 @@ confluent-flink-operator-dev    Healthy   Synced   confluent-dev
 
 ## Deployment Order
 
-```
-┌─────────────────────────────────────────────┐
-│  1. Create + Label Namespaces               │
-│     (confluent-<env>, cert-manager)         │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  2. OpenShift Prerequisites                 │
-│     (SCC + ClusterRoleBindings)             │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  3. cert-manager                            │
-│     (skip if OpenShift-provided)            │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  3a. Wait for cert-manager CRDs             │
-│      (certificates, issuers)               │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  4. Confluent Operator + Flink Operator     │
-│     (deploy in parallel)                    │
-└─────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    step1["1. Create + Label Namespaces\n(confluent-&lt;env&gt;, cert-manager)"]
+    step2["2. OpenShift Prerequisites\n(SCC + ClusterRoleBindings)"]
+    step3["3. cert-manager\n(skip if OpenShift-provided)"]
+    step3a["3a. Wait for cert-manager CRDs\n(certificates, issuers)"]
+    step4["4. Confluent Operator + Flink Operator\n(deploy in parallel)"]
+
+    step1 --> step2 --> step3 --> step3a --> step4
 ```
 
 ---
