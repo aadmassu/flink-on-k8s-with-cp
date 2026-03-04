@@ -26,6 +26,7 @@ GitOps repository for deploying **Confluent and Flink operators** on **Red Hat O
 - [Tear Down](#tear-down)
 - [Sync Policies](#sync-policies)
 - [Namespace Convention](#namespace-convention)
+- [ArgoCD Projects (Optional Hardening)](#argocd-projects-optional-hardening)
 - [Helm Charts Reference](#helm-charts-reference)
 - [OpenShift-Specific Considerations](#openshift-specific-considerations)
   - [Security Context Constraints (SCCs)](#security-context-constraints-sccs)
@@ -123,7 +124,7 @@ oc version
 - The deploying user or service account has **cluster-admin** privileges (required for creating namespaces, CRDs, SCCs, and ClusterRoles).
 - Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster. For air-gapped or restricted environments, see the [Internal Registry Guide](README-INTERNAL-REGISTRY.md).
 - The ApplicationSet files in `gitops-config/openshift/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
-- OpenShift may already have cert-manager installed via the Red Hat cert-manager Operator. If so, skip the cert-manager deployment step.
+- **Do not install Jetstack cert-manager if the Red Hat cert-manager Operator is already present — choose one.** Running both will cause webhook conflicts, duplicate CRDs, and unpredictable certificate issuance. Check with `oc get pods -n cert-manager` and `oc get pods -n openshift-cert-manager` before proceeding.
 - **Confluent Platform runs on VMs**, not on Kubernetes. This repo deploys only the operators needed for Flink workloads.
 
 ---
@@ -134,6 +135,7 @@ oc version
 .
 |
 |-- README.md                                # This file
+|-- README-PHASE-II.md                       # Phase-II planning: decisions + checklist
 |-- README-EXISTING-ARGOCD.md                # Guide: deploy into an existing ArgoCD
 |-- README-INTERNAL-REGISTRY.md              # Guide: air-gapped / internal registries
 |-- CHEATSHEET.md                            # oc/helm command reference
@@ -289,16 +291,23 @@ oc get clusterrolebinding | grep confluent-scc
 
 ### Step 3 - Deploy cert-manager
 
-> **Note:** OpenShift may already have cert-manager. Check first:
+> **Do not install Jetstack cert-manager if the Red Hat cert-manager Operator is already present — choose one.** Running both causes webhook conflicts and unpredictable certificate issuance.
 > ```bash
 > oc get pods -n cert-manager 2>/dev/null || oc get pods -n openshift-cert-manager 2>/dev/null
 > ```
-> If cert-manager is already running, skip this step.
+> If either returns running pods, **skip this step entirely**.
 
 ```bash
 oc apply -f gitops-config/openshift/${ENV}/cert-manager-application-set.yaml
 oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/cert-manager-${ENV} -n ${ARGOCD_NS} --timeout=180s
+```
+
+**Verify CRDs are established** before proceeding — ArgoCD may report "Healthy" before CRDs are fully registered:
+
+```bash
+oc wait --for=condition=Established crd/certificates.cert-manager.io --timeout=60s
+oc wait --for=condition=Established crd/issuers.cert-manager.io --timeout=60s
 ```
 
 ### Step 4 - Deploy Confluent Operator (CFK) and Flink Operator
@@ -351,6 +360,11 @@ confluent-flink-operator-dev    Healthy   Synced   confluent-dev
 ┌──────────────────▼──────────────────────────┐
 │  3. cert-manager                            │
 │     (skip if OpenShift-provided)            │
+└──────────────────┬──────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────┐
+│  3a. Wait for cert-manager CRDs             │
+│      (certificates, issuers)               │
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
@@ -410,6 +424,40 @@ All environments use these ArgoCD sync options:
 
 ---
 
+## ArgoCD Projects (Optional Hardening)
+
+By default all ApplicationSets use `project: default`. For customer or multi-team environments, create a dedicated ArgoCD `AppProject` per environment to restrict which namespaces and clusters each environment can target. This prevents accidental cross-environment deploys.
+
+Example `AppProject` for dev:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: confluent-dev
+  namespace: openshift-gitops
+spec:
+  description: Confluent + Flink operators — dev environment
+  sourceRepos:
+    - https://charts.jetstack.io
+    - https://packages.confluent.io/helm
+    - git@github.com:aadmassu/flink-on-k8s-with-cp.git   # update to your repo
+  destinations:
+    - namespace: confluent-dev
+      server: https://kubernetes.default.svc
+    - namespace: cert-manager
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+```
+
+To use, update `spec.template.spec.project` in each ApplicationSet from `default` to the project name (e.g., `confluent-dev`). Repeat for qa, stg, and prd with their respective namespace restrictions.
+
+---
+
 ## Helm Charts Reference
 
 | Chart | Repository | Used For |
@@ -436,7 +484,7 @@ Service account bindings (`openshift-prereqs/<env>/manifests/scc-bindings.yaml`)
 - `confluent-operator`, `flink-kubernetes-operator` in `confluent-<env>` -> `confluent-scc`
 - `cert-manager`, `cert-manager-webhook`, `cert-manager-cainjector` in `cert-manager` -> `confluent-scc`
 
-**Manual alternative** (imperative):
+> **Break-glass / quick PoC only** — The imperative commands below bind the built-in `anyuid` SCC, which is broader than the custom `confluent-scc`. Use the declarative manifests above for production deployments.
 
 ```bash
 oc adm policy add-scc-to-user anyuid -z confluent-operator -n confluent-${ENV}
@@ -466,14 +514,13 @@ oc adm policy add-cluster-role-to-user cluster-admin \
 
 ### cert-manager on OpenShift
 
-OpenShift 4.x may include cert-manager via the **cert-manager Operator for Red Hat OpenShift**. Check first:
+**Do not install Jetstack cert-manager if the Red Hat cert-manager Operator is already present — choose one.** Running both will cause webhook conflicts, duplicate CRDs, and unpredictable certificate issuance.
 
 ```bash
-oc get pods -n cert-manager 2>/dev/null
-oc get pods -n openshift-cert-manager 2>/dev/null
+oc get pods -n cert-manager 2>/dev/null || oc get pods -n openshift-cert-manager 2>/dev/null
 ```
 
-If already running, skip the cert-manager deployment step. Avoid running two cert-manager instances.
+If either returns running pods, **skip the cert-manager deployment step entirely**.
 
 ---
 
@@ -564,7 +611,7 @@ oc get application confluent-operator-dev -n ${ARGOCD_NS} -o jsonpath='{.status.
 This repository supports a phased deployment strategy:
 
 - **Phase-I (current):** **Operators only** -- cert-manager, CFK, Flink operator. Confluent Platform continues to run on VMs.
-- **Phase-II:** **CMF + Flink on K8s, CP on VMs (external Kafka)** -- deploy Confluent Manager for Apache Flink (CMF) on Kubernetes, configured to connect to the external Confluent Platform running on VMs. CMF manifests will be added under `apps/confluent-flink/` and a new `confluent-flink-application-set.yaml` will be introduced per environment.
+- **Phase-II:** **CMF + Flink on K8s, CP on VMs (external Kafka)** -- deploy Confluent Manager for Apache Flink (CMF) on Kubernetes, configured to connect to the external Confluent Platform running on VMs. CMF manifests will be added under `apps/confluent-flink/` and a new `confluent-flink-application-set.yaml` will be introduced per environment. See [README-PHASE-II.md](README-PHASE-II.md) for open decisions, prerequisites, and the readiness checklist.
 - **Phase-III:** **CMF + Flink + CP on K8s** -- migrate Confluent Platform onto Kubernetes via CFK CRDs. CMF manages Flink SQL workloads end-to-end with Kafka running on K8s.
 
 ---
@@ -573,6 +620,7 @@ This repository supports a phased deployment strategy:
 
 | Guide | Description |
 |-------|-------------|
+| [README-PHASE-II.md](README-PHASE-II.md) | Phase-II planning: open decisions, readiness checklist, and deployment order for CMF |
 | [README-EXISTING-ARGOCD.md](README-EXISTING-ARGOCD.md) | Deploy into an existing OpenShift GitOps / ArgoCD instance |
 | [README-INTERNAL-REGISTRY.md](README-INTERNAL-REGISTRY.md) | Use internal Helm and container registries (air-gapped, JFrog, Nexus) |
 | [CHEATSHEET.md](CHEATSHEET.md) | oc and helm command reference |

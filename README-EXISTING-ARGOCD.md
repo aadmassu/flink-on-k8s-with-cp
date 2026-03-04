@@ -49,6 +49,7 @@ oc get pods -n openshift-gitops   # or your ArgoCD namespace
 - Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster.
 - The ApplicationSet files in `gitops-config/openshift/` are configured with `namespace: openshift-gitops`. If ArgoCD is in a different namespace, update accordingly.
 - The ApplicationSet files contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint.
+- **(Optional)** For multi-team or customer environments, use a dedicated ArgoCD `AppProject` per environment instead of `project: default` to prevent cross-environment deploys. See the main [README.md — ArgoCD Projects](README.md#argocd-projects-optional-hardening).
 
 ---
 
@@ -138,15 +139,23 @@ oc get clusterrolebinding | grep confluent-scc
 
 ## Step 6 - Deploy cert-manager
 
-> **Note:** Skip if OpenShift already has cert-manager running:
+> **Do not install Jetstack cert-manager if the Red Hat cert-manager Operator is already present — choose one.** Running both causes webhook conflicts and unpredictable certificate issuance.
 > ```bash
 > oc get pods -n cert-manager 2>/dev/null || oc get pods -n openshift-cert-manager 2>/dev/null
 > ```
+> If either returns running pods, **skip this step entirely**.
 
 ```bash
 oc apply -f gitops-config/openshift/${ENV}/cert-manager-application-set.yaml
 oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/cert-manager-${ENV} -n ${ARGOCD_NS} --timeout=180s
+```
+
+**Verify CRDs are established** before proceeding — ArgoCD may report "Healthy" before CRDs are fully registered:
+
+```bash
+oc wait --for=condition=Established crd/certificates.cert-manager.io --timeout=60s
+oc wait --for=condition=Established crd/issuers.cert-manager.io --timeout=60s
 ```
 
 ---

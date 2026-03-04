@@ -179,7 +179,9 @@ oc apply -f openshift-prereqs/<env>/manifests/
 This applies `confluent-scc.yaml` and `scc-bindings.yaml` for the target
 environment (dev, qa, stg, prd).
 
-### Imperative (alternative)
+### Imperative (break-glass / quick PoC only)
+
+> **Warning:** These commands bind the built-in `anyuid` SCC, which is broader than the custom `confluent-scc`. Use the declarative approach above for production deployments.
 
 ```bash
 # Confluent operator

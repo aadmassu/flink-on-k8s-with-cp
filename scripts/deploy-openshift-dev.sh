@@ -61,6 +61,13 @@ else
     application/cert-manager-$ENV -n "$ARGOCD_NS" --timeout=180s
 fi
 
+# ── Step 4a: Wait for cert-manager CRDs ─────────────────────────────────────
+echo ""
+echo "==> Verifying cert-manager CRDs are established..."
+oc wait --for=condition=Established crd/certificates.cert-manager.io --timeout=60s
+oc wait --for=condition=Established crd/issuers.cert-manager.io --timeout=60s
+echo "    cert-manager CRDs are ready."
+
 # ── Step 5: Deploy Confluent Operator & Flink Operator ───────────────────────
 echo ""
 echo "==> Deploying Confluent Operator..."
