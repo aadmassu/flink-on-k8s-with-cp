@@ -31,10 +31,11 @@ Planning document for Phase-II: deploying **Confluent Manager for Apache Flink (
 
 | What | Detail |
 |------|--------|
-| **Deploy** | Confluent Manager for Apache Flink (CMF) |
+| **Deploy** | CMF CRs (`CMF`, `CMFRestClass`, `FlinkEnvironment`, `FlinkApplication`) — all managed by CFK |
 | **Where** | OpenShift 4.12+ (same clusters as Phase-I operators) |
 | **Kafka** | External — Confluent Platform on VMs |
-| **Flink** | On Kubernetes, orchestrated by CMF via Flink Operator CRDs |
+| **Flink** | On Kubernetes — FlinkApplication CRs are translated by CFK into FlinkDeployment CRs for the Flink Operator |
+| **mTLS** | CMF REST secured via cert-manager-issued certificates |
 | **Not in scope** | Migrating CP onto K8s (that is Phase-III) |
 
 ---
@@ -44,17 +45,33 @@ Planning document for Phase-II: deploying **Confluent Manager for Apache Flink (
 ```mermaid
 flowchart TD
     subgraph cluster["OpenShift Cluster"]
-        cm["cert-manager<br>(Phase-I)"]
-        cfk["CFK — CRDs only<br>(Phase-I)"]
-        fop["Flink Operator<br>(Phase-I)"]
-        cmf["CMF<br>(Phase-II)"]
+        subgraph phase1["Phase-I (operators)"]
+            cm["cert-manager"]
+            cfk["CFK<br>(confluent-operator)"]
+            fop["Flink Kubernetes Operator"]
+        end
 
-        cmf -- "submits FlinkDeployment CRs" --> fop
+        subgraph phase2["Phase-II (CMF + Flink workloads)"]
+            cmf["CMF CR<br>(kind: CMF)"]
+            restclass["CMFRestClass<br>(mTLS → :7778)"]
+            fenv["FlinkEnvironment"]
+            fapp["FlinkApplication"]
+            flink_pods["Flink JobManager<br>+ TaskManager pods"]
+        end
+
+        cm -- "issues mTLS certs" --> cfk
+        cfk -- "reconciles CMF CR" --> cmf
+        cmf -. "exposes CMF REST<br>on confluent-operator:7778" .-> restclass
+        fapp -- "references" --> restclass
+        fapp -- "scoped by" --> fenv
+        cfk -- "submits FlinkDeployment CR" --> fop
+        fop -- "creates / manages" --> flink_pods
     end
 
     cp["Confluent Platform<br>(VMs — external)<br>Kafka · SR · Connect"]
 
-    cmf -- "Kafka protocol / REST" --> cp
+    flink_pods -- "Kafka protocol" --> cp
+    cmf -- "REST / metadata" --> cp
 ```
 
 ---
@@ -73,8 +90,10 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["cert-manager CRDs"] --> B["cert-manager pods"] --> C["Flink Operator CRDs"] --> D["Flink Operator pods"] --> E["CMF"]
+    A["cert-manager CRDs"] --> B["cert-manager pods"] --> C["CFK CRDs<br>(CMF, CMFRestClass,<br>FlinkEnvironment,<br>FlinkApplication)"] --> D["CFK pods<br>(confluent-operator)"] --> E["Flink Operator CRDs"] --> F["Flink Operator pods"] --> G["CMF + Flink CRs"]
 ```
+
+> **Key insight:** CMF is a CFK-managed CR, so the CFK operator and its CRDs must be ready before CMF CRs can be applied. The Flink Operator must also be ready because CFK translates `FlinkApplication` CRs into `FlinkDeployment` CRs that the Flink Operator reconciles.
 
 **Decision needed:**
 
@@ -111,14 +130,25 @@ flowchart LR
 
 ### 3 — CMF deployment method
 
-CMF can be deployed as a Helm chart or as raw Kubernetes manifests.
+CMF is a **CFK-managed custom resource** (`kind: CMF`, `apiVersion: platform.confluent.io/v1beta1`). The CFK operator (confluent-operator) reconciles CMF CRs, runs the CMF REST server on port 7778, and manages the full lifecycle. This means CMF does **not** require a separate Helm chart — it is deployed by applying CRs to a cluster where CFK is already running.
+
+The Phase-II deployment therefore consists of applying a set of CRs:
+
+| CR | Purpose |
+|----|---------|
+| `CMF` | Declares the CMF server instance; CFK starts the REST endpoint on `confluent-operator.<ns>.svc.cluster.local:7778` |
+| `CMFRestClass` | Defines how clients authenticate to CMF REST (mTLS, with cert-manager-issued certs) |
+| `FlinkEnvironment` | Scopes Flink defaults (namespace, task slots, parallelism) for a group of Flink applications |
+| `FlinkApplication` | Declares a Flink job; references a FlinkEnvironment and CMFRestClass; CFK translates it into a FlinkDeployment CR for the Flink Operator |
+
+**Deployment options via ArgoCD:**
 
 | Option | Pros | Cons |
 |--------|------|------|
-| **A. Helm chart via ArgoCD** | Consistent with Phase-I operators; values-per-env pattern already established | Requires a published CMF Helm chart from Confluent |
-| **B. Raw manifests via ArgoCD** | Works even if no Helm chart exists; full control | More YAML to maintain per environment |
+| **A. Plain manifests in Git** | Simple, full control over each CR, easy to template per env | More YAML to maintain; no Helm lifecycle hooks |
+| **B. Kustomize overlays** | Base + per-env patches; reduces duplication | Extra Kustomize layer to learn |
 
-> **Action:** Confirm whether Confluent publishes a CMF Helm chart to `packages.confluent.io/helm`. If yes, follow Option A. If not, use Option B with a Kustomize overlay or plain manifests.
+> **Action:** Create per-environment CR manifests (or Kustomize overlays) under `apps/confluent-flink/<env>/`. CFK must be healthy before applying these CRs.
 
 ---
 
@@ -140,15 +170,17 @@ CMF must reach the Confluent Platform brokers running on VMs.
 
 ### 5 — CMF service account and SCC bindings
 
-Phase-I created the custom `confluent-scc` and binds specific service accounts to it. CMF will introduce new pods that need SCC bindings.
+Phase-I created the custom `confluent-scc` and binds specific service accounts to it. Phase-II introduces new pod types that may need SCC bindings.
+
+**What we now know:** CMF itself runs inside the CFK (confluent-operator) pod — it does not create a separate deployment. The confluent-operator SA was already bound to the SCC in Phase-I. However, **Flink job pods** (JobManager + TaskManager) created by the Flink Operator are new workloads.
 
 **Questions to answer:**
 
-- [ ] What service account name does CMF use? (Check the Helm chart or deployment manifest defaults.)
-- [ ] Does CMF require `anyuid` or is `restricted` sufficient?
-- [ ] Do Flink job pods (submitted by CMF) need their own SCC binding, or do they inherit the Flink operator's SA?
+- [ ] Do Flink JobManager / TaskManager pods run under the Flink operator's SA, or do they use a dedicated SA (e.g., `flink` or `flink-<job-name>`)?
+- [ ] Do Flink job pods require `anyuid` or is `restricted` sufficient?
+- [ ] Does the FlinkApplication CR's `podTemplate` allow specifying a `serviceAccountName`?
 
-> **Action:** Add CMF service account(s) to `openshift-prereqs/<env>/manifests/scc-bindings.yaml` before deploying CMF.
+> **Action:** Verify the SA used by Flink job pods and add it to `openshift-prereqs/<env>/manifests/scc-bindings.yaml` if it differs from the Flink operator SA.
 
 ---
 
