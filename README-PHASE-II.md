@@ -44,15 +44,15 @@ Planning document for Phase-II: deploying **Confluent Manager for Apache Flink (
 ```mermaid
 flowchart TD
     subgraph cluster["OpenShift Cluster"]
-        cm["cert-manager\n(Phase-I)"]
-        cfk["CFK — CRDs only\n(Phase-I)"]
-        fop["Flink Operator\n(Phase-I)"]
-        cmf["CMF\n(Phase-II)"]
+        cm["cert-manager<br>(Phase-I)"]
+        cfk["CFK — CRDs only<br>(Phase-I)"]
+        fop["Flink Operator<br>(Phase-I)"]
+        cmf["CMF<br>(Phase-II)"]
 
         cmf -- "submits FlinkDeployment CRs" --> fop
     end
 
-    cp["Confluent Platform\n(VMs — external)\nKafka · SR · Connect"]
+    cp["Confluent Platform<br>(VMs — external)<br>Kafka · SR · Connect"]
 
     cmf -- "Kafka protocol / REST" --> cp
 ```
@@ -299,7 +299,7 @@ flowchart TD
         s2["2. SCC prerequisites"]
         s3["3. cert-manager"]
         s3a["3a. Wait for cert-manager CRDs"]
-        s4["4. CFK + Flink Operator\n(parallel)"]
+        s4["4. CFK + Flink Operator<br>(parallel)"]
 
         s1 --> s2 --> s3 --> s3a --> s4
     end
@@ -307,7 +307,7 @@ flowchart TD
     subgraph phase2["Phase-II (new)"]
         s5["5. Wait for Flink Operator CRDs"]
         s6["6. Deploy CMF"]
-        s7["7. Verify CMF → external CP\nconnectivity"]
+        s7["7. Verify CMF → external CP<br>connectivity"]
 
         s5 --> s6 --> s7
     end

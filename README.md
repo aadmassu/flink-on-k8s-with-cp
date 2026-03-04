@@ -72,11 +72,11 @@ All components except SCCs are deployed **through ArgoCD** via ApplicationSet re
 ```mermaid
 flowchart TD
     admin["Cluster Admin (one-time)"]
-    scc["SCC + ClusterRoleBindings\n(cluster-scoped)"]
-    argocd["OpenShift GitOps — ArgoCD\n(openshift-gitops ns)"]
-    cm["cert-manager\n(cert-manager ns)"]
-    cop["confluent-operator\n(confluent-&lt;env&gt; ns)"]
-    fop["confluent-flink-operator\n(confluent-&lt;env&gt; ns)"]
+    scc["SCC + ClusterRoleBindings<br>(cluster-scoped)"]
+    argocd["OpenShift GitOps — ArgoCD<br>(openshift-gitops ns)"]
+    cm["cert-manager<br>(cert-manager ns)"]
+    cop["confluent-operator<br>(confluent-&lt;env&gt; ns)"]
+    fop["confluent-flink-operator<br>(confluent-&lt;env&gt; ns)"]
 
     admin -- "oc apply -f openshift-prereqs/&lt;env&gt;/manifests/" --> scc
     argocd -- "ApplicationSet" --> cm
@@ -348,11 +348,11 @@ confluent-flink-operator-dev    Healthy   Synced   confluent-dev
 
 ```mermaid
 flowchart TD
-    step1["1. Create + Label Namespaces\n(confluent-&lt;env&gt;, cert-manager)"]
-    step2["2. OpenShift Prerequisites\n(SCC + ClusterRoleBindings)"]
-    step3["3. cert-manager\n(skip if OpenShift-provided)"]
-    step3a["3a. Wait for cert-manager CRDs\n(certificates, issuers)"]
-    step4["4. Confluent Operator + Flink Operator\n(deploy in parallel)"]
+    step1["1. Create + Label Namespaces<br>(confluent-&lt;env&gt;, cert-manager)"]
+    step2["2. OpenShift Prerequisites<br>(SCC + ClusterRoleBindings)"]
+    step3["3. cert-manager<br>(skip if OpenShift-provided)"]
+    step3a["3a. Wait for cert-manager CRDs<br>(certificates, issuers)"]
+    step4["4. Confluent Operator + Flink Operator<br>(deploy in parallel)"]
 
     step1 --> step2 --> step3 --> step3a --> step4
 ```
