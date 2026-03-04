@@ -1,8 +1,8 @@
 # Phase-II — CMF + Flink on K8s, CP on VMs
 
-Planning document for Phase-II: deploying **Confluent Manager for Apache Flink (CMF)** on OpenShift while Confluent Platform remains on VMs.
+Deployment guide for Phase-II: **Confluent Manager for Apache Flink (CMF)** on OpenShift while Confluent Platform remains on VMs.
 
-> **Status:** Pre-kickoff. This document captures open decisions, feedback, and a readiness checklist that must be resolved before implementation begins.
+> **Status:** Pre-kickoff. Open decisions and a readiness checklist must be resolved before implementation begins.
 
 ---
 
@@ -80,13 +80,13 @@ flowchart TD
 
 ### 1 — CRD readiness and sync ordering
 
-**Feedback received:** Operators often report "Healthy" in ArgoCD before their CRDs are fully established. The Flink operator's webhook certificates depend on cert-manager CRDs, and CMF will depend on Flink operator CRDs. This chain needs to be deterministic.
+Operators often report "Healthy" in ArgoCD before their CRDs are fully established. The Flink operator's webhook certificates depend on cert-manager CRDs, and CMF CRs depend on CFK CRDs. This chain must be deterministic.
 
-**What we already did (Phase-I):**
-- Added explicit `oc wait --for=condition=Established` gates for cert-manager CRDs in the deploy script and deployment guide.
-- The deploy script enforces ordering: cert-manager → CRD gate → operators.
+**Phase-I baseline:**
+- Explicit `oc wait --for=condition=Established` gates for cert-manager CRDs in the deploy script.
+- Deploy script enforces ordering: cert-manager → CRD gate → operators.
 
-**What Phase-II adds to the chain:**
+**Phase-II extends the chain:**
 
 ```mermaid
 flowchart LR
@@ -95,7 +95,7 @@ flowchart LR
 
 > **Key insight:** CMF is a CFK-managed CR, so the CFK operator and its CRDs must be ready before CMF CRs can be applied. The Flink Operator must also be ready because CFK translates `FlinkApplication` CRs into `FlinkDeployment` CRs that the Flink Operator reconciles.
 
-**Decision needed:**
+**Options:**
 
 | Option | Pros | Cons |
 |--------|------|------|
@@ -103,7 +103,7 @@ flowchart LR
 | **B. ArgoCD sync waves** | Declarative, enforced by ArgoCD regardless of deploy method | Requires all apps in a single Application or App-of-Apps; doesn't work across separate ApplicationSets |
 | **C. Both (belt and suspenders)** | Maximum safety | Slightly more complexity |
 
-**Recommendation:** Option A is sufficient if all deploys go through the script or documented steps. If teams may deploy ad-hoc via ArgoCD UI, consider adding sync-wave annotations inside the Helm charts where possible (Option C). ArgoCD sync waves only order resources *within* a single Application, so cross-Application ordering (cert-manager → Flink operator → CMF) must remain script-level or use an App-of-Apps pattern.
+**Recommendation:** Option A is sufficient if all deploys go through the script or documented steps. If teams may deploy ad-hoc via ArgoCD UI, add sync-wave annotations inside the Helm charts (Option C). ArgoCD sync waves only order resources *within* a single Application, so cross-Application ordering (cert-manager → Flink operator → CMF) must remain script-level or use an App-of-Apps pattern.
 
 > **Action:** Decide whether to adopt App-of-Apps for Phase-II or keep the current per-component ApplicationSet model with script-level ordering.
 
@@ -111,11 +111,9 @@ flowchart LR
 
 ### 2 — ArgoCD Projects for environment isolation
 
-**Feedback received:** All ApplicationSets currently use `project: default`. For customer engagements, dedicated ArgoCD `AppProject` resources per environment prevent accidental cross-env deploys.
+All ApplicationSets currently use `project: default`. Dedicated ArgoCD `AppProject` resources per environment prevent accidental cross-env deploys.
 
-**What we already did:** Added an [ArgoCD Projects (Optional Hardening)](README.md#argocd-projects-optional-hardening) section to the main README with a sample `AppProject` manifest.
-
-**Decision needed:** Is this optional or required for Phase-II?
+**Phase-I baseline:** An [ArgoCD Projects (Optional Hardening)](README.md#argocd-projects-optional-hardening) section exists in the main README with a sample `AppProject` manifest.
 
 | Option | Pros | Cons |
 |--------|------|------|
@@ -172,7 +170,7 @@ CMF must reach the Confluent Platform brokers running on VMs.
 
 Phase-I created the custom `confluent-scc` and binds specific service accounts to it. Phase-II introduces new pod types that may need SCC bindings.
 
-**What we now know:** CMF itself runs inside the CFK (confluent-operator) pod — it does not create a separate deployment. The confluent-operator SA was already bound to the SCC in Phase-I. However, **Flink job pods** (JobManager + TaskManager) created by the Flink Operator are new workloads.
+CMF itself runs inside the CFK (confluent-operator) pod — it does not create a separate deployment. The confluent-operator SA is already bound to the SCC from Phase-I. However, **Flink job pods** (JobManager + TaskManager) created by the Flink Operator are new workloads that may require their own SCC bindings.
 
 **Questions to answer:**
 
