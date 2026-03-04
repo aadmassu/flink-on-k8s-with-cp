@@ -1,20 +1,23 @@
-# Confluent Flink Manager (CMF) -- Phase-II
+# Flink Infrastructure CRs -- Phase-II
 
-This directory will contain **ArgoCD `Application` resources** for deploying [Confluent Manager for Apache Flink (CMF)](https://docs.confluent.io/confluent-manager-for-apache-flink/current/overview.html) in a future phase.
+Kustomize manifests for Flink infrastructure custom resources:
 
-## Current Status
+- **CMFRestClass** — Points to the CMF REST API (`cmf-service.<ns>.svc.cluster.local:80`)
+- **FlinkEnvironment** — Scopes Flink defaults (namespace, task slots) and references the CMFRestClass
+- **PVC** — 10Gi ReadWriteMany volume for Flink checkpoints and savepoints
 
-CMF manifests have been removed as part of the Phase-I scope, which focuses on deploying operators only (cert-manager, Confluent Operator, Flink Operator). Confluent Platform runs on VMs, not Kubernetes.
+## Structure
 
-## Phase-II Plan
-
-In Phase-II, this directory will be populated with:
-
-- Per-environment CMF `Application` manifests under `openshift/{dev,qa,stg,prd}/manifests/`
-- A corresponding `confluent-flink-application-set.yaml` per environment in `gitops-config/openshift/`
-- CMF configured to connect to the external Confluent Platform running on VMs
+```
+base/              # Base CRs (namespace-agnostic)
+dev/               # Kustomize overlay — namespace: confluent-dev
+qa/                # Kustomize overlay — namespace: confluent-qa
+stg/               # Kustomize overlay — namespace: confluent-stg
+prd/               # Kustomize overlay — namespace: confluent-prd
+```
 
 ## Dependencies
 
-- **Flink Kubernetes Operator** must be running in the target cluster (see `../confluent-flink-operator/`)
-- **Confluent Platform** must be accessible from the OpenShift cluster (running on VMs)
+- **CMF** must be deployed and healthy (`cmf-service` endpoint reachable)
+- **CFK** must be running (provides the CMFRestClass / FlinkEnvironment CRDs)
+- **Flink Kubernetes Operator** must be running (reconciles FlinkDeployment CRs created by CMF)

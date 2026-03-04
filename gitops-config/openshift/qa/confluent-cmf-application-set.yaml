@@ -1,0 +1,37 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: confluent-cmf-qa
+  namespace: openshift-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: qa-cluster
+            url: https://qa-cluster.example.com
+            environment: qa
+  template:
+    metadata:
+      name: "confluent-cmf-{{environment}}"
+      namespace: openshift-gitops
+    spec:
+      project: default
+      sources:
+        - repoURL: https://packages.confluent.io/helm
+          chart: confluent-manager-for-apache-flink
+          targetRevision: 2.2.0
+          helm:
+            valueFiles:
+              - $values/apps/confluent-cmf/{{environment}}/values.yaml
+              - $values/apps/confluent-cmf/openshift-overlay.yaml
+        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: "{{url}}"
+        namespace: "confluent-{{environment}}"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

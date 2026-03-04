@@ -201,7 +201,9 @@ if [[ "$PHASE" -ge 2 ]]; then
 
   extract_images "confluent-manager-for-apache-flink (${CMF_VERSION})" \
     cmf confluent/confluent-manager-for-apache-flink \
-    --version "$CMF_VERSION"
+    --version "$CMF_VERSION" \
+    -f "${REPO_ROOT}/apps/confluent-cmf/dev/values.yaml" \
+    -f "${REPO_ROOT}/apps/confluent-cmf/openshift-overlay.yaml"
 
   add_static_image "cp-flink SQL runtime (${CP_FLINK_VERSION})" \
     "docker.io/confluentinc/cp-flink:${CP_FLINK_VERSION}"

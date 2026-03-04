@@ -1,0 +1,27 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base
+
+namespace: confluent-dev
+
+patches:
+  - target:
+      kind: CMFRestClass
+      name: default
+    patch: |
+      - op: replace
+        path: /spec/cmfRest/endpoint
+        value: http://cmf-service.confluent-dev.svc.cluster.local:80
+  - target:
+      kind: FlinkEnvironment
+      name: flink-env1
+    patch: |
+      - op: replace
+        path: /spec/kubernetesNamespace
+        value: confluent-dev
+      - op: replace
+        path: /spec/cmfRestClassRef/namespace
+        value: confluent-dev

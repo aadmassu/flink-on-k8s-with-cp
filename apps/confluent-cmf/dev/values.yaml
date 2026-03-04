@@ -1,0 +1,14 @@
+---
+# Confluent Manager for Apache Flink (CMF) values - dev
+
+cmf:
+  sql:
+    production: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

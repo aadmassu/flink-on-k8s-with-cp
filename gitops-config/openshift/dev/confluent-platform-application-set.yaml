@@ -1,0 +1,33 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: confluent-platform-dev
+  namespace: openshift-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: dev-cluster
+            url: https://kubernetes.default.svc
+            environment: dev
+  template:
+    metadata:
+      name: "confluent-platform-{{environment}}"
+      namespace: openshift-gitops
+    spec:
+      project: default
+      sources:
+        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+          targetRevision: HEAD
+          path: apps/confluent-platform/{{environment}}
+      destination:
+        server: "{{url}}"
+        namespace: "confluent-{{environment}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

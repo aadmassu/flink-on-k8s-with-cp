@@ -3,6 +3,7 @@
 
 namespaced: true
 kRaftEnabled: true
+enableCMFDay2Ops: true
 
 serviceAccount:
   create: true

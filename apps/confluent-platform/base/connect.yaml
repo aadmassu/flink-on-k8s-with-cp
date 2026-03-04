@@ -1,0 +1,15 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Connect
+metadata:
+  name: connect
+spec:
+  replicas: 1
+  image:
+    application: docker.io/confluentinc/cp-server-connect:7.9.0
+    init: docker.io/confluentinc/confluent-init-container:2.11.0
+  configOverrides:
+    server:
+      - config.storage.replication.factor=1
+      - offset.storage.replication.factor=1
+      - status.storage.replication.factor=1

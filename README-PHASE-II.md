@@ -1,8 +1,8 @@
-# Phase-II — CMF + Flink on K8s, CP on VMs
+# Phase-II — CMF + Local Kafka + Flink on OpenShift
 
-Deployment guide for Phase-II: **Confluent Manager for Apache Flink (CMF)** on OpenShift while Confluent Platform remains on VMs.
+Deployment guide for Phase-II: **Confluent Manager for Apache Flink (CMF)** as a standalone Helm chart, with **local Kafka on K8s** (via CFK CRDs) for the PoC.
 
-> **Status:** Pre-kickoff. Open decisions and a readiness checklist must be resolved before implementation begins.
+> **Status:** Implementation complete. All artifacts created and deployment scripts updated.
 
 ---
 
@@ -10,19 +10,12 @@ Deployment guide for Phase-II: **Confluent Manager for Apache Flink (CMF)** on O
 
 - [Scope](#scope)
 - [Architecture](#architecture)
-- [Open Decisions](#open-decisions)
-  - [1 — CRD readiness and sync ordering](#1--crd-readiness-and-sync-ordering)
-  - [2 — ArgoCD Projects for environment isolation](#2--argocd-projects-for-environment-isolation)
-  - [3 — CMF deployment method](#3--cmf-deployment-method)
-  - [4 — External Kafka connectivity](#4--external-kafka-connectivity)
-  - [5 — CMF service account and SCC bindings](#5--cmf-service-account-and-scc-bindings)
-  - [6 — Secret management for external CP credentials](#6--secret-management-for-external-cp-credentials)
-  - [7 — Namespace strategy — shared or dedicated](#7--namespace-strategy--shared-or-dedicated)
-  - [8 — Flink compute pools](#8--flink-compute-pools)
-- [Prerequisites (from Phase-I)](#prerequisites-from-phase-i)
-- [Readiness Checklist](#readiness-checklist)
-- [Artifacts to Create](#artifacts-to-create)
+- [Key Corrections from Phase-I Planning](#key-corrections-from-phase-i-planning)
+- [Components](#components)
+- [CRD Dependency Chain](#crd-dependency-chain)
+- [Artifacts](#artifacts)
 - [Deployment Order](#deployment-order)
+- [Verification](#verification)
 - [Rollback Strategy](#rollback-strategy)
 
 ---
@@ -31,12 +24,12 @@ Deployment guide for Phase-II: **Confluent Manager for Apache Flink (CMF)** on O
 
 | What | Detail |
 |------|--------|
-| **Deploy** | CMF CRs (`CMF`, `CMFRestClass`, `FlinkEnvironment`, `FlinkApplication`) — all managed by CFK |
+| **CMF** | Standalone Helm chart (`confluent-manager-for-apache-flink`) deployed via ArgoCD — **not** a CFK-managed CR |
+| **CFK** | Optional for CMF. Enabled with `enableCMFDay2Ops=true` to provide Day2Ops and local Kafka CRDs |
+| **Kafka** | Local on K8s — CFK CRDs (KRaftController, Kafka, SchemaRegistry, Connect, ControlCenter) for PoC |
+| **Flink** | FlinkApplication submitted via CMF REST API. CMF converts to FlinkDeployment CR. FKO reconciles JM/TM pods |
 | **Where** | OpenShift 4.12+ (same clusters as Phase-I operators) |
-| **Kafka** | External — Confluent Platform on VMs |
-| **Flink** | On Kubernetes — FlinkApplication CRs are translated by CFK into FlinkDeployment CRs for the Flink Operator |
-| **mTLS** | CMF REST secured via cert-manager-issued certificates |
-| **Not in scope** | Migrating CP onto K8s (that is Phase-III) |
+| **Not in scope** | External CP on VMs (deferred — customer uses VMs but PoC uses local K8s Kafka) |
 
 ---
 
@@ -47,331 +40,227 @@ flowchart TD
     subgraph cluster["OpenShift Cluster"]
         subgraph phase1["Phase-I — Operators"]
             cm["cert-manager"]
-            cfk["CFK · confluent-operator"]
+            cfk["CFK · confluent-operator<br>enableCMFDay2Ops=true"]
             fop["Flink Kubernetes Operator"]
         end
 
-        subgraph phase2["Phase-II — CMF + Flink Workloads"]
-            cmf["CMF CR · kind: CMF"]
-            restclass["CMFRestClass · mTLS :7778"]
+        subgraph phase2_cmf["Phase-II — CMF (Helm chart)"]
+            cmf["CMF pod<br>cmf-service:80"]
+            restclass["CMFRestClass<br>→ cmf-service:80"]
             fenv["FlinkEnvironment"]
-            fapp["FlinkApplication"]
-            flink_pods["Flink JobManager + TaskManager pods"]
         end
 
-        cm -- "issues mTLS certs" --> cfk
-        cfk -- "reconciles CMF CR" --> cmf
-        cmf -. "exposes CMF REST<br>on confluent-operator:7778" .-> restclass
+        subgraph phase2_kafka["Phase-II — Local Kafka (CFK CRDs)"]
+            kraft["KRaftController"]
+            kafka["Kafka"]
+            sr["SchemaRegistry"]
+            connect["Connect"]
+            c3["ControlCenter"]
+        end
+
+        subgraph phase2_flink["Phase-II — Flink Workloads"]
+            fapp["FlinkApplication"]
+            fdeploy["FlinkDeployment CR"]
+            flink_pods["JM + TM pods"]
+        end
+
+        fapp -- "submitted via CMF REST" --> cmf
+        cmf -- "converts to" --> fdeploy
+        fop -- "reconciles" --> fdeploy
+        fdeploy -- "creates" --> flink_pods
+        flink_pods -- "Kafka protocol" --> kafka
         fapp -- "references" --> restclass
         fapp -- "scoped by" --> fenv
-        cfk -- "submits FlinkDeployment CR" --> fop
-        fop -- "creates / manages" --> flink_pods
+        cfk -- "reconciles CFK CRDs" --> kraft
+        cfk -- "reconciles CFK CRDs" --> kafka
     end
-
-    cp["Confluent Platform<br>(VMs — external)<br>Kafka · SR · Connect"]
-
-    flink_pods -- "Kafka protocol" --> cp
-    cmf -- "REST / metadata" --> cp
 ```
+
+**Data flow:** `FlinkApplication` → CMF REST API (`cmf-service:80`) → CMF converts to `FlinkDeployment` CR → FKO reconciles → JM/TM pods → Kafka (local).
 
 ---
 
-## Open Decisions
+## Key Corrections from Phase-I Planning
 
-### 1 — CRD readiness and sync ordering
+| What was wrong | Corrected understanding |
+|----------------|------------------------|
+| CMF is a CFK-managed CR (`kind: CMF`) | CMF is a **standalone Helm chart** (`confluentinc/confluent-manager-for-apache-flink`) |
+| CFK required for CMF | CFK is **optional** — CMF works independently via its REST API. CFK can optionally enable Day2Ops (`enableCMFDay2Ops=true`) |
+| CMFRestClass points to CFK port 7778 | CMFRestClass points to **CMF's own service** (`cmf-service:80`) |
+| CMF runs inside confluent-operator pod | CMF has its **own pod** deployed by its Helm chart |
+| External Kafka on VMs | **Local Kafka on K8s** via CFK CRDs for PoC |
 
-Operators often report "Healthy" in ArgoCD before their CRDs are fully established. The Flink operator's webhook certificates depend on cert-manager CRDs, and CMF CRs depend on CFK CRDs. This chain must be deterministic.
+Source: Discussion with Akhil (Confluent) + Flink-Training materials.
 
-**Phase-I baseline:**
-- Explicit `oc wait --for=condition=Established` gates for cert-manager CRDs in the deploy script.
-- Deploy script enforces ordering: cert-manager → CRD gate → operators.
+---
 
-**Phase-II extends the chain:**
+## Components
+
+### CMF (Confluent Manager for Apache Flink)
+
+- **Chart:** `confluent-manager-for-apache-flink` from `https://packages.confluent.io/helm`
+- **Version:** 2.2.0
+- **Deployed via:** ArgoCD ApplicationSet (Helm multi-source, same pattern as Phase-I operators)
+- **Values:** `apps/confluent-cmf/{dev,qa,stg,prd}/values.yaml` + `openshift-overlay.yaml`
+- **Service:** `cmf-service:80` in `confluent-<env>` namespace
+
+### Local Kafka (CFK CRDs)
+
+- **Deployed via:** ArgoCD ApplicationSet (Git/Kustomize source)
+- **Manifests:** `apps/confluent-platform/base/` + per-env overlays
+- **Components:** KRaftController, Kafka, SchemaRegistry, Connect, ControlCenter, KafkaRestClass
+- **Versions:** CP 7.9.0, init-container 2.11.0
+- **Dev/QA:** Single replica. **Stg/Prd:** 3 Kafka/KRaft replicas, 2 SR replicas.
+
+### Flink Infrastructure CRs
+
+- **Deployed via:** ArgoCD ApplicationSet (Git/Kustomize source)
+- **Manifests:** `apps/confluent-flink/base/` + per-env overlays
+- **CRs:** CMFRestClass, FlinkEnvironment, PVC (10Gi ReadWriteMany)
+
+---
+
+## CRD Dependency Chain
 
 ```mermaid
 flowchart LR
-    A["cert-manager CRDs"] --> B["cert-manager pods"] --> C["CFK CRDs<br>(CMF, CMFRestClass,<br>FlinkEnvironment,<br>FlinkApplication)"] --> D["CFK pods<br>(confluent-operator)"] --> E["Flink Operator CRDs"] --> F["Flink Operator pods"] --> G["CMF + Flink CRs"]
+    A["cert-manager"] --> B["FKO<br>(Flink Kubernetes Operator)"]
+    A --> C["CFK<br>(enableCMFDay2Ops)"]
+    B --> D["CMF<br>(Helm chart)"]
+    C --> E["Confluent Platform CRDs<br>(KRaft, Kafka, SR, etc.)"]
+    D --> F["Flink infra CRs<br>(CMFRestClass,<br>FlinkEnvironment, PVC)"]
+    E --> F
 ```
 
-> **Key insight:** CMF is a CFK-managed CR, so the CFK operator and its CRDs must be ready before CMF CRs can be applied. The Flink Operator must also be ready because CFK translates `FlinkApplication` CRs into `FlinkDeployment` CRs that the Flink Operator reconciles.
-
-**Options:**
-
-| Option | Pros | Cons |
-|--------|------|------|
-| **A. Script-level gating (current pattern)** | Simple, proven in Phase-I, no ArgoCD config changes | Relies on imperative script; manual deploys can skip gates |
-| **B. ArgoCD sync waves** | Declarative, enforced by ArgoCD regardless of deploy method | Requires all apps in a single Application or App-of-Apps; doesn't work across separate ApplicationSets |
-| **C. Both (belt and suspenders)** | Maximum safety | Slightly more complexity |
-
-**Recommendation:** Option A is sufficient if all deploys go through the script or documented steps. If teams may deploy ad-hoc via ArgoCD UI, add sync-wave annotations inside the Helm charts (Option C). ArgoCD sync waves only order resources *within* a single Application, so cross-Application ordering (cert-manager → Flink operator → CMF) must remain script-level or use an App-of-Apps pattern.
-
-> **Action:** Decide whether to adopt App-of-Apps for Phase-II or keep the current per-component ApplicationSet model with script-level ordering.
-
 ---
 
-### 2 — ArgoCD Projects for environment isolation
+## Artifacts
 
-All ApplicationSets currently use `project: default`. Dedicated ArgoCD `AppProject` resources per environment prevent accidental cross-env deploys.
-
-**Phase-I baseline:** An [ArgoCD Projects (Optional Hardening)](README.md#argocd-projects-optional-hardening) section exists in the main README with a sample `AppProject` manifest.
-
-| Option | Pros | Cons |
-|--------|------|------|
-| **A. Keep `project: default`** | Zero config change, simpler | No guardrail against deploying dev manifests to prd |
-| **B. Require per-env AppProjects** | Hard namespace/cluster boundary per env; audit-friendly | Extra manifests to maintain; must update every ApplicationSet |
-
-**Recommendation:** Adopt Option B for Phase-II. Phase-I deployed only operators (low blast radius). Phase-II deploys workload infrastructure (CMF + Flink jobs) where a cross-env mistake has real data impact. The cost is one `AppProject` manifest per environment.
-
-> **Action:** Confirm whether AppProjects are required or remain optional. If required, create them before the first Phase-II ApplicationSet is applied.
-
----
-
-### 3 — CMF deployment method
-
-CMF is a **CFK-managed custom resource** (`kind: CMF`, `apiVersion: platform.confluent.io/v1beta1`). The CFK operator (confluent-operator) reconciles CMF CRs, runs the CMF REST server on port 7778, and manages the full lifecycle. This means CMF does **not** require a separate Helm chart — it is deployed by applying CRs to a cluster where CFK is already running.
-
-The Phase-II deployment therefore consists of applying a set of CRs:
-
-| CR | Purpose |
-|----|---------|
-| `CMF` | Declares the CMF server instance; CFK starts the REST endpoint on `confluent-operator.<ns>.svc.cluster.local:7778` |
-| `CMFRestClass` | Defines how clients authenticate to CMF REST (mTLS, with cert-manager-issued certs) |
-| `FlinkEnvironment` | Scopes Flink defaults (namespace, task slots, parallelism) for a group of Flink applications |
-| `FlinkApplication` | Declares a Flink job; references a FlinkEnvironment and CMFRestClass; CFK translates it into a FlinkDeployment CR for the Flink Operator |
-
-**Deployment options via ArgoCD:**
-
-| Option | Pros | Cons |
-|--------|------|------|
-| **A. Plain manifests in Git** | Simple, full control over each CR, easy to template per env | More YAML to maintain; no Helm lifecycle hooks |
-| **B. Kustomize overlays** | Base + per-env patches; reduces duplication | Extra Kustomize layer to learn |
-
-> **Action:** Create per-environment CR manifests (or Kustomize overlays) under `apps/confluent-flink/<env>/`. CFK must be healthy before applying these CRs.
-
----
-
-### 4 — External Kafka connectivity
-
-CMF must reach the Confluent Platform brokers running on VMs.
-
-**Questions to answer:**
-
-- [ ] What are the broker bootstrap endpoints per environment?
-- [ ] Is the connection PLAINTEXT, SSL/TLS, or SASL?
-- [ ] Does CMF need Schema Registry access? If so, what endpoint?
-- [ ] Are there firewall rules or network policies between the OpenShift cluster and the VM network?
-- [ ] Is DNS resolution available for the broker hostnames from inside the cluster, or are static IPs required?
-
-> **Action:** Collect endpoint and auth details for each environment (dev/qa/stg/prd). Document in `hosts.yaml` or a dedicated config map.
-
----
-
-### 5 — CMF service account and SCC bindings
-
-Phase-I created the custom `confluent-scc` and binds specific service accounts to it. Phase-II introduces new pod types that may need SCC bindings.
-
-CMF itself runs inside the CFK (confluent-operator) pod — it does not create a separate deployment. The confluent-operator SA is already bound to the SCC from Phase-I. However, **Flink job pods** (JobManager + TaskManager) created by the Flink Operator are new workloads that may require their own SCC bindings.
-
-**Questions to answer:**
-
-- [ ] Do Flink JobManager / TaskManager pods run under the Flink operator's SA, or do they use a dedicated SA (e.g., `flink` or `flink-<job-name>`)?
-- [ ] Do Flink job pods require `anyuid` or is `restricted` sufficient?
-- [ ] Does the FlinkApplication CR's `podTemplate` allow specifying a `serviceAccountName`?
-
-> **Action:** Verify the SA used by Flink job pods and add it to `openshift-prereqs/<env>/manifests/scc-bindings.yaml` if it differs from the Flink operator SA.
-
----
-
-### 6 — Secret management for external CP credentials
-
-If the external Confluent Platform requires authentication (SASL, mTLS, API keys), CMF needs access to credentials.
-
-| Option | Pros | Cons |
-|--------|------|------|
-| **A. Kubernetes Secrets (manual)** | Simple, works everywhere | Secrets in Git (even encrypted) need careful handling |
-| **B. Sealed Secrets / SOPS** | Encrypted at rest in Git | Requires extra tooling (Bitnami Sealed Secrets or SOPS + age/GPG) |
-| **C. External secret store (Vault, AWS SM)** | Industry standard, rotation-friendly | Requires External Secrets Operator or CSI driver |
-
-> **Action:** Decide on a secrets strategy. For a PoC, Option A is fine. For production, Option B or C is recommended.
-
----
-
-### 7 — Namespace strategy — shared or dedicated
-
-Phase-I places CFK and Flink operator in `confluent-<env>`. CMF could go in the same namespace or a separate one.
-
-| Option | Pros | Cons |
-|--------|------|------|
-| **A. Shared (`confluent-<env>`)** | Simple RBAC, single SCC binding set, matches Phase-I | All workloads share resource quotas; noisier namespace |
-| **B. Dedicated (`confluent-flink-<env>`)** | Clean separation of operator plane vs workload plane | Extra namespace, labels, SCC bindings, AppProject destinations |
-
-**Recommendation:** Start with Option A (shared namespace) to match Phase-I conventions. Split later if resource quotas or RBAC isolation become a concern.
-
-> **Action:** Confirm namespace strategy before creating ApplicationSets.
-
----
-
-### 8 — Flink compute pools
-
-CMF uses **compute pools** to allocate and isolate resources for Flink jobs. A compute pool defines the resource boundaries (CPU, memory, task slots) for a group of Flink deployments.
-
-**Questions to answer:**
-
-- [ ] How many compute pools per environment? (e.g., one shared pool for dev, dedicated pools per team/workload in prd)
-- [ ] What are the resource limits per pool? (CPU, memory, parallelism)
-- [ ] Do compute pool pods need dedicated SCC bindings or do they run under the Flink operator SA?
-- [ ] Are there OpenShift `ResourceQuota` or `LimitRange` policies that constrain pod resource requests in `confluent-<env>`?
-- [ ] Should compute pools be defined declaratively in Git (as CRDs or Helm values) or managed dynamically through CMF?
-
-**What this affects:**
-
-| Concern | Impact |
-|---------|--------|
-| **Node sizing** | Compute pool pods may need dedicated node pools or tolerations for GPU/high-memory workloads |
-| **SCC bindings** | Flink job TaskManager/JobManager pods may run under a different SA than the operator |
-| **Resource quotas** | The namespace `ResourceQuota` must accommodate operator pods *and* compute pool pods |
-| **Autoscaling** | If compute pools autoscale, the OpenShift cluster autoscaler must be configured with headroom |
-
-> **Action:** Define compute pool sizing per environment and confirm that namespace resource quotas can accommodate them. Add compute pool resource estimates to `hosts.yaml` or a capacity planning doc.
-
----
-
-## Prerequisites (from Phase-I)
-
-The following must be healthy before Phase-II can begin:
-
-| Component | How to verify |
-|-----------|---------------|
-| cert-manager | `oc get pods -n cert-manager` |
-| cert-manager CRDs | `oc wait --for=condition=Established crd/certificates.cert-manager.io` |
-| Confluent Operator (CFK) | `oc get pods -n confluent-<env> -l app=confluent-operator` |
-| Flink Operator | `oc get pods -n confluent-<env> -l app.kubernetes.io/name=flink-kubernetes-operator` |
-| Flink Operator CRDs | `oc get crd flinkdeployments.flink.apache.org` |
-| SCC bindings | `oc get clusterrolebinding \| grep confluent-scc` |
-| Network path to external CP | `oc run nettest --rm -it --image=busybox -- nc -zv <broker-host> <broker-port>` |
-
----
-
-## Readiness Checklist
-
-All items must be resolved or explicitly deferred before Phase-II implementation starts.
-
-### Decisions
-
-- [ ] Sync ordering strategy: script-only, sync waves, or App-of-Apps? → [Decision 1](#1--crd-readiness-and-sync-ordering)
-- [ ] ArgoCD Projects: optional or required? → [Decision 2](#2--argocd-projects-for-environment-isolation)
-- [ ] CMF deployment method: Helm chart or raw manifests? → [Decision 3](#3--cmf-deployment-method)
-- [ ] Namespace: shared `confluent-<env>` or dedicated? → [Decision 7](#7--namespace-strategy--shared-or-dedicated)
-- [ ] Secrets strategy: manual, Sealed Secrets, or external store? → [Decision 6](#6--secret-management-for-external-cp-credentials)
-- [ ] Compute pool sizing and resource quota strategy → [Decision 8](#8--flink-compute-pools)
-
-### Information Gathering
-
-- [ ] External Kafka broker endpoints per environment → [Decision 4](#4--external-kafka-connectivity)
-- [ ] Authentication method for external CP (PLAINTEXT/SSL/SASL)
-- [ ] Schema Registry endpoint (if applicable)
-- [ ] CMF Helm chart availability and version
-- [ ] CMF service account name(s) and security requirements → [Decision 5](#5--cmf-service-account-and-scc-bindings)
-- [ ] Flink job pod SCC requirements
-- [ ] Compute pool resource requirements (CPU, memory, parallelism per pool) → [Decision 8](#8--flink-compute-pools)
-
-### Infrastructure
-
-- [ ] Phase-I operators healthy on target cluster(s)
-- [ ] Network connectivity from OpenShift pods to external CP brokers verified
-- [ ] DNS resolution for broker hostnames verified from inside the cluster
-- [ ] `hosts.yaml` updated with external CP endpoints
-- [ ] Namespace `ResourceQuota` / `LimitRange` reviewed for compute pool headroom
-
-### Artifacts
-
-- [ ] CMF Helm values or manifests created under `apps/confluent-flink/`
-- [ ] OpenShift overlay for CMF (`apps/confluent-flink/openshift-overlay.yaml`)
-- [ ] Per-env values files (`apps/confluent-flink/<env>/values.yaml`)
-- [ ] ApplicationSet created (`gitops-config/openshift/<env>/confluent-flink-application-set.yaml`)
-- [ ] SCC bindings updated for CMF service account(s)
-- [ ] (If required) ArgoCD `AppProject` manifests created per environment
-- [ ] Deploy script updated to include CMF step
-- [ ] Destroy script updated to remove CMF
-
----
-
-## Artifacts to Create
+### New directories
 
 ```
-apps/confluent-flink/
-├── openshift-overlay.yaml                    # OpenShift security context nullification
-├── dev/values.yaml                           # CMF Helm values — dev
-├── qa/values.yaml                            # CMF Helm values — qa
-├── stg/values.yaml                           # CMF Helm values — stg
-└── prd/values.yaml                           # CMF Helm values — prd
+apps/confluent-cmf/                              # CMF Helm values
+├── openshift-overlay.yaml                        # Nullify podSecurityContext for SCC
+├── dev/values.yaml
+├── qa/values.yaml
+├── stg/values.yaml
+└── prd/values.yaml
 
-gitops-config/openshift/
-├── dev/confluent-flink-application-set.yaml
-├── qa/confluent-flink-application-set.yaml
-├── stg/confluent-flink-application-set.yaml
-└── prd/confluent-flink-application-set.yaml
+apps/confluent-platform/                          # Local Kafka CFK CRDs (Kustomize)
+├── base/
+│   ├── kustomization.yaml
+│   ├── kraft-controller.yaml
+│   ├── kafka.yaml
+│   ├── schema-registry.yaml
+│   ├── connect.yaml
+│   ├── control-center.yaml
+│   └── kafka-rest-class.yaml
+├── dev/kustomization.yaml
+├── qa/kustomization.yaml
+├── stg/kustomization.yaml
+└── prd/kustomization.yaml
 
-openshift-prereqs/<env>/manifests/
-└── scc-bindings.yaml                         # Updated with CMF service account(s)
+apps/confluent-flink/                             # Flink infra CRs (Kustomize)
+├── base/
+│   ├── kustomization.yaml
+│   ├── cmf-rest-class.yaml
+│   ├── flink-environment.yaml
+│   └── flink-pvc.yaml
+├── dev/kustomization.yaml
+├── qa/kustomization.yaml
+├── stg/kustomization.yaml
+└── prd/kustomization.yaml
 ```
+
+### New ApplicationSets (per env)
+
+```
+gitops-config/openshift/{dev,qa,stg,prd}/
+├── confluent-cmf-application-set.yaml            # CMF Helm (multi-source)
+├── confluent-platform-application-set.yaml        # CP CRDs (Git/Kustomize)
+└── confluent-flink-application-set.yaml           # Flink infra (Git/Kustomize)
+```
+
+### Modified files
+
+| File | Change |
+|------|--------|
+| `apps/confluent-operator/*/values.yaml` | Added `enableCMFDay2Ops: true` |
+| `openshift-prereqs/*/manifests/scc-bindings.yaml` | Added `flink` and `cmf` service accounts |
+| `scripts/deploy-openshift-dev.sh` | Added Phase-II steps (CMF, CP, Flink infra) |
+| `scripts/destroy-openshift-dev.sh` | Added Phase-II teardown (reverse order) |
+| `scripts/discover-charts-and-images.sh` | CMF `helm template` now uses values files |
 
 ---
 
 ## Deployment Order
 
-Extends Phase-I with a new step:
-
 ```mermaid
 flowchart TD
-    subgraph phase1["Phase-I (already complete)"]
+    subgraph phase1["Phase-I (existing)"]
         s1["1. Namespaces + Labels"]
-        s2["2. SCC prerequisites"]
-        s3["3. cert-manager"]
-        s3a["3a. Wait for cert-manager CRDs"]
-        s4["4. CFK + Flink Operator<br>(parallel)"]
+        s2["2. SCC prerequisites<br>(updated: flink + cmf SAs)"]
+        s3["3. cert-manager → wait for CRDs"]
+        s4["4. CFK (enableCMFDay2Ops) +<br>FKO (parallel) → wait for health"]
 
-        s1 --> s2 --> s3 --> s3a --> s4
+        s1 --> s2 --> s3 --> s4
     end
 
     subgraph phase2["Phase-II (new)"]
-        s5["5. Wait for Flink Operator CRDs"]
-        s6["6. Deploy CMF"]
-        s7["7. Verify CMF → external CP<br>connectivity"]
+        s6["5. CMF (Helm via ArgoCD)<br>→ wait for cmf-service healthy"]
+        s7["6. Confluent Platform CRDs<br>(local Kafka for PoC)<br>→ wait for Kafka RUNNING"]
+        s8["7. Flink infra CRs<br>(CMFRestClass, FlinkEnvironment, PVC)<br>→ wait for sync"]
 
-        s5 --> s6 --> s7
+        s6 --> s7 --> s8
     end
 
-    s4 --> s5
+    s4 --> s6
 ```
 
-**Phase-II commands:**
+**Run:** `./scripts/deploy-openshift-dev.sh`
+
+---
+
+## Verification
 
 ```bash
-# Step 5 — Wait for Flink Operator CRDs
-oc wait --for=condition=Established crd/flinkdeployments.flink.apache.org --timeout=60s
+# CMF pod running
+oc get pods -n confluent-dev -l app=cmf
 
-# Step 6 — Deploy CMF
-oc apply -f gitops-config/openshift/${ENV}/confluent-flink-application-set.yaml
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-flink-${ENV} -n ${ARGOCD_NS} --timeout=180s
+# Kafka and CP components running
+oc get pods -n confluent-dev
+oc get kafka kafka -n confluent-dev -o jsonpath='{.status.phase}'  # → RUNNING
 
-# Step 7 — Verify CMF → external CP connectivity
-# (smoke test: submit a test Flink SQL job or verify CMF health endpoint)
+# Flink infra CRs
+oc get cmfrestclass default -n confluent-dev
+oc get flinkenvironment flink-env1 -n confluent-dev
+oc get pvc flink-pvc -n confluent-dev
+
+# ArgoCD applications healthy
+oc get applications -n openshift-gitops
+
+# Image discovery includes CMF
+./scripts/discover-charts-and-images.sh --phase 2
 ```
 
 ---
 
 ## Rollback Strategy
 
-CMF is additive — it does not modify Phase-I components. Rollback is:
+Phase-II is additive — it does not modify Phase-I operators. Rollback:
 
 ```bash
-# Remove CMF ApplicationSet
-oc delete -f gitops-config/openshift/${ENV}/confluent-flink-application-set.yaml
+# Remove Phase-II ApplicationSets (reverse order)
+oc delete applicationset confluent-flink-dev -n openshift-gitops --ignore-not-found
+oc delete applicationset confluent-platform-dev -n openshift-gitops --ignore-not-found
+oc delete applicationset confluent-cmf-dev -n openshift-gitops --ignore-not-found
 
 # Wait for ArgoCD to clean up
-oc wait --for=delete application/confluent-flink-${ENV} -n ${ARGOCD_NS} --timeout=120s
+oc wait --for=delete application/confluent-flink-dev -n openshift-gitops --timeout=120s 2>/dev/null || true
+oc wait --for=delete application/confluent-platform-dev -n openshift-gitops --timeout=120s 2>/dev/null || true
+oc wait --for=delete application/confluent-cmf-dev -n openshift-gitops --timeout=120s 2>/dev/null || true
 ```
 
-Phase-I operators remain unaffected.
+Phase-I operators remain unaffected. To revert CFK's `enableCMFDay2Ops`, remove the line from values and let ArgoCD sync.
+
+**Full teardown:** `./scripts/destroy-openshift-dev.sh`

@@ -82,7 +82,40 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-flink-operator-$ENV \
   -n "$ARGOCD_NS" --timeout=180s
 
-# ── Step 6: Print summary ───────────────────────────────────────────────────
+# ── Phase-II ────────────────────────────────────────────────────────────────
+
+# ── Step 6: Deploy CMF ─────────────────────────────────────────────────────
+echo ""
+echo "==> Deploying Confluent Manager for Apache Flink (CMF)..."
+oc apply -f "$REPO_ROOT/gitops-config/openshift/$ENV/confluent-cmf-application-set.yaml"
+echo "    Waiting for CMF to become Healthy..."
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-cmf-$ENV -n "$ARGOCD_NS" --timeout=180s
+
+# ── Step 7: Deploy Confluent Platform (local Kafka for PoC) ───────────────
+echo ""
+echo "==> Deploying Confluent Platform (local Kafka for PoC)..."
+oc apply -f "$REPO_ROOT/gitops-config/openshift/$ENV/confluent-platform-application-set.yaml"
+echo "    Waiting for Confluent Platform to become Healthy..."
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-platform-$ENV -n "$ARGOCD_NS" --timeout=300s
+
+# ── Step 8: Wait for Kafka to be ready ────────────────────────────────────
+echo ""
+echo "==> Waiting for Kafka to reach RUNNING state..."
+oc wait --for=jsonpath='{.status.phase}'=RUNNING kafka/kafka \
+  -n confluent-$ENV --timeout=300s
+echo "    Kafka is RUNNING."
+
+# ── Step 9: Deploy Flink infrastructure (CMFRestClass, FlinkEnvironment, PVC)
+echo ""
+echo "==> Deploying Flink infrastructure CRs..."
+oc apply -f "$REPO_ROOT/gitops-config/openshift/$ENV/confluent-flink-application-set.yaml"
+echo "    Waiting for Flink infra to sync..."
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-flink-$ENV -n "$ARGOCD_NS" --timeout=180s
+
+# ── Step 10: Print summary ──────────────────────────────────────────────────
 echo ""
 echo "========================================"
 echo "  OpenShift Deployment complete!"
@@ -91,7 +124,7 @@ echo ""
 echo "--- ArgoCD Applications ---"
 oc get applications -n "$ARGOCD_NS"
 echo ""
-echo "--- Operator Pods ---"
+echo "--- Pods in confluent-$ENV ---"
 oc get pods -n confluent-$ENV
 echo ""
 echo "--- cert-manager Pods ---"
