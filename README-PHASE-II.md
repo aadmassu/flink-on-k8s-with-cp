@@ -41,30 +41,20 @@ Planning document for Phase-II: deploying **Confluent Manager for Apache Flink (
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  OpenShift Cluster                                          │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ cert-manager │  │  CFK (CRDs   │  │  Flink Operator  │  │
-│  │  (Phase-I)   │  │   only)      │  │    (Phase-I)     │  │
-│  └──────────────┘  └──────────────┘  └────────▲─────────┘  │
-│                                               │             │
-│                                    submits FlinkDeployment  │
-│                                            CRs │            │
-│                                      ┌────────┴─────────┐  │
-│                                      │  CMF (Phase-II)  │  │
-│                                      └────────┬─────────┘  │
-│                                               │             │
-└───────────────────────────────────────────────┼─────────────┘
-                                                │
-                                     Kafka protocol / REST
-                                                │
-                                   ┌────────────▼────────────┐
-                                   │  Confluent Platform     │
-                                   │  (VMs — external)       │
-                                   │  Kafka · SR · Connect   │
-                                   └─────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph cluster["OpenShift Cluster"]
+        cm["cert-manager\n(Phase-I)"]
+        cfk["CFK — CRDs only\n(Phase-I)"]
+        fop["Flink Operator\n(Phase-I)"]
+        cmf["CMF\n(Phase-II)"]
+
+        cmf -- "submits FlinkDeployment CRs" --> fop
+    end
+
+    cp["Confluent Platform\n(VMs — external)\nKafka · SR · Connect"]
+
+    cmf -- "Kafka protocol / REST" --> cp
 ```
 
 ---
@@ -80,8 +70,10 @@ Planning document for Phase-II: deploying **Confluent Manager for Apache Flink (
 - The deploy script enforces ordering: cert-manager → CRD gate → operators.
 
 **What Phase-II adds to the chain:**
-```
-cert-manager CRDs → cert-manager pods → Flink Operator CRDs → Flink Operator pods → CMF
+
+```mermaid
+flowchart LR
+    A["cert-manager CRDs"] --> B["cert-manager pods"] --> C["Flink Operator CRDs"] --> D["Flink Operator pods"] --> E["CMF"]
 ```
 
 **Decision needed:**
@@ -300,26 +292,42 @@ openshift-prereqs/<env>/manifests/
 
 Extends Phase-I with a new step:
 
+```mermaid
+flowchart TD
+    subgraph phase1["Phase-I (already complete)"]
+        s1["1. Namespaces + Labels"]
+        s2["2. SCC prerequisites"]
+        s3["3. cert-manager"]
+        s3a["3a. Wait for cert-manager CRDs"]
+        s4["4. CFK + Flink Operator\n(parallel)"]
+
+        s1 --> s2 --> s3 --> s3a --> s4
+    end
+
+    subgraph phase2["Phase-II (new)"]
+        s5["5. Wait for Flink Operator CRDs"]
+        s6["6. Deploy CMF"]
+        s7["7. Verify CMF → external CP\nconnectivity"]
+
+        s5 --> s6 --> s7
+    end
+
+    s4 --> s5
 ```
-Phase-I (already complete)
-│
-│  1. Namespaces + Labels
-│  2. SCC prerequisites
-│  3. cert-manager  →  3a. Wait for cert-manager CRDs
-│  4. CFK + Flink Operator (parallel)
-│
-Phase-II (new)
-│
-│  5. Wait for Flink Operator CRDs
-│     oc wait --for=condition=Established crd/flinkdeployments.flink.apache.org --timeout=60s
-│
-│  6. Deploy CMF
-│     oc apply -f gitops-config/openshift/${ENV}/confluent-flink-application-set.yaml
-│     oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-│       application/confluent-flink-${ENV} -n ${ARGOCD_NS} --timeout=180s
-│
-│  7. Verify CMF → external CP connectivity
-│     (smoke test: submit a test Flink SQL job or verify CMF health endpoint)
+
+**Phase-II commands:**
+
+```bash
+# Step 5 — Wait for Flink Operator CRDs
+oc wait --for=condition=Established crd/flinkdeployments.flink.apache.org --timeout=60s
+
+# Step 6 — Deploy CMF
+oc apply -f gitops-config/openshift/${ENV}/confluent-flink-application-set.yaml
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-flink-${ENV} -n ${ARGOCD_NS} --timeout=180s
+
+# Step 7 — Verify CMF → external CP connectivity
+# (smoke test: submit a test Flink SQL job or verify CMF health endpoint)
 ```
 
 ---
