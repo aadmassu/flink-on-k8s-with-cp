@@ -2,11 +2,27 @@
 set -euo pipefail
 
 # ============================================================================
-# Discover latest Helm chart versions and container image tags for:
+# Discover pinned Helm chart versions and container images for:
 #   - Operators (cert-manager, CFK, Flink Operator, ArgoCD)
-#   - Confluent Platform components (for future phases)
-#   - Apache Flink runtime (for future phases)
+#
+# Chart versions: queried via `helm search repo`
+# Container images: derived from `helm template` with pinned chart versions
+#   and the repository's own values/overlay files. This ensures the image
+#   inventory always matches what the charts actually deploy — no hand-
+#   maintained lists or registry API queries that can drift.
 # ============================================================================
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# --- Pinned chart versions (single source of truth) ---
+CERT_MANAGER_VERSION="v1.19.4"
+CFK_VERSION="0.1351.59"
+FLINK_OPERATOR_VERSION="1.130.2"
+ARGOCD_VERSION="9.4.7"
+
+# ========================================
+#  Helm Chart Versions
+# ========================================
 
 echo "========================================"
 echo "  Helm Chart Versions"
@@ -34,109 +50,89 @@ echo ""
 echo "=== argo-cd ==="
 helm search repo argo-cd/argo-cd --versions | head -5
 
+# ========================================
+#  Container Images (from helm template)
+# ========================================
+
 echo ""
 echo "========================================"
-echo "  Container Images — Latest Tags"
+echo "  Container Images (derived from helm template)"
 echo "========================================"
+echo ""
+echo "Rendering charts with pinned versions + values files..."
+echo "This is the authoritative image inventory."
+echo ""
 
-DOCKER_HUB_API="https://hub.docker.com/v2/repositories/confluentinc"
+# Collect all images into a temp file for deduplication
+ALL_IMAGES=$(mktemp)
+trap 'rm -f "$ALL_IMAGES"' EXIT
 
-fetch_latest_tag() {
-  local image=$1
-  local filter=${2:-""}
-  local url="${DOCKER_HUB_API}/${image}/tags/?page_size=100"
-  if [ -n "$filter" ]; then
-    url="${url}&name=${filter}"
+# Helper: render a chart and extract image references
+extract_images() {
+  local label="$1"
+  shift
+  # Run helm template; extract image: fields; clean up whitespace and quotes
+  local images
+  images=$(helm template "$@" 2>/dev/null \
+    | grep -E '^\s+image:|^\s+- image:' \
+    | sed 's/.*image: *//; s/^"//; s/"$//' \
+    | sed "s/^'//; s/'$//" \
+    | sort -u) || true
+
+  if [ -z "$images" ]; then
+    echo "  WARNING: No images found for ${label} — is the chart version correct?"
+    return
   fi
-  curl -s "$url" 2>/dev/null \
-    | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-prefix = '${filter}'
-tags = [r['name'] for r in d.get('results', [])
-        if not any(s in r['name'] for s in ['amd64', 'arm64', 's390x', 'beta'])
-        and (not prefix or r['name'].startswith(prefix))]
-def ver_key(v):
-    parts = v.replace('-', '.').split('.')
-    return tuple(int(p) if p.isdigit() else 0 for p in parts)
-tags.sort(key=ver_key, reverse=True)
-print(tags[0] if tags else 'N/A')
-" 2>/dev/null || echo "N/A"
+
+  echo "$images" >> "$ALL_IMAGES"
+
+  echo "--- ${label} ---"
+  printf "%-70s\n" "IMAGE"
+  echo "----------------------------------------------------------------------"
+  echo "$images" | while read -r img; do
+    printf "  %s\n" "$img"
+  done
+  echo ""
 }
 
-echo ""
-echo "--- Operators (Phase 1) ---"
-printf "%-55s %s\n" "IMAGE" "LATEST TAG"
-echo "-------------------------------------------------------+------------------"
+# --- cert-manager ---
+extract_images "cert-manager (${CERT_MANAGER_VERSION})" \
+  cert-manager jetstack/cert-manager \
+  --version "$CERT_MANAGER_VERSION" \
+  -f "${REPO_ROOT}/apps/cert-manager/dev/values.yaml" \
+  -f "${REPO_ROOT}/apps/cert-manager/openshift-overlay.yaml"
 
-for img in confluent-operator confluent-init-container; do
-  tag=$(fetch_latest_tag "$img")
-  printf "%-55s %s\n" "confluentinc/${img}" "$tag"
+# --- Confluent for Kubernetes (CFK) ---
+extract_images "confluent-for-kubernetes (${CFK_VERSION})" \
+  confluent-operator confluent/confluent-for-kubernetes \
+  --version "$CFK_VERSION" \
+  -f "${REPO_ROOT}/apps/confluent-operator/dev/values.yaml" \
+  -f "${REPO_ROOT}/apps/confluent-operator/openshift-overlay.yaml"
+
+# --- Flink Kubernetes Operator ---
+extract_images "flink-kubernetes-operator (${FLINK_OPERATOR_VERSION})" \
+  flink-operator confluent/flink-kubernetes-operator \
+  --version "$FLINK_OPERATOR_VERSION" \
+  -f "${REPO_ROOT}/apps/confluent-flink-operator/dev/values.yaml" \
+  -f "${REPO_ROOT}/apps/confluent-flink-operator/openshift-overlay.yaml"
+
+# --- ArgoCD ---
+# ArgoCD has no openshift-overlay file; render with env values only
+extract_images "argo-cd (${ARGOCD_VERSION})" \
+  argocd argo-cd/argo-cd \
+  --version "$ARGOCD_VERSION" \
+  -f "${REPO_ROOT}/apps/argocd/dev/values.yaml"
+
+# --- Deduplicated summary ---
+echo "========================================"
+echo "  All Unique Images (deduplicated)"
+echo "========================================"
+echo ""
+sort -u "$ALL_IMAGES" | while read -r img; do
+  echo "  $img"
 done
-
-tag=$(fetch_latest_tag "cp-flink-kubernetes-operator" "1.13.0-cp")
-printf "%-55s %s\n" "confluentinc/cp-flink-kubernetes-operator" "$tag"
-
 echo ""
-echo "--- Confluent Platform (Phase 2/3 — for reference) ---"
-printf "%-55s %s\n" "IMAGE" "LATEST TAG"
-echo "-------------------------------------------------------+------------------"
-
-for img in cp-server cp-kafka cp-schema-registry cp-kafka-connect cp-kafka-rest cp-ksqldb-server; do
-  tag=$(fetch_latest_tag "$img" "8.1")
-  printf "%-55s %s\n" "confluentinc/${img}" "$tag"
-done
-
-tag=$(fetch_latest_tag "cp-enterprise-control-center" "7.8")
-printf "%-55s %s\n" "confluentinc/cp-enterprise-control-center" "$tag"
-
-echo ""
-echo "--- Apache Flink Runtime (Phase 2/3 — for reference) ---"
-printf "%-55s %s\n" "IMAGE" "LATEST TAG"
-echo "-------------------------------------------------------+------------------"
-
-for flink_ver in 1.19 1.18; do
-  tag=$(fetch_latest_tag "cp-flink" "${flink_ver}")
-  printf "%-55s %s\n" "confluentinc/cp-flink (${flink_ver})" "$tag"
-done
-
-echo ""
-echo "--- cert-manager ---"
-printf "%-55s %s\n" "IMAGE" "LATEST TAG"
-echo "-------------------------------------------------------+------------------"
-
-JETSTACK_API="https://quay.io/api/v1/repository/jetstack"
-for img in cert-manager-controller cert-manager-webhook cert-manager-cainjector cert-manager-startupapicheck; do
-  tag=$(curl -s "${JETSTACK_API}/${img}/tag/?limit=50&onlyActiveTags=true" 2>/dev/null \
-    | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-tags = [t['name'] for t in d.get('tags', [])
-        if t['name'].startswith('v') and '.' in t['name']
-        and 'alpha' not in t['name'] and 'beta' not in t['name'] and 'rc' not in t['name']]
-def ver_key(v):
-    parts = v.lstrip('v').split('.')
-    return tuple(int(p) for p in parts if p.isdigit())
-tags.sort(key=ver_key, reverse=True)
-print(tags[0] if tags else 'N/A')
-" 2>/dev/null || echo "N/A")
-  printf "%-55s %s\n" "quay.io/jetstack/${img}" "$tag"
-done
-
-echo ""
-echo "--- ArgoCD ---"
-printf "%-55s %s\n" "IMAGE" "LATEST TAG"
-echo "-------------------------------------------------------+------------------"
-
-QUAY_ARGO_API="https://quay.io/api/v1/repository/argoproj"
-tag=$(curl -s "${QUAY_ARGO_API}/argocd/tag/?limit=10&onlyActiveTags=true" 2>/dev/null \
-  | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-tags = [t['name'] for t in d.get('tags', []) if t['name'].startswith('v') and '.' in t['name'] and 'alpha' not in t['name'] and 'beta' not in t['name'] and 'rc' not in t['name']]
-print(tags[0] if tags else 'N/A')
-" 2>/dev/null || echo "N/A")
-printf "%-55s %s\n" "quay.io/argoproj/argocd" "$tag"
-
+IMAGE_COUNT=$(sort -u "$ALL_IMAGES" | wc -l | tr -d ' ')
+echo "Total unique images: ${IMAGE_COUNT}"
 echo ""
 echo "Done."

@@ -1,6 +1,6 @@
-# Using Internal Helm and Container Registries
+# Using JFrog Artifactory as Internal Helm and Container Registry
 
-This guide explains how to redirect all Helm chart downloads and container image pulls from their default public sources to your organization's internal registries.
+This guide explains how to redirect all Helm chart downloads and container image pulls from their default public sources to JFrog Artifactory (or a compatible OCI/HTTP registry) in an air-gapped environment.
 
 ---
 
@@ -30,13 +30,13 @@ This guide explains how to redirect all Helm chart downloads and container image
 - **Security and compliance** — corporate policy requires image scanning, Software Bill of Materials (SBOM) tracking, or supply-chain controls before deployment.
 - **Performance and reliability** — avoid Docker Hub rate limits, reduce image pull latency, and eliminate external dependencies during deployments.
 
-In short, if your environment cannot — or your organization prefers not to — pull container images and Helm charts directly from public registries (e.g., Confluent's Docker image repository, Helm package repositories, Docker Hub), and you instead need to host those artifacts in a self-managed or enterprise-managed registry (such as JFrog Artifactory, Harbor, or Nexus), this guide is for you.
+In short, if your environment cannot — or your organization prefers not to — pull container images and Helm charts directly from public registries (e.g., Confluent's Docker image repository, Helm package repositories, Docker Hub), and you instead need to host those artifacts in JFrog Artifactory, this guide is for you.
 
 ---
 
 ## Target Versions
 
-This guide targets the latest versions for a greenfield deployment. Pull, tag, and push these specific versions (or newer) to your internal registries.
+All deployments use **pinned versions** for reproducibility and audit compliance. The discovery scripts in this repository are informational — the deployment always uses the pinned versions below. Pull, tag, and push these exact versions to Artifactory.
 
 | Component | Version | Helm Chart | targetRevision |
 |---|---|---|---|
@@ -88,41 +88,28 @@ helm search repo argo-cd/argo-cd --versions | head -5
 
 ### Validate Resolved Versions Against ApplicationSets
 
-Use this script to verify that the pinned chart versions exist in the upstream repos. Run it before deploying to confirm availability:
+Use [`scripts/validate-resolvable-versions.sh`](scripts/validate-resolvable-versions.sh) to verify that pinned chart versions exist. The script uses `helm show chart` (which actually fetches chart metadata) for a stronger signal than `helm search`:
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
+# Check public repos (internet-connected staging box)
+./scripts/validate-resolvable-versions.sh
 
-# Ensure repos are up to date
-helm repo update >/dev/null 2>&1
-
-echo "ApplicationSet Pinned Version Check"
-echo "===================================="
-printf "%-35s %-15s %-10s\n" "CHART" "PINNED" "STATUS"
-echo "-----------------------------------+--------------+----------"
-
-check() {
-  local repo=$1 chart=$2 version=$3
-  local found
-  found=$(helm search repo "${repo}/${chart}" --version "$version" \
-    --output json 2>/dev/null \
-    | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' \
-    | head -1 | cut -d'"' -f4) || true
-  if [ "$found" = "$version" ]; then
-    printf "%-35s %-15s %-10s\n" "$chart" "$version" "OK"
-  else
-    printf "%-35s %-15s %-10s\n" "$chart" "$version" "NOT FOUND"
-  fi
-}
-
-check jetstack    cert-manager                    "v1.19.4"
-check confluent   confluent-for-kubernetes        "0.1351.59"
-check confluent   flink-kubernetes-operator       "1.130.2"
-check argo-cd     argo-cd                         "9.4.7"
+# Check your internal Artifactory repo (after uploading charts)
+./scripts/validate-resolvable-versions.sh --internal
 ```
 
-> Verify available versions with `helm search repo <repo>/<chart> --versions` after adding the public repos.
+Example output:
+
+```
+ApplicationSet Pinned Version Check (public repos)
+====================================
+CHART                               PINNED          STATUS
+-----------------------------------+--------------+----------
+cert-manager                        v1.19.4        OK
+confluent-for-kubernetes            0.1351.59      OK
+flink-kubernetes-operator           1.130.2        OK
+argo-cd                             9.4.7          OK
+```
 
 ---
 
@@ -130,10 +117,10 @@ check argo-cd     argo-cd                         "9.4.7"
 
 | Requirement | Details |
 |---|---|
-| Internal Helm repository | JFrog Artifactory, Sonatype Nexus, Harbor, or any OCI/HTTP Helm repo |
-| Internal container registry | Same tool, or a dedicated container registry (ECR, GCR, ACR, etc.) |
-| CLI tools | `docker` or `podman`, `helm` 3.14+, `oc` |
-| Registry credentials | Push access (for uploading) and pull access (for Kubernetes nodes) |
+| JFrog Artifactory | Helm (virtual + local) repository and Docker registry configured |
+| Internet-connected staging box | A machine with access to both the public internet and Artifactory — used to pull, tag, and push artifacts |
+| CLI tools | `docker` or `podman`, `helm` 3.14+, `oc`, `curl` (for Artifactory API) |
+| Artifactory credentials | Push access (for uploading) and pull access (for Kubernetes nodes) |
 
 ---
 
@@ -151,6 +138,17 @@ check argo-cd     argo-cd                         "9.4.7"
 ## Inventory: Container Images
 
 The Helm charts pull the images listed below. No container image registries are referenced directly in this repository — they are embedded in the upstream charts. You must pull, tag, and push these images to your internal registry so that your cluster nodes can access them.
+
+### Image Inventory Is Generated, Not Curated
+
+> **Do not hand-maintain the image list.** The authoritative image inventory is the output of
+> `helm template` with pinned chart versions and the repository's values/overlay files.
+> Run [`scripts/discover-charts-and-images.sh`](scripts/discover-charts-and-images.sh) to
+> regenerate the full list at any time. The tables below are a **reference snapshot** for
+> readability — if they diverge from the script output, **trust the script**.
+>
+> This approach prevents `ImagePullBackOff` failures caused by charts embedding images
+> that don't appear in a hand-maintained list.
 
 ### cert-manager
 
@@ -205,29 +203,24 @@ helm pull confluent/flink-kubernetes-operator --version 1.130.2
 helm pull argo-cd/argo-cd --version 9.4.7
 ```
 
-Upload the `.tgz` files to your internal Helm repository:
+Upload the `.tgz` files to JFrog Artifactory:
 
 ```bash
-# JFrog Artifactory
+# Upload to Artifactory local Helm repo
 for tgz in *.tgz; do
   curl -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
     -T "$tgz" \
-    "https://registry.example.com/artifactory/helm-local/$tgz"
-done
-
-# Sonatype Nexus
-for tgz in *.tgz; do
-  curl -u "$NEXUS_USER:$NEXUS_PASSWORD" \
-    --upload-file "$tgz" \
-    "https://registry.example.com/repository/helm-hosted/$tgz"
+    "https://artifactory.example.com/artifactory/helm-local/$tgz"
 done
 ```
+
+> **Tip:** If you have a virtual Helm repo in Artifactory that aggregates `helm-local` + remote proxies, point `helm repo add` at the virtual repo URL for a unified view.
 
 ### Verify Charts in Internal Repo
 
 ```bash
-helm repo add internal https://registry.example.com/helm \
-  --username "$REGISTRY_USER" --password "$REGISTRY_TOKEN"
+helm repo add internal https://artifactory.example.com/artifactory/helm-virtual \
+  --username "$ARTIFACTORY_USER" --password "$ARTIFACTORY_TOKEN"
 helm repo update
 
 helm search repo internal/cert-manager
@@ -237,6 +230,28 @@ helm search repo internal/argo-cd
 ```
 
 All four charts should appear with the expected versions.
+
+### Alternative: OCI-Based Helm Repository
+
+JFrog Artifactory natively supports OCI artifacts. You can push and pull charts using `oci://` instead of managing an HTTP Helm repository index:
+
+```bash
+# Push a chart to an OCI registry
+helm push cert-manager-v1.19.4.tgz oci://artifactory.example.com/helm-charts
+
+# Pull from OCI (no helm repo add required)
+helm pull oci://artifactory.example.com/helm-charts/cert-manager --version v1.19.4
+```
+
+OCI Helm avoids the index-management overhead of HTTP Helm repos. To use OCI with ArgoCD, set the ApplicationSet source to:
+
+```yaml
+- repoURL: artifactory.example.com/helm-charts
+  chart: cert-manager
+  targetRevision: v1.19.4
+```
+
+and configure the ArgoCD repository secret with `type: helm` and `enableOCI: "true"`. The rest of this guide assumes HTTP Helm repos as the primary path.
 
 ---
 
@@ -250,10 +265,10 @@ docker pull quay.io/jetstack/cert-manager-controller:v1.19.4
 
 # Tag for internal registry
 docker tag quay.io/jetstack/cert-manager-controller:v1.19.4 \
-  registry.example.com/jetstack/cert-manager-controller:v1.19.4
+  artifactory.example.com/jetstack/cert-manager-controller:v1.19.4
 
 # Push to internal registry
-docker push registry.example.com/jetstack/cert-manager-controller:v1.19.4
+docker push artifactory.example.com/jetstack/cert-manager-controller:v1.19.4
 ```
 
 ### Bulk Pull, Tag, and Push Script
@@ -262,7 +277,7 @@ docker push registry.example.com/jetstack/cert-manager-controller:v1.19.4
 #!/usr/bin/env bash
 set -euo pipefail
 
-INTERNAL_REGISTRY="registry.example.com"
+INTERNAL_REGISTRY="artifactory.example.com"
 
 IMAGES=(
   # cert-manager (v1.19.4)
@@ -288,7 +303,7 @@ IMAGES=(
 
 for img in "${IMAGES[@]}"; do
   # Derive internal path: replace original registry prefix with internal registry
-  # e.g. quay.io/jetstack/foo → registry.example.com/jetstack/foo
+  # e.g. quay.io/jetstack/foo → artifactory.example.com/jetstack/foo
   src_without_registry="${img#*/}"
   internal_img="${INTERNAL_REGISTRY}/${src_without_registry}"
 
@@ -312,36 +327,46 @@ Each namespace that runs pods needs a pull secret for your internal registry.
 ```bash
 # cert-manager namespace
 oc create secret docker-registry internal-registry \
-  --docker-server=registry.example.com \
-  --docker-username="$REGISTRY_USER" \
-  --docker-password="$REGISTRY_TOKEN" \
+  --docker-server=artifactory.example.com \
+  --docker-username="$ARTIFACTORY_USER" \
+  --docker-password="$ARTIFACTORY_TOKEN" \
   -n cert-manager
 
 # ArgoCD namespace (OpenShift GitOps)
 oc create secret docker-registry internal-registry \
-  --docker-server=registry.example.com \
-  --docker-username="$REGISTRY_USER" \
-  --docker-password="$REGISTRY_TOKEN" \
+  --docker-server=artifactory.example.com \
+  --docker-username="$ARTIFACTORY_USER" \
+  --docker-password="$ARTIFACTORY_TOKEN" \
   -n openshift-gitops
 
 # Per-environment Confluent namespaces
 for ENV in dev qa stg prd; do
   oc create secret docker-registry internal-registry \
-    --docker-server=registry.example.com \
-    --docker-username="$REGISTRY_USER" \
-    --docker-password="$REGISTRY_TOKEN" \
+    --docker-server=artifactory.example.com \
+    --docker-username="$ARTIFACTORY_USER" \
+    --docker-password="$ARTIFACTORY_TOKEN" \
     -n "confluent-${ENV}"
 done
 ```
 
-### OpenShift Alternative
+### Recommended: OpenShift Global Pull Secret
 
-On OpenShift, you can add the credential to the global pull secret instead of per-namespace:
+On OpenShift, the simplest and most reliable approach is to add your internal registry credential to the **cluster-wide global pull secret**. This avoids creating and maintaining per-namespace secrets and ensures every namespace — including any added in future phases — can pull images automatically:
 
 ```bash
+# Extract current global pull secret
+oc get secret/pull-secret -n openshift-config \
+  --template='{{index .data ".dockerconfigjson" | base64decode}}' > /tmp/pull-secret.json
+
+# Merge your internal registry credential (use jq or manual edit)
+# Then apply:
 oc set data secret/pull-secret -n openshift-config \
-  --from-file=.dockerconfigjson=<path-to-auth.json>
+  --from-file=.dockerconfigjson=/tmp/pull-secret.json
 ```
+
+> **Note:** Updating the global pull secret triggers a rolling restart of all nodes (MachineConfig update). Plan this during a maintenance window.
+
+If your security policy prohibits cluster-wide credentials, fall back to the per-namespace approach shown above.
 
 ---
 
@@ -368,7 +393,7 @@ Change:
           chart: cert-manager
 
 # After
-        - repoURL: https://registry.example.com/helm
+        - repoURL: https://artifactory.example.com/artifactory/helm-virtual
           chart: cert-manager
 ```
 
@@ -391,7 +416,7 @@ Change:
           chart: confluent-for-kubernetes
 
 # After
-        - repoURL: https://registry.example.com/helm
+        - repoURL: https://artifactory.example.com/artifactory/helm-virtual
           chart: confluent-for-kubernetes
 ```
 
@@ -414,7 +439,7 @@ Change:
           chart: flink-kubernetes-operator
 
 # After
-        - repoURL: https://registry.example.com/helm
+        - repoURL: https://artifactory.example.com/artifactory/helm-virtual
           chart: flink-kubernetes-operator
 ```
 
@@ -422,11 +447,11 @@ Change:
 
 ```bash
 # cert-manager
-sed -i 's|repoURL: https://charts.jetstack.io|repoURL: https://registry.example.com/helm|' \
+sed -i 's|repoURL: https://charts.jetstack.io|repoURL: https://artifactory.example.com/artifactory/helm-virtual|' \
   gitops-config/openshift/*/cert-manager-application-set.yaml
 
 # Confluent Operator + Flink Operator
-sed -i 's|repoURL: https://packages.confluent.io/helm|repoURL: https://registry.example.com/helm|' \
+sed -i 's|repoURL: https://packages.confluent.io/helm|repoURL: https://artifactory.example.com/artifactory/helm-virtual|' \
   gitops-config/openshift/*/confluent-operator-application-set.yaml \
   gitops-config/openshift/*/confluent-flink-operator-application-set.yaml
 ```
@@ -454,22 +479,22 @@ Add these keys (merge with existing content):
 
 ```yaml
 image:
-  registry: registry.example.com
+  registry: artifactory.example.com
   repository: jetstack/cert-manager-controller
 
 webhook:
   image:
-    registry: registry.example.com
+    registry: artifactory.example.com
     repository: jetstack/cert-manager-webhook
 
 cainjector:
   image:
-    registry: registry.example.com
+    registry: artifactory.example.com
     repository: jetstack/cert-manager-cainjector
 
 startupapicheck:
   image:
-    registry: registry.example.com
+    registry: artifactory.example.com
     repository: jetstack/cert-manager-startupapicheck
 
 global:
@@ -492,7 +517,7 @@ Add these keys (merge with existing content):
 
 ```yaml
 image:
-  registry: registry.example.com
+  registry: artifactory.example.com
   repository: confluentinc/confluent-operator
 
 imagePullSecrets:
@@ -514,7 +539,7 @@ Add these keys (merge with existing content):
 
 ```yaml
 image:
-  repository: registry.example.com/confluentinc/confluent-flink-kubernetes-operator
+  repository: artifactory.example.com/confluentinc/confluent-flink-kubernetes-operator
 
 imagePullSecrets:
   - name: internal-registry
@@ -539,19 +564,19 @@ Add/merge these keys. Note that `global:` already exists in these files (it cont
 global:
   # domain: argocd-dev.example.com   # <-- already present, keep it
   image:
-    registry: registry.example.com
+    registry: artifactory.example.com
     repository: argoproj/argocd
   imagePullSecrets:
     - name: internal-registry
 
 dex:
   image:
-    registry: registry.example.com
+    registry: artifactory.example.com
     repository: dexidp/dex
 
 redis:
   image:
-    registry: registry.example.com
+    registry: artifactory.example.com
     repository: library/redis
 ```
 
@@ -580,7 +605,7 @@ Change:
 
 # After
   source:
-    repoURL: https://registry.example.com/helm
+    repoURL: https://artifactory.example.com/artifactory/helm-virtual
     chart: argo-cd
 ```
 
@@ -588,7 +613,7 @@ Change:
 
 ```bash
 # ArgoCD app manifests
-sed -i 's|repoURL: https://argoproj.github.io/argo-helm|repoURL: https://registry.example.com/helm|' \
+sed -i 's|repoURL: https://argoproj.github.io/argo-helm|repoURL: https://artifactory.example.com/artifactory/helm-virtual|' \
   apps/argocd/*/app.yaml
 ```
 
@@ -607,12 +632,12 @@ helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
 
 # After
-helm repo add argo-cd https://registry.example.com/helm --username "$REGISTRY_USER" --password "$REGISTRY_TOKEN" 2>/dev/null || true
-helm repo add confluent https://registry.example.com/helm --username "$REGISTRY_USER" --password "$REGISTRY_TOKEN" 2>/dev/null || true
-helm repo add jetstack https://registry.example.com/helm --username "$REGISTRY_USER" --password "$REGISTRY_TOKEN" 2>/dev/null || true
+helm repo add argo-cd https://artifactory.example.com/artifactory/helm-virtual --username "$ARTIFACTORY_USER" --password "$ARTIFACTORY_TOKEN" 2>/dev/null || true
+helm repo add confluent https://artifactory.example.com/artifactory/helm-virtual --username "$ARTIFACTORY_USER" --password "$ARTIFACTORY_TOKEN" 2>/dev/null || true
+helm repo add jetstack https://artifactory.example.com/artifactory/helm-virtual --username "$ARTIFACTORY_USER" --password "$ARTIFACTORY_TOKEN" 2>/dev/null || true
 ```
 
-> If all charts are in a single internal virtual repo, you can simplify to one `helm repo add` call.
+> If all charts are in a single Artifactory virtual Helm repo, you can simplify to one `helm repo add` call.
 
 The `helm upgrade --install argocd argo-cd/argo-cd` command on line 79 does not change because it references the local repo alias, not the URL.
 
@@ -647,15 +672,15 @@ oc create secret generic internal-helm-repo \
   --namespace openshift-gitops \
   --from-literal=type=helm \
   --from-literal=name=internal-helm \
-  --from-literal=url=https://registry.example.com/helm \
-  --from-literal=username="$REGISTRY_USER" \
-  --from-literal=password="$REGISTRY_TOKEN"
+  --from-literal=url=https://artifactory.example.com/artifactory/helm-virtual \
+  --from-literal=username="$ARTIFACTORY_USER" \
+  --from-literal=password="$ARTIFACTORY_TOKEN"
 
 oc label secret internal-helm-repo -n openshift-gitops \
   argocd.argoproj.io/secret-type=repository
 ```
 
-This allows ArgoCD to authenticate when fetching Helm charts from `https://registry.example.com/helm`.
+This allows ArgoCD to authenticate when fetching Helm charts from Artifactory. The `helm-virtual` repo in Artifactory should aggregate your `helm-local` repository (where you uploaded the `.tgz` files) and optionally any remote proxies.
 
 ---
 
@@ -674,8 +699,8 @@ All five charts should be listed.
 **2. Container images are accessible:**
 
 ```bash
-docker pull registry.example.com/jetstack/cert-manager-controller:v1.19.4
-docker pull registry.example.com/confluentinc/confluent-operator:0.1351.59
+docker pull artifactory.example.com/jetstack/cert-manager-controller:v1.19.4
+docker pull artifactory.example.com/confluentinc/confluent-operator:0.1351.59
 ```
 
 **3. Running pods use internal images:**
@@ -686,7 +711,7 @@ oc get pods -n openshift-gitops -o jsonpath='{range .items[*]}{.spec.containers[
 oc get pods -n confluent-dev -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
 ```
 
-All images should show `registry.example.com/...` prefixes.
+All images should show `artifactory.example.com/...` prefixes.
 
 **4. No public URLs remain in config files:**
 
@@ -697,7 +722,73 @@ grep -r "charts.jetstack.io\|packages.confluent.io\|argoproj.github.io/argo-helm
 
 This should return no results.
 
-**5. ArgoCD applications are healthy:**
+**5. All rendered images exist in Artifactory:**
+
+Render the charts with pinned versions and verify every image exists in Artifactory. This catches images missed during the pull/push step and is the most reliable pre-flight for air-gapped installs:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ARTIFACTORY_URL="https://artifactory.example.com"
+DOCKER_REPO="docker-local"       # your Artifactory Docker repo name
+
+# Step A — Render each chart with pinned versions + values
+RENDERED=$(mktemp)
+helm template cert-manager jetstack/cert-manager \
+    --version v1.19.4 \
+    -f apps/cert-manager/dev/values.yaml \
+    -f apps/cert-manager/openshift-overlay.yaml >> "$RENDERED"
+helm template cfk confluent/confluent-for-kubernetes \
+    --version 0.1351.59 \
+    -f apps/confluent-operator/dev/values.yaml \
+    -f apps/confluent-operator/openshift-overlay.yaml >> "$RENDERED"
+helm template flink confluent/flink-kubernetes-operator \
+    --version 1.130.2 \
+    -f apps/confluent-flink-operator/dev/values.yaml \
+    -f apps/confluent-flink-operator/openshift-overlay.yaml >> "$RENDERED"
+helm template argocd argo-cd/argo-cd \
+    --version 9.4.7 \
+    -f apps/argocd/dev/values.yaml >> "$RENDERED"
+
+# Step B — Extract every unique image from rendered YAML
+UNIQUE_IMAGES=$(grep -Eo 'image: *"?[^ "]+' "$RENDERED" \
+  | sed 's/image: *"*//;s/"$//' \
+  | sort -u)
+rm -f "$RENDERED"
+
+echo "Checking rendered images against Artifactory (${ARTIFACTORY_URL})..."
+MISSING=0
+while IFS= read -r img; do
+  # Derive internal path: strip public registry prefix
+  path_without_registry="${img#*/}"
+  # Parse image path and tag
+  img_path="${path_without_registry%%:*}"
+  img_tag="${path_without_registry##*:}"
+
+  # Query Artifactory Docker v2 API for the manifest
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+    -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+    "${ARTIFACTORY_URL}/v2/${DOCKER_REPO}/${img_path}/manifests/${img_tag}")
+
+  if [ "$HTTP_CODE" = "200" ]; then
+    printf "  OK   %s/%s:%s\n" "$DOCKER_REPO" "$img_path" "$img_tag"
+  else
+    printf "  MISS %s/%s:%s (HTTP %s)\n" "$DOCKER_REPO" "$img_path" "$img_tag" "$HTTP_CODE"
+    MISSING=$((MISSING + 1))
+  fi
+done <<< "$UNIQUE_IMAGES"
+
+if [ "$MISSING" -gt 0 ]; then
+  echo "ERROR: ${MISSING} image(s) missing from Artifactory."
+  exit 1
+fi
+echo "All rendered images found in Artifactory."
+```
+
+> **Tip:** If Docker CLI is available, you can substitute `docker manifest inspect artifactory.example.com/${img_path}:${img_tag}` for the `curl` check. The Artifactory API approach above works without Docker.
+
+**6. ArgoCD applications are healthy:**
 
 ```bash
 oc get applications -n openshift-gitops \
