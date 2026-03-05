@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Full deploy script for the dev environment on OpenShift.
 # Uses the OpenShift GitOps Operator (ArgoCD in openshift-gitops namespace)
-# to deploy cert-manager, Confluent Operator (CFK), and Flink Operator.
-# SCCs are applied directly (one-time cluster prerequisite, not managed by ArgoCD).
+# to deploy cert-manager, Confluent Operator (CFK), Flink Operator, CMF,
+# Confluent Platform (local Kafka), and Flink infrastructure CRs.
 #
 # Usage:
 #   ./scripts/deploy-openshift-dev.sh
@@ -28,10 +28,22 @@ echo "==> Verifying OpenShift GitOps Operator..."
 if ! oc get pods -n "$ARGOCD_NS" -l app.kubernetes.io/name=openshift-gitops-server --no-headers 2>/dev/null | grep -q Running; then
   echo "ERROR: OpenShift GitOps ArgoCD server is not running in $ARGOCD_NS."
   echo "       Install the OpenShift GitOps Operator from OperatorHub first."
-  echo "       See README-OPENSHIFT.md for instructions."
   exit 1
 fi
 echo "    OpenShift GitOps Operator is running."
+
+# ── Step 1a: Configure ArgoCD repo credentials ──────────────────────────────
+echo ""
+echo "==> Configuring ArgoCD repo credentials..."
+if [ -z "${ARGOCD_SSH_KEY:-}" ]; then
+  echo "WARNING: ARGOCD_SSH_KEY environment variable is not set."
+  echo "         Skipping repo secret — ArgoCD may not be able to clone the repo."
+  echo "         To configure: export ARGOCD_SSH_KEY=\$(cat ~/.ssh/id_rsa)"
+else
+  ARGOCD_SSH_KEY="$ARGOCD_SSH_KEY" envsubst < "$REPO_ROOT/gitops-config/openshift/argocd-repo-secret.yaml" \
+    | oc apply -f -
+  echo "    Repo credentials configured."
+fi
 
 # ── Step 2: Create and label namespaces ──────────────────────────────────────
 echo ""
@@ -64,8 +76,21 @@ fi
 # ── Step 4a: Wait for cert-manager CRDs ─────────────────────────────────────
 echo ""
 echo "==> Verifying cert-manager CRDs are established..."
-oc wait --for=condition=Established crd/certificates.cert-manager.io --timeout=60s
-oc wait --for=condition=Established crd/issuers.cert-manager.io --timeout=60s
+# CRDs may not exist yet when ArgoCD first reports Healthy — retry until they appear
+for CRD in certificates.cert-manager.io issuers.cert-manager.io; do
+  echo "    Waiting for CRD $CRD to be registered..."
+  RETRIES=0
+  MAX_RETRIES=30
+  until oc get crd "$CRD" &>/dev/null; do
+    RETRIES=$((RETRIES + 1))
+    if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+      echo "ERROR: CRD $CRD not found after ${MAX_RETRIES} retries."
+      exit 1
+    fi
+    sleep 2
+  done
+  oc wait --for=condition=Established "crd/$CRD" --timeout=60s
+done
 echo "    cert-manager CRDs are ready."
 
 # ── Step 5: Deploy Confluent Operator & Flink Operator ───────────────────────
@@ -96,26 +121,58 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
 echo ""
 echo "==> Deploying Confluent Platform (local Kafka for PoC)..."
 oc apply -f "$REPO_ROOT/gitops-config/openshift/$ENV/confluent-platform-application-set.yaml"
-echo "    Waiting for Confluent Platform to become Healthy..."
+echo "    Waiting for Confluent Platform to sync and become Healthy..."
+oc wait --for=jsonpath='{.status.sync.status}'=Synced \
+  application/confluent-platform-$ENV -n "$ARGOCD_NS" --timeout=300s
 oc wait --for=jsonpath='{.status.health.status}'=Healthy \
   application/confluent-platform-$ENV -n "$ARGOCD_NS" --timeout=300s
 
-# ── Step 8: Wait for Kafka to be ready ────────────────────────────────────
+# ── Step 7a: Wait for Kafka to be ready ──────────────────────────────────
 echo ""
 echo "==> Waiting for Kafka to reach RUNNING state..."
+# Kafka CR may not exist yet — wait for ArgoCD to create it
+RETRIES=0
+MAX_RETRIES=60
+until oc get kafka kafka -n confluent-$ENV &>/dev/null; do
+  RETRIES=$((RETRIES + 1))
+  if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+    echo "ERROR: Kafka CR not found after ${MAX_RETRIES} retries."
+    exit 1
+  fi
+  sleep 5
+done
 oc wait --for=jsonpath='{.status.phase}'=RUNNING kafka/kafka \
   -n confluent-$ENV --timeout=300s
 echo "    Kafka is RUNNING."
 
-# ── Step 9: Deploy Flink infrastructure (CMFRestClass, FlinkEnvironment, PVC)
+# ── Step 8: Deploy Flink infrastructure (CMFRestClass, FlinkEnvironment, PVC, Session Cluster)
 echo ""
-echo "==> Deploying Flink infrastructure CRs..."
+echo "==> Deploying Flink infrastructure CRs and session cluster..."
 oc apply -f "$REPO_ROOT/gitops-config/openshift/$ENV/confluent-flink-application-set.yaml"
-echo "    Waiting for Flink infra to sync..."
-oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+echo "    Waiting for Flink app to sync..."
+oc wait --for=jsonpath='{.status.sync.status}'=Synced \
   application/confluent-flink-$ENV -n "$ARGOCD_NS" --timeout=180s
 
-# ── Step 10: Print summary ──────────────────────────────────────────────────
+# ── Step 8a: Wait for Flink session cluster to be ready ──────────────────
+echo ""
+echo "==> Waiting for Flink session cluster to be ready..."
+# FlinkDeployment may not exist yet — wait for ArgoCD to create it
+RETRIES=0
+MAX_RETRIES=30
+until oc get flinkdeployment flink-session -n confluent-$ENV &>/dev/null; do
+  RETRIES=$((RETRIES + 1))
+  if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+    echo "ERROR: FlinkDeployment flink-session not found after ${MAX_RETRIES} retries."
+    exit 1
+  fi
+  sleep 5
+done
+oc wait --for=jsonpath='{.status.jobManagerDeploymentStatus}'=READY \
+  flinkdeployment/flink-session -n confluent-$ENV --timeout=300s
+echo "    Flink session cluster is READY."
+echo "    Access Flink UI: oc port-forward svc/flink-session-rest 8081:8081 -n confluent-$ENV"
+
+# ── Step 9: Print summary ──────────────────────────────────────────────────
 echo ""
 echo "========================================"
 echo "  OpenShift Deployment complete!"

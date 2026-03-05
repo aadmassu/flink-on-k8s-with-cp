@@ -27,25 +27,38 @@ gitops-config/
 |-- README.md                          # <-- You are here
 |
 +-- openshift/                         # Platform: Red Hat OpenShift
+    |-- argocd-repo-secret.yaml        # ArgoCD repository credential (envsubst template)
     |-- dev/
     |   |-- cert-manager-application-set.yaml
     |   |-- confluent-operator-application-set.yaml
-    |   +-- confluent-flink-operator-application-set.yaml
+    |   |-- confluent-flink-operator-application-set.yaml
+    |   |-- confluent-cmf-application-set.yaml
+    |   |-- confluent-platform-application-set.yaml
+    |   +-- confluent-flink-application-set.yaml
     |-- qa/
     |   |-- cert-manager-application-set.yaml
     |   |-- confluent-operator-application-set.yaml
-    |   +-- confluent-flink-operator-application-set.yaml
+    |   |-- confluent-flink-operator-application-set.yaml
+    |   |-- confluent-cmf-application-set.yaml
+    |   |-- confluent-platform-application-set.yaml
+    |   +-- confluent-flink-application-set.yaml
     |-- stg/
     |   |-- cert-manager-application-set.yaml
     |   |-- confluent-operator-application-set.yaml
-    |   +-- confluent-flink-operator-application-set.yaml
+    |   |-- confluent-flink-operator-application-set.yaml
+    |   |-- confluent-cmf-application-set.yaml
+    |   |-- confluent-platform-application-set.yaml
+    |   +-- confluent-flink-application-set.yaml
     +-- prd/
         |-- cert-manager-application-set.yaml
         |-- confluent-operator-application-set.yaml
-        +-- confluent-flink-operator-application-set.yaml
+        |-- confluent-flink-operator-application-set.yaml
+        |-- confluent-cmf-application-set.yaml
+        |-- confluent-platform-application-set.yaml
+        +-- confluent-flink-application-set.yaml
 ```
 
-Each environment contains **3 ApplicationSets**, for a total of **12 files**.
+Each environment contains **6 ApplicationSets**, for a total of **24 files**.
 
 ---
 
@@ -66,6 +79,7 @@ The following Helm-based ApplicationSets include an additional overlay values fi
 | `cert-manager` | `apps/cert-manager/openshift-overlay.yaml` |
 | `confluent-operator` | `apps/confluent-operator/openshift-overlay.yaml` |
 | `confluent-flink-operator` | `apps/confluent-flink-operator/openshift-overlay.yaml` |
+| `confluent-cmf` | `apps/confluent-cmf/openshift-overlay.yaml` |
 
 ---
 
@@ -115,13 +129,16 @@ syncPolicy:
 
 ## ApplicationSet Types
 
-These three ApplicationSet types are present in every environment:
+These six ApplicationSet types are present in every environment:
 
-| ApplicationSet | File Name | Source Type | Helm Chart | Target Namespace | syncOptions |
+| ApplicationSet | File Name | Source Type | Helm Chart / Path | Target Namespace | syncOptions |
 |---|---|---|---|---|---|
 | **cert-manager** | `cert-manager-application-set.yaml` | Helm (multi-source) | `cert-manager` from `charts.jetstack.io` (`v1.19.4`) | `cert-manager` | `CreateNamespace=true`, `ServerSideApply=true` |
 | **confluent-operator** | `confluent-operator-application-set.yaml` | Helm (multi-source) | `confluent-for-kubernetes` from `packages.confluent.io/helm` (`0.1351.59`) | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
 | **confluent-flink-operator** | `confluent-flink-operator-application-set.yaml` | Helm (multi-source) | `flink-kubernetes-operator` from `packages.confluent.io/helm` (`1.130.2`) | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
+| **confluent-cmf** | `confluent-cmf-application-set.yaml` | Helm (multi-source) | `confluent-manager-for-apache-flink` from `packages.confluent.io/helm` (`2.2.0`) | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
+| **confluent-platform** | `confluent-platform-application-set.yaml` | Git (directory) | `apps/confluent-platform/{{environment}}` | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
+| **confluent-flink** | `confluent-flink-application-set.yaml` | Git (directory) | `apps/confluent-flink/{{environment}}` | `confluent-{{environment}}` | `CreateNamespace=true`, `ServerSideApply=true` |
 
 ### Source Type Details
 
@@ -129,6 +146,8 @@ These three ApplicationSet types are present in every environment:
 
 1. The Helm chart repository (e.g., `charts.jetstack.io`) with a `targetRevision` semver constraint.
 2. A Git repository reference (`ref: values`) that provides the `valueFiles` for Helm. This pattern allows Helm values to be version-controlled in Git while the chart itself comes from an external registry.
+
+**Git (directory)** ApplicationSets use a single `sources` entry pointing at a directory within the Git repository. The directory contains Kubernetes manifests (CRDs such as Kafka, FlinkDeployment, etc.) that ArgoCD applies directly.
 
 ---
 
@@ -139,10 +158,16 @@ The ApplicationSets must be applied in a specific order due to inter-component d
 > **Prerequisite:** Before applying any ApplicationSets, apply the OpenShift prerequisites (SCCs + ClusterRoleBindings) directly via `oc apply -f openshift-prereqs/<env>/manifests/`. See [`../openshift-prereqs/`](../openshift-prereqs/) for details.
 
 ```
-0. (one-time) oc apply -f openshift-prereqs/<env>/manifests/   (SCCs + ClusterRoleBindings)
-1. cert-manager                  (TLS certificate management -- required by Flink operator webhooks)
-2. confluent-operator            (Installs the CFK operator -- manages Confluent Platform CRDs)
-3. confluent-flink-operator      (Installs the Flink K8s operator -- manages Flink CRDs)
+Phase I -- Operators
+  0. (one-time) oc apply -f openshift-prereqs/<env>/manifests/   (SCCs + ClusterRoleBindings)
+  1. cert-manager                  (TLS certificate management -- required by Flink operator webhooks)
+  2. confluent-operator            (Installs the CFK operator -- manages Confluent Platform CRDs)
+  3. confluent-flink-operator      (Installs the Flink K8s operator -- manages Flink CRDs)
+
+Phase II -- Platform and Workloads (apply after all Phase I operators are healthy)
+  4. confluent-cmf                 (Confluent Manager for Apache Flink -- manages Flink environments)
+  5. confluent-platform            (Confluent Platform CRs -- Kafka, SchemaRegistry, etc.)
+  6. confluent-flink               (Flink CRs -- FlinkDeployment, CMFRestClass, etc.)
 ```
 
 ---
@@ -162,8 +187,11 @@ Where `<component>` is one of:
 | `cert-manager` | cert-manager (Jetstack) |
 | `confluent-operator` | Confluent for Kubernetes (CFK) operator |
 | `confluent-flink-operator` | Confluent Flink Kubernetes operator |
+| `confluent-cmf` | Confluent Manager for Apache Flink (CMF) |
+| `confluent-platform` | Confluent Platform custom resources |
+| `confluent-flink` | Flink custom resources |
 
-The Kubernetes `metadata.name` for each ApplicationSet follows the pattern `<component>-<environment>` (e.g., `cert-manager-dev`, `confluent-operator-prd`).
+The Kubernetes `metadata.name` for each ApplicationSet follows the pattern `<component>-<environment>` (e.g., `cert-manager-dev`, `confluent-cmf-prd`).
 
 ---
 
@@ -230,7 +258,7 @@ oc apply -f gitops-config/openshift/dev/cert-manager-application-set.yaml
 ### Applying All ApplicationSets for an Environment
 
 ```bash
-# OpenShift dev -- all 3 ApplicationSets
+# OpenShift dev -- all 6 ApplicationSets
 oc apply -f gitops-config/openshift/dev/
 ```
 
@@ -254,4 +282,7 @@ Before applying ApplicationSets, ensure:
 | cert-manager values | [`apps/cert-manager/`](../apps/cert-manager/) | Per-environment values and OpenShift overlay for cert-manager |
 | Confluent operator values | [`apps/confluent-operator/`](../apps/confluent-operator/) | Per-environment values and OpenShift overlay for CFK |
 | Flink operator values | [`apps/confluent-flink-operator/`](../apps/confluent-flink-operator/) | Per-environment values and OpenShift overlay for Flink operator |
+| CMF values | [`apps/confluent-cmf/`](../apps/confluent-cmf/) | Per-environment values and OpenShift overlay for CMF |
+| Confluent Platform CRs | [`apps/confluent-platform/`](../apps/confluent-platform/) | Per-environment Confluent Platform custom resource manifests |
+| Flink CRs | [`apps/confluent-flink/`](../apps/confluent-flink/) | Per-environment Flink custom resource manifests |
 | OpenShift prerequisites | [`../openshift-prereqs/`](../openshift-prereqs/) | SCCs and ClusterRoleBindings (applied directly via `oc apply`, not via ArgoCD) |

@@ -45,12 +45,12 @@ This project follows a **phased approach**:
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| **Phase-I** | **Operators only** | **Current** |
-| **Phase-II** | **CMF + Flink on K8s, CP on VMs (external Kafka)** | Planned |
+| **Phase-I** | **Operators only** | Complete |
+| **Phase-II** | **CMF + Local Kafka + Flink on K8s** | **Complete** |
 | **Phase-III** | **CMF + Flink + CP on K8s** | Planned |
 
-- **Phase-I:** Deploy cert-manager, Confluent Operator (CFK), and Flink Operator. Confluent Platform continues to run on VMs.
-- **Phase-II:** Deploy Confluent Manager for Apache Flink (CMF) on Kubernetes, connecting to the external Confluent Platform on VMs.
+- **Phase-I:** Deploy cert-manager, Confluent Operator (CFK), and Flink Operator. Confluent Platform continues to run on VMs. See [README-PHASE-I.md](README-PHASE-I.md).
+- **Phase-II:** Deploy CMF, local Kafka on K8s (via CFK CRDs), Flink session cluster, and Flink infrastructure CRs. See [README-PHASE-II.md](README-PHASE-II.md).
 - **Phase-III:** Migrate Confluent Platform onto Kubernetes via CFK. CMF manages Flink SQL workloads end-to-end.
 
 ### Phase-I Components
@@ -135,7 +135,8 @@ oc version
 .
 |
 |-- README.md                                # This file
-|-- README-PHASE-II.md                       # Phase-II planning: decisions + checklist
+|-- README-PHASE-I.md                        # Phase-I deployment guide (operators)
+|-- README-PHASE-II.md                       # Phase-II deployment guide (CMF + Kafka + Flink)
 |-- README-EXISTING-ARGOCD.md                # Guide: deploy into an existing ArgoCD
 |-- README-INTERNAL-REGISTRY.md              # Guide: air-gapped / internal registries
 |-- CHEATSHEET.md                            # oc/helm command reference
@@ -150,14 +151,20 @@ oc version
 |   |-- cert-manager/                        # cert-manager values + OpenShift overlay
 |   |-- confluent-operator/                  # CFK operator values + OpenShift overlay
 |   |-- confluent-flink-operator/            # Flink operator values + OpenShift overlay
-|   +-- confluent-flink/                     # CMF manifests (Phase-II -- not yet populated)
+|   |-- confluent-cmf/                       # CMF Helm values + OpenShift overlay
+|   |-- confluent-platform/                  # Local Kafka CFK CRDs (Kustomize)
+|   +-- confluent-flink/                     # Flink infra CRs + session cluster (Kustomize)
 |
 |-- gitops-config/openshift/                 # ArgoCD ApplicationSets for OpenShift
-|   |-- dev/  qa/  stg/  prd/               # Per-environment (3 ApplicationSets each)
+|   |-- argocd-repo-secret.yaml              # Repo credential template (envsubst)
+|   |-- dev/  qa/  stg/  prd/               # Per-environment (6 ApplicationSets each)
+|
+|-- docs/decisions/                          # Architecture decision records
 |
 |-- scripts/
 |   |-- deploy-openshift-dev.sh              # Full OpenShift deploy script
-|   +-- destroy-openshift-dev.sh             # OpenShift teardown script
+|   |-- destroy-openshift-dev.sh             # OpenShift teardown script
+|   +-- verify-openshift-dev.sh              # Health verification script
 |
 |-- .github/workflows/                       # GitHub Actions pipelines
 +-- .azure-pipelines/                        # Azure DevOps pipelines
@@ -326,6 +333,10 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
 ## Verify All Applications
 
 ```bash
+# Automated verification
+./scripts/verify-openshift-dev.sh
+
+# Manual check
 oc get applications -n ${ARGOCD_NS} -o custom-columns=\
 NAME:.metadata.name,\
 HEALTH:.status.health.status,\
@@ -340,6 +351,9 @@ NAME                            HEALTH    SYNC     NAMESPACE
 cert-manager-dev                Healthy   Synced   cert-manager
 confluent-operator-dev          Healthy   Synced   confluent-dev
 confluent-flink-operator-dev    Healthy   Synced   confluent-dev
+confluent-cmf-dev               Healthy   Synced   confluent-dev
+confluent-platform-dev          Healthy   Synced   confluent-dev
+confluent-flink-dev             Healthy   Synced   confluent-dev
 ```
 
 ---
@@ -405,6 +419,9 @@ All environments use these ArgoCD sync options:
 | cert-manager | `cert-manager` |
 | Confluent Operator | `confluent-<env>` (e.g., `confluent-dev`) |
 | Flink Operator | `confluent-<env>` (same namespace) |
+| CMF | `confluent-<env>` |
+| Confluent Platform (local Kafka) | `confluent-<env>` |
+| Flink infrastructure CRs | `confluent-<env>` |
 
 ---
 
@@ -594,8 +611,8 @@ oc get application confluent-operator-dev -n ${ARGOCD_NS} -o jsonpath='{.status.
 
 This repository supports a phased deployment strategy:
 
-- **Phase-I (current):** **Operators only** -- cert-manager, CFK, Flink operator. Confluent Platform continues to run on VMs.
-- **Phase-II:** **CMF + Flink on K8s, CP on VMs (external Kafka)** -- deploy Confluent Manager for Apache Flink (CMF) on Kubernetes, configured to connect to the external Confluent Platform running on VMs. CMF manifests will be added under `apps/confluent-flink/` and a new `confluent-flink-application-set.yaml` will be introduced per environment. See [README-PHASE-II.md](README-PHASE-II.md) for open decisions, prerequisites, and the readiness checklist.
+- **Phase-I (complete):** **Operators only** -- cert-manager, CFK, Flink operator. See [README-PHASE-I.md](README-PHASE-I.md).
+- **Phase-II (complete):** **CMF + Local Kafka + Flink on K8s** -- CMF (Helm), local Kafka via CFK CRDs, Flink session cluster, and infrastructure CRs. See [README-PHASE-II.md](README-PHASE-II.md).
 - **Phase-III:** **CMF + Flink + CP on K8s** -- migrate Confluent Platform onto Kubernetes via CFK CRDs. CMF manages Flink SQL workloads end-to-end with Kafka running on K8s.
 
 ---
@@ -604,7 +621,8 @@ This repository supports a phased deployment strategy:
 
 | Guide | Description |
 |-------|-------------|
-| [README-PHASE-II.md](README-PHASE-II.md) | Phase-II planning: open decisions, readiness checklist, and deployment order for CMF |
+| [README-PHASE-I.md](README-PHASE-I.md) | Phase-I deployment guide: operators (cert-manager, CFK, Flink Operator) |
+| [README-PHASE-II.md](README-PHASE-II.md) | Phase-II deployment guide: CMF, local Kafka, Flink session cluster |
 | [README-EXISTING-ARGOCD.md](README-EXISTING-ARGOCD.md) | Deploy into an existing OpenShift GitOps / ArgoCD instance |
 | [README-INTERNAL-REGISTRY.md](README-INTERNAL-REGISTRY.md) | Use internal Helm and container registries (air-gapped, JFrog, Nexus) |
 | [CHEATSHEET.md](CHEATSHEET.md) | oc and helm command reference |

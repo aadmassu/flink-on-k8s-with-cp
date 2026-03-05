@@ -4,6 +4,7 @@ set -euo pipefail
 # Tears down everything deployed by deploy-openshift-dev.sh:
 #   - Phase-II ArgoCD ApplicationSets (Flink infra, CP, CMF — reverse order)
 #   - Phase-I ArgoCD ApplicationSets (FKO, CFK, cert-manager — reverse order)
+#   - Finalizer cleanup for stuck CFK/Flink CRs and ArgoCD Applications
 #   - OpenShift prerequisites (SCC + ClusterRoleBindings)
 #   - Namespaces: confluent-dev, cert-manager
 #
@@ -43,7 +44,27 @@ oc wait --for=delete applicationset/confluent-flink-operator-$ENV -n "$ARGOCD_NS
 oc wait --for=delete applicationset/confluent-operator-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
 oc wait --for=delete applicationset/cert-manager-$ENV -n "$ARGOCD_NS" --timeout=120s 2>/dev/null || true
 
-# ── Step 3: Delete OpenShift prerequisites (SCC + bindings) ───────────────────
+# ── Step 3: Remove finalizers from stuck CRs ────────────────────────────────
+echo ""
+echo "==> Clearing finalizers from CFK/Flink CRs (if any)..."
+for KIND in cmfrestclass flinkenvironment flinkdeployment kafka kraftcontroller connect \
+            controlcenter schemaregistry; do
+  for RESOURCE in $(oc get "$KIND" -n confluent-$ENV -o name 2>/dev/null); do
+    echo "    Clearing finalizers on $RESOURCE..."
+    oc patch "$RESOURCE" -n confluent-$ENV --type merge \
+      -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+  done
+done
+
+# ── Step 3a: Remove finalizers from ArgoCD Applications ──────────────────
+echo ""
+echo "==> Clearing finalizers from ArgoCD Applications (if any)..."
+for APP in $(oc get applications -n "$ARGOCD_NS" -o name 2>/dev/null); do
+  oc patch "$APP" -n "$ARGOCD_NS" --type merge \
+    -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+done
+
+# ── Step 4: Delete OpenShift prerequisites (SCC + bindings) ───────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
@@ -51,7 +72,7 @@ echo ""
 echo "==> Deleting OpenShift prerequisites (SCC + ClusterRoleBindings)..."
 oc delete -f "$REPO_ROOT/openshift-prereqs/$ENV/manifests/" --ignore-not-found
 
-# ── Step 4: Delete namespaces ────────────────────────────────────────────────
+# ── Step 5: Delete namespaces ────────────────────────────────────────────────
 echo ""
 echo "==> Deleting namespaces..."
 oc delete ns confluent-$ENV --ignore-not-found --wait --timeout=120s

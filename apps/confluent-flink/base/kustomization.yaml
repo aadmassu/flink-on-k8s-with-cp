@@ -6,3 +6,5 @@ resources:
   - cmf-rest-class.yaml
   - flink-environment.yaml
   - flink-pvc.yaml
+  - flink-session-cluster.yaml
+  # kafka-catalog.yaml  (commented — requires cmf.confluent.io CRD)

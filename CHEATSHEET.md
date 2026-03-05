@@ -99,6 +99,45 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
 oc get pods -n confluent-<env>
 ```
 
+### CMF (Phase-II)
+
+```bash
+oc apply -f gitops-config/openshift/<env>/confluent-cmf-application-set.yaml
+
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-cmf-<env> -n openshift-gitops --timeout=180s
+
+oc get pods -n confluent-<env> -l app.kubernetes.io/name=confluent-manager-for-apache-flink
+```
+
+### Confluent Platform (Phase-II)
+
+```bash
+oc apply -f gitops-config/openshift/<env>/confluent-platform-application-set.yaml
+
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-platform-<env> -n openshift-gitops --timeout=300s
+
+# Wait for Kafka to reach RUNNING state
+oc get kafka kafka -n confluent-<env> -o jsonpath='{.status.phase}'
+```
+
+### Flink Infrastructure (Phase-II)
+
+```bash
+oc apply -f gitops-config/openshift/<env>/confluent-flink-application-set.yaml
+
+oc wait --for=jsonpath='{.status.sync.status}'=Synced \
+  application/confluent-flink-<env> -n openshift-gitops --timeout=180s
+
+# Verify Flink session cluster is READY
+oc get flinkdeployment flink-session -n confluent-<env> \
+  -o jsonpath='{.status.jobManagerDeploymentStatus}'
+
+# Access Flink UI
+oc port-forward svc/flink-session-rest 8081:8081 -n confluent-<env>
+```
+
 ---
 
 ## ArgoCD Application Status
@@ -137,6 +176,13 @@ oc get crd certificates.cert-manager.io
 
 # Confluent Operator CRDs (CFK)
 oc get crd kafkas.platform.confluent.io
+
+# Flink CRDs
+oc get crd flinkdeployments.flink.apache.org
+
+# CMF CRDs (Phase-II)
+oc get crd cmfrestclasses.platform.confluent.io
+oc get crd flinkenvironments.platform.confluent.io
 ```
 
 ---
@@ -246,6 +292,49 @@ oc delete -f openshift-prereqs/<env>/manifests/ --ignore-not-found
 
 # Delete namespaces
 oc delete ns confluent-<env> cert-manager --wait --timeout=120s
+```
+
+---
+
+## Break-Glass Fixes
+
+### Clear stuck finalizers (CFK/Flink CRs)
+
+If namespaces won't delete because CRs have finalizers and operators are gone:
+
+```bash
+for KIND in cmfrestclass flinkenvironment flinkdeployment kafka kraftcontroller connect \
+            controlcenter schemaregistry; do
+  for RESOURCE in $(oc get "$KIND" -n confluent-<env> -o name 2>/dev/null); do
+    oc patch "$RESOURCE" -n confluent-<env> --type merge \
+      -p '{"metadata":{"finalizers":null}}'
+  done
+done
+```
+
+### Clear stuck finalizers (ArgoCD Applications)
+
+```bash
+for APP in $(oc get applications -n openshift-gitops -o name 2>/dev/null); do
+  oc patch "$APP" -n openshift-gitops --type merge \
+    -p '{"metadata":{"finalizers":null}}'
+done
+```
+
+### Restart operators
+
+```bash
+oc rollout restart deployment -n confluent-<env> -l app=confluent-operator
+oc rollout restart deployment -n confluent-<env> -l app.kubernetes.io/name=flink-kubernetes-operator
+```
+
+---
+
+## Verify Deployment
+
+```bash
+# Automated verification
+./scripts/verify-openshift-dev.sh
 ```
 
 ---

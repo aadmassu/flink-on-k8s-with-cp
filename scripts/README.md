@@ -1,6 +1,6 @@
 # Scripts
 
-This directory contains deployment and teardown scripts for provisioning the **dev** environment on **OpenShift** clusters. The deployment script installs the operator stack -- cert-manager, Confluent Operator (CFK), and Flink Operator -- using ArgoCD ApplicationSet resources managed via GitOps (with the OpenShift GitOps Operator providing ArgoCD). The destroy script reverses that process, deleting ApplicationSets, SCC resources, and namespaces in the correct order.
+This directory contains deployment, teardown, and verification scripts for the **dev** environment on **OpenShift** clusters. The deployment script installs the full Phase-I and Phase-II stack -- operators, CMF, local Kafka, and Flink infrastructure -- using ArgoCD ApplicationSet resources managed via OpenShift GitOps.
 
 ---
 
@@ -9,6 +9,7 @@ This directory contains deployment and teardown scripts for provisioning the **d
 - [Script Inventory](#script-inventory)
 - [deploy-openshift-dev.sh](#deploy-openshift-devsh)
 - [destroy-openshift-dev.sh](#destroy-openshift-devsh)
+- [verify-openshift-dev.sh](#verify-openshift-devsh)
 
 ---
 
@@ -16,8 +17,11 @@ This directory contains deployment and teardown scripts for provisioning the **d
 
 | Script | Platform | Action |
 |---|---|---|
-| `deploy-openshift-dev.sh` | OpenShift | Deploy the dev operator stack |
-| `destroy-openshift-dev.sh` | OpenShift | Tear down the dev operator stack |
+| `deploy-openshift-dev.sh` | OpenShift | Full deploy: Phase-I operators + Phase-II (CMF, CP, Flink) |
+| `destroy-openshift-dev.sh` | OpenShift | Full teardown in reverse order |
+| `verify-openshift-dev.sh` | OpenShift | Health checks for all components |
+| `discover-charts-and-images.sh` | Any | Image/chart discovery for air-gapped mirroring |
+| `validate-resolvable-versions.sh` | Any | Validate pinned chart versions resolve |
 
 ---
 
@@ -25,51 +29,41 @@ This directory contains deployment and teardown scripts for provisioning the **d
 
 ### Purpose
 
-Performs a full end-to-end deployment of the **dev** environment on an **OpenShift** cluster. This script does **not** install ArgoCD via Helm. It expects the **OpenShift GitOps Operator** to already be installed (providing ArgoCD in the `openshift-gitops` namespace). The script applies OpenShift-specific prerequisites (SecurityContextConstraints and bindings) directly, then deploys cert-manager, the Confluent Operator (CFK), and the Flink Operator via ArgoCD ApplicationSets.
+Performs a full end-to-end deployment of the **dev** environment on an **OpenShift** cluster. Expects the **OpenShift GitOps Operator** to already be installed. Applies OpenShift prerequisites (SCC + bindings), deploys Phase-I operators, then Phase-II components with retry loops for CRD and CR readiness.
 
 ### Usage
 
 ```bash
+# Optional: set repo credentials for ArgoCD
+export ARGOCD_SSH_KEY=$(cat ~/.ssh/id_rsa)
+
 ./scripts/deploy-openshift-dev.sh
 ```
 
 ### Prerequisites
 
-- `oc` CLI installed and logged in with **cluster-admin** access.
-- **OpenShift GitOps Operator** installed from OperatorHub (ArgoCD must be running in the `openshift-gitops` namespace).
-- Network connectivity from your workstation to the OpenShift API server.
-- Network connectivity from the cluster to public Helm chart repositories or an internal mirror.
-
-### Configurable Variables
-
-| Key | Default Value | Description |
-|---|---|---|
-| `SCRIPT_DIR` | *(auto-detected)* | Absolute path to the directory containing this script. Computed at runtime. |
-| `REPO_ROOT` | *(auto-detected)* | Absolute path to the repository root (one level above `SCRIPT_DIR`). Computed at runtime. |
-| `ENV` | `dev` | Environment name. Used to select the correct ApplicationSet manifests and namespace suffixes. |
-| `ARGOCD_NS` | `openshift-gitops` | Namespace where the OpenShift GitOps Operator runs ArgoCD. |
+- `oc` CLI installed and logged in with **cluster-admin** access
+- **OpenShift GitOps Operator** installed from OperatorHub
+- Network connectivity to Helm chart repositories (or internal mirror)
 
 ### Step-by-Step Breakdown
 
-1. **Verify cluster connectivity** -- Runs `oc cluster-info`. Exits with an error if the cluster is unreachable.
-2. **Verify OpenShift GitOps Operator** -- Checks that the ArgoCD server pod is running in the `openshift-gitops` namespace. If not found, prints an error message and exits.
-3. **Create and label namespaces** -- Creates (or no-ops if they exist) the `confluent-dev` and `cert-manager` namespaces. Labels each with `argocd.argoproj.io/managed-by=openshift-gitops` so that the OpenShift GitOps ArgoCD instance has permission to manage resources in those namespaces.
-4. **Apply OpenShift prerequisites (SCC + bindings)** -- Applies the SCC and ClusterRoleBindings directly via `oc apply -f openshift-prereqs/dev/manifests/`. This is a one-time cluster prerequisite, not managed by ArgoCD.
-5. **Deploy cert-manager** -- Checks if cert-manager pods are already running in `cert-manager` or `openshift-cert-manager` namespaces. If running, skips this step. Otherwise, applies the cert-manager ApplicationSet and waits up to 180 seconds for the `cert-manager-dev` Application to become `Healthy`.
-6. **Deploy Confluent Operator and Flink Operator** -- Applies both operator ApplicationSets from `gitops-config/openshift/dev/`. Waits up to 180 seconds for both Applications (`confluent-operator-dev` and `confluent-flink-operator-dev`) to become `Healthy`.
-7. **Print summary** -- Displays:
-   - All ArgoCD Applications in the `openshift-gitops` namespace.
-   - Operator pods in the `confluent-dev` namespace.
-   - cert-manager pods (falls back to a note about OpenShift-provided cert-manager if the namespace is absent).
-   - ArgoCD access information (URL from the OpenShift Route, username, and a command to retrieve the password from the cluster secret).
+**Phase-I:**
 
-### GitOps Config Files Referenced
+1. **Verify cluster connectivity** -- `oc cluster-info`
+2. **Verify OpenShift GitOps Operator** -- Checks ArgoCD server pod in `openshift-gitops`
+3. **Configure ArgoCD repo credentials** -- Applies `argocd-repo-secret.yaml` via envsubst (skips if `ARGOCD_SSH_KEY` not set)
+4. **Create and label namespaces** -- `confluent-dev`, `cert-manager` with managed-by label
+5. **Apply OpenShift prerequisites** -- SCC + ClusterRoleBindings
+6. **Deploy cert-manager** -- Skips if already running; waits for Healthy, retries CRD registration
+7. **Deploy operators** -- CFK + FKO in parallel, waits for Healthy
 
-| ApplicationSet Manifest | ArgoCD Application Created |
-|---|---|
-| `gitops-config/openshift/dev/cert-manager-application-set.yaml` | `cert-manager-dev` |
-| `gitops-config/openshift/dev/confluent-operator-application-set.yaml` | `confluent-operator-dev` |
-| `gitops-config/openshift/dev/confluent-flink-operator-application-set.yaml` | `confluent-flink-operator-dev` |
+**Phase-II:**
+
+8. **Deploy CMF** -- Helm via ArgoCD, waits for Healthy
+9. **Deploy Confluent Platform** -- Local Kafka CRDs, waits for Synced + Healthy, then retries Kafka CR readiness until RUNNING
+10. **Deploy Flink infrastructure** -- CMFRestClass, FlinkEnvironment, PVC, session cluster; retries FlinkDeployment until READY
+11. **Print summary** -- Applications, pods, ArgoCD access info
 
 ---
 
@@ -77,7 +71,7 @@ Performs a full end-to-end deployment of the **dev** environment on an **OpenShi
 
 ### Purpose
 
-Tears down everything deployed by `deploy-openshift-dev.sh`. Removes all ArgoCD ApplicationSets in reverse order, deletes the SCC resources, and deletes the workload namespaces. It does **not** remove the OpenShift GitOps Operator or the `openshift-gitops` namespace, since those are managed by the OperatorHub subscription and may be shared with other teams.
+Tears down everything deployed by `deploy-openshift-dev.sh`. Removes ApplicationSets in reverse order, clears finalizers from stuck CFK/Flink CRs and ArgoCD Applications, deletes SCC resources, and deletes namespaces. Does **not** remove the OpenShift GitOps Operator.
 
 ### Usage
 
@@ -85,46 +79,42 @@ Tears down everything deployed by `deploy-openshift-dev.sh`. Removes all ArgoCD 
 ./scripts/destroy-openshift-dev.sh
 ```
 
-### Prerequisites
-
-- `oc` CLI installed and logged in with **cluster-admin** access.
-- Network connectivity from your workstation to the OpenShift API server.
-
-### Configurable Variables
-
-| Key | Default Value | Description |
-|---|---|---|
-| `ENV` | `dev` | Environment name. Used to construct ApplicationSet names and namespace names. |
-| `ARGOCD_NS` | `openshift-gitops` | Namespace where the OpenShift GitOps Operator runs ArgoCD. ApplicationSets are deleted from this namespace. |
-
 ### Step-by-Step Breakdown
 
-1. **Verify cluster connectivity** -- Runs `oc cluster-info`. Exits with an error if the cluster is unreachable.
-2. **Delete ArgoCD ApplicationSets** -- Deletes ApplicationSets in reverse order of deployment:
-   1. `confluent-flink-operator-dev`
-   2. `confluent-operator-dev`
-   3. `cert-manager-dev`
+1. **Delete Phase-II ApplicationSets** -- confluent-flink, confluent-platform, confluent-cmf
+2. **Delete Phase-I ApplicationSets** -- flink-operator, confluent-operator, cert-manager
+3. **Clear finalizers** -- Patches `metadata.finalizers: null` on stuck CFK/Flink CRs
+4. **Clear ArgoCD Application finalizers** -- Prevents stuck Application deletions
+5. **Delete OpenShift prerequisites** -- SCC + ClusterRoleBindings
+6. **Delete namespaces** -- `confluent-dev`, `cert-manager` (preserves `openshift-gitops`)
 
-   Uses `--ignore-not-found` so the script does not fail if a resource has already been removed. After issuing deletes, waits (up to 120 seconds each) for all three ApplicationSets to be fully removed.
-3. **Delete OpenShift prerequisites (SCC + bindings)** -- Deletes the SCC and ClusterRoleBindings directly via `oc delete -f openshift-prereqs/dev/manifests/`.
-4. **Delete namespaces** -- Deletes the following namespaces (with `--ignore-not-found` and a 120-second timeout each):
-   - `confluent-dev`
-   - `cert-manager`
+---
 
-   **Does not** delete the `openshift-gitops` namespace.
-5. **Print completion message** -- Displays a teardown-complete banner and a note reminding the user that the OpenShift GitOps Operator and its namespace were intentionally preserved.
+## `verify-openshift-dev.sh`
 
-### Resources Removed
+### Purpose
 
-| Resource Type | Names |
-|---|---|
-| ApplicationSets | `confluent-flink-operator-dev`, `confluent-operator-dev`, `cert-manager-dev` |
-| SCC + ClusterRoleBindings | `confluent-scc`, `confluent-scc-confluent-dev`, `confluent-scc-cert-manager` |
-| Namespaces | `confluent-dev`, `cert-manager` |
+Runs health checks on all Phase-I and Phase-II components. Returns exit code 0 if all checks pass, or the number of failures.
 
-### Resources Intentionally Preserved
+### Usage
 
-| Resource | Reason |
-|---|---|
-| `openshift-gitops` namespace | Managed by the OperatorHub subscription; may be shared across teams and environments. |
-| OpenShift GitOps Operator | Cluster-scoped operator installed via OperatorHub; removal should be a separate, deliberate action. |
+```bash
+./scripts/verify-openshift-dev.sh
+```
+
+### Checks Performed
+
+1. **Cluster connectivity** -- `oc cluster-info`
+2. **ArgoCD Applications** -- Checks Health=Healthy and Sync=Synced for all 6 apps:
+   - `cert-manager-dev`
+   - `confluent-operator-dev`
+   - `confluent-flink-operator-dev`
+   - `confluent-cmf-dev`
+   - `confluent-platform-dev`
+   - `confluent-flink-dev`
+3. **CMF pod** -- Running pod with CMF label
+4. **Kafka status** -- `kafka/kafka` resource phase = RUNNING
+5. **Confluent Platform pods** -- All pods in confluent-dev are Running
+6. **Flink infrastructure CRs** -- CMFRestClass, FlinkEnvironment, PVC exist
+7. **Flink session cluster** -- FlinkDeployment `flink-session` status = READY
+8. **cert-manager pods** -- Running in cert-manager or openshift-cert-manager namespace

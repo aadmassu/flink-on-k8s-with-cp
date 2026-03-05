@@ -1,0 +1,13 @@
+---
+apiVersion: cmf.confluent.io/v1
+kind: KafkaCatalog
+metadata:
+  name: kafka
+spec:
+  srInstance:
+    connectionConfig:
+      schema.registry.url: http://schemaregistry.confluent.svc.cluster.local:8081
+  databases:
+    - name: default
+      connectionConfig:
+        bootstrap.servers: kafka.confluent.svc.cluster.local:9071

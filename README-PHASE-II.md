@@ -116,7 +116,7 @@ Source: Discussion with Akhil (Confluent) + Flink-Training materials.
 
 - **Deployed via:** ArgoCD ApplicationSet (Git/Kustomize source)
 - **Manifests:** `apps/confluent-flink/base/` + per-env overlays
-- **CRs:** CMFRestClass, FlinkEnvironment, PVC (10Gi ReadWriteMany)
+- **CRs:** CMFRestClass, FlinkEnvironment, FlinkDeployment (session cluster), KafkaCatalog (commented out), PVC (10Gi ReadWriteMany)
 
 ---
 
@@ -165,7 +165,9 @@ apps/confluent-flink/                             # Flink infra CRs (Kustomize)
 │   ├── kustomization.yaml
 │   ├── cmf-rest-class.yaml
 │   ├── flink-environment.yaml
-│   └── flink-pvc.yaml
+│   ├── flink-pvc.yaml
+│   ├── flink-session-cluster.yaml                # FlinkDeployment — Flink session cluster
+│   └── kafka-catalog.yaml                        # (commented out — requires cmf.confluent.io CRD)
 ├── dev/kustomization.yaml
 ├── qa/kustomization.yaml
 ├── stg/kustomization.yaml
@@ -209,7 +211,7 @@ flowchart TD
     subgraph phase2["Phase-II (new)"]
         s6["5. CMF (Helm via ArgoCD)<br>→ wait for cmf-service healthy"]
         s7["6. Confluent Platform CRDs<br>(local Kafka for PoC)<br>→ wait for Kafka RUNNING"]
-        s8["7. Flink infra CRs<br>(CMFRestClass, FlinkEnvironment, PVC)<br>→ wait for sync"]
+        s8["7. Flink infra CRs + session cluster<br>(CMFRestClass, FlinkEnvironment, PVC,<br>FlinkDeployment) → wait for READY"]
 
         s6 --> s7 --> s8
     end
@@ -222,6 +224,16 @@ flowchart TD
 ---
 
 ## Verification
+
+Run the verification script to check all Phase-I and Phase-II components:
+
+```bash
+./scripts/verify-openshift-dev.sh
+```
+
+This checks cluster connectivity, all 6 ArgoCD applications, CMF pod, Kafka status, Confluent Platform pods, Flink infrastructure CRs, Flink session cluster, and cert-manager pods. See [scripts/README.md](scripts/README.md) for the full list of checks.
+
+To manually inspect individual components:
 
 ```bash
 # CMF pod running
@@ -236,11 +248,11 @@ oc get cmfrestclass default -n confluent-dev
 oc get flinkenvironment flink-env1 -n confluent-dev
 oc get pvc flink-pvc -n confluent-dev
 
+# Flink session cluster
+oc get flinkdeployment flink-session -n confluent-dev -o jsonpath='{.status.jobManagerDeploymentStatus}'  # → READY
+
 # ArgoCD applications healthy
 oc get applications -n openshift-gitops
-
-# Image discovery includes CMF
-./scripts/discover-charts-and-images.sh --phase 2
 ```
 
 ---

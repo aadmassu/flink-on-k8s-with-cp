@@ -25,3 +25,22 @@ patches:
       - op: replace
         path: /spec/cmfRestClassRef/namespace
         value: confluent-prd
+  - target:
+      kind: PersistentVolumeClaim
+      name: flink-pvc
+    patch: |
+      - op: replace
+        path: /spec/accessModes
+        value:
+          - ReadWriteOnce
+  # Uncomment when KafkaCatalog CRD is available:
+  # - target:
+  #     kind: KafkaCatalog
+  #     name: kafka
+  #   patch: |
+  #     - op: replace
+  #       path: /spec/srInstance/connectionConfig/schema.registry.url
+  #       value: http://schemaregistry.confluent-prd.svc.cluster.local:8081
+  #     - op: replace
+  #       path: /spec/databases/0/connectionConfig/bootstrap.servers
+  #       value: kafka.confluent-prd.svc.cluster.local:9071
