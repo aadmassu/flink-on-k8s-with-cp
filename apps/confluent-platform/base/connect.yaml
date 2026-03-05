@@ -6,8 +6,8 @@ metadata:
 spec:
   replicas: 1
   image:
-    application: docker.io/confluentinc/cp-server-connect:7.9.0
-    init: docker.io/confluentinc/confluent-init-container:2.11.0
+    application: docker.io/confluentinc/cp-server-connect:8.1.1
+    init: docker.io/confluentinc/confluent-init-container:3.1.1
   configOverrides:
     server:
       - config.storage.replication.factor=1

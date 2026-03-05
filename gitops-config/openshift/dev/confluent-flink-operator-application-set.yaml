@@ -25,8 +25,8 @@ spec:
             valueFiles:
               - $values/apps/confluent-flink-operator/{{environment}}/values.yaml
               - $values/apps/confluent-flink-operator/openshift-overlay.yaml
-        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
-          targetRevision: HEAD
+        - repoURL: https://Psyncopate-Internal@dev.azure.com/Psyncopate-Internal/Confluent/_git/flink-on-k8s-with-cp
+          targetRevision: feature/openshift
           ref: values
       destination:
         server: "{{url}}"

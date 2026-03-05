@@ -42,12 +42,13 @@ apps/confluent-platform/
 
 | Image | Version |
 |-------|---------|
-| `confluentinc/cp-server` | 7.9.0 |
-| `confluentinc/confluent-init-container` | 2.11.0 |
+| `confluentinc/cp-server` | 8.1.1 |
+| `confluentinc/cp-schema-registry` | 8.1.1 |
+| `confluentinc/cp-server-connect` | 8.1.1 |
+| `confluentinc/cp-enterprise-control-center-next-gen` | 2.3.2 |
+| `confluentinc/confluent-init-container` | 3.1.1 |
 
-All CP component images use the same version pair. The init-container handles CFK-specific initialization.
-
-> **Note:** OpenShift uses CP 7.9.0 (certification may lag behind the latest release).
+The init-container handles CFK-specific initialization.
 
 ---
 

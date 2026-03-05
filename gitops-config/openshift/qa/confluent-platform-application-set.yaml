@@ -18,7 +18,7 @@ spec:
     spec:
       project: default
       sources:
-        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
+        - repoURL: https://Psyncopate-Internal@dev.azure.com/Psyncopate-Internal/Confluent/_git/flink-on-k8s-with-cp
           targetRevision: HEAD
           path: apps/confluent-platform/{{environment}}
       destination:

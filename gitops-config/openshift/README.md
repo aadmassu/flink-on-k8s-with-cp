@@ -30,23 +30,23 @@ This directory contains ArgoCD **ApplicationSet** definitions for deploying the 
 ```
 gitops-config/openshift/
 ├── README.md
+├── argocd-repo-secret.yaml        # ArgoCD repository credential (envsubst template)
 ├── dev/
 │   ├── cert-manager-application-set.yaml
 │   ├── confluent-operator-application-set.yaml
-│   └── confluent-flink-operator-application-set.yaml
+│   ├── confluent-flink-operator-application-set.yaml
+│   ├── confluent-cmf-application-set.yaml
+│   ├── confluent-platform-application-set.yaml
+│   └── confluent-flink-application-set.yaml
 ├── qa/
-│   ├── cert-manager-application-set.yaml
-│   ├── confluent-operator-application-set.yaml
-│   └── confluent-flink-operator-application-set.yaml
+│   └── (same 6 ApplicationSets)
 ├── stg/
-│   ├── cert-manager-application-set.yaml
-│   ├── confluent-operator-application-set.yaml
-│   └── confluent-flink-operator-application-set.yaml
+│   └── (same 6 ApplicationSets)
 └── prd/
-    ├── cert-manager-application-set.yaml
-    ├── confluent-operator-application-set.yaml
-    └── confluent-flink-operator-application-set.yaml
+    └── (same 6 ApplicationSets)
 ```
+
+Each environment contains **6 ApplicationSets**, for a total of **24 files**.
 
 ---
 
@@ -81,7 +81,7 @@ gitops-config/openshift/
 | `spec.template.spec.sources[0].targetRevision` | `v1.19.4` | Helm chart version (pinned) |
 | `spec.template.spec.sources[0].helm.valueFiles[0]` | `$values/apps/cert-manager/{{environment}}/values.yaml` | Environment-specific Helm values file, referenced via the `$values` Git repo alias |
 | `spec.template.spec.sources[0].helm.valueFiles[1]` | `$values/apps/cert-manager/openshift-overlay.yaml` | OpenShift-specific overrides (disables `global.podSecurityPolicy.enabled`) |
-| `spec.template.spec.sources[1].repoURL` | `git@github.com:aadmassu/flink-on-k8s-with-cp.git` | Git repository providing the Helm values files |
+| `spec.template.spec.sources[1].repoURL` | `https://Psyncopate-Internal@dev.azure.com/Psyncopate-Internal/Confluent/_git/flink-on-k8s-with-cp` | Git repository providing the Helm values files |
 | `spec.template.spec.sources[1].targetRevision` | `HEAD` | Git revision to track |
 | `spec.template.spec.sources[1].ref` | `values` | Reference name used by `$values` in the Helm valueFiles paths |
 | `spec.template.spec.destination.server` | `{{url}}` | Target cluster API URL, resolved from generator list |
@@ -122,7 +122,7 @@ gitops-config/openshift/
 | `spec.template.spec.sources[0].targetRevision` | `0.1351.59` | Helm chart version (pinned) |
 | `spec.template.spec.sources[0].helm.valueFiles[0]` | `$values/apps/confluent-operator/{{environment}}/values.yaml` | Environment-specific Helm values file |
 | `spec.template.spec.sources[0].helm.valueFiles[1]` | `$values/apps/confluent-operator/openshift-overlay.yaml` | OpenShift-specific overrides (nullifies `podSecurity.securityContext.fsGroup` and `runAsUser`) |
-| `spec.template.spec.sources[1].repoURL` | `git@github.com:aadmassu/flink-on-k8s-with-cp.git` | Git repository providing the Helm values files |
+| `spec.template.spec.sources[1].repoURL` | `https://Psyncopate-Internal@dev.azure.com/Psyncopate-Internal/Confluent/_git/flink-on-k8s-with-cp` | Git repository providing the Helm values files |
 | `spec.template.spec.sources[1].targetRevision` | `HEAD` | Git revision to track |
 | `spec.template.spec.sources[1].ref` | `values` | Reference name used by `$values` in the Helm valueFiles paths |
 | `spec.template.spec.destination.server` | `{{url}}` | Target cluster API URL, resolved from generator list |
@@ -163,7 +163,7 @@ gitops-config/openshift/
 | `spec.template.spec.sources[0].targetRevision` | `1.130.2` | Helm chart version (pinned) |
 | `spec.template.spec.sources[0].helm.valueFiles[0]` | `$values/apps/confluent-flink-operator/{{environment}}/values.yaml` | Environment-specific Helm values file |
 | `spec.template.spec.sources[0].helm.valueFiles[1]` | `$values/apps/confluent-flink-operator/openshift-overlay.yaml` | OpenShift-specific overrides (nullifies `podSecurityContext.runAsUser`, `runAsGroup`, `fsGroup`) |
-| `spec.template.spec.sources[1].repoURL` | `git@github.com:aadmassu/flink-on-k8s-with-cp.git` | Git repository providing the Helm values files |
+| `spec.template.spec.sources[1].repoURL` | `https://Psyncopate-Internal@dev.azure.com/Psyncopate-Internal/Confluent/_git/flink-on-k8s-with-cp` | Git repository providing the Helm values files |
 | `spec.template.spec.sources[1].targetRevision` | `HEAD` | Git revision to track |
 | `spec.template.spec.sources[1].ref` | `values` | Reference name used by `$values` in the Helm valueFiles paths |
 | `spec.template.spec.destination.server` | `{{url}}` | Target cluster API URL, resolved from generator list |

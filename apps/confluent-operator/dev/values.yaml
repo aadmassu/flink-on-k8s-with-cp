@@ -5,6 +5,8 @@ namespaced: true
 kRaftEnabled: true
 enableCMFDay2Ops: true
 
+imagePullSecretRef: ""
+
 serviceAccount:
   create: true
   name: confluent-operator

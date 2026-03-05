@@ -18,8 +18,8 @@ spec:
     spec:
       project: default
       sources:
-        - repoURL: git@github.com:aadmassu/flink-on-k8s-with-cp.git
-          targetRevision: HEAD
+        - repoURL: https://Psyncopate-Internal@dev.azure.com/Psyncopate-Internal/Confluent/_git/flink-on-k8s-with-cp
+          targetRevision: feature/openshift
           path: apps/confluent-flink/{{environment}}
       destination:
         server: "{{url}}"

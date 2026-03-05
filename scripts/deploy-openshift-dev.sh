@@ -35,12 +35,12 @@ echo "    OpenShift GitOps Operator is running."
 # ── Step 1a: Configure ArgoCD repo credentials ──────────────────────────────
 echo ""
 echo "==> Configuring ArgoCD repo credentials..."
-if [ -z "${ARGOCD_SSH_KEY:-}" ]; then
-  echo "WARNING: ARGOCD_SSH_KEY environment variable is not set."
+if [ -z "${ARGOCD_REPO_PAT:-}" ]; then
+  echo "WARNING: ARGOCD_REPO_PAT environment variable is not set."
   echo "         Skipping repo secret — ArgoCD may not be able to clone the repo."
-  echo "         To configure: export ARGOCD_SSH_KEY=\$(cat ~/.ssh/id_rsa)"
+  echo "         To configure: export ARGOCD_REPO_PAT=<your-azure-devops-pat>"
 else
-  ARGOCD_SSH_KEY="$ARGOCD_SSH_KEY" envsubst < "$REPO_ROOT/gitops-config/openshift/argocd-repo-secret.yaml" \
+  ARGOCD_REPO_PAT="$ARGOCD_REPO_PAT" envsubst < "$REPO_ROOT/gitops-config/openshift/argocd-repo-secret.yaml" \
     | oc apply -f -
   echo "    Repo credentials configured."
 fi
