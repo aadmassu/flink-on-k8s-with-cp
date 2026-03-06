@@ -20,7 +20,8 @@ Deployment guide for Phase-I: **cert-manager**, **Confluent Operator (CFK)**, an
   - [Step 3 - Create and Label Namespaces](#step-3---create-and-label-namespaces)
   - [Step 4 - Apply OpenShift Prerequisites (SCCs)](#step-4---apply-openshift-prerequisites-sccs)
   - [Step 5 - Deploy cert-manager](#step-5---deploy-cert-manager)
-  - [Step 6 - Deploy Confluent Operator (CFK) and Flink Operator](#step-6---deploy-confluent-operator-cfk-and-flink-operator)
+  - [Step 6 - Deploy Confluent Operator (CFK)](#step-6---deploy-confluent-operator-cfk)
+  - [Step 7 - Deploy Flink Operator (FKO)](#step-7---deploy-flink-operator-fko)
 - [Verification](#verification)
 - [Rollback Strategy](#rollback-strategy)
 - [Helm Charts Reference](#helm-charts-reference)
@@ -150,9 +151,10 @@ flowchart TD
     step4["4. Apply OpenShift Prerequisites<br>(SCC + ClusterRoleBindings)"]
     step5["5. cert-manager"]
     step5a["5a. Wait for cert-manager CRDs<br>(certificates, issuers)"]
-    step6["6. Confluent Operator + Flink Operator<br>(deploy in parallel)"]
+    step6["6. Confluent Operator (CFK)"]
+    step7["7. Flink Operator (FKO)"]
 
-    step1 --> step2 --> step3 --> step4 --> step5 --> step5a --> step6
+    step1 --> step2 --> step3 --> step4 --> step5 --> step5a --> step6 & step7
 ```
 
 ---
@@ -229,15 +231,24 @@ oc wait --for=condition=Established crd/certificates.cert-manager.io --timeout=6
 oc wait --for=condition=Established crd/issuers.cert-manager.io --timeout=60s
 ```
 
-### Step 6 - Deploy Confluent Operator (CFK) and Flink Operator
+### Step 6 - Deploy Confluent Operator (CFK)
+
+CFK has no dependency on cert-manager and can be deployed independently.
 
 ```bash
 oc apply -f gitops-config/openshift/${ENV}/confluent-operator-application-set.yaml
+oc wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/confluent-operator-${ENV} -n ${ARGOCD_NS} --timeout=180s
+```
+
+### Step 7 - Deploy Flink Operator (FKO)
+
+FKO requires cert-manager CRDs (Step 5a) for its webhook certificates.
+
+```bash
 oc apply -f gitops-config/openshift/${ENV}/confluent-flink-operator-application-set.yaml
 oc wait --for=jsonpath='{.status.health.status}'=Healthy \
-  application/confluent-operator-${ENV} \
-  application/confluent-flink-operator-${ENV} \
-  -n ${ARGOCD_NS} --timeout=180s
+  application/confluent-flink-operator-${ENV} -n ${ARGOCD_NS} --timeout=180s
 ```
 
 ---
