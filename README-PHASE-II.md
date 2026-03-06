@@ -125,7 +125,7 @@ Source: Discussion with Akhil (Confluent) + Flink-Training materials.
 ```mermaid
 flowchart LR
     A["cert-manager"] --> B["FKO<br>(Flink Kubernetes Operator)"]
-    C["CFK<br>(enableCMFDay2Ops)"]
+    A ~~~ C["CFK<br>(enableCMFDay2Ops)"]
     B --> D["CMF<br>(Helm chart)"]
     C --> E["Confluent Platform CRDs<br>(KRaft, Kafka, SR, etc.)"]
     D --> F["Flink infra CRs<br>(CMFRestClass,<br>FlinkEnvironment, PVC)"]
