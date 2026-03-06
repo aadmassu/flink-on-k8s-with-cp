@@ -8,6 +8,8 @@ GitOps repository for deploying **Confluent and Flink operators** on **Red Hat O
 
 - [Overview](#overview)
 - [Architecture](#architecture)
+  - [Phase-I Architecture](#phase-i-architecture)
+  - [Phase-II Architecture](#phase-ii-architecture)
 - [Environments](#environments)
 - [Prerequisites](#prerequisites)
 - [Assumptions](#assumptions)
@@ -69,6 +71,8 @@ All components except SCCs are deployed **through ArgoCD** via ApplicationSet re
 
 ## Architecture
 
+### Phase-I Architecture
+
 ```mermaid
 flowchart TD
     admin["Cluster Admin (one-time)"]
@@ -82,6 +86,49 @@ flowchart TD
     argocd -- "ApplicationSet" --> cm
     argocd -- "ApplicationSet" --> cop
     argocd -- "ApplicationSet" --> fop
+```
+
+### Phase-II Architecture
+
+```mermaid
+flowchart TD
+    subgraph cluster["OpenShift Cluster"]
+        subgraph phase1["Phase-I — Operators"]
+            cm["cert-manager"]
+            cfk["CFK · confluent-operator<br>enableCMFDay2Ops=true"]
+            fop["Flink Kubernetes Operator"]
+        end
+
+        subgraph phase2_cmf["Phase-II — CMF (Helm chart)"]
+            cmf["CMF pod<br>cmf-service:80"]
+            restclass["CMFRestClass<br>→ cmf-service:80"]
+            fenv["FlinkEnvironment"]
+        end
+
+        subgraph phase2_kafka["Phase-II — Local Kafka (CFK CRDs)"]
+            kraft["KRaftController"]
+            kafka["Kafka"]
+            sr["SchemaRegistry"]
+            connect["Connect"]
+            c3["ControlCenter"]
+        end
+
+        subgraph phase2_flink["Phase-II — Flink Workloads"]
+            fapp["FlinkApplication"]
+            fdeploy["FlinkDeployment CR"]
+            flink_pods["JM + TM pods"]
+        end
+
+        fapp -- "submitted via CMF REST" --> cmf
+        cmf -- "converts to" --> fdeploy
+        fop -- "reconciles" --> fdeploy
+        fdeploy -- "creates" --> flink_pods
+        flink_pods -- "Kafka protocol" --> kafka
+        fapp -- "references" --> restclass
+        fapp -- "scoped by" --> fenv
+        cfk -- "reconciles CFK CRDs" --> kraft
+        cfk -- "reconciles CFK CRDs" --> kafka
+    end
 ```
 
 ---
