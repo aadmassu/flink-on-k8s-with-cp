@@ -97,7 +97,7 @@ flowchart TD
 
         subgraph c3["ControlCenter StatefulSet"]
             c30["controlcenter-0"]
-            c3_pvc0["PVC: data0-controlcenter-0<br>RWO · 1TBi"]
+            c3_pvc0["PVC: data0-controlcenter-0<br>RWO · 10Gi"]
             c30 --> c3_pvc0
         end
     end
