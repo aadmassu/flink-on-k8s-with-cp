@@ -7,12 +7,12 @@ GitOps repository for deploying **Confluent and Flink operators** on **Red Hat O
 ## Table of Contents
 
 - [Overview](#overview)
+- [Assumptions](#assumptions)
 - [Architecture](#architecture)
   - [Phase-I Architecture](#phase-i-architecture)
   - [Phase-II Architecture](#phase-ii-architecture)
 - [Environments](#environments)
 - [Prerequisites](#prerequisites)
-- [Assumptions](#assumptions)
 - [Repository Structure](#repository-structure)
 - [ArgoCD Setup](#argocd-setup)
   - [Option A - OpenShift GitOps Operator (Recommended)](#option-a---openshift-gitops-operator-recommended)
@@ -66,6 +66,17 @@ This project follows a **phased approach**:
 > **Why deploy CFK in Phase-I if Confluent Platform stays on VMs?** CFK is included now to establish a consistent operator footprint, RBAC model, and GitOps pattern across all environments before the CP migration in Phase-III. Installing it early ensures the CRDs, namespace conventions, and SCC bindings are validated end-to-end alongside cert-manager and the Flink operator. It also enables teams to adopt CFK-managed conventions (e.g., Confluent secret patterns, service account structure) in lower environments while CP itself remains external. Deferring CFK to a later phase would require re-validating the operator baseline, SCCs, and ArgoCD ApplicationSets at that time -- adding risk to the critical path.
 
 All components except SCCs are deployed **through ArgoCD** via ApplicationSet resources in `gitops-config/openshift/`. OpenShift prerequisites (SCCs + ClusterRoleBindings) are applied directly as a one-time cluster setup.
+
+---
+
+## Assumptions
+
+- An OpenShift 4.12+ cluster is provisioned and accessible via `oc` CLI.
+- The deploying user or service account has **cluster-admin** privileges (required for creating namespaces, CRDs, SCCs, and ClusterRoles).
+- Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster. For air-gapped or restricted environments, see the [Internal Registry Guide](docs/INTERNAL-REGISTRY.md).
+- The ApplicationSet files in `gitops-config/openshift/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
+- **Do not install Jetstack cert-manager if the Red Hat cert-manager Operator is already present — choose one.** Running both will cause webhook conflicts, duplicate CRDs, and unpredictable certificate issuance. Check with `oc get pods -n cert-manager` and `oc get pods -n openshift-cert-manager` before proceeding.
+- **Confluent Platform runs on VMs**, not on Kubernetes. This repo deploys only the operators needed for Flink workloads.
 
 ---
 
@@ -162,17 +173,6 @@ oc whoami
 oc cluster-info
 oc version
 ```
-
----
-
-## Assumptions
-
-- An OpenShift 4.12+ cluster is provisioned and accessible via `oc` CLI.
-- The deploying user or service account has **cluster-admin** privileges (required for creating namespaces, CRDs, SCCs, and ClusterRoles).
-- Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster. For air-gapped or restricted environments, see the [Internal Registry Guide](docs/INTERNAL-REGISTRY.md).
-- The ApplicationSet files in `gitops-config/openshift/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
-- **Do not install Jetstack cert-manager if the Red Hat cert-manager Operator is already present — choose one.** Running both will cause webhook conflicts, duplicate CRDs, and unpredictable certificate issuance. Check with `oc get pods -n cert-manager` and `oc get pods -n openshift-cert-manager` before proceeding.
-- **Confluent Platform runs on VMs**, not on Kubernetes. This repo deploys only the operators needed for Flink workloads.
 
 ---
 
