@@ -91,31 +91,31 @@ cert-manager must be fully running (CRDs established) before deploying FKO. CFK 
 
 ```
 apps/cert-manager/                                # cert-manager Helm values
-├── openshift-overlay.yaml                        # OpenShift: null security contexts for SCC
-├── dev/values.yaml
-├── qa/values.yaml
-├── stg/values.yaml
-└── prd/values.yaml
+├── openshift-overlay.yaml                        # Disables pod security policy for OpenShift
+├── dev/values.yaml                               # Low resources (CPU 50m-250m, mem 128-256Mi)
+├── qa/values.yaml                                # Low resources (CPU 50m-250m, mem 128-256Mi)
+├── stg/values.yaml                               # Moderate resources (CPU 100m-500m, mem 128-512Mi)
+└── prd/values.yaml                               # Moderate resources (CPU 100m-500m, mem 128-512Mi)
 
 apps/confluent-operator/                          # CFK operator Helm values
-├── openshift-overlay.yaml
-├── dev/values.yaml
-├── qa/values.yaml
-├── stg/values.yaml
-└── prd/values.yaml
+├── openshift-overlay.yaml                        # Nulls securityContext for SCC compatibility
+├── dev/values.yaml                               # kRaft mode, CMF Day2 ops, low resources
+├── qa/values.yaml                                # kRaft mode, CMF Day2 ops, moderate resources
+├── stg/values.yaml                               # kRaft mode, CMF Day2 ops, higher resources
+└── prd/values.yaml                               # kRaft mode, CMF Day2 ops, higher resources
 
 apps/confluent-flink-operator/                    # Flink operator Helm values
-├── openshift-overlay.yaml
-├── dev/values.yaml
-├── qa/values.yaml
-├── stg/values.yaml
-└── prd/values.yaml
+├── openshift-overlay.yaml                        # Nulls securityContext for SCC compatibility
+├── dev/values.yaml                               # Watches confluent-dev, Prometheus metrics
+├── qa/values.yaml                                # Watches confluent-qa, Prometheus metrics
+├── stg/values.yaml                               # Watches confluent-stg, Prometheus metrics
+└── prd/values.yaml                               # Watches confluent-prd, Prometheus metrics
 
 openshift-prereqs/                                # SCC + ClusterRoleBindings
-├── dev/manifests/
-├── qa/manifests/
-├── stg/manifests/
-└── prd/manifests/
+├── dev/manifests/                                # confluent-scc + SA bindings for confluent-dev
+├── qa/manifests/                                 # confluent-scc + SA bindings for confluent-qa
+├── stg/manifests/                                # confluent-scc + SA bindings for confluent-stg
+└── prd/manifests/                                # confluent-scc + SA bindings for confluent-prd
 ```
 
 ### ApplicationSets (per env)
