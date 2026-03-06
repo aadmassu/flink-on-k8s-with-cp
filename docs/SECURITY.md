@@ -25,7 +25,6 @@ flowchart TD
         cmf["CMF REST API<br>:8080"]
         cmf_auth["Authentication<br>(mTLS or OAuth)"]
         cmf_rbac["Authorization<br>(RBAC via MDS)"]
-        cmf_enc["Encryption<br>(AES-256-GCM)"]
     end
 
     subgraph mds_layer["Metadata Service (MDS)"]
@@ -56,8 +55,6 @@ flowchart TD
     cmf_rbac -.->|"or"| mds_k8s
     mds_vm --> iam
     mds_k8s --> iam
-    cmf --> cmf_enc
-
     cmf -->|"create FlinkDeployment CR"| fko
     fko -->|"reconcile"| jm
     jm --> tm
@@ -71,27 +68,9 @@ flowchart TD
 
 ## 1. CMF Authentication
 
-CMF supports two authentication methods for its REST API. **By default, authentication is disabled** — it must be explicitly enabled for production.
+CMF supports OAuth bearer token authentication for its REST API. **By default, authentication is disabled** — it must be explicitly enabled for production.
 
-### Option A: mTLS (Mutual TLS)
-
-Both client and CMF present certificates. The client principal is extracted from the certificate's Distinguished Name (DN).
-
-```yaml
-# CMF Helm values — mTLS authentication
-cmf:
-  authentication:
-    type: mtls
-    principalMappingRules:
-      - "RULE:^CN=([a-zA-Z0-9]*).*$/$1/L"
-  ssl:
-    keyStorePath: /certs/cmf-keystore.jks
-    keyStorePassword: ${CMF_KEYSTORE_PASSWORD}
-    trustStorePath: /certs/cmf-truststore.jks
-    trustStorePassword: ${CMF_TRUSTSTORE_PASSWORD}
-```
-
-### Option B: OAuth (Bearer Token)
+### OAuth (Bearer Token)
 
 Clients authenticate with OAuth bearer tokens validated against a JWKS endpoint. Available since CP 7.9.
 
