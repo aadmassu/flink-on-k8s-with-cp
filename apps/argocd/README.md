@@ -335,7 +335,7 @@ Once applied, ArgoCD monitors its own Helm chart and values, automatically (dev)
 
 ### 3. Air-Gapped / Internal Registry Scenarios
 
-In air-gapped or restricted network environments, the `values.yaml` files may need to be updated to reference an internal Helm chart repository and container image registry. See `README-INTERNAL-REGISTRY.md` for the full list of files that require modification.
+In air-gapped or restricted network environments, the `values.yaml` files may need to be updated to reference an internal Helm chart repository and container image registry. See [`README-INTERNAL-REGISTRY.md`](../../docs/README-INTERNAL-REGISTRY.md) for the full list of files that require modification.
 
 ---
 

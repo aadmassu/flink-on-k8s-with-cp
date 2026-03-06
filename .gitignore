@@ -30,5 +30,8 @@ charts/
 # Generated image manifests (output of discover-charts-and-images.sh)
 images-phase*.txt
 
+# Local-only docs
+docs/TALKING-POINTS.*
+
 # Temporary
 tmp/
