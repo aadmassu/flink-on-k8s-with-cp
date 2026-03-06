@@ -204,13 +204,13 @@ confluent:
 ```mermaid
 flowchart LR
     subgraph k8s["OpenShift Cluster"]
+        direction LR
         cmf["CMF pod"]
         mds["MDS (CFK Kafka)<br>kafka.confluent-dev:8090"]
         iam["LDAP / AD / OIDC (Okta)"]
+        cmf -->|"HTTPS (in-cluster)"| mds
+        mds --> iam
     end
-
-    cmf -->|"HTTPS (in-cluster)"| mds
-    mds --> iam
 ```
 
 **Configuration:**
