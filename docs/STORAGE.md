@@ -85,19 +85,19 @@ flowchart TD
     subgraph cfk["CFK StatefulSet Storage"]
         subgraph kraft["KRaftController StatefulSet"]
             kraft0["kraftcontroller-0"]
-            kraft_pvc0["PVC: data0-kraftcontroller-0<br>RWO · 10G"]
+            kraft_pvc0["PVC: data0-kraftcontroller-0<br>RWO · 1TB"]
             kraft0 --> kraft_pvc0
         end
 
         subgraph kafka["Kafka StatefulSet"]
             kafka0["kafka-0"]
-            kafka_pvc0["PVC: data0-kafka-0<br>RWO · 10G"]
+            kafka_pvc0["PVC: data0-kafka-0<br>RWO · 1TB"]
             kafka0 --> kafka_pvc0
         end
 
         subgraph c3["ControlCenter StatefulSet"]
             c30["controlcenter-0"]
-            c3_pvc0["PVC: data0-controlcenter-0<br>RWO · 10Gi"]
+            c3_pvc0["PVC: data0-controlcenter-0<br>RWO · 1TBi"]
             c30 --> c3_pvc0
         end
     end
@@ -111,8 +111,8 @@ flowchart TD
 
 | Component | Storage | Access Mode | Size | Why |
 |-----------|---------|-------------|------|-----|
-| **KRaftController** | PVC per pod | RWO | 10G | KRaft consensus log, quorum state — exclusive to each controller |
-| **Kafka** | PVC per pod | RWO | 10G | Message logs, commit offsets — exclusive to each broker |
+| **KRaftController** | PVC per pod | RWO | 1TB | KRaft consensus log, quorum state — exclusive to each controller |
+| **Kafka** | PVC per pod | RWO | 1TB | Message logs, commit offsets — exclusive to each broker |
 | **ControlCenter** | PVC per pod | RWO | 10Gi | Monitoring metrics, internal topics — single pod |
 | **SchemaRegistry** | None | — | — | Stateless — schemas stored in Kafka `_schemas` topic |
 | **Connect** | None | — | — | Stateless — configs/offsets/status stored in Kafka topics |
