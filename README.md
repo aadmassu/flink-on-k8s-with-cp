@@ -45,11 +45,11 @@ GitOps repository for deploying **Confluent Platform operators, CMF, and Flink w
 
 This project follows a **phased approach**:
 
-| Phase | Scope | Status |
-|-------|-------|--------|
-| **Phase-I** | **Operators only** | Complete |
-| **Phase-II** | **CMF + Local Kafka + Flink on K8s** | **Complete** |
-| **Phase-III** | **CMF + Flink + CP on K8s** | Planned |
+| Phase | Scope |
+|-------|-------|
+| **Phase-I** | **Operators only** |
+| **Phase-II** | **CMF + Local Kafka + Flink on K8s** |
+| **Phase-III** | **CMF + Flink + CP on K8s** |
 
 - **Phase-I:** Deploy cert-manager, Confluent Operator (CFK), and Flink Operator. Confluent Platform continues to run on VMs. See [PHASE-I.md](docs/PHASE-I.md).
 - **Phase-II:** Deploy CMF, local Kafka on K8s (via CFK CRDs), Flink session cluster, and Flink infrastructure CRs. See [PHASE-II.md](docs/PHASE-II.md).
