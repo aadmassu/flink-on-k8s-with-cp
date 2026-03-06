@@ -1,6 +1,6 @@
 # Command Cheatsheet
 
-Troubleshooting, break-glass fixes, and diagnostic commands for this project on OpenShift. For deployment steps, see [README-PHASE-I.md](README-PHASE-I.md) and [README-PHASE-II.md](README-PHASE-II.md).
+Troubleshooting, break-glass fixes, and diagnostic commands for this project on OpenShift. For deployment steps, see [PHASE-I.md](PHASE-I.md) and [PHASE-II.md](PHASE-II.md).
 
 ---
 

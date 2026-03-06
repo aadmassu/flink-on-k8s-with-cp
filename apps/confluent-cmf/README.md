@@ -68,4 +68,4 @@ podSecurityContext:
 |----------|------|
 | ApplicationSet | [`gitops-config/openshift/dev/confluent-cmf-application-set.yaml`](../../gitops-config/openshift/dev/confluent-cmf-application-set.yaml) |
 | Flink infra CRs | [`apps/confluent-flink/`](../confluent-flink/) |
-| Phase-II guide | [`README-PHASE-II.md`](../../docs/README-PHASE-II.md) |
+| Phase-II guide | [`PHASE-II.md`](../../docs/PHASE-II.md) |

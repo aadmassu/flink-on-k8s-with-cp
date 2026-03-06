@@ -49,8 +49,8 @@ This project follows a **phased approach**:
 | **Phase-II** | **CMF + Local Kafka + Flink on K8s** | **Complete** |
 | **Phase-III** | **CMF + Flink + CP on K8s** | Planned |
 
-- **Phase-I:** Deploy cert-manager, Confluent Operator (CFK), and Flink Operator. Confluent Platform continues to run on VMs. See [README-PHASE-I.md](docs/README-PHASE-I.md).
-- **Phase-II:** Deploy CMF, local Kafka on K8s (via CFK CRDs), Flink session cluster, and Flink infrastructure CRs. See [README-PHASE-II.md](docs/README-PHASE-II.md).
+- **Phase-I:** Deploy cert-manager, Confluent Operator (CFK), and Flink Operator. Confluent Platform continues to run on VMs. See [PHASE-I.md](docs/PHASE-I.md).
+- **Phase-II:** Deploy CMF, local Kafka on K8s (via CFK CRDs), Flink session cluster, and Flink infrastructure CRs. See [PHASE-II.md](docs/PHASE-II.md).
 - **Phase-III:** Migrate Confluent Platform onto Kubernetes via CFK. CMF manages Flink SQL workloads end-to-end.
 
 ### Phase-I Components
@@ -122,7 +122,7 @@ oc version
 
 - An OpenShift 4.12+ cluster is provisioned and accessible via `oc` CLI.
 - The deploying user or service account has **cluster-admin** privileges (required for creating namespaces, CRDs, SCCs, and ClusterRoles).
-- Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster. For air-gapped or restricted environments, see the [Internal Registry Guide](docs/README-INTERNAL-REGISTRY.md).
+- Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster. For air-gapped or restricted environments, see the [Internal Registry Guide](docs/INTERNAL-REGISTRY.md).
 - The ApplicationSet files in `gitops-config/openshift/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
 - **Do not install Jetstack cert-manager if the Red Hat cert-manager Operator is already present — choose one.** Running both will cause webhook conflicts, duplicate CRDs, and unpredictable certificate issuance. Check with `oc get pods -n cert-manager` and `oc get pods -n openshift-cert-manager` before proceeding.
 - **Confluent Platform runs on VMs**, not on Kubernetes. This repo deploys only the operators needed for Flink workloads.
@@ -136,10 +136,10 @@ oc version
 |
 |-- README.md                                # This file
 |-- docs/
-|   |-- README-PHASE-I.md                    # Phase-I deployment guide (operators)
-|   |-- README-PHASE-II.md                   # Phase-II deployment guide (CMF + Kafka + Flink)
-|   |-- README-EXISTING-ARGOCD.md            # Guide: deploy into an existing ArgoCD
-|   |-- README-INTERNAL-REGISTRY.md          # Guide: air-gapped / internal registries
+|   |-- PHASE-I.md                    # Phase-I deployment guide (operators)
+|   |-- PHASE-II.md                   # Phase-II deployment guide (CMF + Kafka + Flink)
+|   |-- EXISTING-ARGOCD.md            # Guide: deploy into an existing ArgoCD
+|   |-- INTERNAL-REGISTRY.md          # Guide: air-gapped / internal registries
 |   |-- CHEATSHEET.md                        # oc/helm command reference
 |   +-- flink-cluster-modes.md               # Flink session vs application cluster
 |-- hosts.yaml                               # Cluster inventory
@@ -613,8 +613,8 @@ oc get application confluent-operator-dev -n ${ARGOCD_NS} -o jsonpath='{.status.
 
 This repository supports a phased deployment strategy:
 
-- **Phase-I (complete):** **Operators only** -- cert-manager, CFK, Flink operator. See [README-PHASE-I.md](docs/README-PHASE-I.md).
-- **Phase-II (complete):** **CMF + Local Kafka + Flink on K8s** -- CMF (Helm), local Kafka via CFK CRDs, Flink session cluster, and infrastructure CRs. See [README-PHASE-II.md](docs/README-PHASE-II.md).
+- **Phase-I (complete):** **Operators only** -- cert-manager, CFK, Flink operator. See [PHASE-I.md](docs/PHASE-I.md).
+- **Phase-II (complete):** **CMF + Local Kafka + Flink on K8s** -- CMF (Helm), local Kafka via CFK CRDs, Flink session cluster, and infrastructure CRs. See [PHASE-II.md](docs/PHASE-II.md).
 - **Phase-III:** **CMF + Flink + CP on K8s** -- migrate Confluent Platform onto Kubernetes via CFK CRDs. CMF manages Flink SQL workloads end-to-end with Kafka running on K8s.
 
 ---
@@ -623,8 +623,8 @@ This repository supports a phased deployment strategy:
 
 | Guide | Description |
 |-------|-------------|
-| [README-PHASE-I.md](docs/README-PHASE-I.md) | Phase-I deployment guide: operators (cert-manager, CFK, Flink Operator) |
-| [README-PHASE-II.md](docs/README-PHASE-II.md) | Phase-II deployment guide: CMF, local Kafka, Flink session cluster |
-| [README-EXISTING-ARGOCD.md](docs/README-EXISTING-ARGOCD.md) | Deploy into an existing OpenShift GitOps / ArgoCD instance |
-| [README-INTERNAL-REGISTRY.md](docs/README-INTERNAL-REGISTRY.md) | Use internal Helm and container registries (air-gapped, JFrog, Nexus) |
+| [PHASE-I.md](docs/PHASE-I.md) | Phase-I deployment guide: operators (cert-manager, CFK, Flink Operator) |
+| [PHASE-II.md](docs/PHASE-II.md) | Phase-II deployment guide: CMF, local Kafka, Flink session cluster |
+| [EXISTING-ARGOCD.md](docs/EXISTING-ARGOCD.md) | Deploy into an existing OpenShift GitOps / ArgoCD instance |
+| [INTERNAL-REGISTRY.md](docs/INTERNAL-REGISTRY.md) | Use internal Helm and container registries (air-gapped, JFrog, Nexus) |
 | [CHEATSHEET.md](docs/CHEATSHEET.md) | oc and helm command reference |

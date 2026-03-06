@@ -37,7 +37,7 @@ Deployment guide for Phase-I: **cert-manager**, **Confluent Operator (CFK)**, an
 | **Flink Operator** | Confluent's Flink Kubernetes operator — manages Flink workloads |
 | **Where** | OpenShift 4.12+ (all environments: dev, qa, stg, prd) |
 | **Confluent Platform** | Runs on VMs — not deployed on Kubernetes in this phase |
-| **Not in scope** | CMF, Flink workloads, Confluent Platform CRDs (see [Phase-II](README-PHASE-II.md)) |
+| **Not in scope** | CMF, Flink workloads, Confluent Platform CRDs (see [Phase-II](PHASE-II.md)) |
 
 ---
 

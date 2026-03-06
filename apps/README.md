@@ -61,5 +61,5 @@ ArgoCD ApplicationSets use **Git directory** source, pointing at the per-environ
 | ArgoCD ApplicationSets | [`gitops-config/`](../gitops-config/) |
 | OpenShift prerequisites (SCCs) | [`openshift-prereqs/`](../openshift-prereqs/) |
 | Deploy script | [`scripts/deploy-openshift-dev.sh`](../scripts/deploy-openshift-dev.sh) |
-| Phase-I guide | [`README-PHASE-I.md`](../docs/README-PHASE-I.md) |
-| Phase-II guide | [`README-PHASE-II.md`](../docs/README-PHASE-II.md) |
+| Phase-I guide | [`PHASE-I.md`](../docs/PHASE-I.md) |
+| Phase-II guide | [`PHASE-II.md`](../docs/PHASE-II.md) |
