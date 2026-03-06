@@ -61,7 +61,7 @@ All deployments use **pinned versions** for reproducibility and audit compliance
 | **Confluent Platform** | 8.1.1 | CP component images (cp-server, cp-schema-registry, etc.) |
 | **CFK init container** | 3.1.1 | `confluent-init-container` — used by CFK-managed CRs |
 
-> **Versions verified as of March 2026.** CFK 3.1.1 aligns with CP 8.1.1 per [Confluent release notes](https://docs.confluent.io/operator/current/release-notes.html). CMF 2.2.0 per [Flink changelog](https://docs.confluent.io/cloud/current/flink/changelog.html). Check [cert-manager releases](https://github.com/cert-manager/cert-manager/releases) and [ArgoCD Helm chart releases](https://github.com/argoproj/argo-helm/releases) for updates.
+> **Versions verified as of March 2026.** CFK 3.1.1 aligns with CP 8.1.1 per [Confluent release notes](https://docs.confluent.io/operator/current/release-notes.html). CMF 2.2.0 per [Flink Release Note](https://docs.confluent.io/platform/current/flink/changelog.html#december-2025). Check [cert-manager releases](https://github.com/cert-manager/cert-manager/releases) and [ArgoCD Helm chart releases](https://github.com/argoproj/argo-helm/releases) for updates.
 
 ### Wildcard vs. Pinned Version Constraints
 

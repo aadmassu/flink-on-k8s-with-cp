@@ -10,6 +10,8 @@ This directory contains deployment, teardown, and verification scripts for the *
 - [deploy-openshift-dev.sh](#deploy-openshift-devsh)
 - [destroy-openshift-dev.sh](#destroy-openshift-devsh)
 - [verify-openshift-dev.sh](#verify-openshift-devsh)
+- [discover-charts-and-images.sh](#discover-charts-and-imagessh)
+- [validate-resolvable-versions.sh](#validate-resolvable-versionssh)
 
 ---
 
@@ -118,3 +120,76 @@ Runs health checks on all Phase-I and Phase-II components. Returns exit code 0 i
 6. **Flink infrastructure CRs** -- CMFRestClass, FlinkEnvironment, PVC exist
 7. **Flink session cluster** -- FlinkDeployment `flink-session` status = READY
 8. **cert-manager pods** -- Running in cert-manager or openshift-cert-manager namespace
+
+---
+
+## `discover-charts-and-images.sh`
+
+### Purpose
+
+Discovers all Helm chart versions and container images required for deployment. Renders charts with `helm template` using the repository's own values/overlay files to produce an authoritative image inventory for air-gapped mirroring to JFrog Artifactory.
+
+### Usage
+
+```bash
+./scripts/discover-charts-and-images.sh              # Phase 1 (operators only)
+./scripts/discover-charts-and-images.sh --phase 2    # Phase 1 + CMF + Flink runtime
+./scripts/discover-charts-and-images.sh --phase 3    # Phase 2 + CP components
+```
+
+### Environment Variable Overrides (optional)
+
+| Variable | Default | Description |
+|---|---|---|
+| `CMF_VERSION` | `2.2.0` | CMF Helm chart version |
+| `CP_FLINK_VERSION` | `1.19.4-cp1` | Flink SQL runtime image tag |
+| `CP_VERSION` | `8.1.1` | Confluent Platform image tag |
+
+### What It Does
+
+1. **Adds Helm repos** -- jetstack, confluent, argo-cd
+2. **Prints chart versions** -- `helm search repo` for each component
+3. **Renders charts** -- `helm template` with pinned versions + values files from the repo
+4. **Extracts images** -- Parses rendered manifests for all `image:` references
+5. **Writes manifest files** -- `images-phase{1,2,3}.txt` at the repo root (one image per line, deduplicated)
+
+### Output
+
+- Chart versions and images printed to stdout
+- `images-phase{1,2,3}.txt` written to the repo root — use these as the mirror manifest for JFrog
+
+---
+
+## `validate-resolvable-versions.sh`
+
+### Purpose
+
+Validates that all pinned Helm chart versions used in ApplicationSets actually resolve and are pullable from Helm repositories. Uses `helm show chart` to fetch chart metadata — a stronger check than grepping `helm search` output.
+
+### Usage
+
+```bash
+./scripts/validate-resolvable-versions.sh              # check public repos (default)
+./scripts/validate-resolvable-versions.sh --internal   # check internal Artifactory repo
+```
+
+### Internal Repo Mode
+
+When `--internal` is passed (or `HELM_REPO=internal` is set), the script checks the `internal` Helm repo alias. You must first add it:
+
+```bash
+helm repo add internal https://artifactory.example.com/artifactory/helm-virtual
+```
+
+### Charts Validated
+
+| Chart | Pinned Version |
+|---|---|
+| `cert-manager` | `v1.19.4` |
+| `confluent-for-kubernetes` | `0.1351.59` |
+| `flink-kubernetes-operator` | `1.130.2` |
+| `argo-cd` | `9.4.7` |
+
+### Output
+
+Prints a table with `OK` or `NOT FOUND` status for each chart version.
