@@ -85,7 +85,7 @@ flowchart TD
     subgraph cfk["CFK StatefulSet Storage"]
         subgraph kraft["KRaftController StatefulSet"]
             kraft0["kraftcontroller-0"]
-            kraft_pvc0["PVC: data0-kraftcontroller-0<br>RWO · 1TB"]
+            kraft_pvc0["PVC: data0-kraftcontroller-0<br>RWO · 64G"]
             kraft0 --> kraft_pvc0
         end
 
@@ -111,7 +111,7 @@ flowchart TD
 
 | Component | Storage | Access Mode | Size | Why |
 |-----------|---------|-------------|------|-----|
-| **KRaftController** | PVC per pod | RWO | 1TB | KRaft consensus log, quorum state — exclusive to each controller |
+| **KRaftController** | PVC per pod | RWO | 64G | KRaft consensus log, quorum state — exclusive to each controller |
 | **Kafka** | PVC per pod | RWO | 1TB | Message logs, commit offsets — exclusive to each broker |
 | **ControlCenter** | PVC per pod | RWO | 10Gi | Monitoring metrics, internal topics — single pod |
 | **SchemaRegistry** | None | — | — | Stateless — schemas stored in Kafka `_schemas` topic |
