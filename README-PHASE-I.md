@@ -78,10 +78,9 @@ All components except SCCs are deployed **through ArgoCD** via ApplicationSet re
 ```mermaid
 flowchart LR
     A["cert-manager"] --> B["FKO<br>(Flink Kubernetes Operator)"]
-    A --> C["CFK<br>(Confluent for Kubernetes)"]
 ```
 
-cert-manager must be fully running (CRDs established) before deploying either operator. CFK and FKO can be deployed in parallel once cert-manager CRDs are ready.
+cert-manager must be fully running (CRDs established) before deploying FKO. CFK has no dependency on cert-manager and can be deployed independently. In the deploy script, CFK and FKO are deployed in parallel after cert-manager CRDs are ready.
 
 ---
 
