@@ -76,7 +76,7 @@ All components except SCCs are deployed **through ArgoCD** via ApplicationSet re
 - Helm chart repositories (`charts.jetstack.io`, `packages.confluent.io`) are reachable from the cluster. For air-gapped or restricted environments, see the [Internal Registry Guide](docs/INTERNAL-REGISTRY.md).
 - The ApplicationSet files in `gitops-config/openshift/` contain **placeholder cluster URLs**. Update the `url` field in each ApplicationSet's generator list with your actual cluster API server endpoint (dev is pre-configured to `https://kubernetes.default.svc`).
 - **Do not install Jetstack cert-manager if the Red Hat cert-manager Operator is already present — choose one.** Running both will cause webhook conflicts, duplicate CRDs, and unpredictable certificate issuance. Check with `oc get pods -n cert-manager` and `oc get pods -n openshift-cert-manager` before proceeding.
-- **Confluent Platform runs on VMs**, not on Kubernetes. This repo deploys only the operators needed for Flink workloads.
+- **Confluent Platform currently runs on VMs.** Flink workloads are designed to integrate with this existing VM-based deployment. In a later phase (Phase-III), Confluent Platform will migrate to Kubernetes via CFK, and Flink will switch to the CFK-managed Kafka cluster.
 
 ---
 
