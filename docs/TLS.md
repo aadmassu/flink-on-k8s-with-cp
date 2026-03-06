@@ -34,7 +34,7 @@ flowchart LR
         end
 
         subgraph cp["Confluent Platform"]
-            kafka["Kafka<br>:9071 (mTLS)<br>:9092 (internal)"]
+            kafka["Kafka<br>:9093 (SASL_SSL)<br>:9092 (internal)"]
             kraft["KRaftController"]
             sr["Schema Registry<br>:8081 (HTTPS)"]
             connect["Connect"]
@@ -64,9 +64,9 @@ flowchart LR
     browser -->|"HTTPS"| route_c3 --> c3
 
     cmf -->|"HTTPS (mTLS)"| mds
-    tm -->|"SASL_SSL / mTLS"| kafka_vm
+    tm -->|"SASL_SSL (OAuth)"| kafka_vm
     tm -->|"HTTPS"| sr_vm
-    tm -->|"mTLS"| kafka
+    tm -->|"SASL_SSL (OAuth)"| kafka
 
     certmgr -->|"issues certs"| fko
     cfk -->|"auto-TLS"| kafka
@@ -109,7 +109,7 @@ flowchart TD
         end
 
         subgraph cp_k8s["CFK-Managed Kafka (Phase-II/III)"]
-            kafka_k8s["Kafka<br>mTLS :9071"]
+            kafka_k8s["Kafka<br>SASL_SSL :9093"]
             kraft_k8s["KRaftController<br>mTLS :9071"]
             sr_k8s["Schema Registry<br>HTTPS :8081"]
         end
@@ -130,9 +130,9 @@ flowchart TD
 
     cmf -->|"HTTPS (mTLS)"| mds_vm
 
-    tm -->|"SASL_SSL"| kafka_vm
+    tm -->|"SASL_SSL (OAuth)"| kafka_vm
     tm -->|"HTTPS"| sr_vm
-    tm -->|"mTLS"| kafka_k8s
+    tm -->|"SASL_SSL (OAuth)"| kafka_k8s
     tm -->|"HTTPS"| sr_k8s
 
     kafka_k8s <-->|"mTLS"| kraft_k8s
@@ -150,8 +150,8 @@ flowchart TD
 | 1 | **Client** | **CMF REST API** | HTTPS | 8080 | Manual (JKS keystore) or cert-manager | Phase-II |
 | 2 | **CMF** | **MDS (VM Kafka)** | HTTPS (mTLS) | 8090 | Manual — import VM Kafka CA into CMF truststore | Phase-I / III |
 | 3 | **CMF** | **MDS (CFK Kafka)** | HTTPS | 8090 | CFK auto-generates via cert-manager | Phase-II / III |
-| 4 | **Flink TM** | **Kafka (VMs)** | SASL_SSL | 9093 | Manual — Kafka broker CA in Flink truststore | Phase-I |
-| 5 | **Flink TM** | **Kafka (CFK)** | mTLS | 9071 | CFK auto-generates via cert-manager | Phase-II / III |
+| 4 | **Flink TM** | **Kafka (VMs)** | SASL_SSL (OAuth) | 9093 | Manual — Kafka broker CA in Flink truststore + OAuth token | Phase-I |
+| 5 | **Flink TM** | **Kafka (CFK)** | SASL_SSL (OAuth) | 9093 | CFK auto-TLS + OAuth token from OIDC (Okta) | Phase-II / III |
 | 6 | **Flink TM** | **Schema Registry** | HTTPS | 8081 | CFK auto-generates or manual | Phase-I / II |
 | 7 | **Browser** | **ArgoCD UI** | HTTPS | 443 | OpenShift Route (TLS passthrough) | Phase-I |
 | 8 | **Browser** | **Control Center** | HTTPS | 443 | OpenShift Route (TLS edge) | Phase-II |
@@ -354,7 +354,7 @@ flowchart TD
     subgraph cfk_tls["CFK Auto-TLS (cert-manager)"]
         direction LR
         kraft_tls["KRaftController<br>mTLS :9071"]
-        kafka_tls["Kafka<br>mTLS :9071<br>external :9093"]
+        kafka_tls["Kafka<br>SASL_SSL :9093<br>inter-broker mTLS :9071"]
         sr_tls["Schema Registry<br>HTTPS :8081"]
         connect_tls["Connect<br>HTTPS :8083"]
         c3_tls["ControlCenter<br>HTTPS :9021"]
@@ -409,42 +409,47 @@ flowchart LR
     subgraph flink_cluster["Flink Cluster"]
         jm["JobManager"]
         tm["TaskManagers"]
-        creds["Injected credentials<br>(truststore + keystore<br>or SASL config)"]
+        creds["Injected credentials<br>(OAuth token<br>+ truststore)"]
     end
 
     subgraph kafka_targets["Kafka"]
         kafka_vm["VM Kafka<br>SASL_SSL :9093"]
-        kafka_k8s["CFK Kafka<br>mTLS :9071"]
+        kafka_k8s["CFK Kafka<br>SASL_SSL :9093"]
     end
 
     cmf_secret -->|"inject at<br>job submission"| creds
     creds --> tm
-    tm -->|"SASL_SSL<br>(username + password<br>+ truststore)"| kafka_vm
-    tm -->|"mTLS<br>(keystore<br>+ truststore)"| kafka_k8s
+    tm -->|"SASL_SSL (OAuth)<br>(OAuth token<br>+ truststore)"| kafka_vm
+    tm -->|"SASL_SSL (OAuth)<br>(OAuth token<br>+ truststore)"| kafka_k8s
 ```
 
-### Connecting to VM Kafka (SASL_SSL)
+### Connecting to Kafka (SASL_SSL with OAuth)
+
+Both VM Kafka and CFK Kafka use **SASL_SSL with OAuth (OAUTHBEARER)** for Flink job authentication. Flink TaskManagers obtain an OAuth token from the OIDC provider (Okta) and present it to Kafka.
 
 ```properties
-# Flink job properties — VM Kafka
+# Flink job properties — SASL_SSL with OAuth
 security.protocol=SASL_SSL
-sasl.mechanism=PLAIN
-sasl.jaas.config=org.apache.flink.kafka.shaded.org.apache.kafka.common.security.plain.PlainLoginModule required \
-  username="${KAFKA_USERNAME}" \
-  password="${KAFKA_PASSWORD}";
+sasl.mechanism=OAUTHBEARER
+sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \
+  clientId="${OAUTH_CLIENT_ID}" \
+  clientSecret="${OAUTH_CLIENT_SECRET}" \
+  scope="kafka" ;
+sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
+sasl.oauthbearer.token.endpoint.url=https://<okta-domain>/oauth2/default/v1/token
 ssl.truststore.location=/certs/truststore.jks
 ssl.truststore.password=${TRUSTSTORE_PASSWORD}
 ```
 
-### Connecting to CFK Kafka (mTLS)
+### Connecting to Schema Registry (HTTPS with OAuth)
 
 ```properties
-# Flink job properties — CFK Kafka
-security.protocol=SSL
-ssl.keystore.location=/certs/keystore.jks
-ssl.keystore.password=${KEYSTORE_PASSWORD}
-ssl.truststore.location=/certs/truststore.jks
-ssl.truststore.password=${TRUSTSTORE_PASSWORD}
+# Flink job properties — Schema Registry with OAuth
+schema.registry.url=https://<schema-registry>:8081
+schema.registry.ssl.truststore.location=/certs/truststore.jks
+schema.registry.ssl.truststore.password=${TRUSTSTORE_PASSWORD}
+basic.auth.credentials.source=OAUTHBEARER
+bearer.auth.token=${OAUTH_TOKEN}
 ```
 
 ---
@@ -468,7 +473,7 @@ flowchart LR
         direction TB
         prod_client["Client"] -->|"HTTPS ✓"| prod_cmf["CMF"]
         prod_cmf -->|"mTLS ✓"| prod_mds["MDS"]
-        prod_tm["Flink TM"] -->|"SASL_SSL ✓"| prod_kafka["Kafka"]
+        prod_tm["Flink TM"] -->|"SASL_SSL (OAuth) ✓"| prod_kafka["Kafka"]
         prod_tm -->|"HTTPS ✓"| prod_sr["Schema Registry"]
         prod_kafka <-->|"mTLS ✓"| prod_kraft["KRaftController"]
         prod_fko["FKO webhook"] -->|"HTTPS ✓"| prod_api["API Server"]
@@ -494,8 +499,10 @@ flowchart LR
 - [ ] Configure CMF → MDS TLS (`confluent.metadata.ssl.*` truststore with VM Kafka CA)
 - [ ] Enable CFK auto-TLS on Kafka (`spec.tls.autoGeneratedCerts: true`)
 - [ ] Enable CFK auto-TLS on SchemaRegistry, Connect, ControlCenter
-- [ ] Create CMF Secrets with Kafka TLS credentials for Flink jobs
+- [ ] Create CMF Secrets with OAuth credentials (client ID/secret) for Flink jobs
+- [ ] Configure OAUTHBEARER SASL mechanism on Kafka listeners
 - [ ] Import VM Kafka CA into Flink truststore Secret
+- [ ] Configure Okta OIDC application for Flink service accounts
 - [ ] Secure Flink Dashboard UI with sidecar proxy (TLS termination)
 - [ ] Create OpenShift Route for Control Center with TLS edge termination
 - [ ] Verify cert-manager Issuer/ClusterIssuer is configured for organization CA (not self-signed)
