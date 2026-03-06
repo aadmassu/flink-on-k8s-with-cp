@@ -128,13 +128,13 @@ sequenceDiagram
     participant User
     participant CMF
     participant MDS
-    participant LDAP
+    participant IAM as LDAP / AD / OIDC (Okta)
 
     User->>CMF: REST API call (mTLS cert / OAuth token)
     CMF->>CMF: Extract principal from cert/token
     CMF->>MDS: Does principal X have role Y on resource Z?
-    MDS->>LDAP: Resolve user/group membership
-    LDAP-->>MDS: User details
+    MDS->>IAM: Resolve user/group membership
+    IAM-->>MDS: User details
     MDS-->>CMF: Allowed / Denied
     CMF-->>User: 200 OK / 403 Forbidden
 ```
@@ -190,11 +190,11 @@ flowchart LR
 
     subgraph vms["VM Infrastructure"]
         mds["MDS (Confluent Server)<br>https://kafka-vm:8090"]
-        ldap["LDAP / AD"]
+        iam["LDAP / AD / OIDC (Okta)"]
     end
 
     cmf -->|"HTTPS (mTLS)"| mds
-    mds --> ldap
+    mds --> iam
 ```
 
 **Configuration:**
@@ -227,11 +227,11 @@ flowchart LR
     subgraph k8s["OpenShift Cluster"]
         cmf["CMF pod"]
         mds["MDS (CFK Kafka)<br>kafka.confluent-dev:8090"]
-        ldap["LDAP / AD"]
+        iam["LDAP / AD / OIDC (Okta)"]
     end
 
     cmf -->|"HTTPS (in-cluster)"| mds
-    mds --> ldap
+    mds --> iam
 ```
 
 **Configuration:**
@@ -248,7 +248,7 @@ confluent:
 
 **Requirements:**
 - CFK Kafka must have MDS enabled (`spec.authorization.type: rbac` in Kafka CR)
-- LDAP/AD must be reachable from the cluster for user resolution
+- LDAP/AD and/or OIDC (Okta) must be reachable from the cluster for user resolution
 - CFK auto-generates TLS certs via cert-manager — mount the CA into CMF's truststore
 
 ### Comparison
@@ -258,7 +258,7 @@ confluent:
 | **MDS endpoint** | `https://kafka-vm:8090` | `https://kafka.confluent-dev.svc:8090` |
 | **Network** | Cross-network (K8s → VM) | In-cluster (same namespace) |
 | **TLS certs** | Manual — import VM CA into CMF truststore | Auto — cert-manager generates, CFK mounts |
-| **LDAP** | Kafka VMs connect to LDAP directly | K8s pods need LDAP network access |
+| **IAM (LDAP / OIDC)** | Kafka VMs connect to LDAP/OIDC directly | K8s pods need LDAP/OIDC network access |
 | **Our Phase-I/II** | Planned (CP on VMs) | PoC only (local Kafka, no RBAC yet) |
 
 ---
@@ -444,4 +444,4 @@ cmf:
 - [ ] Configure Schema Registry HTTPS for Flink jobs
 - [ ] Create CMF Secrets for Kafka/SR credentials
 - [ ] Restrict `oc`/`kubectl` access — route all Flink operations through CMF
-- [ ] Set up LDAP/AD integration for MDS user resolution
+- [ ] Set up LDAP/AD and/or OIDC (Okta) integration for MDS user resolution
