@@ -31,8 +31,7 @@ flowchart TD
     subgraph mds_layer["Metadata Service (MDS)"]
         mds_vm["MDS on VM Kafka<br>(Confluent Server)"]
         mds_k8s["MDS on CFK Kafka<br>(K8s)"]
-        ldap["LDAP / AD"]
-        oidc["OIDC (Okta)"]
+        iam["LDAP / AD / OIDC (Okta)"]
     end
 
     subgraph flink_layer["Flink Layer"]
@@ -55,10 +54,8 @@ flowchart TD
     cmf --> cmf_auth -->|"validate principal"| cmf_rbac
     cmf_rbac -->|"check role bindings"| mds_vm
     cmf_rbac -.->|"or"| mds_k8s
-    mds_vm --> ldap
-    mds_vm --> oidc
-    mds_k8s --> ldap
-    mds_k8s --> oidc
+    mds_vm --> iam
+    mds_k8s --> iam
     cmf --> cmf_enc
 
     cmf -->|"create FlinkDeployment CR"| fko
