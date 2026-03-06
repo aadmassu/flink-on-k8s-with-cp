@@ -1,6 +1,6 @@
 # Flink on OpenShift with Confluent
 
-GitOps repository for deploying **Confluent and Flink operators** on **Red Hat OpenShift** using **ArgoCD** (OpenShift GitOps). Confluent Platform runs externally on VMs; this repo manages only the Kubernetes operators needed for Flink workloads.
+GitOps repository for deploying **Confluent Platform operators, CMF, and Flink workloads** on **Red Hat OpenShift** using **ArgoCD** (OpenShift GitOps). Supports a phased rollout from operators-only (Phase-I) through full Flink + Kafka on K8s (Phase-II) to complete Confluent Platform migration (Phase-III).
 
 ---
 
@@ -188,7 +188,10 @@ oc version
 |   |-- EXISTING-ARGOCD.md            # Guide: deploy into an existing ArgoCD
 |   |-- INTERNAL-REGISTRY.md          # Guide: air-gapped / internal registries
 |   |-- CHEATSHEET.md                        # oc/helm command reference
-|   +-- flink-cluster-modes.md               # Flink session vs application cluster
+|   |-- flink-cluster-modes.md               # Flink session vs application cluster
+|   |-- STORAGE.md                           # Storage architecture (RWO, RWX, reclaim policy)
+|   |-- SECURITY.md                          # Security architecture (auth, RBAC, MDS)
+|   +-- TLS.md                               # TLS architecture (certificates, OAuth, SASL_SSL)
 |-- hosts.yaml                               # Cluster inventory
 |-- secrets.yaml                             # Secret reference template
 |
@@ -213,7 +216,9 @@ oc version
 |-- scripts/
 |   |-- deploy-openshift-dev.sh              # Full OpenShift deploy script
 |   |-- destroy-openshift-dev.sh             # OpenShift teardown script
-|   +-- verify-openshift-dev.sh              # Health verification script
+|   |-- verify-openshift-dev.sh              # Health verification script
+|   |-- discover-charts-and-images.sh        # Image/chart discovery for air-gapped mirroring
+|   +-- validate-resolvable-versions.sh      # Validate pinned chart versions resolve
 |
 |-- .github/workflows/                       # GitHub Actions pipelines
 +-- .azure-pipelines/                        # Azure DevOps pipelines
@@ -515,6 +520,7 @@ To use, update `spec.template.spec.project` in each ApplicationSet from `default
 | `cert-manager` | `https://charts.jetstack.io` | TLS certificate management |
 | `confluent-for-kubernetes` | `https://packages.confluent.io/helm` | Confluent Platform operator |
 | `flink-kubernetes-operator` | `https://packages.confluent.io/helm` | Flink Kubernetes operator |
+| `confluent-manager-for-apache-flink` | `https://packages.confluent.io/helm` | CMF operator |
 
 ---
 
@@ -531,7 +537,7 @@ The custom SCC (`openshift-prereqs/<env>/manifests/confluent-scc.yaml`) provides
 - Allows volumes: configMap, emptyDir, PVC, projected, secret, downwardAPI
 
 Service account bindings (`openshift-prereqs/<env>/manifests/scc-bindings.yaml`) map:
-- `confluent-operator`, `flink-kubernetes-operator` in `confluent-<env>` -> `confluent-scc`
+- `confluent-operator`, `flink-operator`, `confluent-manager-for-apache-flink`, `flink`, `default` in `confluent-<env>` -> `confluent-scc`
 - `cert-manager`, `cert-manager-webhook`, `cert-manager-cainjector` in `cert-manager` -> `confluent-scc`
 
 > **Break-glass / quick PoC only** — The imperative commands below bind the built-in `anyuid` SCC, which is broader than the custom `confluent-scc`. Use the declarative manifests above for production deployments.
@@ -675,3 +681,7 @@ This repository supports a phased deployment strategy:
 | [EXISTING-ARGOCD.md](docs/EXISTING-ARGOCD.md) | Deploy into an existing OpenShift GitOps / ArgoCD instance |
 | [INTERNAL-REGISTRY.md](docs/INTERNAL-REGISTRY.md) | Use internal Helm and container registries (air-gapped, JFrog, Nexus) |
 | [CHEATSHEET.md](docs/CHEATSHEET.md) | oc and helm command reference |
+| [STORAGE.md](docs/STORAGE.md) | Storage architecture: RWO vs RWX, reclaim policies, per-component sizing |
+| [SECURITY.md](docs/SECURITY.md) | Security architecture: CMF auth, RBAC/MDS, Flink UI access |
+| [TLS.md](docs/TLS.md) | TLS architecture: certificates, SASL_SSL OAuth, cert-manager lifecycle |
+| [flink-cluster-modes.md](docs/flink-cluster-modes.md) | Flink session cluster vs application cluster |
