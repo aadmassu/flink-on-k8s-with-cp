@@ -199,6 +199,38 @@ All environments currently patch to **RWO** for single-replica dev/PoC:
 
 > **WaitForFirstConsumer:** PVC stays `Pending` until a pod actually mounts it. This ensures the EBS volume is created in the same availability zone as the pod's node.
 
+### Reclaim Policy: Retain vs Delete
+
+The default `gp3` StorageClass on ROSA uses `reclaimPolicy: Delete`. This means **if a PVC is deleted — intentionally or accidentally — the underlying EBS volume and all its data are permanently destroyed with no recovery path.** For Kafka and KRaft controllers, this would result in complete loss of message logs, consumer offsets, and quorum state.
+
+> **Production requirement:** Create a dedicated StorageClass with `reclaimPolicy: Retain` for Kafka and KRaft controller volumes. This ensures the EBS volume is preserved even if the PVC is removed, giving you the ability to recover data.
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-retain
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+```
+
+Then reference `gp3-retain` in the Kafka and KRaft controller CRs:
+
+```yaml
+spec:
+  dataVolumeCapacity: 1Ti       # Kafka
+  storageClass:
+    name: gp3-retain
+```
+
+| StorageClass | Reclaim Policy | Risk | Use For |
+|---|---|---|---|
+| **gp3** (default) | Delete | Data lost on PVC deletion | Flink checkpoints, ControlCenter (replaceable data) |
+| **gp3-retain** | Retain | Volume preserved on PVC deletion | Kafka brokers, KRaft controllers (critical data) |
+
 ---
 
 ## OpenShift SCC Volume Constraints
