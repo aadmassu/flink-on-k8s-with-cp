@@ -23,3 +23,4 @@ Supplementary documentation, decision records, and planning artifacts for the Fl
 | [`EXISTING-ARGOCD.md`](EXISTING-ARGOCD.md) | Deploying into an existing ArgoCD installation |
 | [`CHEATSHEET.md`](CHEATSHEET.md) | Diagnostic and troubleshooting commands |
 | [`flink-cluster-modes.md`](flink-cluster-modes.md) | Flink session vs application cluster architecture |
+| [`HELM-VALUES.md`](HELM-VALUES.md) | Helm values reference for CFK and Flink operators |

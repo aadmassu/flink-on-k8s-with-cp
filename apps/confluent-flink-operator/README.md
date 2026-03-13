@@ -34,53 +34,97 @@ apps/confluent-flink-operator/
 
 ---
 
-## Base Values (Per-Environment `values.yaml`)
+## Values Reference
 
-Each environment directory (`dev/`, `qa/`, `stg/`, `prd/`) contains a `values.yaml` that overrides the chart defaults. The tables below document every field present in these files.
+Each per-environment `values.yaml` configures the Flink Kubernetes Operator Helm chart. The sections below document every field and its implications.
 
-### `dev/values.yaml`
-
-| Key | Value | Description |
-|-----|-------|-------------|
-| `watchNamespaces[0]` | `confluent-dev` | Restricts the operator to only watch for Flink custom resources in the `confluent-dev` namespace, providing environment isolation. |
-| `metrics.prometheus.enabled` | `true` | Enables the Prometheus metrics endpoint on the operator pod, allowing scraping of operator health and Flink job metrics. |
-| `resources.requests.cpu` | `100m` | Minimum CPU reservation for the operator pod. The scheduler uses this to place the pod on a node with sufficient capacity. |
-| `resources.requests.memory` | `256Mi` | Minimum memory reservation for the operator pod. |
-| `resources.limits.cpu` | `500m` | Maximum CPU the operator pod is allowed to consume. The container will be throttled if it exceeds this. |
-| `resources.limits.memory` | `512Mi` | Maximum memory the operator pod is allowed to consume. The container will be OOM-killed if it exceeds this. |
-
-### `qa/values.yaml`
+### Image Configuration
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `watchNamespaces[0]` | `confluent-qa` | Restricts the operator to only watch the `confluent-qa` namespace. |
-| `metrics.prometheus.enabled` | `true` | Enables the Prometheus metrics endpoint. |
-| `resources.requests.cpu` | `200m` | Minimum CPU reservation (higher than dev to handle QA test workloads). |
-| `resources.requests.memory` | `256Mi` | Minimum memory reservation. |
-| `resources.limits.cpu` | `500m` | Maximum CPU the operator pod may consume. |
-| `resources.limits.memory` | `512Mi` | Maximum memory the operator pod may consume. |
+| `imagePullSecretRef` | `null` | Disables image pull secrets. Set to a Secret name if pulling from a private registry that requires authentication. |
+| `image.registry` | `docker.io` | Container registry for the operator image. Change to an internal registry for air-gapped deployments. |
+| `image.repository` | `confluentinc/confluent-operator-flink` | Image repository path. Combined with `image.registry` to form the full image reference. |
 
-### `stg/values.yaml`
+### Operator Deployment
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `watchNamespaces[0]` | `confluent-stg` | Restricts the operator to only watch the `confluent-stg` namespace. |
-| `metrics.prometheus.enabled` | `true` | Enables the Prometheus metrics endpoint. |
-| `resources.requests.cpu` | `200m` | Minimum CPU reservation. |
-| `resources.requests.memory` | `256Mi` | Minimum memory reservation. |
-| `resources.limits.cpu` | `1` | Maximum CPU (1 full core -- higher than lower environments to support pre-production load). |
-| `resources.limits.memory` | `1Gi` | Maximum memory (1 GiB -- doubled from lower environments). |
+| `replicas` | `1` (dev) / `2` (qa, stg, prd) | Number of operator pod replicas. Multiple replicas enable leader-elected HA -- only one replica actively reconciles while the other stands by. |
+| `watchNamespaces` | `[confluent-<env>]` | List of namespaces the operator watches for Flink custom resources. Provides environment isolation. |
 
-### `prd/values.yaml`
+> **Implications:**
+> - **`replicas: 2`** -- In qa/stg/prd, two replicas run with leader election. If the active replica fails, the standby takes over within seconds. Dev uses a single replica to conserve resources.
+> - **`watchNamespaces`** -- Each environment's operator is strictly isolated. The dev operator cannot see or modify resources in `confluent-qa`.
+
+### Scheduling
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `watchNamespaces[0]` | `confluent-prd` | Restricts the operator to only watch the `confluent-prd` namespace. |
-| `metrics.prometheus.enabled` | `true` | Enables the Prometheus metrics endpoint. |
-| `resources.requests.cpu` | `200m` | Minimum CPU reservation. |
-| `resources.requests.memory` | `256Mi` | Minimum memory reservation. |
-| `resources.limits.cpu` | `1` | Maximum CPU (1 full core -- matches staging for production-grade capacity). |
-| `resources.limits.memory` | `1Gi` | Maximum memory (1 GiB -- matches staging). |
+| `affinity` | `{}` | Pod affinity/anti-affinity rules. Empty means no scheduling constraints. |
+| `tolerations` | `[]` | Pod tolerations for node taints. Empty means the operator pods will not schedule on tainted nodes. |
+
+### Pod Security
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `podSecurityContext.enabled` | `false` | Disables the chart's built-in pod security context settings. On OpenShift, the SCC admission controller injects `runAsUser`, `fsGroup`, and other security context fields automatically. |
+
+### Service Account
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `serviceAccount.create` | `true` | The Helm chart creates the ServiceAccount during installation. |
+| `serviceAccount.name` | `flink-kubernetes-operator` | Name of the ServiceAccount used by the operator pods. Must match SCC bindings. |
+
+### Metrics
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `metrics.prometheus.enabled` | `true` | Enables the Prometheus metrics endpoint on the operator pod (port 9999). |
+
+### Logging
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `logging.level` | `INFO` | Operator log verbosity. Set to `DEBUG` for troubleshooting. |
+
+### Webhook
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `webhook.create` | `true` | Creates a ValidatingWebhookConfiguration for Flink CRDs. TLS certificates are provisioned automatically by cert-manager. |
+
+### Pod Metadata
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `podAnnotations` | Prometheus scrape | `prometheus.io/scrape: "true"` and `prometheus.io/port: "9999"`. Enables automatic Prometheus metrics collection. |
+| `podLabels` | `{}` | Additional labels for operator pods. |
+
+### Default Flink Configuration
+
+The `defaultConfiguration` block injects base settings into all Flink workloads managed by the operator. Individual CRs can override these.
+
+```yaml
+defaultConfiguration:
+  flink-conf.yaml: |
+    kubernetes.operator.metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+    kubernetes.operator.metrics.reporter.prom.port: "9999"
+```
+
+This enables Prometheus metrics collection for Flink jobs by default, matching the operator-level metrics configuration.
+
+### Resources
+
+| Key | dev | qa | stg | prd |
+|-----|-----|----|-----|-----|
+| `resources.requests.cpu` | `100m` | `200m` | `200m` | `200m` |
+| `resources.requests.memory` | `256Mi` | `256Mi` | `512Mi` | `512Mi` |
+| `resources.limits.cpu` | `500m` | `500m` | `1` | `1` |
+| `resources.limits.memory` | `512Mi` | `512Mi` | `1Gi` | `1Gi` |
+
+Lower environments use minimal resources to reduce cost. Staging and production receive higher limits and a 512Mi memory request (50% of the 1Gi limit) to handle larger Flink cluster reconciliation and avoid OOM under sustained load.
 
 ---
 
@@ -90,12 +134,12 @@ The following table highlights what varies across the four environments. Fields 
 
 | Key | dev | qa | stg | prd |
 |-----|-----|----|-----|-----|
+| `replicas` | `1` | `2` | `2` | `2` |
 | `watchNamespaces[0]` | `confluent-dev` | `confluent-qa` | `confluent-stg` | `confluent-prd` |
 | `resources.requests.cpu` | `100m` | `200m` | `200m` | `200m` |
-| `resources.requests.memory` | `256Mi` | `256Mi` | `256Mi` | `256Mi` |
+| `resources.requests.memory` | `256Mi` | `256Mi` | `512Mi` | `512Mi` |
 | `resources.limits.cpu` | `500m` | `500m` | `1` | `1` |
 | `resources.limits.memory` | `512Mi` | `512Mi` | `1Gi` | `1Gi` |
-| `metrics.prometheus.enabled` | `true` | `true` | `true` | `true` |
 
 **Pattern:** Resource requests and limits increase as you move from dev toward production. Dev has the lightest footprint (`100m` CPU request, `500m` CPU limit, `512Mi` memory limit), while stg and prd share identical, higher allocations (`200m` CPU request, `1` CPU limit, `1Gi` memory limit).
 

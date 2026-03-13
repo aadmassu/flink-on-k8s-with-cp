@@ -30,23 +30,156 @@ apps/confluent-operator/
 
 ---
 
-## Base Values (`<env>/values.yaml`)
+## Values Reference
 
-Each per-environment `values.yaml` configures the CFK operator Helm chart. The table below documents every field present in these files.
+Each per-environment `values.yaml` configures the CFK operator Helm chart. The sections below document every field and its implications.
+
+### Licensing
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `namespaced` | `true` | Restricts the operator to watch only its own namespace instead of the entire cluster. Each environment gets its own isolated operator instance deployed into `confluent-<env>`. |
-| `kRaftEnabled` | `true` | Enables KRaft consensus mode for Kafka clusters managed by this operator. Eliminates the dependency on ZooKeeper, reducing operational complexity. |
-| `resources.requests.cpu` | `100m` (dev) / `200m` (qa, stg, prd) | CPU resource request for the operator pod. The scheduler uses this to place the pod on a node with sufficient capacity. |
-| `resources.requests.memory` | `256Mi` | Memory resource request for the operator pod. Identical across all environments. |
-| `resources.limits.cpu` | `500m` (dev, qa) / `1` (stg, prd) | Maximum CPU the operator pod may consume. Higher environments use a full core to handle larger reconciliation workloads. |
-| `resources.limits.memory` | `512Mi` (dev, qa) / `1Gi` (stg, prd) | Maximum memory the operator pod may consume. Higher environments double the limit to accommodate more concurrent CRD reconciliation. |
+| `licenseSecretRef` | `confluent-license` | References a Kubernetes Secret containing the Confluent license key. The Secret must exist in the operator's namespace before deployment. Typically provisioned via an ExternalSecrets operator or manually created. |
 
-### Key Design Choices
+> **Implication:** Without a valid license Secret, the operator starts in evaluation mode with a 30-day trial. After expiration, CFK stops reconciling CRDs. Ensure the Secret is provisioned before or alongside the operator deployment.
 
-- **Namespaced mode** (`namespaced: true`) -- The operator only manages Confluent resources within its own namespace (`confluent-<env>`). This provides strong environment isolation: each environment gets its own independent operator instance and there is no cross-environment blast radius.
-- **KRaft mode** (`kRaftEnabled: true`) -- Uses the KRaft consensus protocol built into Kafka itself, removing the need for a separate ZooKeeper ensemble and simplifying the overall architecture.
+### Image Configuration
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `imagePullSecretRef` | `null` | Disables image pull secrets. Set to a Secret name if pulling from a private registry that requires authentication. |
+| `image.registry` | `docker.io` | Container registry for the operator image. Change to an internal registry (e.g., `registry.example.com`) when using an air-gapped or mirrored setup. |
+| `image.repository` | `confluentinc/confluent-operator` | Image repository path. Combined with `image.registry` to form the full image reference. |
+
+> **Implication:** When deploying to an environment with a private registry, update `image.registry` to point to the internal mirror. If the registry requires authentication, set `imagePullSecretRef` to the name of a pull secret containing the registry credentials.
+
+### Operator Deployment
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `replicas` | `1` (dev) / `2` (qa, stg, prd) | Number of operator pod replicas. Multiple replicas enable leader-elected high availability -- only one replica actively reconciles while the other stands by. |
+| `namespaced` | `true` | Restricts the operator to watch only the namespaces listed in `namespaceList` instead of the entire cluster. Provides environment isolation. |
+| `namespaceList` | `[confluent-<env>]` | List of namespaces the operator watches for Confluent CRDs. With `namespaced: true`, the operator ignores resources in all other namespaces. |
+| `kRaftEnabled` | `true` | Enables KRaft consensus mode for Kafka clusters managed by this operator. Eliminates the dependency on ZooKeeper. |
+| `enableCMFDay2Ops` | `true` | Enables Confluent Manager for Apache Flink (CMF) Day-2 operations support. Allows CMF to manage Flink application lifecycle through CFK. |
+| `fipsmode` | `true` | Enables FIPS 140-2 compliant cryptography. The operator uses only FIPS-validated cryptographic modules for all TLS and encryption operations. |
+
+> **Implications:**
+> - **`replicas: 2`** -- In qa/stg/prd, two replicas run with leader election. If the active replica fails, the standby takes over within seconds. Dev uses a single replica to conserve resources.
+> - **`namespaced: true` + `namespaceList`** -- Each environment's operator is strictly isolated. The dev operator cannot see or modify resources in `confluent-qa`. This prevents accidental cross-environment changes and limits blast radius.
+> - **`fipsmode: true`** -- Required for environments subject to federal compliance (FedRAMP, FISMA, CMMC). Adds a small performance overhead due to FIPS-validated crypto implementations. All components managed by the operator (Kafka, SR, etc.) must also be configured for FIPS if end-to-end compliance is required.
+
+### Scheduling
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `affinity` | `{}` | Pod affinity/anti-affinity rules. Empty means no scheduling constraints beyond what Kubernetes assigns. |
+| `tolerations` | `[]` | Pod tolerations for node taints. Empty means the operator pods will not schedule on tainted nodes. |
+
+> **Implication:** These are left empty as placeholders. In production, consider adding:
+> - **Anti-affinity** to spread operator replicas across nodes/zones for HA
+> - **Tolerations** if Confluent workloads run on dedicated tainted nodes
+>
+> Example anti-affinity (add to stg/prd when needed):
+> ```yaml
+> affinity:
+>   podAntiAffinity:
+>     preferredDuringSchedulingIgnoredDuringExecution:
+>       - weight: 100
+>         podAffinityTerm:
+>           labelSelector:
+>             matchExpressions:
+>               - key: app
+>                 operator: In
+>                 values:
+>                   - confluent-operator
+>           topologyKey: kubernetes.io/hostname
+> ```
+
+### Pod Security
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `podSecurity.enabled` | `false` | Disables the chart's built-in pod security context settings. On OpenShift, the SCC admission controller injects `runAsUser`, `fsGroup`, and other security context fields automatically. |
+
+> **Implication:** This replaces the `openshift-overlay.yaml` approach of nulling individual fields. With `podSecurity.enabled: false`, the chart skips all security context configuration entirely, letting OpenShift's SCC handle it. The `openshift-overlay.yaml` file is retained for backward compatibility but is no longer strictly necessary when this value is set.
+
+### Service Account
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `serviceAccount.create` | `true` | The Helm chart creates the ServiceAccount during installation. |
+| `serviceAccount.name` | `confluent` | Name of the ServiceAccount used by the operator pods. |
+
+> **Implication:** The SA name `confluent` (instead of the default `confluent-operator`) must match the SCC bindings. If using imperative SCC grants, update them:
+> ```bash
+> oc adm policy add-scc-to-user confluent-scc -z confluent -n confluent-<env>
+> ```
+> Any existing bindings for `confluent-operator` should be removed or updated.
+
+### RBAC
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `rbac` | `false` | Disables Helm-managed RBAC resources (ClusterRole, ClusterRoleBinding, Role, RoleBinding). The customer provisions these out-of-band through their own RBAC pipeline. |
+| `clusterRole.openshift` | `true` | When RBAC is managed externally, this flag tells the operator to expect OpenShift-specific permissions (SCC access, Route management). |
+
+> **Implications:**
+> - **`rbac: false`** -- The Helm chart will NOT create any RBAC resources. The cluster administrator must pre-provision the required ClusterRoles and bindings before deploying the operator. Without them, the operator pod starts but cannot reconcile any Confluent CRDs (it will log permission errors).
+> - **Required permissions** (must be granted externally):
+>   - CRUD on all Confluent CRDs (`kafkas.platform.confluent.io`, `kraftcontrollers.platform.confluent.io`, etc.)
+>   - CRUD on Pods, Services, ConfigMaps, Secrets, StatefulSets in the target namespace
+>   - Watch/List on Namespaces (for namespaced mode)
+>   - OpenShift: Use SCC (`confluent-scc`), manage Routes
+> - **`clusterRole.openshift: true`** -- Ensures the operator attempts OpenShift-specific operations (SCC validation, Route creation). Without this on OpenShift, the operator may fail to create Routes for external access.
+
+### Admission Webhooks
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `webhooks.enabled` | `false` | Disables CFK's admission webhooks (ValidatingWebhookConfiguration). |
+| `webhooks.port` | `8443` | Port the webhook server listens on (unused when disabled). |
+| `webhooks.tls.secretRef` | `""` | TLS Secret for webhook server (unused when disabled). |
+| `webhooks.tls.directoryPathInContainer` | `""` | Path to TLS certs in the container (unused when disabled). |
+
+> **Implications:**
+> - **`webhooks.enabled: false`** -- CFK will NOT validate Confluent CRDs at admission time. Invalid manifests (e.g., a Kafka CR with conflicting settings) will be accepted by the API server and only fail during reconciliation. This shifts error detection from apply-time to reconciliation-time.
+> - **Why disable?** Webhook TLS certificate management adds operational complexity. The customer handles validation through CI/CD pipeline checks and GitOps review processes instead.
+> - **Risk:** Misconfigurations reach the cluster unchecked. Ensure the CI/CD pipeline validates Confluent CRDs against the CFK schema before merging.
+
+### Pod Metadata
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `pod.annotations` | Prometheus scrape | Enables Prometheus metrics scraping: `prometheus.io/scrape: "true"` and `prometheus.io/port: "7778"`. Add additional annotations as needed. |
+| `pod.labels` | `{}` | Additional labels for operator pods. Empty means only the chart's default labels are applied. |
+
+> **Implication:** Prometheus scrape annotations are set explicitly so that metrics collection works out of the box. The CFK operator exposes metrics on port `7778`.
+
+### Resources
+
+| Key | dev | qa | stg | prd |
+|-----|-----|----|-----|-----|
+| `resources.requests.cpu` | `100m` | `200m` | `200m` | `200m` |
+| `resources.requests.memory` | `256Mi` | `256Mi` | `512Mi` | `512Mi` |
+| `resources.limits.cpu` | `500m` | `500m` | `1` | `1` |
+| `resources.limits.memory` | `512Mi` | `512Mi` | `1Gi` | `1Gi` |
+
+Lower environments use minimal resources to reduce cost. Staging and production receive higher limits and a 512Mi memory request (50% of the 1Gi limit) to handle larger cluster sizes and avoid OOM under sustained reconciliation load.
+
+---
+
+## Per-Environment Differences
+
+| Key | dev | qa | stg | prd |
+|-----|-----|----|-----|-----|
+| `replicas` | `1` | `2` | `2` | `2` |
+| `namespaceList` | `[confluent-dev]` | `[confluent-qa]` | `[confluent-stg]` | `[confluent-prd]` |
+| `resources.requests.cpu` | `100m` | `200m` | `200m` | `200m` |
+| `resources.requests.memory` | `256Mi` | `256Mi` | `512Mi` | `512Mi` |
+| `resources.limits.cpu` | `500m` | `500m` | `1` | `1` |
+| `resources.limits.memory` | `512Mi` | `512Mi` | `1Gi` | `1Gi` |
+
+All other values are identical across environments.
 
 ---
 
@@ -54,9 +187,7 @@ Each per-environment `values.yaml` configures the CFK operator Helm chart. The t
 
 ### Purpose
 
-On OpenShift, pods run under [Security Context Constraints (SCCs)](https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html). The default `restricted` SCC assigns UIDs and `fsGroup` values dynamically from the namespace's allocated range. When a Helm chart hard-codes `runAsUser` or `fsGroup` to a specific numeric value, those values conflict with the SCC and the pod fails to schedule.
-
-The `openshift-overlay.yaml` file **nulls out** the security context fields so that OpenShift's SCC admission controller can inject the correct values automatically.
+The `openshift-overlay.yaml` nulls out `fsGroup` and `runAsUser` so OpenShift's SCC can inject the correct values. With `podSecurity.enabled: false` now set in all values files, this overlay is **redundant** but retained for backward compatibility.
 
 ### How It Is Applied
 
@@ -73,33 +204,8 @@ helm:
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `podSecurity.securityContext.fsGroup` | `null` | Removes any hard-coded `fsGroup` from the operator pod spec. Allows OpenShift's SCC to inject the namespace-allocated supplemental group, ensuring the pod can write to mounted volumes. |
-| `podSecurity.securityContext.runAsUser` | `null` | Removes any hard-coded `runAsUser` from the operator pod spec. Allows OpenShift's SCC to assign a UID from the namespace's allocated UID range, satisfying the `restricted` SCC policy. |
-
----
-
-## Per-Environment Differences
-
-The table below summarizes every value that varies across the four environments. Fields not listed here are **identical** in all environments.
-
-| Key | dev | qa | stg | prd |
-|-----|-----|----|-----|-----|
-| `resources.requests.cpu` | `100m` | `200m` | `200m` | `200m` |
-| `resources.requests.memory` | `256Mi` | `256Mi` | `256Mi` | `256Mi` |
-| `resources.limits.cpu` | `500m` | `500m` | `1` | `1` |
-| `resources.limits.memory` | `512Mi` | `512Mi` | `1Gi` | `1Gi` |
-
-> **Note:** `namespaced` and `kRaftEnabled` are set to `true` in every environment and are not expected to vary.
-
-### Resource Scaling Rationale
-
-| Tier | Environments | CPU Request | CPU Limit | Memory Request | Memory Limit |
-|------|-------------|-------------|-----------|----------------|--------------|
-| Lower | dev | 100m | 500m | 256Mi | 512Mi |
-| Mid | qa | 200m | 500m | 256Mi | 512Mi |
-| Upper | stg, prd | 200m | 1 | 256Mi | 1Gi |
-
-Lower environments use minimal resources to reduce cost. Staging and production mirror each other and receive higher limits to handle larger cluster sizes and faster reconciliation loops.
+| `podSecurity.securityContext.fsGroup` | `null` | Removes hard-coded `fsGroup`. Redundant when `podSecurity.enabled: false`. |
+| `podSecurity.securityContext.runAsUser` | `null` | Removes hard-coded `runAsUser`. Redundant when `podSecurity.enabled: false`. |
 
 ---
 
@@ -147,6 +253,19 @@ The namespace is created automatically by ArgoCD via the `CreateNamespace=true` 
 
 ---
 
+## Prerequisites
+
+Before deploying the operator, ensure:
+
+1. **License Secret** -- A Secret named `confluent-license` containing the Confluent license key exists in the target namespace
+2. **RBAC** -- Since `rbac: false`, the required ClusterRoles and bindings must be pre-provisioned by the cluster administrator
+3. **SCC bindings** -- The ServiceAccount `confluent` must be bound to the `confluent-scc` SCC:
+   ```bash
+   oc adm policy add-scc-to-user confluent-scc -z confluent -n confluent-<env>
+   ```
+
+---
+
 ## Dependencies
 
 | Direction | Component | Relationship |
@@ -173,5 +292,5 @@ oc wait --for=jsonpath='{.status.health.status}'=Healthy \
 # Check the operator pod is running
 oc get pods -n confluent-dev -l app=confluent-operator
 
-# Expected: 1 pod in Running state
+# Expected: 1 pod in Running state (dev) or 2 pods (qa/stg/prd)
 ```

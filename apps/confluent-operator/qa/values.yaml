@@ -1,14 +1,58 @@
 ---
 # Confluent for Kubernetes (CFK) operator values - qa
 
+## Licensing
+licenseSecretRef: confluent-license
+
+## Image configuration
+imagePullSecretRef: null
+image:
+  registry: docker.io
+  repository: confluentinc/confluent-operator
+
+## Operator deployment
+replicas: 2
 namespaced: true
+namespaceList:
+  - confluent-qa
 kRaftEnabled: true
 enableCMFDay2Ops: true
+fipsmode: true
 
+## Scheduling
+affinity: {}
+tolerations: []
+
+## Pod security — disabled so OpenShift SCC manages security contexts
+podSecurity:
+  enabled: false
+
+## Service account
 serviceAccount:
   create: true
-  name: confluent-operator
+  name: confluent
 
+## RBAC — managed out-of-band (customer provisions ClusterRoles externally)
+rbac: false
+clusterRole:
+  openshift: true
+
+## Admission webhooks — disabled (validation handled by CI/CD pipeline)
+webhooks:
+  enabled: false
+  port: 8443
+  tls:
+    secretRef: ""
+    directoryPathInContainer: ""
+
+## Pod metadata
+pod:
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "7778"
+  labels: {}
+
+## Resources
 resources:
   requests:
     cpu: 200m

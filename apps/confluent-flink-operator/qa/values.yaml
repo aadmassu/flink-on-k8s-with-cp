@@ -1,13 +1,50 @@
 ---
 # Flink Kubernetes Operator values - qa
 
+## Image configuration
+imagePullSecretRef: null
+image:
+  registry: docker.io
+  repository: confluentinc/confluent-operator-flink
+
+## Operator deployment
+replicas: 2
 watchNamespaces:
   - confluent-qa
 
+## Scheduling
+affinity: {}
+tolerations: []
+
+## Pod security — disabled so OpenShift SCC manages security contexts
+podSecurityContext:
+  enabled: false
+
+## Service account
+serviceAccount:
+  create: true
+  name: flink-kubernetes-operator
+
+## Metrics
 metrics:
   prometheus:
     enabled: true
 
+## Logging
+logging:
+  level: INFO
+
+## Webhook — cert-manager provisions TLS certificates automatically
+webhook:
+  create: true
+
+## Pod metadata
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9999"
+podLabels: {}
+
+## Resources
 resources:
   requests:
     cpu: 200m
@@ -15,3 +52,10 @@ resources:
   limits:
     cpu: 500m
     memory: 512Mi
+
+## Default Flink configuration applied to all FlinkDeployment/FlinkSessionJob CRs
+## unless overridden at the CR level
+defaultConfiguration:
+  flink-conf.yaml: |
+    kubernetes.operator.metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+    kubernetes.operator.metrics.reporter.prom.port: "9999"
