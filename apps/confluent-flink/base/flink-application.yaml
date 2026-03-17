@@ -1,0 +1,106 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: flink-app
+spec:
+  flinkEnvironment: flink-env1
+  image: confluentinc/cp-flink:2.1.1-cp1-java21
+  flinkVersion: v1_19
+  serviceAccount: flink
+
+  flinkConfiguration:
+    ## Java 17+ module access
+    "env.java.opts.all": >
+      --add-opens java.base/java.util=ALL-UNNAMED
+      --add-opens java.base/java.lang=ALL-UNNAMED
+      --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+      --add-opens java.base/java.io=ALL-UNNAMED
+      --add-opens java.base/java.net=ALL-UNNAMED
+      --add-opens java.base/java.nio=ALL-UNNAMED
+      --add-opens java.base/java.time=ALL-UNNAMED
+      --add-opens java.base/java.util.concurrent=ALL-UNNAMED
+      --add-opens java.base/java.util.stream=ALL-UNNAMED
+
+    ## Task slots and parallelism
+    "taskmanager.numberOfTaskSlots": "1"
+
+    ## State backend — RocksDB for production workloads
+    "state.backend.type": "rocksdb"
+
+    ## Checkpointing
+    "execution.checkpointing.interval": "10s"
+    "execution.checkpointing.dir": "file:///mnt/flink/checkpoints"
+    "execution.checkpointing.savepoint-dir": "file:///mnt/flink/savepoints"
+
+    ## Periodic savepoints
+    "kubernetes.operator.periodic.savepoint.interval": "5m"
+
+    ## Metrics — Prometheus
+    "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+    "metrics.reporter.prom.port": "9250"
+    "metrics.job.status.enable": "STATE"
+
+    ## Profiling and classloading
+    "rest.profiling.enabled": "true"
+    "classloader.resolve-order": "parent-first"
+
+  jobManager:
+    resource:
+      memory: 1024m
+      cpu: 1
+    podTemplate:
+      metadata:
+        annotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "9250"
+      spec:
+        initContainers:
+          - name: init-fs
+            image: busybox
+            command:
+              - sh
+              - -c
+              - "mkdir -p /mnt/flink/savepoints /mnt/flink/checkpoints /mnt/flink/high-availability && chmod -R 777 /mnt/flink"
+            volumeMounts:
+              - mountPath: /mnt/flink
+                name: flink-storage
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /mnt/flink
+                name: flink-storage
+        volumes:
+          - name: flink-storage
+            persistentVolumeClaim:
+              claimName: flink-pvc
+
+  taskManager:
+    resource:
+      memory: 1024m
+      cpu: 1
+    podTemplate:
+      metadata:
+        annotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "9250"
+      spec:
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /mnt/flink
+                name: flink-storage
+        volumes:
+          - name: flink-storage
+            persistentVolumeClaim:
+              claimName: flink-pvc
+
+  job:
+    jarURI: local:///opt/flink/lib/app.jar
+    state: running
+    parallelism: 1
+    upgradeMode: savepoint
+
+  cmfRestClassRef:
+    name: default
+    namespace: confluent

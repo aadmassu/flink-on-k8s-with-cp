@@ -7,4 +7,5 @@ resources:
   - flink-environment.yaml
   - flink-pvc.yaml
   - flink-session-cluster.yaml
-  # kafka-catalog.yaml  (commented — requires cmf.confluent.io CRD)
+  # - flink-application.yaml  (template — customize per job before enabling)
+  # - kafka-catalog.yaml      (requires cmf.confluent.io CRD)
