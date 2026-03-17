@@ -1,61 +1,259 @@
 ---
 # Flink Kubernetes Operator values - stg
 
-## Image configuration
-imagePullSecretRef: null
-image:
-  registry: docker.io
-  repository: confluentinc/confluent-operator-flink
-
-## Operator deployment
-replicas: 2
+# Kubernetes namespaces to watch for FlinkDeployment changes; empty means all namespaces
 watchNamespaces:
   - confluent-stg
 
-## Scheduling
-affinity: {}
-tolerations: []
+# Container image repository for the Flink operator
+image:
+  # Docker image repository path
+  repository: confluentinc/cp-flink-kubernetes-operator
+  # Image pull policy: IfNotPresent, Always, or Never
+  pullPolicy: IfNotPresent
+  # Image tag; overridden by digest if set
+  tag: 1.13.0-cp2
+  # Image digest takes precedence over tag if set
+  digest: ""
 
-## Pod security — disabled so OpenShift SCC manages security contexts
+# Secrets for pulling images from private registries
+imagePullSecrets: []
+
+# Number of operator replicas; must be 1 unless leader election is configured
+replicas: 2
+
+# Deployment strategy; must be Recreate unless leader election is configured
+strategy:
+  # RollingUpdate allows zero-downtime upgrades when leader election is enabled
+  type: RollingUpdate
+
+# RBAC roles and bindings for the operator and Flink jobs
+rbac:
+  # Whether to create RBAC resources
+  create: true
+  # ClusterRole for listing nodes; only needed for NodePort type (not used on OpenShift)
+  nodesRule:
+    create: false
+  # Role for the operator to manage Flink resources
+  operatorRole:
+    create: true
+    name: "flink-operator"
+  # RoleBinding for the operator role
+  operatorRoleBinding:
+    create: true
+    name: "flink-operator-role-binding"
+  # Role for Flink job pods to access Kubernetes resources
+  jobRole:
+    create: true
+    name: "flink"
+  # RoleBinding for the Flink job role
+  jobRoleBinding:
+    create: true
+    name: "flink-role-binding"
+
+# Operator pod scheduling, resources, and metadata
+operatorPod:
+  # PriorityClass for the operator pod
+  priorityClassName: null
+  # Annotations added to the operator pod (e.g. for Prometheus scraping)
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9999"
+  # Labels added to the operator pod
+  labels: {}
+  # Environment variables for the operator container
+  env: []
+  # DNS policy for the operator pod
+  dnsPolicy: ""
+  # Custom DNS configuration for the operator pod
+  dnsConfig: {}
+  # Environment variables from ConfigMaps or Secrets
+  envFrom: []
+  # Node selector for scheduling the operator pod to specific nodes
+  nodeSelector: {}
+  # Affinity rules — spread operator pods across nodes for HA
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - flink-kubernetes-operator
+            topologyKey: "kubernetes.io/hostname"
+  # Tolerations for scheduling on tainted nodes
+  tolerations: []
+  # Topology spread constraints for distributing pods across zones/nodes
+  topologySpreadConstraints: []
+  # CPU and memory resources for the operator container
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+  # Webhook sidecar container configuration
+  webhook:
+    # CPU and memory resources for the webhook container
+    resources:
+      requests:
+        cpu: 200m
+        memory: "0.5Gi"
+      limits:
+        cpu: 500m
+        memory: "0.5Gi"
+    container:
+      # Environment variables for the webhook container
+      env: []
+  # Init containers to run before the operator container starts
+  initContainers: []
+  # Additional sidecar containers alongside the operator
+  sidecarContainers: []
+
+# Service account used by the operator deployment
+operatorServiceAccount:
+  # Whether to create the service account
+  create: true
+  # Annotations on the service account
+  annotations: {}
+  # Name of the service account
+  name: "flink-operator"
+
+# Service account used by Flink job pods (JobManager/TaskManager)
+jobServiceAccount:
+  # Whether to create the service account
+  create: true
+  # Annotations on the service account; keep prevents Helm from deleting it
+  annotations:
+    "helm.sh/resource-policy": keep
+  # Name of the service account
+  name: "flink"
+
+# Volume mounts for the operator container
+operatorVolumeMounts:
+  # Whether to create volume mounts
+  create: false
+  # List of volume mount definitions
+  data: []
+
+# Volumes attached to the operator pod — not needed for console-only logging
+operatorVolumes:
+  # Whether to create volumes
+  create: false
+  # List of volume definitions
+  data: []
+
+# Pod-level security context — nullified so OpenShift SCC manages security contexts
 podSecurityContext:
-  enabled: false
+  # Run as specific user ID; null lets OpenShift assign
+  runAsUser: null
+  # Run as specific group ID; null lets OpenShift assign
+  runAsGroup: null
 
-## Service account
-serviceAccount:
-  create: true
-  name: flink-kubernetes-operator
+# Security context for the operator container
+operatorSecurityContext: {}
 
-## Metrics
-metrics:
-  prometheus:
-    enabled: true
+# Security context for the webhook container
+webhookSecurityContext: {}
 
-## Logging
-logging:
-  level: INFO
-
-## Webhook — cert-manager provisions TLS certificates automatically
+# Webhook configuration — cert-manager provisions TLS certificates automatically
 webhook:
+  # Whether to create ValidatingWebhookConfiguration and MutatingWebhookConfiguration
   create: true
+  # validator:
+  #   create: true
+  # mutator:
+  #   create: true
+  # Keystore configuration for webhook TLS
+  keystore:
+    # Use the chart's default auto-generated password
+    useDefaultPassword: true
+    # Reference to a Kubernetes Secret containing a custom keystore password
+    passwordSecretRef: {}
+  # Additional labels on the webhook Service
+  serviceLabels: {}
 
-## Pod metadata
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "9999"
-podLabels: {}
-
-## Resources
-resources:
-  requests:
-    cpu: 200m
-    memory: 512Mi
-  limits:
-    cpu: 1
-    memory: 1Gi
-
-## Default Flink configuration applied to all FlinkDeployment/FlinkSessionJob CRs
-## unless overridden at the CR level
+# Default Flink configuration applied to all FlinkDeployment/FlinkSessionJob CRs
 defaultConfiguration:
-  flink-conf.yaml: |
+  # Whether to create the default configuration ConfigMap
+  create: true
+  # If true, appends overrides to built-in defaults; if false, replaces entirely
+  append: true
+  # Flink configuration overrides (flink-conf.yaml)
+  flink-conf.yaml: |+
+    # Enable leader election so standby replicas can take over
+    kubernetes.operator.leader-election.enabled: true
+    # Lease name must be unique within the namespace
+    kubernetes.operator.leader-election.lease-name: flink-operator-lease
+
+    # Prometheus metrics reporter class
     kubernetes.operator.metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
-    kubernetes.operator.metrics.reporter.prom.port: "9999"
+    # Port for Prometheus metrics endpoint
+    kubernetes.operator.metrics.reporter.prom.port: 9999
+
+    # How often the operator reconciles FlinkDeployment resources
+    kubernetes.operator.reconcile.interval: 15 s
+    # How often the operator checks job progress
+    kubernetes.operator.observer.progress-check.interval: 5 s
+
+    # Enable FlinkStateSnapshot CRD for declarative savepoints/checkpoints
+    kubernetes.operator.snapshot.resource.enabled: true
+  # Log4j configuration for the operator process
+  log4j-operator.properties: |+
+    # Flink Operator Logging Overrides
+    # rootLogger.level = DEBUG
+    # logger.operator.name = org.apache.flink.kubernetes.operator
+    # logger.operator.level = DEBUG
+  # Log4j configuration for Flink job containers (JobManager/TaskManager)
+  log4j-console.properties: |+
+    # Flink Deployment Logging Overrides
+    # rootLogger.level = DEBUG
+
+# Port to expose operator metrics on the container
+metrics:
+  port: 9999
+
+# Override the chart name in resource names
+nameOverride: ""
+# Override the full release name in resource names
+fullnameOverride: ""
+
+# JVM startup options
+jvmArgs:
+  # JVM args for the webhook container
+  webhook: ""
+  # JVM args for the operator container
+  operator: ""
+  # Log4j configuration file path
+  logConfig: "-Dlog4j.configurationFile=/opt/flink/conf/log4j-operator.properties"
+
+# Health probe configuration for the operator container
+operatorHealth:
+  # Port for health probe endpoints
+  port: 8085
+  # Liveness probe checks if the operator process is alive
+  livenessProbe:
+    periodSeconds: 10
+    initialDelaySeconds: 30
+  # Startup probe allows slow-starting operators to initialize
+  startupProbe:
+    failureThreshold: 30
+    periodSeconds: 10
+
+# PostStart lifecycle hook for the operator container
+postStart: {}
+
+# TLS configuration for the operator REST endpoint (not webhook TLS)
+tls:
+  # Whether to create TLS resources for the operator REST endpoint
+  create: false
+  # Name of the Secret containing the TLS certificate
+  secretName: flink-operator-cert
+  # Reference to the Secret containing the keystore password
+  secretKeyRef:
+    name: operator-certificate-password
+    key: password

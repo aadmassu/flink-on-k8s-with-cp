@@ -1,58 +1,70 @@
 ---
 # Confluent for Kubernetes (CFK) operator values - dev
 
-## Licensing
-licenseSecretRef: confluent-license
+# Name of the operator deployment
+name: confluent-operator
 
-## Image configuration
+# Raw license key string (use license.secretRef instead for production)
+licenseKey: ""
+
+# License configuration
+license:
+  # Secret containing license.txt with raw license data
+  secretRef: ""
+  # Directory path in container containing license.txt file
+  directoryPathInContainer: ""
+
+# Auto-generated certificate management (CFK-managed TLS)
+managedCerts:
+  # Whether CFK manages certificate generation via helm values
+  enabled: false
+  # CA certificate pair for auto-generated certificates
+  caCertificate:
+    # Secret containing tls.crt and tls.key for CA pair
+    secretRef: ""
+    # Directory path in container for CA pair files
+    directoryPathInContainer: ""
+  # Old CA certificate pair for CA rotation support
+  oldCaCertificate:
+    # Secret containing old tls.crt and tls.key for rotation
+    secretRef: ""
+    # Directory path in container for old CA pair files
+    directoryPathInContainer: ""
+  # Validity period for auto-generated certificates in days
+  certDurationInDays: 60
+  # Days before expiry to renew certificates
+  renewBeforeInDays: 30
+  # Additional SANs for all auto-generated certificates (e.g. wildcards)
+  sans: ""
+
+# Secret for pulling images from private registries
 imagePullSecretRef: null
-image:
-  registry: docker.io
-  repository: confluentinc/confluent-operator
 
-## Operator deployment
-replicas: 1
+# Container image configuration
+image:
+  # Docker registry URL
+  registry: docker.io
+  # Image repository path
+  repository: confluentinc/confluent-operator
+  # Image pull policy: IfNotPresent, Always, or Never
+  pullPolicy: IfNotPresent
+  # Image tag
+  tag: "0.1351.59"
+
+# PriorityClass for the operator pod
+priorityClassName: ""
+
+# Number of operator replicas; enables leader election if more than one
+replicas: 2
+
+# If true, operator only creates roles/rolebindings for namespaces in namespaceList
 namespaced: true
+
+# Namespaces to watch; only used when namespaced=true
 namespaceList:
   - confluent-dev
-kRaftEnabled: true
-enableCMFDay2Ops: true
-fipsmode: true
 
-## Scheduling
-affinity: {}
-tolerations: []
-
-## Pod security — disabled so OpenShift SCC manages security contexts
-podSecurity:
-  enabled: false
-
-## Service account
-serviceAccount:
-  create: true
-  name: confluent
-
-## RBAC — managed out-of-band (customer provisions ClusterRoles externally)
-rbac: false
-clusterRole:
-  openshift: true
-
-## Admission webhooks — disabled (validation handled by CI/CD pipeline)
-webhooks:
-  enabled: false
-  port: 8443
-  tls:
-    secretRef: ""
-    directoryPathInContainer: ""
-
-## Pod metadata
-pod:
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "7778"
-  labels: {}
-
-## Resources
+# CPU and memory resources for the operator container
 resources:
   requests:
     cpu: 100m
@@ -60,3 +72,120 @@ resources:
   limits:
     cpu: 500m
     memory: 512Mi
+
+# Pod termination grace period in seconds
+terminationGracePeriodSeconds: 30
+
+# Enable debug logging for the operator
+debug: false
+
+# Enable FIPS 140-2 compliant mode
+fipsmode: true
+
+# Number of Day-2 operation worker threads (empty uses default)
+numDay2Worker: ""
+
+# Enable CFK Day-2 integration with CMF (always enabled from 3.0.0)
+enableCMFDay2Ops: true
+
+# Affinity rules — spread operator pods across nodes for HA
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - confluent-operator
+          topologyKey: "kubernetes.io/hostname"
+
+# Tolerations for scheduling on tainted nodes
+tolerations: []
+
+# Pod-level security context — disabled so OpenShift SCC manages security contexts
+podSecurity:
+  # Whether to apply the security context below
+  enabled: false
+  securityContext:
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsNonRoot: true
+
+# Container-level security context (overrides pod-level if enabled)
+containerSecurity:
+  # Whether to apply container security context
+  enabled: false
+  securityContext: {}
+
+# Service account for the operator
+serviceAccount:
+  # Whether to create the service account
+  create: true
+  # Name of the service account (empty uses chart default)
+  name: confluent
+
+# Whether to create RBAC roles/bindings (false = managed out-of-band)
+rbac: false
+
+# Extra ClusterRole configuration
+clusterRole:
+  # Add OpenShift Route API group to the ClusterRole
+  openshift: true
+
+# Confluent telemetry reporting configuration
+telemetry:
+  # Enable telemetry for the operator itself
+  operator:
+    enabled: false
+  # Enable telemetry for managed Confluent components
+  enabled: false
+  # Proxy configuration for telemetry
+  proxy:
+    enabled: false
+    credentialRequired: false
+  # Secret containing telemetry credentials (api.key, api.secret)
+  secretRef: ""
+  # Directory path in container for telemetry.txt
+  directoryPathInContainer: ""
+
+# Enable KRaft ClusterID preservation in PV annotations for disaster recovery
+kRaftEnabled: true
+
+# Admission webhook configuration
+webhooks:
+  # Whether to enable validating/mutating webhooks
+  enabled: false
+  # Port for the webhook server
+  port: 8443
+  # TLS certificate configuration for webhooks
+  tls:
+    # Secret containing TLS cert; SAN must include confluent-operator.<namespace>.svc
+    secretRef: ""
+    # Directory path in container for TLS cert files
+    directoryPathInContainer: ""
+
+# Pod annotations and labels
+pod:
+  # Annotations added to the operator pod (e.g. for Prometheus scraping)
+  annotations:
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "7778"
+    prometheus.io/scrape: "true"
+  # Labels added to the operator pod
+  labels: {}
+
+# Deprecated: use license.secretRef instead
+licenseSecretRef: confluent-license
+
+# Custom volumes and volume mounts for the operator pod
+mountedVolumes:
+  # List of Kubernetes volume definitions
+  volumes: []
+  # List of volume mount definitions
+  volumeMounts: []
+
+# Custom environment variables for the operator container
+customEnvVars: []

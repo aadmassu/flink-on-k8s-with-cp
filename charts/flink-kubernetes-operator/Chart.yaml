@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: 1.13.0-cp2
+description: A Helm chart for the Apache Flink Kubernetes Operator
+icon: https://flink.apache.org/img/logo/png/50/color_50.png
+name: flink-kubernetes-operator
+type: application
+version: 1.130.2
