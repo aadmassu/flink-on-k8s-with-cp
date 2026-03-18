@@ -28,10 +28,22 @@ spec:
     ## State backend — RocksDB for production workloads
     "state.backend.type": "rocksdb"
 
-    ## Checkpointing
+    ## On-prem S3 configuration
+    ## TODO: Get S3 endpoint URL from FCB (e.g. https://s3.fcbint.net)
+    "s3.endpoint": "https://<fcb-s3-endpoint>"
+    ## TODO: Get S3 credentials — access key/secret key or IAM/STS?
+    "s3.access-key": "<from-k8s-secret>"
+    "s3.secret-key": "<from-k8s-secret>"
+    ## Required for most on-prem S3 implementations (MinIO, Dell ECS, NetApp StorageGRID, Ceph RGW)
+    "s3.path-style-access": "true"
+    ## TODO: Is the S3 endpoint HTTPS with a corporate CA? Flink may need the CA in its truststore
+    ## TODO: Which S3 product? (MinIO, Dell ECS, NetApp StorageGRID, Ceph RGW)
+
+    ## Checkpointing — writes state snapshots to S3 for fault tolerance
     "execution.checkpointing.interval": "10s"
-    "execution.checkpointing.dir": "file:///mnt/flink/checkpoints"
-    "execution.checkpointing.savepoint-dir": "file:///mnt/flink/savepoints"
+    ## TODO: Confirm bucket name — one bucket per environment or shared?
+    "state.checkpoints.dir": "s3://flink-state/checkpoints"
+    "state.savepoints.dir": "s3://flink-state/savepoints"
 
     ## Periodic savepoints
     "kubernetes.operator.periodic.savepoint.interval": "5m"
@@ -55,25 +67,12 @@ spec:
           prometheus.io/scrape: "true"
           prometheus.io/port: "9250"
       spec:
-        initContainers:
-          - name: init-fs
-            image: busybox
-            command:
-              - sh
-              - -c
-              - "mkdir -p /mnt/flink/savepoints /mnt/flink/checkpoints /mnt/flink/high-availability && chmod -R 777 /mnt/flink"
-            volumeMounts:
-              - mountPath: /mnt/flink
-                name: flink-storage
         containers:
           - name: flink-main-container
-            volumeMounts:
-              - mountPath: /mnt/flink
-                name: flink-storage
-        volumes:
-          - name: flink-storage
-            persistentVolumeClaim:
-              claimName: flink-pvc
+            env:
+              ## Load the S3 filesystem plugin so Flink can read/write to S3
+              - name: ENABLE_BUILT_IN_PLUGINS
+                value: "flink-s3-fs-hadoop-1.19.2-cp1.jar"
 
   taskManager:
     resource:
@@ -87,13 +86,10 @@ spec:
       spec:
         containers:
           - name: flink-main-container
-            volumeMounts:
-              - mountPath: /mnt/flink
-                name: flink-storage
-        volumes:
-          - name: flink-storage
-            persistentVolumeClaim:
-              claimName: flink-pvc
+            env:
+              ## Load the S3 filesystem plugin so Flink can read/write to S3
+              - name: ENABLE_BUILT_IN_PLUGINS
+                value: "flink-s3-fs-hadoop-1.19.2-cp1.jar"
 
   job:
     jarURI: local:///opt/flink/lib/app.jar
