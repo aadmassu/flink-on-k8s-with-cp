@@ -4,22 +4,157 @@ kind: ControlCenter
 metadata:
   name: controlcenter
 spec:
+  # Single replica; Control Center does not support multi-replica HA
   replicas: 1
+  # Confluent Platform license; secret must contain license.txt
+  license:
+    secretRef: confluent-license
+  # Container images for Control Center
   image:
-    application: docker.io/confluentinc/cp-enterprise-control-center-next-gen:2.3.2
-    init: docker.io/confluentinc/confluent-init-container:3.1.1
+    # Next-gen Control Center UI (modern React-based interface)
+    application: confluentinc/cp-enterprise-control-center-next-gen:2.3.2
+    # Init container for volume/permission setup
+    init: confluentinc/confluent-init-container:3.1.1
+  # Persistent volume for Control Center's internal state (monitoring data, alerts)
   dataVolumeCapacity: 10Gi
-  configOverrides:
-    server:
-      - confluent.controlcenter.command.topic.replication=1
-      - confluent.controlcenter.replication.factor=1
-      - confluent.metrics.reporter.topic.replicas=1
-      - confluent.metrics.topic.replication=1
-      - confluent.monitoring.interceptor.topic.replication=1
-      - confluent.controlcenter.internal.topics.replication=1
+
+  ## ASSUMPTION: FCB's corporate CA (in tls-certs) covers Okta's HTTPS endpoints,
+  ## so no separate JKS truststore is needed for OAuth token/JWKS calls.
+  ##
+  ## IF THIS ASSUMPTION IS WRONG (Okta uses a different CA), uncomment below and
+  ## add JVM overrides at the bottom of this file:
+  ##
+  ## mountedVolumes:
+  ##   volumes:
+  ##     - name: oauth-truststore
+  ##       secret:
+  ##         secretName: oauth-truststore
+  ##   volumeMounts:
+  ##     - name: oauth-truststore
+  ##       mountPath: /mnt/oauth-truststore
+  ##
+  ## And add under configOverrides:
+  ##   jvm:
+  ##     - "-Djavax.net.ssl.trustStoreType=JKS"
+  ##     - "-Djavax.net.ssl.trustStore=/mnt/oauth-truststore/truststore.jks"
+  ##     - "-Djavax.net.ssl.trustStorePassword=<truststore-password>"
+
+  podTemplate:
+    # CPU and memory allocation for Control Center
+    resources:
+      requests:
+        cpu: "500m"
+        memory: 2Gi
+      limits:
+        cpu: "1"
+        memory: 4Gi
+    # Security context for file ownership on volumes
+    podSecurityContext:
+      fsGroup: 1000
+      runAsUser: 1000
+      runAsNonRoot: true
+  # RBAC authorization via MDS; controls who can view/manage clusters in the UI
+  authorization:
+    type: rbac
+  # TLS encryption for Control Center HTTPS endpoint
+  tls:
+    secretRef: tls-certs
+  # Expose Control Center UI via OpenShift Route for browser access
+  externalAccess:
+    type: route
+    route:
+      ## TODO: Replace with FCB's OpenShift route domain
+      domain: dev.confluent.fcbint.net
   dependencies:
+    # Kafka dependency — Control Center consumes metrics and monitoring data from Kafka
+    kafka:
+      # Internal bootstrap endpoint (TLS port 9071)
+      bootstrapEndpoint: kafka.confluent.svc.cluster.local:9071
+      # OAuth authentication to Kafka
+      authentication:
+        type: oauth
+        # Secret containing OAuth client credentials
+        jaasConfig:
+          secretRef: oauth-jass
+        # Okta OAuth settings for token validation
+        oauthSettings:
+          ## TODO: Replace all Okta endpoints with FCB's Okta org/authorization server
+          # OAuth audience — must match Okta config
+          audience: api://confluent
+          # Expected JWT issuer
+          expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+          # JWT claim for group memberships
+          groupsClaimName: groups
+          # JWT claim for user identity
+          subClaimName: sub
+          # JWKS endpoint for token signature verification
+          jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+          # Token endpoint for obtaining access tokens
+          tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+          # OAuth scope
+          scope: confluent
+      # TLS for Control Center → Kafka connection
+      tls:
+        enabled: true
+        secretRef: tls-certs
+    # Schema Registry dependency — Control Center displays schema info in topic inspector
     schemaRegistry:
-      url: http://schemaregistry.confluent.svc.cluster.local:8081
+      # Schema Registry HTTPS endpoint
+      url: https://schemaregistry.confluent.svc.cluster.local:8081
+      # TLS for Control Center → Schema Registry connection
+      tls:
+        enabled: true
+        secretRef: tls-certs
+    # Connect dependency — Control Center manages and monitors connectors
     connect:
       - name: connect
-        url: http://connect.confluent.svc.cluster.local:8083
+        # Connect REST API HTTPS endpoint
+        url: https://connect.confluent.svc.cluster.local:8083
+        # TLS for Control Center → Connect connection
+        tls:
+          enabled: true
+          secretRef: tls-certs
+    # MDS dependency — Control Center uses MDS for RBAC and SSO login
+    mds:
+      # MDS REST API endpoint on the Kafka broker
+      endpoint: https://kafka.confluent.svc.cluster.local:8090
+      # TLS for Control Center → MDS connection
+      tls:
+        enabled: true
+        secretRef: tls-certs
+      # Enable OIDC SSO — users log in via Okta in the browser
+      ssoProtocol: oidc
+      # RSA key pair for verifying MDS-issued RBAC tokens
+      tokenKeyPair:
+        secretRef: mds-token
+      # OAuth authentication to MDS
+      authentication:
+        type: oauth
+        oauth:
+          # Secret containing OAuth client credentials
+          secretRef: oauth-jass
+          configuration:
+            # OAuth audience
+            audience: api://confluent
+            # Expected JWT issuer
+            expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+            # JWT claim for group memberships
+            groupsClaimName: groups
+            # JWT claim for user identity
+            subClaimName: sub
+            # JWKS endpoint for token verification
+            jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+            # Token endpoint for obtaining access tokens
+            tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+            # OAuth scope
+            scope: confluent
+  configOverrides:
+    server:
+      # Replication factor for Control Center's internal monitoring topics
+      - confluent.controlcenter.internal.topics.replication=3
+      # Replication factor for Control Center's command topic
+      - confluent.controlcenter.command.topic.replication=3
+      # Replication factor for the _confluent-metrics topic
+      - confluent.metrics.topic.replication=3
+      # Auto-refresh the UI with real-time cluster data
+      - confluent.controlcenter.ui.autoupdate.enable=true

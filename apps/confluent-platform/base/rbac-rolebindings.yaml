@@ -1,0 +1,31 @@
+---
+# ConfluentRolebinding grants RBAC roles to users/groups identified by Okta
+# SystemAdmin has full access to all Kafka resources (topics, groups, clusters)
+## TODO: Replace with FCB's Okta user emails for SystemAdmin access
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: fcb-sys-admin-1
+spec:
+  principal:
+    # User type maps to individual Okta accounts
+    type: user
+    # Okta email — must match SSO subClaimName: email configured in MDS
+    name: "<fcb-admin-email-1>"
+  # SystemAdmin role — full cluster access; assign sparingly
+  role: SystemAdmin
+  # Reference to the KafkaRestClass that connects to the target Kafka cluster
+  kafkaRestClassRef:
+    name: default
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: fcb-sys-admin-2
+spec:
+  principal:
+    type: user
+    name: "<fcb-admin-email-2>"
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default

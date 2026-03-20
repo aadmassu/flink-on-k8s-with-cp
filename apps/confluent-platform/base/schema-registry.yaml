@@ -4,7 +4,104 @@ kind: SchemaRegistry
 metadata:
   name: schemaregistry
 spec:
+  # Single replica for dev; increase to 2+ for HA in stg/prd
   replicas: 1
+  # Confluent Platform license; secret must contain license.txt
+  license:
+    secretRef: confluent-license
+  # Container images for Schema Registry
   image:
-    application: docker.io/confluentinc/cp-schema-registry:8.1.1
-    init: docker.io/confluentinc/confluent-init-container:3.1.1
+    # Schema Registry server image
+    application: confluentinc/cp-schema-registry:8.1.1
+    # Init container for volume/permission setup
+    init: confluentinc/confluent-init-container:3.1.1
+  podTemplate:
+    # CPU and memory allocation for each Schema Registry pod
+    resources:
+      requests:
+        cpu: "250m"
+        memory: 512Mi
+      limits:
+        cpu: "500m"
+        memory: 1Gi
+    # Security context for file ownership on volumes
+    podSecurityContext:
+      fsGroup: 1000
+      runAsUser: 1000
+      runAsNonRoot: true
+  # RBAC authorization via MDS; controls who can read/write schemas
+  authorization:
+    type: rbac
+  # TLS encryption for Schema Registry HTTPS endpoint
+  tls:
+    secretRef: tls-certs
+  # Expose Schema Registry via OpenShift Route for external clients
+  externalAccess:
+    type: route
+    route:
+      ## TODO: Replace with FCB's OpenShift route domain
+      domain: dev.confluent.fcbint.net
+  dependencies:
+    # Kafka dependency — Schema Registry stores schemas in a _schemas topic
+    kafka:
+      # Internal bootstrap endpoint (TLS port 9071)
+      bootstrapEndpoint: kafka.confluent.svc.cluster.local:9071
+      # OAuth authentication to Kafka
+      authentication:
+        type: oauth
+        # Secret containing OAuth client credentials
+        jaasConfig:
+          secretRef: oauth-jass
+        # Okta OAuth settings for token validation
+        oauthSettings:
+          ## TODO: Replace all Okta endpoints with FCB's Okta org/authorization server
+          # OAuth audience — must match Okta config
+          audience: api://confluent
+          # Expected JWT issuer
+          expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+          # JWT claim for group memberships
+          groupsClaimName: groups
+          # JWT claim for user identity
+          subClaimName: sub
+          # JWKS endpoint for token signature verification
+          jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+          # Token endpoint for obtaining access tokens
+          tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+          # OAuth scope
+          scope: confluent
+      # TLS for Schema Registry → Kafka connection
+      tls:
+        enabled: true
+        secretRef: tls-certs
+    # MDS dependency — Schema Registry registers with MDS for RBAC enforcement
+    mds:
+      # MDS REST API endpoint on the Kafka broker
+      endpoint: https://kafka.confluent.svc.cluster.local:8090
+      # TLS for Schema Registry → MDS connection
+      tls:
+        enabled: true
+        secretRef: tls-certs
+      # RSA key pair for verifying MDS-issued RBAC tokens
+      tokenKeyPair:
+        secretRef: mds-token
+      # OAuth authentication to MDS
+      authentication:
+        type: oauth
+        oauth:
+          # Secret containing OAuth client credentials
+          secretRef: oauth-jass
+          configuration:
+            # OAuth audience
+            audience: api://confluent
+            # Expected JWT issuer
+            expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+            # JWT claim for group memberships
+            groupsClaimName: groups
+            # JWT claim for user identity
+            subClaimName: sub
+            # JWKS endpoint for token verification
+            jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+            # Token endpoint for obtaining access tokens
+            tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+            # OAuth scope
+            scope: confluent
