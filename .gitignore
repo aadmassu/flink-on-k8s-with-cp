@@ -29,8 +29,9 @@ Thumbs.db
 # Generated image manifests (output of discover-charts-and-images.sh)
 images-phase*.txt
 
-# Local-only docs
+# Local-only docs and notes
 docs/TALKING-POINTS.*
+notes.md
 
 # Temporary
 tmp/
