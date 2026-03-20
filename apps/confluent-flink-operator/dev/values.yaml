@@ -57,8 +57,11 @@ operatorPod:
   priorityClassName: null
   # Prometheus annotations enable metric scraping without ServiceMonitor CRs
   annotations:
-    prometheus.io/scrape: "true"
+prometheus.io/scrape: "true"
     prometheus.io/port: "9999"
+    # Dynatrace metrics scraping
+    metrics.dynatrace.com/scrape: "true"
+    metrics.dynatrace.com/port: "9999"
   # Additional labels for selection or grouping
   labels: {}
   # Inject env vars like proxy settings or feature flags

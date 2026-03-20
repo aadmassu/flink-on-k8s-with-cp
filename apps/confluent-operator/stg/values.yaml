@@ -179,7 +179,10 @@ pod:
   annotations:
     prometheus.io/path: "/metrics"
     prometheus.io/port: "7778"
+    metrics.dynatrace.com/port: "7778"
     prometheus.io/scrape: "true"
+    # Dynatrace metrics scraping
+    metrics.dynatrace.com/scrape: "true"
   # Additional labels for selection or grouping
   labels: {}
 

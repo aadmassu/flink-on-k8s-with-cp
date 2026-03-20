@@ -1,27 +1,68 @@
 ---
+# QA environment overlay — inherits base and patches namespace-specific URLs
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# Inherit all manifests from the shared base directory
 resources:
   - ../base
 
+# All resources are deployed into the qa namespace
 namespace: confluent-qa
 
+# QA uses base defaults (same replicas as dev)
+# Only patches needed are namespace-specific service DNS names
 patches:
+  # Schema Registry — update Kafka and MDS endpoints to qa namespace
+  - target:
+      kind: SchemaRegistry
+      name: schemaregistry
+    patch: |
+      - op: replace
+        path: /spec/dependencies/kafka/bootstrapEndpoint
+        value: kafka.confluent-qa.svc.cluster.local:9071
+      - op: replace
+        path: /spec/dependencies/mds/endpoint
+        value: https://kafka.confluent-qa.svc.cluster.local:8090
+
+  # Connect — update Kafka, Schema Registry, and MDS endpoints to qa namespace
+  - target:
+      kind: Connect
+      name: connect
+    patch: |
+      - op: replace
+        path: /spec/dependencies/kafka/bootstrapEndpoint
+        value: kafka.confluent-qa.svc.cluster.local:9071
+      - op: replace
+        path: /spec/dependencies/schemaRegistry/url
+        value: https://schemaregistry.confluent-qa.svc.cluster.local:8081
+      - op: replace
+        path: /spec/dependencies/mds/endpoint
+        value: https://kafka.confluent-qa.svc.cluster.local:8090
+
+  # Control Center — update all dependency endpoints to qa namespace
   - target:
       kind: ControlCenter
       name: controlcenter
     patch: |
       - op: replace
+        path: /spec/dependencies/kafka/bootstrapEndpoint
+        value: kafka.confluent-qa.svc.cluster.local:9071
+      - op: replace
         path: /spec/dependencies/schemaRegistry/url
-        value: http://schemaregistry.confluent-qa.svc.cluster.local:8081
+        value: https://schemaregistry.confluent-qa.svc.cluster.local:8081
       - op: replace
         path: /spec/dependencies/connect/0/url
-        value: http://connect.confluent-qa.svc.cluster.local:8083
+        value: https://connect.confluent-qa.svc.cluster.local:8083
+      - op: replace
+        path: /spec/dependencies/mds/endpoint
+        value: https://kafka.confluent-qa.svc.cluster.local:8090
+
+  # Kafka — update metrics reporter bootstrap endpoint to qa namespace
   - target:
-      kind: KafkaRestClass
-      name: krc-cfk
+      kind: Kafka
+      name: kafka
     patch: |
       - op: replace
-        path: /spec/kafkaRest/endpoint
-        value: http://kafka.confluent-qa.svc.cluster.local:8090
+        path: /spec/metricReporter/bootstrapEndpoint
+        value: kafka.confluent-qa.svc.cluster.local:9071

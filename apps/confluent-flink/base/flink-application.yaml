@@ -66,13 +66,16 @@ spec:
         annotations:
           prometheus.io/scrape: "true"
           prometheus.io/port: "9250"
+          # Dynatrace metrics scraping
+          metrics.dynatrace.com/scrape: "true"
+          metrics.dynatrace.com/port: "9250"
       spec:
         containers:
           - name: flink-main-container
             env:
               ## Load the S3 filesystem plugin so Flink can read/write to S3
               - name: ENABLE_BUILT_IN_PLUGINS
-                value: "flink-s3-fs-hadoop-1.19.2-cp1.jar"
+                value: "flink-s3-fs-hadoop-2.1.1-cp1.jar"
 
   taskManager:
     resource:
@@ -83,13 +86,16 @@ spec:
         annotations:
           prometheus.io/scrape: "true"
           prometheus.io/port: "9250"
+          # Dynatrace metrics scraping
+          metrics.dynatrace.com/scrape: "true"
+          metrics.dynatrace.com/port: "9250"
       spec:
         containers:
           - name: flink-main-container
             env:
               ## Load the S3 filesystem plugin so Flink can read/write to S3
               - name: ENABLE_BUILT_IN_PLUGINS
-                value: "flink-s3-fs-hadoop-1.19.2-cp1.jar"
+                value: "flink-s3-fs-hadoop-2.1.1-cp1.jar"
 
   job:
     jarURI: local:///opt/flink/lib/app.jar
