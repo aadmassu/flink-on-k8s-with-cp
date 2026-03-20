@@ -4,9 +4,10 @@
 # Name of the operator deployment; used in resource naming
 name: confluent-operator
 
-# Raw license key string; use license.secretRef for production instead
-licenseKey: ""
+# # (less secure) Raw license key string; use license.secretRef for production instead
+# licenseKey: ""
 
+# (Recommended) Use a Kubernetes Secret to provide the license file securely; preferred over licenseKey
 # License configuration for Confluent Platform components
 license:
   # Secret containing license.txt; preferred over licenseKey for security
@@ -155,15 +156,21 @@ telemetry:
 kRaftEnabled: true
 
 # Admission webhooks validate/mutate CP CRs and protect against unsafe evictions
+# Protects against: invalid CR configs, unsafe StatefulSet deletes, unsafe Kafka pod evictions
 webhooks:
   # Enable to catch invalid configs before apply and prevent unsafe pod evictions
-  enabled: false
+  enabled: true
   # Port for the webhook HTTPS server
   port: 8443
   # TLS cert for webhook; SAN must include confluent-operator.<namespace>.svc
+  # Supported secret formats:
+  #   PEM (recommended, cert-manager compatible): tls.crt, tls.key, ca.crt
+  #   PEM (CFK native naming):                   fullchain.pem, privkey.pem, cacerts.pem
+  #   JKS (legacy):                              keystore.jks, truststore.jks, jksPassword.txt
+  #                                              (jksPassword.txt contains: jksPassword=<password>)
   tls:
-    # Secret containing the webhook TLS cert
-    secretRef: ""
+    # Secret containing the webhook TLS cert; must be created before deploying the operator
+    secretRef: "confluent-operator-serving-cert"
     # Directory path alternative for webhook TLS cert files
     directoryPathInContainer: ""
 
