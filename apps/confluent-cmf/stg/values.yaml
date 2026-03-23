@@ -2,13 +2,66 @@
 # Confluent Manager for Apache Flink (CMF) values - stg
 
 cmf:
+  # Disable production SQL guardrails in dev (allows DDL without confirmation)
   sql:
     production: true
 
+  # OAuth authentication for the CMF REST API — requires valid Okta token on every request
+  authentication:
+    type: oauth
+    config:
+      ## TODO: Replace all Okta endpoints with FCB's Okta org/authorization server
+      # Okta JWKS endpoint — CMF fetches public keys to verify token signatures
+      oauthbearer.jwks.endpoint.url: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+      # Expected token issuer — rejects tokens from other issuers
+      oauthbearer.expected.issuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+      # JWT claim used as the user identity
+      oauthbearer.sub.claim.name: sub
+      # JWT claim containing group memberships for RBAC
+      oauthbearer.groups.claim.name: groups
+      # Expected audience in the token — must match Okta app config
+      oauthbearer.expected.audience: api://confluent
+
+      # MDS connectivity — CMF checks RBAC permissions via Kafka's Metadata Service
+      ## TODO: Update MDS URL to match the environment namespace
+      confluent.metadata.bootstrap.server.urls: https://kafka.confluent.svc.cluster.local:8090
+      # Use OAuth to authenticate CMF's own requests to MDS
+      confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+      # Okta token endpoint for CMF to obtain its own access token
+      confluent.metadata.oauthbearer.token.endpoint.url: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+      ## TODO: Replace with FCB's CMF OAuth client credentials
+      ## CyberArk vault path (production): /confluent/<env>/cmf-oauth-credentials
+      confluent.metadata.oauthbearer.login.client.id: <fcb-cmf-oauth-client-id>
+      confluent.metadata.oauthbearer.login.client.secret: <fcb-cmf-oauth-client-secret>
+
+  # External database for CMF catalog (environments, statements, credentials)
+  database:
+    # jdbc = external database; local = SQLite on PVC (dev only)
+    type: jdbc
+    jdbc:
+      # SQL Server — FCB's standard database platform (provisioned by DBA team)
+      engine: sqlserver
+      ## TODO: Replace with FCB's SQL Server hostname (requires SNOW ticket for DB team)
+      url: "<fcb-sqlserver-host>"
+      # Default SQL Server port
+      port: 1433
+      # Database name — must be pre-created by DBA team
+      database: cmf
+      # Database user — must have db_owner role on the cmf database
+      user: cmf
+      # Encrypt connection to SQL Server
+      options: "encrypt=true;trustServerCertificate=false;"
+      # Password stored in K8s Secret (production: sourced from CyberArk via ESO)
+      ## CyberArk vault path (production): /confluent/<env>/cmf-db-password
+      password:
+        kubernetesSecretName: "cmf-db-password"
+        kubernetesSecretProperty: "password"
+
+# CPU and memory for the CMF pod
 resources:
   requests:
     cpu: 200m
-    memory: 256Mi
+    memory: 512Mi
   limits:
     cpu: 1
-    memory: 1Gi
+    memory: 2Gi
