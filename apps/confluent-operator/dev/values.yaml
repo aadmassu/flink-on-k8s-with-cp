@@ -15,28 +15,6 @@ license:
   # Directory path in container for license file; takes precedence over secretRef
   directoryPathInContainer: ""
 
-# CFK-managed certificate generation for Confluent Platform components
-managedCerts:
-  # Enable to let CFK generate TLS certs; causes cluster roll on first enable
-  enabled: false
-  # CA certificate pair used to sign auto-generated component certs
-  caCertificate:
-    # Secret with tls.crt and tls.key for the CA; required if enabled
-    secretRef: ""
-    # Directory path alternative to secretRef for CA cert files
-    directoryPathInContainer: ""
-  # Old CA pair for zero-downtime CA rotation; optional
-  oldCaCertificate:
-    # Secret with old CA tls.crt and tls.key; only during rotation
-    secretRef: ""
-    # Directory path alternative for old CA cert files
-    directoryPathInContainer: ""
-  # How long auto-generated certs are valid before renewal
-  certDurationInDays: 60
-  # Days before expiry to trigger certificate renewal
-  renewBeforeInDays: 30
-  # Extra SANs (e.g. wildcards) added to all auto-generated certs
-  sans: ""
 
 # Secret for pulling images from private registries like Artifactory
 imagePullSecretRef: null
