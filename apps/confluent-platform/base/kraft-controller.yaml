@@ -18,6 +18,13 @@ spec:
   # Persistent volume size for KRaft metadata log (cluster state, topic configs)
   dataVolumeCapacity: 10Gi
   podTemplate:
+    # Pod annotations for monitoring discovery
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "7778"
+      # Dynatrace metrics scraping
+      metrics.dynatrace.com/scrape: "true"
+      metrics.dynatrace.com/port: "7778"
     # CPU and memory allocation for each KRaft controller pod
     resources:
       requests:
