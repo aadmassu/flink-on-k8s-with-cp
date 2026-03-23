@@ -162,16 +162,18 @@ webhooks:
   # Port for the webhook HTTPS server
   port: 8443
   # TLS cert for webhook; SAN must include confluent-operator.<namespace>.svc
-  # Supported secret formats:
-  #   PEM (recommended, cert-manager compatible): tls.crt, tls.key, ca.crt
-  #   PEM (CFK native naming):                   fullchain.pem, privkey.pem, cacerts.pem
-  #   JKS (legacy):                              keystore.jks, truststore.jks, jksPassword.txt
-  #                                              (jksPassword.txt contains: jksPassword=<password>)
+  #
+  # IMPORTANT: CFK expects PKCS12 binary format files named keystore.jks, truststore.jks,
+  # and jksPassword.txt. It does NOT accept standard K8s TLS secrets or PEM files.
+  # We use cert-manager with keystores.pkcs12.create=true, then project the secret
+  # with renamed keys (keystore.p12 → keystore.jks, truststore.p12 → truststore.jks)
+  # and merge in the jksPassword.txt from a separate secret.
+  # See: docs/cfk-webhook-tls-manifests.txt for the full cert-manager setup.
   tls:
-    # Secret containing the webhook TLS cert; must be created before deploying the operator
-    secretRef: "confluent-operator-serving-cert"
-    # Directory path alternative for webhook TLS cert files
-    directoryPathInContainer: ""
+    # Leave empty — we use directoryPathInContainer with mountedVolumes instead
+    secretRef: ""
+    # Operator reads PKCS12 files from this path (keystore.jks, truststore.jks, jksPassword.txt)
+    directoryPathInContainer: "/mnt/webhook-certs"
 
 # Pod annotations and labels for the operator deployment
 pod:
@@ -190,11 +192,28 @@ pod:
 licenseSecretRef: confluent-license
 
 # Custom volumes and volume mounts for the operator pod
+# Projects cert-manager PKCS12 keystores (renamed to .jks) + jksPassword.txt
 mountedVolumes:
-  # List of Kubernetes volume definitions (e.g. PVCs, configMaps)
-  volumes: []
-  # List of volume mount definitions (mountPath, name)
-  volumeMounts: []
+  volumes:
+    - name: webhook-jks-certs
+      projected:
+        sources:
+          - secret:
+              name: confluent-operator-serving-cert
+              items:
+                - key: keystore.p12
+                  path: keystore.jks
+                - key: truststore.p12
+                  path: truststore.jks
+          - secret:
+              name: cfk-jks-password-file
+              items:
+                - key: jksPassword.txt
+                  path: jksPassword.txt
+  volumeMounts:
+    - name: webhook-jks-certs
+      mountPath: /mnt/webhook-certs
+      readOnly: true
 
 # Inject custom env vars like HTTP_PROXY or feature flags
 customEnvVars: []

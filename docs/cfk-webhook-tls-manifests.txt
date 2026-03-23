@@ -1,0 +1,112 @@
+# CFK Operator Webhook TLS — cert-manager + PKCS12 Solution
+# Validated on ROSA cluster (cfk-dev) — 2026-03-23
+#
+# Prerequisites:
+#   - cert-manager installed
+#   - Namespace: confluent-dev (adjust as needed)
+#
+# How it works:
+#   cert-manager creates a PKCS12 keystore (keystore.p12, truststore.p12)
+#   A projected volume renames them to keystore.jks / truststore.jks
+#   and merges in the jksPassword.txt file CFK expects.
+#   The operator reads from /mnt/webhook-certs via directoryPathInContainer.
+
+---
+# 1. Self-signed Issuer
+#    In production, replace with the KeyFactor ClusterIssuer.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cfk-selfsigned-issuer
+  namespace: confluent-dev
+spec:
+  selfSigned: {}
+
+---
+# 2. Password secret for cert-manager's PKCS12 generation
+#    In production, source from CyberArk via ExternalSecret.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cfk-jks-password
+  namespace: confluent-dev
+stringData:
+  password: changeit
+
+---
+# 3. Certificate CR — produces keystore.p12 and truststore.p12
+#    cert-manager auto-renews 30 days before expiry.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: confluent-operator-serving-cert
+  namespace: confluent-dev
+spec:
+  secretName: confluent-operator-serving-cert
+  issuerRef:
+    name: cfk-selfsigned-issuer
+    kind: Issuer
+  dnsNames:
+    - confluent-operator.confluent-dev.svc
+    - confluent-operator.confluent-dev.svc.cluster.local
+  duration: 8760h      # 1 year
+  renewBefore: 720h    # 30 days
+  keystores:
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        name: cfk-jks-password
+        key: password
+
+---
+# 4. Password file in CFK's expected format
+#    CFK requires content: jksPassword=<value>
+#    In production, source from CyberArk via ExternalSecret.
+#    If stored as raw password in CyberArk, use ExternalSecret
+#    templating to prepend "jksPassword=".
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cfk-jks-password-file
+  namespace: confluent-dev
+stringData:
+  jksPassword.txt: "jksPassword=changeit"
+
+---
+# 5. Helm values for the CFK operator (relevant sections only)
+#
+#    Result inside the operator container:
+#
+#    /mnt/webhook-certs/
+#    ├── keystore.jks      <- PKCS12 binary (renamed from keystore.p12)
+#    ├── truststore.jks    <- PKCS12 binary (renamed from truststore.p12)
+#    └── jksPassword.txt   <- "jksPassword=changeit"
+#
+# webhooks:
+#   enabled: true
+#   port: 8443
+#   tls:
+#     secretRef: ""
+#     directoryPathInContainer: "/mnt/webhook-certs"
+#
+# mountedVolumes:
+#   volumes:
+#     - name: webhook-jks-certs
+#       projected:
+#         sources:
+#           - secret:
+#               name: confluent-operator-serving-cert
+#               items:
+#                 - key: keystore.p12
+#                   path: keystore.jks
+#                 - key: truststore.p12
+#                   path: truststore.jks
+#           - secret:
+#               name: cfk-jks-password-file
+#               items:
+#                 - key: jksPassword.txt
+#                   path: jksPassword.txt
+#   volumeMounts:
+#     - name: webhook-jks-certs
+#       mountPath: /mnt/webhook-certs
+#       readOnly: true

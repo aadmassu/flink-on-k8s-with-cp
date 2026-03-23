@@ -1,0 +1,1699 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" version="29.6.5" pages="2">
+  <diagram id="architecture-overview" name="High-Level Architecture">
+    <mxGraphModel dx="1530" dy="834" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;" value="Confluent Platform &amp; Flink on OpenShift — High-Level Architecture" vertex="1">
+          <mxGeometry height="40" width="800" x="110" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="ocp-cluster" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#43A047;fontStyle=1;fontSize=14;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" value="OpenShift Cluster" vertex="1">
+          <mxGeometry height="890" width="1080" x="80" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ns-certmgr" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#FB8C00;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;dashed=1;" value="cert-manager namespace" vertex="1">
+          <mxGeometry height="100" width="220" x="100" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cert-manager" parent="1" style="shape=mxgraph.kubernetes.icon2;prIcon=cert_manager;fillColor=#FFFFFF;strokeColor=#FB8C00;fontSize=10;fontStyle=0;whiteSpace=wrap;" value="cert-manager&#xa;(Jetstack)" vertex="1">
+          <mxGeometry height="50" width="50" x="150" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="clusterissuer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FB8C00;fontSize=9;" value="ClusterIssuer&#xa;(KeyFactor PKI)" vertex="1">
+          <mxGeometry height="40" width="90" x="220" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="ns-confluent" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1E88E5;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;dashed=1;" value="confluent-{env} namespace" vertex="1">
+          <mxGeometry height="690" width="1050" x="90" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="operators-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Operators" vertex="1">
+          <mxGeometry height="100" width="400" x="120" y="253" as="geometry" />
+        </mxCell>
+        <mxCell id="cfk-operator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=10;fontStyle=0;" value="Confluent&#xa;Operator (CFK)" vertex="1">
+          <mxGeometry height="50" width="110" x="270" y="288" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-operator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=10;fontStyle=0;" value="Flink Kubernetes&#xa;Operator" vertex="1">
+          <mxGeometry height="50" width="110" x="130" y="288" as="geometry" />
+        </mxCell>
+        <mxCell id="argocd-label" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=10;fontStyle=0;" value="ArgoCD&#xa;(GitOps)" vertex="1">
+          <mxGeometry height="50" width="100" x="400" y="288" as="geometry" />
+        </mxCell>
+        <mxCell id="kafka-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8EAF6;strokeColor=#3949AB;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Kafka Cluster " vertex="1">
+          <mxGeometry height="230" width="500" x="120" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="kraft" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontSize=10;fontStyle=0;" value="KRaft Controllers&#xa;(3 replicas)" vertex="1">
+          <mxGeometry height="50" width="110" x="133" y="418" as="geometry" />
+        </mxCell>
+        <mxCell id="kafka" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontSize=10;fontStyle=1;" value="Kafka Brokers&#xa;(3 replicas)&#xa;Ports: 9071 (TLS), 9093 (SASL_SSL)" vertex="1">
+          <mxGeometry height="65" width="200" x="290" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="mds" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontSize=9;fontStyle=0;dashed=1;" value="MDS&#xa;(Metadata Service)&#xa;:8090" vertex="1">
+          <mxGeometry height="50" width="90" x="520" y="417.5" as="geometry" />
+        </mxCell>
+        <mxCell id="kraft-kafka" edge="1" parent="1" source="kraft" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3949AB;" target="kafka">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kraft-kafka-label" connectable="0" parent="kraft-kafka" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="metadata" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-20" y="-21" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kafka-mds" edge="1" parent="1" source="kafka" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3949AB;" target="mds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kafka-mds-label" connectable="0" parent="kafka-mds" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="RBAC" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-13" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontSize=10;fontStyle=0;" value="Schema Registry&#xa;:8081 (HTTPS)" vertex="1">
+          <mxGeometry height="50" width="130" x="140" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="connect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontSize=10;fontStyle=0;" value="Kafka Connect&#xa;:8083" vertex="1">
+          <mxGeometry height="50" width="120" x="290" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontSize=10;fontStyle=0;" value="Control Center&#xa;:9021" vertex="1">
+          <mxGeometry height="50" width="120" x="430" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-kafka" edge="1" parent="1" source="sr" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3949AB;dashed=1;" target="kafka">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="490" />
+              <mxPoint x="310" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="connect-kafka" edge="1" parent="1" source="connect" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3949AB;dashed=1;entryX=0.3;entryY=0.953;entryDx=0;entryDy=0;entryPerimeter=0;" target="kafka">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-kafka" edge="1" parent="1" source="c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3949AB;dashed=1;" target="kafka">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="490" y="505" />
+              <mxPoint x="430" y="505" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="flink-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF8E1;strokeColor=#F9A825;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Flink" vertex="1">
+          <mxGeometry height="260" width="500" x="120" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="cmf" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=10;fontStyle=1;" value="CMF&#xa;(Confluent Manager&#xa;for Flink)&#xa;:8080" vertex="1">
+          <mxGeometry height="70" width="140" x="140" y="672.5" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-jm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=10;fontStyle=0;" value="Flink&#xa;JobManager" vertex="1">
+          <mxGeometry height="45" width="110" x="320" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-tm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=10;fontStyle=0;" value="Flink&#xa;TaskManagers" vertex="1">
+          <mxGeometry height="45" width="110" x="320" y="782.5" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-app" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;fontStyle=2;" value="FlinkApplication&#xa;CRs (SQL Jobs)" vertex="1">
+          <mxGeometry height="40" width="110" x="460" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="cmf-jm" edge="1" parent="1" source="cmf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;" target="flink-jm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cmf-jm-label" connectable="0" parent="cmf-jm" style="edgeLabel;fontSize=8;fillColor=none;align=center;labelBackgroundColor=none;" value="submit &#xa;jobs" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-17" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jm-tm" edge="1" parent="1" source="flink-jm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;" target="flink-tm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cmf-mds" edge="1" parent="1" source="cmf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E65100;dashed=1;" target="mds">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="240" y="840" />
+              <mxPoint x="590" y="840" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cmf-mds-label" connectable="0" parent="cmf-mds" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="RBAC check" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-81" y="-16" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tm-kafka" edge="1" parent="1" source="flink-tm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E65100;strokeWidth=2;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" target="kafka">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="630" y="794" />
+              <mxPoint x="630" y="370" />
+              <mxPoint x="460" y="370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tm-kafka-label" connectable="0" parent="tm-kafka" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="read/write&#xa;(SASL_SSL + OAuth)" vertex="1">
+          <mxGeometry relative="1" x="-0.2" as="geometry">
+            <mxPoint y="45" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tm-sr" edge="1" parent="1" source="flink-tm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E65100;dashed=1;" target="sr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="805" />
+              <mxPoint x="110" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tm-sr-label" connectable="0" parent="tm-sr" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="schema validation" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="139" y="15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="monitoring-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#EFEBE9;strokeColor=#6D4C41;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Monitoring" vertex="1">
+          <mxGeometry height="130" width="450" x="670" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="prometheus" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D7CCC8;strokeColor=#6D4C41;fontSize=10;fontStyle=0;" value="Prometheus&#xa;(Scrapes all pods)" vertex="1">
+          <mxGeometry height="50" width="130" x="690" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="dynatrace" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D7CCC8;strokeColor=#6D4C41;fontSize=10;fontStyle=0;" value="Dynatrace&#xa;(APM + Metrics)" vertex="1">
+          <mxGeometry height="50" width="120" x="850" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="splunk" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D7CCC8;strokeColor=#6D4C41;fontSize=10;fontStyle=0;" value="Splunk&#xa;(Logs)" vertex="1">
+          <mxGeometry height="50" width="100" x="1000" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="kafka-prom" edge="1" parent="1" source="kafka" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#6D4C41;dashed=1;dashPattern=4 4;" target="prometheus">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="360" />
+              <mxPoint x="755" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kafka-prom-label" connectable="0" parent="kafka-prom" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value=":7778" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-5" y="-16" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="routes-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FCE4EC;strokeColor=#C62828;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="OpenShift Routes (External Access)" vertex="1">
+          <mxGeometry height="100" width="450" x="670" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="route-sr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=9;fontStyle=0;" value="schemaregistry.{env}&#xa;.confluent.fcbint.net" vertex="1">
+          <mxGeometry height="45" width="150" x="680" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="route-c3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=9;fontStyle=0;" value="controlcenter.{env}&#xa;.confluent.fcbint.net" vertex="1">
+          <mxGeometry height="45" width="150" x="850" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="route-sr-link" edge="1" parent="1" source="route-sr" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;" target="sr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="755" y="510" />
+              <mxPoint x="205" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="route-c3-link" edge="1" parent="1" source="route-c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;" target="c3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="925" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ext-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#ECEFF1;strokeColor=#546E7A;fontStyle=1;fontSize=14;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" value="External Systems" vertex="1">
+          <mxGeometry height="990" width="320" x="1220" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="okta" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=10;fontStyle=1;size=0.15;" value="Okta&#xa;(Identity Provider)&#xa;OAuth2 / OIDC" vertex="1">
+          <mxGeometry height="80" width="160" x="1280" y="173" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#B3E5FC;strokeColor=#0277BD;fontSize=10;fontStyle=1;size=10;" value="On-Prem S3&#xa;(NetApp)&#xa;Flink Checkpoints&#xa;&amp; Savepoints" vertex="1">
+          <mxGeometry height="90" width="140" x="1290" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="artifactory" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;fontSize=10;fontStyle=0;" value="Artifactory&#xa;(Container Registry)" vertex="1">
+          <mxGeometry height="50" width="140" x="1300" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="azdo" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;fontSize=10;fontStyle=0;" value="Azure DevOps&#xa;(CI/CD Pipelines&#xa;&amp; Git Repos)" vertex="1">
+          <mxGeometry height="60" width="140" x="1300" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="keyfactor" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;fontSize=10;fontStyle=0;" value="KeyFactor&#xa;(PKI / CA)" vertex="1">
+          <mxGeometry height="50" width="140" x="1301" y="915" as="geometry" />
+        </mxCell>
+        <mxCell id="cyberark" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;fontSize=10;fontStyle=0;" value="CyberArk&#xa;(Secrets Vault)" vertex="1">
+          <mxGeometry height="50" width="140" x="1301" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="existing-cp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;fontSize=10;fontStyle=2;" value="Existing Confluent&lt;br&gt;Platform (VMs)" vertex="1">
+          <mxGeometry height="60" width="140" x="1300" y="745" as="geometry" />
+        </mxCell>
+        <mxCell id="kafka-okta" edge="1" parent="1" source="kafka" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=1;" target="okta">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="490" />
+              <mxPoint x="660" y="490" />
+              <mxPoint x="660" y="204" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kafka-okta-label" connectable="0" parent="kafka-okta" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="OAuth token validation" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="69" y="-24" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cmf-okta" edge="1" parent="1" source="cmf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;dashed=1;" target="okta">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="870" />
+              <mxPoint x="1170" y="870" />
+              <mxPoint x="1170" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cmf-okta-label" connectable="0" parent="cmf-okta" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="JWKS validation" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-45" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cmf-sql" edge="1" parent="1" source="cmf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#0277BD;strokeWidth=2;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="sqlserver">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="180" y="890" />
+              <mxPoint x="1250" y="890" />
+              <mxPoint x="1250" y="490" />
+              <mxPoint x="1290" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cmf-sql-label" connectable="0" parent="cmf-sql" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="JDBC (TLS encrypted)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-140" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tm-s3" edge="1" parent="1" source="flink-tm" target="s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#0277BD;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="820" />
+              <mxPoint x="1210" y="345" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tm-s3-label" connectable="0" parent="tm-s3" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="checkpoints &amp; savepoints" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-327" y="-17" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cm-kf" edge="1" parent="1" source="clusterissuer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#FB8C00;dashed=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="keyfactor">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="265" y="200" />
+              <mxPoint x="60" y="200" />
+              <mxPoint x="60" y="940" />
+              <mxPoint x="1300" y="940" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cm-kf-label" connectable="0" parent="cm-kf" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="certificate signing" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="266" y="-18" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="argo-azdo" edge="1" parent="1" source="argocd-label" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#546E7A;dashed=1;labelBackgroundColor=none;fontSize=8;" target="azdo" value="sync manifests">
+          <mxGeometry relative="1" x="-0.0172" y="10" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="650" y="320" />
+              <mxPoint x="650" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="argo-azdo-label" connectable="0" parent="argo-azdo" style="edgeLabel;fontSize=8;fillColor=none;" value="sync manifests" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="970" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cfk-kafka" edge="1" parent="1" source="cfk-operator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;dashed=1;dashPattern=8 4;" target="kafka">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="350" />
+              <mxPoint x="310" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cfk-kafka-label" connectable="0" parent="cfk-kafka" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="manages" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-38" y="-16" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fop-flink" edge="1" parent="1" source="flink-operator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;dashed=1;dashPattern=8 4;" target="flink-jm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="100" y="320" />
+              <mxPoint x="100" y="630" />
+              <mxPoint x="375" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fop-flink-label" connectable="0" parent="fop-flink" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="manages" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="-13" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="user" parent="1" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=10;" value="Users / Developers" vertex="1">
+          <mxGeometry height="50" width="40" x="1360" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="user-cmf" edge="1" parent="1" source="azdo" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="cmf">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1230" y="690" />
+              <mxPoint x="1230" y="850" />
+              <mxPoint x="220" y="850" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="user-cmf-label" connectable="0" parent="user-cmf" style="edgeLabel;fontSize=8;fillColor=none;labelBackgroundColor=none;" value="Deploy Flink SQL Jobs  (REST API + OAuth)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-140" y="-17" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="user-c3" edge="1" parent="1" source="user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;dashed=1;" target="route-c3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1150" y="45" />
+              <mxPoint x="1150" y="472" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#9E9E9E;rounded=1;arcSize=10;" value="" vertex="1">
+          <mxGeometry height="305" width="460" x="1630" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" parent="1" style="text;html=1;fontSize=12;fontStyle=1;align=left;verticalAlign=middle;" value="Legend" vertex="1">
+          <mxGeometry height="20" width="100" x="1640" y="565" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" edge="1" parent="1" style="endArrow=classic;strokeColor=#3949AB;strokeWidth=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="605" as="sourcePoint" />
+            <mxPoint x="1710" y="605" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg1-label" parent="1" style="text;fontSize=9;align=left;" value="Internal Kafka communication" vertex="1">
+          <mxGeometry height="20" width="180" x="1720" y="595" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" edge="1" parent="1" style="endArrow=classic;strokeColor=#E65100;strokeWidth=2;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="630" as="sourcePoint" />
+            <mxPoint x="1710" y="630" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg2-label" parent="1" style="text;fontSize=9;align=left;" value="Flink data path (SASL_SSL + OAuth)" vertex="1">
+          <mxGeometry height="20" width="200" x="1720" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" edge="1" parent="1" style="endArrow=classic;strokeColor=#8E24AA;dashed=1;dashPattern=8 4;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="655" as="sourcePoint" />
+            <mxPoint x="1710" y="655" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg3-label" parent="1" style="text;fontSize=9;align=left;" value="Operator manages resource" vertex="1">
+          <mxGeometry height="20" width="180" x="1720" y="645" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" edge="1" parent="1" style="endArrow=classic;strokeColor=#0277BD;strokeWidth=2;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="680" as="sourcePoint" />
+            <mxPoint x="1710" y="680" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg4-label" parent="1" style="text;fontSize=9;align=left;" value="External system connection" vertex="1">
+          <mxGeometry height="20" width="180" x="1720" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" edge="1" parent="1" style="endArrow=classic;strokeColor=#C62828;strokeWidth=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="705" as="sourcePoint" />
+            <mxPoint x="1710" y="705" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg5-label" parent="1" style="text;fontSize=9;align=left;" value="OpenShift Route (external ingress)" vertex="1">
+          <mxGeometry height="20" width="200" x="1720" y="695" as="geometry" />
+        </mxCell>
+        <mxCell id="leg6" edge="1" parent="1" style="endArrow=classic;strokeColor=#6D4C41;dashed=1;dashPattern=4 4;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="730" as="sourcePoint" />
+            <mxPoint x="1710" y="730" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg6-label" parent="1" style="text;fontSize=9;align=left;" value="Monitoring / metrics scrape" vertex="1">
+          <mxGeometry height="20" width="180" x="1720" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="leg7" edge="1" parent="1" style="endArrow=classic;strokeColor=#1565C0;strokeWidth=2;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="755" as="sourcePoint" />
+            <mxPoint x="1710" y="755" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg7-label" parent="1" style="text;fontSize=9;align=left;" value="CI/CD deploy &amp; auth flow" vertex="1">
+          <mxGeometry height="20" width="180" x="1720" y="745" as="geometry" />
+        </mxCell>
+        <mxCell id="leg8" edge="1" parent="1" style="endArrow=classic;strokeColor=#F9A825;strokeWidth=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="780" as="sourcePoint" />
+            <mxPoint x="1710" y="780" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg8-label" parent="1" style="text;fontSize=9;align=left;" value="Flink internal communication" vertex="1">
+          <mxGeometry height="20" width="180" x="1720" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="leg9" edge="1" parent="1" style="endArrow=classic;strokeColor=#FB8C00;dashed=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="805" as="sourcePoint" />
+            <mxPoint x="1710" y="805" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg9-label" parent="1" style="text;fontSize=9;align=left;" value="Certificate / PKI signing" vertex="1">
+          <mxGeometry height="20" width="180" x="1720" y="795" as="geometry" />
+        </mxCell>
+        <mxCell id="leg10" edge="1" parent="1" style="endArrow=classic;strokeColor=#546E7A;dashed=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1650" y="830" as="sourcePoint" />
+            <mxPoint x="1710" y="830" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg10-label" parent="1" style="text;fontSize=9;align=left;" value="GitOps sync" vertex="1">
+          <mxGeometry height="20" width="180" x="1720" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="sqlserver" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#B3E5FC;strokeColor=#0277BD;fontSize=10;fontStyle=1;size=10;" value="SQL Server&#xa;(CMF Catalog DB)&#xa;:1433" vertex="1">
+          <mxGeometry height="80" width="140" x="1301" y="450" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="cfk-k8s-view" name="CFK — Kubernetes Infrastructure View">
+    <mxGraphModel dx="2951" dy="1609" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="k8s-title" parent="1" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;" value="CFK Kubernetes Infrastructure View" vertex="1">
+          <mxGeometry height="40" width="600" x="675" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-cluster" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#43A047;fontStyle=1;fontSize=14;verticalAlign=top;spacingTop=5;rounded=1;arcSize=1;" value="OpenShift Cluster" vertex="1">
+          <mxGeometry height="1500" width="1720" x="40" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cluster-scope" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" value="Cluster-Scoped Resources" vertex="1">
+          <mxGeometry height="220" width="1680" x="60" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="crds-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#EDE7F6;strokeColor=#7E57C2;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Custom Resource Definitions (CRDs)" vertex="1">
+          <mxGeometry height="80" width="860" x="80" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-kafka" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="Kafka" vertex="1">
+          <mxGeometry height="30" width="65" x="90" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-kraft" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="KRaft&#xa;Controller" vertex="1">
+          <mxGeometry height="30" width="65" x="160" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-sr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="Schema&#xa;Registry" vertex="1">
+          <mxGeometry height="30" width="65" x="230" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-connect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="Connect" vertex="1">
+          <mxGeometry height="30" width="65" x="300" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-cc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="Control&#xa;Center" vertex="1">
+          <mxGeometry height="30" width="65" x="370" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-krc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="KafkaRest&#xa;Class" vertex="1">
+          <mxGeometry height="30" width="65" x="440" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-crb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="Confluent&#xa;Rolebinding" vertex="1">
+          <mxGeometry height="30" width="70" x="510" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-topic" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="Kafka&#xa;Topic" vertex="1">
+          <mxGeometry height="30" width="65" x="585" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-flink-deploy" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;fontSize=8;" value="Flink&#xa;Deployment" vertex="1">
+          <mxGeometry height="30" width="65" x="655" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-flink-app" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="Flink&#xa;Application" vertex="1">
+          <mxGeometry height="30" width="65" x="725" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-flink-env" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="Flink&#xa;Environment" vertex="1">
+          <mxGeometry height="30" width="65" x="795" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="crd-cmfrc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="CMFRest&#xa;Class" vertex="1">
+          <mxGeometry height="30" width="60" x="865" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="rbac-cluster" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#EDE7F6;strokeColor=#7E57C2;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="ClusterRoles &amp; ClusterRoleBindings" vertex="1">
+          <mxGeometry height="80" width="380" x="960" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="cr-cfk" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="ClusterRole&#xa;confluent-operator" vertex="1">
+          <mxGeometry height="30" width="110" x="970" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cr-flink" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;fontSize=8;" value="ClusterRole&#xa;flink-operator" vertex="1">
+          <mxGeometry height="30" width="100" x="1090" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cr-certmgr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FB8C00;fontSize=8;" value="ClusterRole&#xa;cert-manager (x3)" vertex="1">
+          <mxGeometry height="30" width="110" x="1200" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="scc-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#EDE7F6;strokeColor=#7E57C2;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="SecurityContextConstraints" vertex="1">
+          <mxGeometry height="80" width="360" x="1360" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="scc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="confluent-scc&#xa;runAsUser: RunAsAny&#xa;fsGroup: RunAsAny&#xa;allowPrivileged: false" vertex="1">
+          <mxGeometry height="50" width="140" x="1370" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="scc-binding" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="CRB: confluent-scc&#xa;→ all SAs in confluent-*&#xa;→ cert-manager SAs" vertex="1">
+          <mxGeometry height="50" width="140" x="1520" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="webhooks-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#EDE7F6;strokeColor=#7E57C2;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Admission Webhooks" vertex="1">
+          <mxGeometry height="80" width="860" x="80" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="wh-cfk-val" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;fontSize=8;" value="ValidatingWebhook&#xa;confluent-operator (:8443)" vertex="1">
+          <mxGeometry height="30" width="160" x="90" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="wh-flink-val" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;fontSize=8;" value="ValidatingWebhook&#xa;flink-operator (:9443)" vertex="1">
+          <mxGeometry height="30" width="160" x="260" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="wh-flink-mut" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;fontSize=8;" value="MutatingWebhook&#xa;flink-operator (:9443)" vertex="1">
+          <mxGeometry height="30" width="160" x="430" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="wh-cm-val" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FB8C00;fontSize=8;" value="ValidatingWebhook&#xa;cert-manager (:443)" vertex="1">
+          <mxGeometry height="30" width="160" x="600" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="wh-cm-mut" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FB8C00;fontSize=8;" value="MutatingWebhook&#xa;cert-manager (:443)" vertex="1">
+          <mxGeometry height="30" width="160" x="770" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-ns-cm" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#FB8C00;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;dashed=1;" value="cert-manager namespace" vertex="1">
+          <mxGeometry height="190" width="400" x="60" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-deploy1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#FB8C00;fontSize=9;" value="Deployment: cert-manager&#xa;Pods: 1 | SA: cert-manager" vertex="1">
+          <mxGeometry height="40" width="180" x="80" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-deploy2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#FB8C00;fontSize=9;" value="Deployment: cert-manager-webhook&#xa;Pods: 1 | SA: cert-manager-webhook" vertex="1">
+          <mxGeometry height="40" width="220" x="80" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-deploy3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#FB8C00;fontSize=9;" value="Deployment: cert-manager-cainjector&#xa;Pods: 1 | SA: cert-manager-cainjector" vertex="1">
+          <mxGeometry height="40" width="230" x="80" y="475" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-svc1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#FB8C00;fontSize=8;" value="Svc: cert-manager&#xa;:9402 (metrics)" vertex="1">
+          <mxGeometry height="35" width="120" x="320" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-svc2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#FB8C00;fontSize=8;" value="Svc: webhook&#xa;:443 (HTTPS)" vertex="1">
+          <mxGeometry height="35" width="120" x="320" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-ns-confluent" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1E88E5;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=3;dashed=1;" value="confluent-{env} namespace" vertex="1">
+          <mxGeometry height="1010" width="1680" x="60" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="ns-rbac" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8EAF6;strokeColor=#5C6BC0;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Namespace RBAC" vertex="1">
+          <mxGeometry height="80" width="720" x="80" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="sa-confluent" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" value="SA: confluent" vertex="1">
+          <mxGeometry height="30" width="100" x="90" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="sa-flink-op" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" value="SA: flink-operator" vertex="1">
+          <mxGeometry height="30" width="110" x="200" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="sa-flink" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" value="SA: flink" vertex="1">
+          <mxGeometry height="30" width="80" x="320" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="sa-cmf" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" value="SA: cmf" vertex="1">
+          <mxGeometry height="30" width="80" x="410" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="role-flink-op" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" value="Role: flink-operator" vertex="1">
+          <mxGeometry height="30" width="120" x="510" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="role-flink" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" value="Role: flink" vertex="1">
+          <mxGeometry height="30" width="80" x="640" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-operators" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Operators" vertex="1">
+          <mxGeometry height="130" width="720" x="80" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-cfk" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=9;align=left;spacingLeft=5;" value="Deployment: confluent-operator&#xa;Replicas: 2 (HA, leader election)&#xa;SA: confluent | FIPS: true" vertex="1">
+          <mxGeometry height="50" width="220" x="100" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-cfk" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=8;" value="Svc: confluent-operator&#xa;:7778 (metrics) :8443 (webhook)" vertex="1">
+          <mxGeometry height="30" width="220" x="100" y="765" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-flink-op" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;fontSize=9;align=left;spacingLeft=5;" value="Deployment: flink-kubernetes-operator&#xa;Replicas: 2 (HA, leader election)&#xa;SA: flink-operator" vertex="1">
+          <mxGeometry height="50" width="230" x="340" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-flink-op" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;fontSize=8;" value="Svc: flink-operator-webhook&#xa;:443→9443 (webhook)" vertex="1">
+          <mxGeometry height="30" width="230" x="340" y="765" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-flink-op" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;fontSize=8;" value="CM: flink-operator-config&#xa;(flink-conf, log4j)" vertex="1">
+          <mxGeometry height="30" width="150" x="590" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="secret-flink-wh" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;fontSize=8;" value="Secret: flink-operator&#xa;-webhook-secret" vertex="1">
+          <mxGeometry height="30" width="150" x="590" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-statefulsets" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8EAF6;strokeColor=#3949AB;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="StatefulSets" vertex="1">
+          <mxGeometry height="300" width="720" x="80" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="sts-kraft" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#C5CAE9;strokeColor=#3949AB;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="StatefulSet: kraftcontroller" vertex="1">
+          <mxGeometry height="150" width="330" x="100" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="pod-kraft0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=8;" value="Pod: kraftcontroller-0&#xa;CPU: 500m/1 | Mem: 2Gi/4Gi" vertex="1">
+          <mxGeometry height="35" width="200" x="110" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="pod-kraft1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=8;" value="Pod: kraftcontroller-1" vertex="1">
+          <mxGeometry height="25" width="100" x="110" y="925" as="geometry" />
+        </mxCell>
+        <mxCell id="pod-kraft2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=8;" value="Pod: kraftcontroller-2" vertex="1">
+          <mxGeometry height="25" width="100" x="215" y="925" as="geometry" />
+        </mxCell>
+        <mxCell id="pvc-kraft" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=8;size=6;" value="PVC: datadir-kraftcontroller-*&#xa;3x 10Gi RWO" vertex="1">
+          <mxGeometry height="50" width="90" x="330" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-kraft" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=8;" value="Svc: kraftcontroller&#xa;:9071 (internal)&#xa;Svc: kraftcontroller-headless" vertex="1">
+          <mxGeometry height="35" width="200" x="110" y="955" as="geometry" />
+        </mxCell>
+        <mxCell id="sts-kafka" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#C5CAE9;strokeColor=#3949AB;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="StatefulSet: kafka" vertex="1">
+          <mxGeometry height="250" width="330" x="450" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="pod-kafka0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=8;" value="Pod: kafka-0&#xa;CPU: 1/2 | Mem: 4Gi/8Gi&#xa;Ports: 9071, 9093, 8090, 7778" vertex="1">
+          <mxGeometry height="45" width="185" x="460" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="pod-kafka1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=8;" value="Pod: kafka-1" vertex="1">
+          <mxGeometry height="25" width="85" x="460" y="935" as="geometry" />
+        </mxCell>
+        <mxCell id="pod-kafka2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=8;" value="Pod: kafka-2" vertex="1">
+          <mxGeometry height="25" width="85" x="550" y="935" as="geometry" />
+        </mxCell>
+        <mxCell id="pvc-kafka" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=8;size=6;" value="PVC: datadir-kafka-*&#xa;3x 50Gi RWO" vertex="1">
+          <mxGeometry height="50" width="100" x="660" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-kafka" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=8;" value="Svc: kafka :9071 (internal TLS) :9093 (SASL_SSL) :8090 (MDS)&#xa;Svc: kafka-headless" vertex="1">
+          <mxGeometry height="35" width="290" x="460" y="965" as="geometry" />
+        </mxCell>
+        <mxCell id="kafka-listeners" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;align=left;spacingLeft=5;" value="Listeners:&#xa;internal → SASL_SSL + OAuth :9071&#xa;external → SASL_SSL + OAuth :9093 (Route)" vertex="1">
+          <mxGeometry height="45" width="230" x="460" y="1005" as="geometry" />
+        </mxCell>
+        <mxCell id="kafka-mds-svc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;" value="MDS (embedded)&#xa;:8090 REST" vertex="1">
+          <mxGeometry height="35" width="70" x="700" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-deployments" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF8E1;strokeColor=#F9A825;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Deployments (Stateless Components)" vertex="1">
+          <mxGeometry height="210" width="720" x="80" y="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-sr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;" value="Deployment: schemaregistry&#xa;Replicas: 1 (dev) / 2 (prd)&#xa;CPU: 250m/500m | Mem: 512Mi/1Gi" vertex="1">
+          <mxGeometry height="50" width="200" x="100" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-sr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;" value="Svc: schemaregistry :8081" vertex="1">
+          <mxGeometry height="25" width="155" x="100" y="1235" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-connect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;" value="Deployment: connect&#xa;Replicas: 1&#xa;CPU: 500m/1 | Mem: 1Gi/2Gi" vertex="1">
+          <mxGeometry height="50" width="175" x="320" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-connect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;" value="Svc: connect :8083" vertex="1">
+          <mxGeometry height="25" width="130" x="320" y="1235" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-cc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;" value="Deployment: controlcenter&#xa;Replicas: 1&#xa;CPU: 500m/1 | Mem: 2Gi/4Gi" vertex="1">
+          <mxGeometry height="50" width="175" x="515" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-cc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;" value="Svc: controlcenter :9021" vertex="1">
+          <mxGeometry height="25" width="140" x="515" y="1235" as="geometry" />
+        </mxCell>
+        <mxCell id="pvc-cc" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=8;size=6;" value="PVC: 10Gi&#xa;RWO" vertex="1">
+          <mxGeometry height="45" width="70" x="700" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-cmf" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;" value="Deployment: cmf&#xa;Replicas: 1 | SA: cmf&#xa;CPU: 100m/500m | Mem: 512Mi/1Gi" vertex="1">
+          <mxGeometry height="50" width="210" x="100" y="1270" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-cmf" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;" value="Svc: cmf-service :80" vertex="1">
+          <mxGeometry height="25" width="130" x="100" y="1325" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-flink" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#43A047;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Flink Workloads (managed by Flink Operator)" vertex="1">
+          <mxGeometry height="320" width="890" x="830" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-session" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#C8E6C9;strokeColor=#2E7D32;fontStyle=1;fontSize=9;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="FlinkDeployment: flink-session (Session Mode)" vertex="1">
+          <mxGeometry height="160" width="410" x="850" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-s-jm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;" value="Pod: flink-session-dispatcher (JM)&#xa;CPU: 0.5 | Mem: 1024m&#xa;SA: flink" vertex="1">
+          <mxGeometry height="45" width="200" x="860" y="738" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-s-tm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;" value="Pod(s): flink-session-taskmanager&#xa;CPU: 0.5 | Mem: 1024m | Slots: 2" vertex="1">
+          <mxGeometry height="40" width="200" x="860" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-s-svc1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;" value="Svc: flink-session-rest :8081" vertex="1">
+          <mxGeometry height="22" width="180" x="860" y="838" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-s-svc2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;" value="Svc: flink-session-dispatcher :6123" vertex="1">
+          <mxGeometry height="22" width="185" x="1060" y="738" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-s-cm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;" value="CM: flink-session-config" vertex="1">
+          <mxGeometry height="22" width="150" x="1060" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-app-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#C8E6C9;strokeColor=#2E7D32;fontStyle=1;fontSize=9;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="FlinkApplication: flink-app (Application Mode)" vertex="1">
+          <mxGeometry height="160" width="420" x="1280" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-a-jm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;" value="Pod: flink-app-jobmanager (JM)&#xa;CPU: 1 | Mem: 1024m | SA: flink" vertex="1">
+          <mxGeometry height="40" width="200" x="1290" y="738" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-a-tm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;" value="Pod(s): flink-app-taskmanager&#xa;CPU: 1 | Mem: 1024m | Slots: 1" vertex="1">
+          <mxGeometry height="40" width="200" x="1290" y="785" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-a-svc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;" value="Svc: flink-app-rest :8081&#xa;Svc: flink-app-jobmanager :6123" vertex="1">
+          <mxGeometry height="30" width="195" x="1290" y="833" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-a-state" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=8;" value="State: RocksDB&#xa;Checkpoint: 10s&#xa;Savepoint: 5m" vertex="1">
+          <mxGeometry height="45" width="100" x="1510" y="738" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-a-cm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;" value="CM: flink-app-config" vertex="1">
+          <mxGeometry height="22" width="130" x="1510" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-pvc" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=9;size=8;" value="PVC: flink-pvc&#xa;10Gi RWX&#xa;(NFS / NetApp Trident)" vertex="1">
+          <mxGeometry height="60" width="160" x="850" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="flink-crs" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#43A047;fontStyle=1;fontSize=9;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Configuration CRs" vertex="1">
+          <mxGeometry height="60" width="380" x="1040" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="cr-flinkenv" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;" value="FlinkEnvironment:&#xa;flink-env1" vertex="1">
+          <mxGeometry height="30" width="110" x="1055" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="cr-cmfrc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=8;" value="CMFRestClass:&#xa;default" vertex="1">
+          <mxGeometry height="30" width="100" x="1175" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="cr-krc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontSize=8;" value="KafkaRestClass:&#xa;default" vertex="1">
+          <mxGeometry height="30" width="100" x="1285" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-secrets" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FCE4EC;strokeColor=#C62828;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Secrets" vertex="1">
+          <mxGeometry height="110" width="890" x="830" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="secret-tls" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="tls-certs&#xa;(tls.crt, tls.key, ca.crt)" vertex="1">
+          <mxGeometry height="35" width="130" x="845" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="secret-oauth" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="oauth-jass&#xa;(OAuth client creds)" vertex="1">
+          <mxGeometry height="35" width="120" x="985" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="secret-oidc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="oauth-jass-oidc&#xa;(OIDC SSO creds)" vertex="1">
+          <mxGeometry height="35" width="120" x="1115" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="secret-mds" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="mds-token&#xa;(RSA key pair)" vertex="1">
+          <mxGeometry height="35" width="100" x="1245" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="secret-db" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="cmf-db-password&#xa;(SQL Server)" vertex="1">
+          <mxGeometry height="35" width="110" x="1355" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="secret-license" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="confluent-license" vertex="1">
+          <mxGeometry height="35" width="105" x="1475" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="secret-cfk-wh" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="confluent-operator&#xa;-serving-cert" vertex="1">
+          <mxGeometry height="35" width="115" x="1590" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-routes" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FCE4EC;strokeColor=#C62828;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="OpenShift Routes (External Ingress)" vertex="1">
+          <mxGeometry height="100" width="890" x="830" y="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="route-kafka0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="Route: kafka-0&#xa;→ broker-0.{env}&#xa;.confluent.fcbint.net" vertex="1">
+          <mxGeometry height="45" width="120" x="845" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="route-kafka1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="Route: kafka-1&#xa;→ broker-1..." vertex="1">
+          <mxGeometry height="45" width="90" x="975" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="route-kafka2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="Route: kafka-2&#xa;→ broker-2..." vertex="1">
+          <mxGeometry height="45" width="90" x="1075" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="route-k8s-sr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="Route: schemaregistry&#xa;→ schemaregistry.{env}&#xa;.confluent.fcbint.net" vertex="1">
+          <mxGeometry height="45" width="155" x="1175" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="route-k8s-connect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="Route: connect&#xa;→ connect.{env}&#xa;.confluent.fcbint.net" vertex="1">
+          <mxGeometry height="45" width="135" x="1340" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="route-k8s-cc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=8;" value="Route: controlcenter&#xa;→ controlcenter.{env}&#xa;.confluent.fcbint.net" vertex="1">
+          <mxGeometry height="45" width="150" x="1485" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-configmaps" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E0F7FA;strokeColor=#00838F;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="ConfigMaps" vertex="1">
+          <mxGeometry height="80" width="890" x="830" y="1270" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-kraft" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;" value="kraftcontroller&#xa;-config" vertex="1">
+          <mxGeometry height="30" width="85" x="845" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-kafka" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;" value="kafka&#xa;-config" vertex="1">
+          <mxGeometry height="30" width="70" x="940" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-sr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;" value="schemaregistry&#xa;-config" vertex="1">
+          <mxGeometry height="30" width="90" x="1020" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-connect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;" value="connect&#xa;-config" vertex="1">
+          <mxGeometry height="30" width="75" x="1120" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-cc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;" value="controlcenter&#xa;-config" vertex="1">
+          <mxGeometry height="30" width="85" x="1205" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-cmf" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;" value="cmf&#xa;-config" vertex="1">
+          <mxGeometry height="30" width="65" x="1300" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-flink-session" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;" value="flink-session&#xa;-config" vertex="1">
+          <mxGeometry height="30" width="80" x="1375" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="cm-flink-app" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;" value="flink-app&#xa;-config" vertex="1">
+          <mxGeometry height="30" width="75" x="1465" y="1300" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-storage" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Storage Summary" vertex="1">
+          <mxGeometry height="160" width="890" x="830" y="1370" as="geometry" />
+        </mxCell>
+        <mxCell id="storage-table" parent="1" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=#8E24AA;" value="&lt;table style=&#39;font-size:9px;border-collapse:collapse;width:100%&#39;&gt;&lt;tr style=&#39;background:#E1BEE7;font-weight:bold&#39;&gt;&lt;td style=&#39;padding:3px;border:1px solid #8E24AA&#39;&gt;PVC&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #8E24AA&#39;&gt;Size&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #8E24AA&#39;&gt;Mode&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #8E24AA&#39;&gt;Count&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #8E24AA&#39;&gt;StorageClass&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;datadir-kraftcontroller-*&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;10Gi&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;RWO&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;3&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;Block (gp3)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;datadir-kafka-*&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;50Gi&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;RWO&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;3&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;Block (gp3)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;datadir-controlcenter&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;10Gi&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;RWO&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;1&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;Block (gp3)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;flink-pvc&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;10Gi&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;RWX&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;1&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #ccc&#39;&gt;NFS / NetApp Trident&lt;/td&gt;&lt;/tr&gt;&lt;tr style=&#39;background:#E1BEE7;font-weight:bold&#39;&gt;&lt;td style=&#39;padding:3px;border:1px solid #8E24AA&#39;&gt;Total&lt;/td&gt;&lt;td style=&#39;padding:3px;border:1px solid #8E24AA&#39; colspan=&#39;4&#39;&gt;8 PVCs — 210Gi (3×10 + 3×50 + 10 + 10)&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="120" width="850" x="850" y="1395" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-annotations" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#EFEBE9;strokeColor=#6D4C41;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" value="Pod Annotations (All Workloads)" vertex="1">
+          <mxGeometry height="180" width="720" x="80" y="1370" as="geometry" />
+        </mxCell>
+        <mxCell id="annot-prom" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D7CCC8;strokeColor=#6D4C41;fontSize=9;align=left;spacingLeft=8;fontFamily=Courier New;" value="prometheus.io/scrape: &quot;true&quot;&#xa;prometheus.io/port: &quot;7778&quot;  (CP components)&#xa;prometheus.io/port: &quot;9250&quot;  (Flink JM/TM)&#xa;prometheus.io/port: &quot;9999&quot;  (Flink operator)" vertex="1">
+          <mxGeometry height="65" width="320" x="100" y="1400" as="geometry" />
+        </mxCell>
+        <mxCell id="annot-dyna" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D7CCC8;strokeColor=#6D4C41;fontSize=9;align=left;spacingLeft=8;fontFamily=Courier New;" value="metrics.dynatrace.com/scrape: &quot;true&quot;&#xa;metrics.dynatrace.com/port: (same ports)" vertex="1">
+          <mxGeometry height="40" width="320" x="440" y="1400" as="geometry" />
+        </mxCell>
+        <mxCell id="annot-security" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D7CCC8;strokeColor=#6D4C41;fontSize=9;align=left;spacingLeft=8;fontFamily=Courier New;" value="Pod Security Context (all workloads):&#xa;runAsUser: 1000 | fsGroup: 1000&#xa;runAsNonRoot: true&#xa;SCC: confluent-scc" vertex="1">
+          <mxGeometry height="60" width="320" x="440" y="1450" as="geometry" />
+        </mxCell>
+        <mxCell id="affinity-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D7CCC8;strokeColor=#6D4C41;fontSize=9;align=left;spacingLeft=8;fontFamily=Courier New;" value="Pod Anti-Affinity: Kafka &amp; KRaft pods spread across topology.kubernetes.io/zone&#xa;Operator pods spread across kubernetes.io/hostname" vertex="1">
+          <mxGeometry height="35" width="660" x="100" y="1510" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-legend" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#9E9E9E;rounded=1;arcSize=10;" value="" vertex="1">
+          <mxGeometry height="220" width="370" x="1800" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-legend-title" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=left;" value="Legend — Color Key" vertex="1">
+          <mxGeometry height="20" width="200" x="1810" y="105" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg1" parent="1" style="rounded=1;fillColor=#D1C4E9;strokeColor=#7E57C2;" value="" vertex="1">
+          <mxGeometry height="15" width="30" x="1815" y="132" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg1-label" parent="1" style="text;fontSize=9;align=left;" value="CFK / Confluent Platform (platform.confluent.io CRDs)" vertex="1">
+          <mxGeometry height="18" width="300" x="1850" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg2" parent="1" style="rounded=1;fillColor=#C8E6C9;strokeColor=#43A047;" value="" vertex="1">
+          <mxGeometry height="15" width="30" x="1815" y="152" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg2-label" parent="1" style="text;fontSize=9;align=left;" value="Flink Operator / Flink workloads (flink.apache.org CRDs)" vertex="1">
+          <mxGeometry height="18" width="300" x="1850" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg3" parent="1" style="rounded=1;fillColor=#FFF3E0;strokeColor=#FB8C00;" value="" vertex="1">
+          <mxGeometry height="15" width="30" x="1815" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg3-label" parent="1" style="text;fontSize=9;align=left;" value="cert-manager (jetstack)" vertex="1">
+          <mxGeometry height="18" width="200" x="1850" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg4" parent="1" style="rounded=1;fillColor=#BBDEFB;strokeColor=#1565C0;" value="" vertex="1">
+          <mxGeometry height="15" width="30" x="1815" y="192" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg4-label" parent="1" style="text;fontSize=9;align=left;" value="Pods (native K8s workloads)" vertex="1">
+          <mxGeometry height="18" width="200" x="1850" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg5" parent="1" style="shape=cylinder3;fillColor=#E1BEE7;strokeColor=#8E24AA;size=4;" value="" vertex="1">
+          <mxGeometry height="20" width="30" x="1815" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg5-label" parent="1" style="text;fontSize=9;align=left;" value="PVCs / Persistent Storage" vertex="1">
+          <mxGeometry height="18" width="200" x="1850" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg6" parent="1" style="rounded=1;fillColor=#F8BBD0;strokeColor=#C62828;" value="" vertex="1">
+          <mxGeometry height="15" width="30" x="1815" y="237" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg6-label" parent="1" style="text;fontSize=9;align=left;" value="Secrets &amp; OpenShift Routes" vertex="1">
+          <mxGeometry height="18" width="200" x="1850" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg7" parent="1" style="rounded=1;fillColor=#B2EBF2;strokeColor=#00838F;" value="" vertex="1">
+          <mxGeometry height="15" width="30" x="1815" y="257" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg7-label" parent="1" style="text;fontSize=9;align=left;" value="ConfigMaps" vertex="1">
+          <mxGeometry height="18" width="200" x="1850" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg8" parent="1" style="rounded=1;fillColor=#D7CCC8;strokeColor=#6D4C41;" value="" vertex="1">
+          <mxGeometry height="15" width="30" x="1815" y="277" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg8-label" parent="1" style="text;fontSize=9;align=left;" value="Pod Annotations / Security / Affinity" vertex="1">
+          <mxGeometry height="18" width="200" x="1850" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg9" parent="1" style="rounded=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;" value="" vertex="1">
+          <mxGeometry height="15" width="30" x="1815" y="297" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s-leg9-label" parent="1" style="text;fontSize=9;align=left;" value="RBAC (ServiceAccounts, Roles, RoleBindings)" vertex="1">
+          <mxGeometry height="18" width="250" x="1850" y="295" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- ==================== TAB 3: Kubernetes Services ==================== -->
+  <diagram id="k8s-services-ref" name="Reference — Kubernetes Services">
+    <mxGraphModel dx="1600" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="svc-title" value="Kubernetes Services — How They Work" style="text;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="300" y="15" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-subtitle" value="A Service provides a stable network endpoint that routes traffic to a dynamic set of Pods selected by labels." style="text;html=1;fontSize=11;fontStyle=2;align=center;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="200" y="50" width="700" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== 1. ClusterIP ==================== -->
+        <mxCell id="cip-group" value="1. ClusterIP (default)" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="720" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-desc" value="Internal-only virtual IP reachable from within the cluster.&lt;br&gt;Other Pods reach it via DNS: &lt;b&gt;&amp;lt;svc&amp;gt;.&amp;lt;ns&amp;gt;.svc.cluster.local&lt;/b&gt;" style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="115" width="400" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-client" value="Client Pod" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="175" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-svc" value="Service (ClusterIP)&#xa;10.96.x.x:8080&#xa;selector: app=myapp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="165" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-kproxy" value="kube-proxy (iptables/IPVS rules)" style="text;html=1;fontSize=8;fontStyle=2;fontColor=#666;align=center;" vertex="1" parent="1">
+          <mxGeometry x="260" y="225" width="155" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-pod1" value="Pod A&#xa;10.244.1.5:8080" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="520" y="155" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-pod2" value="Pod B&#xa;10.244.2.8:8080" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="520" y="190" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-pod3" value="Pod C&#xa;10.244.3.2:8080" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="520" y="225" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-a1" style="rounded=1;strokeColor=#1565C0;strokeWidth=2;" edge="1" parent="1" source="cip-client" target="cip-svc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-a1-l" value="DNS →&#xa;ClusterIP:port" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="cip-a1">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="cip-a2a" style="rounded=1;strokeColor=#1565C0;" edge="1" parent="1" source="cip-svc" target="cip-pod1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-a2b" style="rounded=1;strokeColor=#1565C0;" edge="1" parent="1" source="cip-svc" target="cip-pod2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-a2c" style="rounded=1;strokeColor=#1565C0;" edge="1" parent="1" source="cip-svc" target="cip-pod3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-lb" value="round-robin" style="text;fontSize=8;fontStyle=2;fontColor=#1565C0;align=center;" vertex="1" parent="1">
+          <mxGeometry x="440" y="185" width="70" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="cip-ep" value="Endpoints object auto-updated&#xa;as Pods come and go" style="text;html=1;fontSize=8;fontStyle=2;fontColor=#999;align=left;" vertex="1" parent="1">
+          <mxGeometry x="640" y="200" width="110" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== 2. NodePort ==================== -->
+        <mxCell id="np-group" value="2. NodePort" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#E65100;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="340" width="720" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="np-desc" value="Extends ClusterIP — opens a static port (30000–32767) on &lt;b&gt;every Node&lt;/b&gt;.&lt;br&gt;External traffic hits &lt;b&gt;NodeIP:NodePort&lt;/b&gt; → forwarded to ClusterIP → Pods." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="365" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="np-ext" value="External&#xa;Client" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#FFCCBC;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="60" y="420" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="np-node" value="Node (any)" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFE0B2;strokeColor=#E65100;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="180" y="415" width="180" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="np-nodeport" value="NodePort :31000&#xa;(open on 0.0.0.0)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="195" y="440" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="np-svc" value="Service&#xa;(NodePort type)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="425" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="np-pod1" value="Pod A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="600" y="415" width="80" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="np-pod2" value="Pod B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="600" y="448" width="80" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="np-a1" style="rounded=1;strokeColor=#E65100;strokeWidth=2;" edge="1" parent="1" source="np-ext" target="np-nodeport">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="np-a1-l" value="NodeIP:31000" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="np-a1">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="np-a2" style="rounded=1;strokeColor=#1565C0;" edge="1" parent="1" source="np-nodeport" target="np-svc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="np-a3a" style="rounded=1;strokeColor=#1565C0;" edge="1" parent="1" source="np-svc" target="np-pod1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="np-a3b" style="rounded=1;strokeColor=#1565C0;" edge="1" parent="1" source="np-svc" target="np-pod2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="np-note" value="Every node listens on the same NodePort, even if no target Pods run on that node." style="text;html=1;fontSize=9;fontStyle=2;fontColor=#999;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="500" width="400" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="np-rare" value="Rarely used directly in production — usually a building block for LoadBalancer." style="text;html=1;fontSize=9;fontStyle=2;fontColor=#999;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="520" width="400" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== 3. LoadBalancer ==================== -->
+        <mxCell id="lb-group" value="3. LoadBalancer" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="720" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-desc" value="Extends NodePort — provisions an &lt;b&gt;external cloud load balancer&lt;/b&gt; (AWS ELB/NLB, GCP LB).&lt;br&gt;Gives you a stable external IP or DNS name. &lt;b&gt;LoadBalancer = Cloud LB + NodePort + ClusterIP&lt;/b&gt;." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="605" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-internet" value="External&#xa;Client" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="60" y="665" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-cloud" value="Cloud Load Balancer&#xa;(external IP: 34.x.x.x)&#xa;provisioned automatically" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="660" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-np" value="NodePort&#xa;(auto-allocated)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="410" y="655" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-cip" value="ClusterIP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="410" y="692" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-pod1" value="Pod A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="580" y="655" width="80" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-pod2" value="Pod B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="580" y="690" width="80" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-a1" style="rounded=1;strokeColor=#2E7D32;strokeWidth=2;" edge="1" parent="1" source="lb-internet" target="lb-cloud">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-a2" style="rounded=1;strokeColor=#E65100;" edge="1" parent="1" source="lb-cloud" target="lb-np">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-a3a" style="rounded=1;strokeColor=#1565C0;" edge="1" parent="1" source="lb-np" target="lb-pod1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-a3b" style="rounded=1;strokeColor=#1565C0;" edge="1" parent="1" source="lb-cip" target="lb-pod2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb-ocp-note" value="&lt;b&gt;In OpenShift&lt;/b&gt;, Routes replace LoadBalancer Services. The HAProxy-based Router&#xa;watches Route objects and provides ingress with TLS termination and hostname-based routing." style="text;html=1;fontSize=9;fontStyle=2;fontColor=#C62828;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="740" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== 4. Headless ==================== -->
+        <mxCell id="hl-group" value="4. Headless Service (clusterIP: None)" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="820" width="720" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-desc" value="No virtual IP. DNS returns &lt;b&gt;individual Pod IPs&lt;/b&gt; (A records). Each Pod gets a stable DNS name:&lt;br&gt;&lt;b&gt;&amp;lt;pod-name&amp;gt;.&amp;lt;svc&amp;gt;.&amp;lt;ns&amp;gt;.svc.cluster.local&lt;/b&gt; — essential for StatefulSets (Kafka, databases)." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="848" width="600" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-client" value="Client Pod" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="910" width="100" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-dns" value="CoreDNS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="910" width="100" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-nosvc" value="No ClusterIP!&#xa;(clusterIP: None)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=8;fontStyle=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="950" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-pod0" value="kafka-0.kafka-headless&#xa;.ns.svc.cluster.local&#xa;→ 10.244.1.5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="430" y="893" width="175" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-pod1" value="kafka-1.kafka-headless&#xa;.ns.svc.cluster.local&#xa;→ 10.244.2.8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="430" y="940" width="175" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-pod2" value="kafka-2.kafka-headless&#xa;.ns.svc.cluster.local&#xa;→ 10.244.3.2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="430" y="987" width="175" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-a1" style="rounded=1;strokeColor=#8E24AA;strokeWidth=2;" edge="1" parent="1" source="hl-client" target="hl-dns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-a1-l" value="DNS query" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="hl-a1">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="hl-a2a" style="rounded=1;strokeColor=#8E24AA;dashed=1;" edge="1" parent="1" source="hl-dns" target="hl-pod0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-a2b" style="rounded=1;strokeColor=#8E24AA;dashed=1;" edge="1" parent="1" source="hl-dns" target="hl-pod1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-a2c" style="rounded=1;strokeColor=#8E24AA;dashed=1;" edge="1" parent="1" source="hl-dns" target="hl-pod2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-returns" value="returns all Pod IPs&#xa;(client picks one)" style="text;fontSize=8;fontStyle=2;fontColor=#8E24AA;align=center;" vertex="1" parent="1">
+          <mxGeometry x="355" y="910" width="70" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-direct" value="Client connects directly to a specific Pod — no load balancing layer" style="text;html=1;fontSize=9;fontStyle=2;fontColor=#999;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1050" width="400" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== COMPARISON TABLE ==================== -->
+        <mxCell id="svc-comparison" value="&lt;table style='font-size:10px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#E3F2FD;font-weight:bold'&gt;&lt;td style='padding:5px;border:1px solid #1565C0'&gt;Type&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #1565C0'&gt;ClusterIP&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #1565C0'&gt;External IP&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #1565C0'&gt;Load Balanced&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #1565C0'&gt;Pod DNS&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #1565C0'&gt;Use Case&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px;border:1px solid #ccc;font-weight:bold;background:#E3F2FD'&gt;ClusterIP&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Yes&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;No&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Yes (internal)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;No&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Internal microservice communication&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px;border:1px solid #ccc;font-weight:bold;background:#FFF3E0'&gt;NodePort&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Yes&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;NodeIP:Port&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Yes&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;No&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Dev/testing, non-cloud&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px;border:1px solid #ccc;font-weight:bold;background:#E8F5E9'&gt;LoadBalancer&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Yes&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Cloud LB IP&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Yes (external)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;No&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Production external traffic&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:5px;border:1px solid #ccc;font-weight:bold;background:#F3E5F5'&gt;Headless&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;None&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;No&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;No (client picks)&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;Yes&lt;/td&gt;&lt;td style='padding:5px;border:1px solid #ccc'&gt;StatefulSets (Kafka, DBs)&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=#9E9E9E;" vertex="1" parent="1">
+          <mxGeometry x="800" y="90" width="700" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- Key Concepts -->
+        <mxCell id="svc-concepts" value="" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#9E9E9E;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="800" y="270" width="700" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-concepts-title" value="Key Concepts" style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="810" y="275" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-c1" value="&lt;b&gt;Selector&lt;/b&gt; — Label query (e.g. app=kafka) that determines which Pods belong to the Service.&lt;br&gt;K8s watches for matching Pods and updates the Endpoints object automatically." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="300" width="680" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-c2" value="&lt;b&gt;Endpoints&lt;/b&gt; — Auto-managed object listing all Pod IPs matching the selector.&lt;br&gt;When a Pod starts/stops or fails readiness probes, its IP is added/removed." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="335" width="680" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-c3" value="&lt;b&gt;kube-proxy&lt;/b&gt; — Runs on every node. Programs iptables/IPVS rules to route ClusterIP traffic to Pod IPs." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="370" width="680" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-c4" value="&lt;b&gt;Port vs TargetPort&lt;/b&gt; — port is what the Service listens on; targetPort is the container port.&lt;br&gt;Example: Service port=80, targetPort=8080 → clients call :80, traffic hits Pod :8080." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="395" width="680" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-c5" value="&lt;b&gt;Session Affinity&lt;/b&gt; — sessionAffinity=ClientIP makes the same client always reach the same Pod. Default is None (round-robin)." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="430" width="680" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-c6" value="&lt;b&gt;ExternalName&lt;/b&gt; — 5th type (not shown): returns a CNAME pointing to an external DNS name. No proxying. Aliases external services." style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="455" width="680" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-c7" value="&lt;b&gt;DNS Format&lt;/b&gt;:  Service → &lt;code&gt;&amp;lt;svc&amp;gt;.&amp;lt;ns&amp;gt;.svc.cluster.local&lt;/code&gt;  |  Headless Pod → &lt;code&gt;&amp;lt;pod&amp;gt;.&amp;lt;svc&amp;gt;.&amp;lt;ns&amp;gt;.svc.cluster.local&lt;/code&gt;" style="text;html=1;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="480" width="680" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- ==================== TAB 4: Kubernetes Storage ==================== -->
+  <diagram id="k8s-storage-ref" name="Reference — Kubernetes Storage">
+    <mxGraphModel dx="1600" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="st-title" value="Kubernetes Storage — How It Works" style="text;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="300" y="15" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="st-subtitle" value="Storage in K8s decouples what a Pod needs (PVC) from how it is provisioned (PV / StorageClass)." style="text;html=1;fontSize=11;fontStyle=2;align=center;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="800" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ===== THE CHAIN ===== -->
+        <mxCell id="st-chain" value="The Storage Chain" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="1500" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="st-pod" value="Pod&#xa;(container)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="130" width="110" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="st-pod-yaml" value="volumeMounts:&#xa;- mountPath: /data&#xa;  name: my-storage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="180" width="145" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="st-pvc" value="PersistentVolumeClaim&#xa;(PVC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="125" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-pvc-yaml" value="accessModes: [ReadWriteOnce]&#xa;resources.requests.storage: 50Gi&#xa;storageClassName: gp3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="320" y="180" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="st-pv" value="PersistentVolume&#xa;(PV)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="125" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-pv-note" value="Cluster-scoped.&#xa;Pre-created (static) or&#xa;auto-created (dynamic)." style="text;html=1;fontSize=9;fontStyle=2;fontColor=#666;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="630" y="180" width="160" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="st-sc" value="StorageClass" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="125" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-sc-yaml" value="provisioner: ebs.csi.aws.com&#xa;reclaimPolicy: Delete&#xa;volumeBindingMode:&#xa;  WaitForFirstConsumer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="910" y="180" width="185" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-phys" value="Physical Storage" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;fontSize=11;fontStyle=1;size=10;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="120" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="st-phys-eg" value="EBS, NFS, NetApp,&#xa;Ceph, Local Disk" style="text;html=1;fontSize=9;fontStyle=2;fontColor=#666;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="185" width="140" height="25" as="geometry" />
+        </mxCell>
+        <!-- Chain arrows -->
+        <mxCell id="st-ca1" style="rounded=1;strokeColor=#2E7D32;strokeWidth=2;" edge="1" parent="1" source="st-pod" target="st-pvc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-ca1-l" value="references&#xa;by name" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="st-ca1">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="st-ca2" style="rounded=1;strokeColor=#8E24AA;strokeWidth=2;" edge="1" parent="1" source="st-pvc" target="st-pv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-ca2-l" value="bound 1:1" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="st-ca2">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="st-ca3" style="rounded=1;strokeColor=#F9A825;strokeWidth=2;dashed=1;" edge="1" parent="1" source="st-sc" target="st-pv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-ca3-l" value="dynamically&#xa;provisions" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="st-ca3">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="st-ca4" style="rounded=1;strokeColor=#546E7A;strokeWidth=2;" edge="1" parent="1" source="st-pv" target="st-phys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-ca4-l" value="maps to" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="st-ca4">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== ACCESS MODES ===== -->
+        <mxCell id="st-access" value="Access Modes" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#E65100;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="1500" height="160" as="geometry" />
+        </mxCell>
+        <!-- RWO -->
+        <mxCell id="st-rwo" value="&lt;b&gt;ReadWriteOnce (RWO)&lt;/b&gt;&lt;br&gt;Mounted read-write by a &lt;b&gt;single node&lt;/b&gt;.&lt;br&gt;Use: Kafka logs, DB data, single-writer workloads.&lt;br&gt;Backed by: block storage (EBS, GCE PD, Azure Disk)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="330" width="380" height="80" as="geometry" />
+        </mxCell>
+        <!-- ROX -->
+        <mxCell id="st-rox" value="&lt;b&gt;ReadOnlyMany (ROX)&lt;/b&gt;&lt;br&gt;Mounted &lt;b&gt;read-only&lt;/b&gt; by many nodes.&lt;br&gt;Use: Config data, ML models, shared assets.&lt;br&gt;Backed by: NFS, CephFS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="460" y="330" width="340" height="80" as="geometry" />
+        </mxCell>
+        <!-- RWX -->
+        <mxCell id="st-rwx" value="&lt;b&gt;ReadWriteMany (RWX)&lt;/b&gt;&lt;br&gt;Mounted &lt;b&gt;read-write&lt;/b&gt; by many nodes simultaneously.&lt;br&gt;Use: Flink checkpoints, shared logs, CMS uploads.&lt;br&gt;Backed by: NFS, CephFS, NetApp Trident" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="820" y="330" width="380" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="st-rwonce-pod" value="&lt;b&gt;ReadWriteOncePod (RWOP)&lt;/b&gt; — K8s 1.27+. Like RWO but strictly one Pod, not one node." style="text;html=1;fontSize=9;fontStyle=2;fontColor=#666;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="420" width="500" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- ===== STATIC vs DYNAMIC ===== -->
+        <mxCell id="st-prov" value="Provisioning" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="730" height="230" as="geometry" />
+        </mxCell>
+        <!-- Static -->
+        <mxCell id="st-stat-title" value="Static Provisioning" style="text;html=1;fontSize=11;fontStyle=1;fontColor=#2E7D32;align=left;" vertex="1" parent="1">
+          <mxGeometry x="55" y="510" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="st-stat-desc" value="Admin pre-creates PVs. PVCs bind to existing PVs that match size + access mode." style="text;html=1;fontSize=9;align=left;" vertex="1" parent="1">
+          <mxGeometry x="55" y="530" width="350" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="st-stat-admin" value="Admin" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="65" y="560" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="st-stat-pv" value="PV (pre-created)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="565" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-stat-pvc" value="PVC (user creates)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="565" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-stat-a1" style="rounded=1;strokeColor=#2E7D32;" edge="1" parent="1" source="st-stat-admin" target="st-stat-pv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-stat-a1-l" value="creates" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="st-stat-a1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-stat-a2" style="rounded=1;strokeColor=#8E24AA;dashed=1;" edge="1" parent="1" source="st-stat-pvc" target="st-stat-pv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-stat-a2-l" value="binds" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="st-stat-a2">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <!-- Dynamic -->
+        <mxCell id="st-dyn-title" value="Dynamic Provisioning (most common)" style="text;html=1;fontSize=11;fontStyle=1;fontColor=#2E7D32;align=left;" vertex="1" parent="1">
+          <mxGeometry x="55" y="620" width="300" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="st-dyn-desc" value="PVC references a StorageClass → K8s invokes the CSI driver → PV created automatically." style="text;html=1;fontSize=9;align=left;" vertex="1" parent="1">
+          <mxGeometry x="55" y="640" width="450" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="st-dyn-pvc" value="PVC&#xa;storageClassName: gp3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="65" y="665" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-dyn-sc" value="StorageClass: gp3&#xa;provisioner: ebs.csi" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="665" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-dyn-csi" value="CSI Driver&#xa;(ebs.csi.aws.com)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="400" y="665" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-dyn-pv" value="PV (auto-created)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="665" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-dyn-a1" style="rounded=1;strokeColor=#8E24AA;" edge="1" parent="1" source="st-dyn-pvc" target="st-dyn-sc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-dyn-a2" style="rounded=1;strokeColor=#F9A825;" edge="1" parent="1" source="st-dyn-sc" target="st-dyn-csi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-dyn-a3" style="rounded=1;strokeColor=#546E7A;" edge="1" parent="1" source="st-dyn-csi" target="st-dyn-pv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== RECLAIM POLICIES ===== -->
+        <mxCell id="st-reclaim" value="Reclaim Policies (what happens when PVC is deleted)" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FCE4EC;strokeColor=#C62828;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="730" width="730" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="st-reclaim-table" value="&lt;table style='font-size:10px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#FCE4EC;font-weight:bold'&gt;&lt;td style='padding:4px;border:1px solid #C62828'&gt;Policy&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #C62828'&gt;PV After PVC Deletion&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #C62828'&gt;Data&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #C62828'&gt;When to Use&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;Delete&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;PV and storage deleted&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:red'&gt;LOST&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Ephemeral data (default for dynamic provisioning)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;Retain&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;PV becomes &quot;Released&quot; — manual cleanup&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:green'&gt;KEPT&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Important data (Kafka logs, databases)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;Recycle&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Data wiped (rm -rf), PV available again&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:orange'&gt;WIPED&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Deprecated — use dynamic provisioning&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=#C62828;" vertex="1" parent="1">
+          <mxGeometry x="55" y="760" width="700" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ===== RIGHT SIDE: Binding, StatefulSet, CSI, Lifecycle ===== -->
+        <mxCell id="st-right" value="" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#9E9E9E;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="800" y="480" width="740" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="st-bind-title" value="Volume Binding Modes" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="810" y="485" width="250" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="st-bind-imm" value="&lt;b&gt;Immediate&lt;/b&gt; — PV provisioned as soon as PVC created. Risk: PV may land in different zone than Pod." style="text;html=1;fontSize=9;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="510" width="710" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="st-bind-wait" value="&lt;b&gt;WaitForFirstConsumer&lt;/b&gt; — PV provisioned after Pod is scheduled. CSI creates storage in same zone. &lt;span style='color:#2E7D32;font-weight:bold'&gt;Best practice.&lt;/span&gt;" style="text;html=1;fontSize=9;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="530" width="710" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="st-sts-title" value="StatefulSet + volumeClaimTemplates" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="810" y="560" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="st-sts-desc" value="StatefulSets define a &lt;b&gt;volumeClaimTemplate&lt;/b&gt; — K8s creates one PVC per replica:&lt;br&gt;&lt;br&gt;&lt;code&gt;kafka&lt;/code&gt; (3 replicas) →  PVC: &lt;code&gt;data-kafka-0&lt;/code&gt; (50Gi) → PV-0 → EBS vol-abc&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;PVC: &lt;code&gt;data-kafka-1&lt;/code&gt; (50Gi) → PV-1 → EBS vol-def&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;PVC: &lt;code&gt;data-kafka-2&lt;/code&gt; (50Gi) → PV-2 → EBS vol-ghi&lt;br&gt;&lt;br&gt;If a Pod is rescheduled, it re-attaches to the &lt;b&gt;same PVC&lt;/b&gt; (stable identity)." style="text;html=1;fontSize=9;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="810" y="580" width="710" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="st-csi-title" value="Common CSI Drivers" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="810" y="675" width="250" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="st-csi-table" value="&lt;table style='font-size:9px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#E3F2FD;font-weight:bold'&gt;&lt;td style='padding:3px;border:1px solid #1565C0'&gt;Provider&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #1565C0'&gt;CSI Driver&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #1565C0'&gt;Modes&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #1565C0'&gt;Type&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;AWS EBS&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;code&gt;ebs.csi.aws.com&lt;/code&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;RWO&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Block&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;AWS EFS&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;code&gt;efs.csi.aws.com&lt;/code&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;RWX, ROX, RWO&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;NFS&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;NetApp Trident&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;code&gt;csi.trident.netapp.io&lt;/code&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;RWO, RWX, ROX&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Block / NFS&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Ceph (Rook)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;code&gt;rook-ceph.rbd.csi.ceph.com&lt;/code&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;RWO, RWX&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;Block / FS&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;NFS (generic)&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;&lt;code&gt;nfs.csi.k8s.io&lt;/code&gt;&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;RWO, RWX, ROX&lt;/td&gt;&lt;td style='padding:3px;border:1px solid #ccc'&gt;NFS&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=#9E9E9E;" vertex="1" parent="1">
+          <mxGeometry x="810" y="700" width="710" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- ===== PV LIFECYCLE ===== -->
+        <mxCell id="st-lc-title" value="PV Lifecycle" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="890" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="st-lc-avail" value="Available" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="920" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-lc-bound" value="Bound" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="920" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-lc-released" value="Released" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="920" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-lc-failed" value="Failed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="920" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-lc-a1" style="rounded=1;strokeColor=#333;" edge="1" parent="1" source="st-lc-avail" target="st-lc-bound">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-lc-a1-l" value="PVC binds" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="st-lc-a1">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="st-lc-a2" style="rounded=1;strokeColor=#333;" edge="1" parent="1" source="st-lc-bound" target="st-lc-released">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-lc-a2-l" value="PVC deleted&#xa;(Retain)" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="st-lc-a2">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="st-lc-a3" style="rounded=1;strokeColor=#333;" edge="1" parent="1" source="st-lc-released" target="st-lc-failed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-lc-a3-l" value="cleanup fails" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="st-lc-a3">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- ==================== TAB 5: CFK Operator Admission ==================== -->
+  <diagram id="cfk-admission-ref" name="Reference — CFK Operator Admission">
+    <mxGraphModel dx="1600" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="adm-title" value="CFK Operator — Admission, TLS &amp; Reconciliation" style="text;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="250" y="15" width="600" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-subtitle" value="How CFK validates custom resources, secures the webhook with TLS, and reconciles desired state" style="text;html=1;fontSize=11;fontStyle=2;align=center;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="200" y="50" width="700" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ===== 1. TLS BETWEEN API SERVER AND WEBHOOK ===== -->
+        <mxCell id="tls-group" value="1. Webhook TLS — How the API Server Trusts the Webhook" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#E65100;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="1500" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-api" value="kube-apiserver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="140" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-arrow" style="rounded=1;strokeColor=#E65100;strokeWidth=3;" edge="1" parent="1" source="tls-api" target="tls-webhook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-arrow-l" value="HTTPS POST /confluent-operator/validate&#xa;(mutual trust via caBundle)" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;labelBackgroundColor=none;" connectable="0" vertex="1" parent="tls-arrow">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-15" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="tls-webhook" value="CFK Operator Pod&#xa;(webhook server :8443)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="140" width="190" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-secret" value="Secret: confluent-operator-serving-cert&#xa;fullchain.pem | privkey.pem | cacerts.pem&#xa;(mounted via directoryPathInContainer)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="550" y="200" width="280" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-certmgr" value="cert-manager&#xa;Certificate CR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="260" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-issuer" value="Self-Signed&#xa;Issuer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="700" y="260" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-cm-secret" style="rounded=1;strokeColor=#F9A825;strokeWidth=1;" edge="1" parent="1" source="tls-certmgr" target="tls-secret">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-cm-secret-l" value="creates &amp;&#xa;auto-renews" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="tls-cm-secret">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="-30" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="tls-cm-issuer" style="rounded=1;strokeColor=#F9A825;" edge="1" parent="1" source="tls-certmgr" target="tls-issuer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-cm-issuer-l" value="signs with" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="tls-cm-issuer">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <!-- caBundle explanation -->
+        <mxCell id="tls-vwc" value="ValidatingWebhookConfiguration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="220" width="230" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-vwc-detail" value="caBundle: &lt;base64 CA cert&gt;&#xa;← API server uses this to verify&#xa;   the webhook's TLS certificate" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="80" y="265" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-vwc-arrow" style="rounded=1;strokeColor=#8E24AA;dashed=1;" edge="1" parent="1" source="tls-api" target="tls-vwc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-vwc-arrow-l" value="reads caBundle" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="tls-vwc-arrow">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="-15" as="offset" /></mxGeometry>
+        </mxCell>
+        <!-- TLS flow explanation -->
+        <mxCell id="tls-explain" value="&lt;b&gt;How it works:&lt;/b&gt;&lt;br&gt;1. cert-manager creates the TLS secret (auto-renewed)&lt;br&gt;2. Volume projection mounts it as fullchain.pem / privkey.pem / cacerts.pem into the operator pod&lt;br&gt;3. The operator starts an HTTPS server on :8443 using those certs&lt;br&gt;4. The ValidatingWebhookConfiguration contains the &lt;b&gt;caBundle&lt;/b&gt; (CA cert, base64-encoded)&lt;br&gt;5. When API server receives a Kafka/KRaft/SR/etc. CR, it POSTs to the webhook over HTTPS&lt;br&gt;6. API server validates the webhook's TLS cert against the caBundle — if it matches, trust is established" style="text;html=1;fontSize=9;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="880" y="130" width="620" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="tls-san-note" value="&lt;b&gt;SAN requirement:&lt;/b&gt; The cert must include &lt;code&gt;confluent-operator.&amp;lt;namespace&amp;gt;.svc&lt;/code&gt; as a DNS SAN,&#xa;because that's the service name the API server connects to." style="text;html=1;fontSize=9;fontStyle=2;fontColor=#C62828;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="880" y="240" width="580" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ===== 2. ADMISSION FLOW ===== -->
+        <mxCell id="adm-flow" value="2. Admission Flow — What Happens When You Apply a CR" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="1500" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- Steps -->
+        <mxCell id="adm-user" value="User / ArgoCD" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="410" width="50" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-user-cmd" value="kubectl apply -f&#xa;kafka.yaml" style="text;html=1;fontSize=8;fontStyle=2;fontFamily=Courier New;align=center;" vertex="1" parent="1">
+          <mxGeometry x="50" y="460" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-api" value="kube-apiserver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="405" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-mutate" value="Mutating&#xa;Admission" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E0E0;strokeColor=#9E9E9E;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="420" y="405" width="110" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-mutate-note" value="(CFK does not use&#xa;a MutatingWebhook)" style="text;html=1;fontSize=8;fontStyle=2;fontColor=#999;align=center;" vertex="1" parent="1">
+          <mxGeometry x="415" y="455" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-validate" value="ValidatingWebhook&#xa;confluent-operator&#xa;(:8443 HTTPS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="610" y="395" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-reject" value="REJECT&#xa;(error to user)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="660" y="500" width="100" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-etcd" value="etcd&#xa;(CR stored)" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;fontSize=10;fontStyle=1;size=8;" vertex="1" parent="1">
+          <mxGeometry x="860" y="400" width="100" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-watch" value="CFK Operator&#xa;(controller loop)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="405" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-resources" value="K8s Resources&#xa;Created" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="405" width="120" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-resources-detail" value="StatefulSet, Pods,&#xa;Services, ConfigMaps,&#xa;PVCs, Routes..." style="text;html=1;fontSize=8;fontStyle=2;fontColor=#666;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="455" width="140" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Flow arrows -->
+        <mxCell id="adm-fa1" style="rounded=1;strokeColor=#333;strokeWidth=2;" edge="1" parent="1" source="adm-user" target="adm-api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-fa1-l" value="1" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#E3F2FD;labelBackgroundColor=none;" connectable="0" vertex="1" parent="adm-fa1">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-fa2" style="rounded=1;strokeColor=#333;strokeWidth=2;" edge="1" parent="1" source="adm-api" target="adm-mutate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-fa2-l" value="2" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#E0E0E0;labelBackgroundColor=none;" connectable="0" vertex="1" parent="adm-fa2">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-fa3" style="rounded=1;strokeColor=#333;strokeWidth=2;" edge="1" parent="1" source="adm-mutate" target="adm-validate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-fa3-l" value="3" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#E1BEE7;labelBackgroundColor=none;" connectable="0" vertex="1" parent="adm-fa3">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-fa3-reject" style="rounded=1;strokeColor=#C62828;dashed=1;" edge="1" parent="1" source="adm-validate" target="adm-reject">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-fa3-reject-l" value="invalid" style="edgeLabel;fontSize=8;fontColor=#C62828;fillColor=none;" connectable="0" vertex="1" parent="adm-fa3-reject">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="-15" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-fa4" style="rounded=1;strokeColor=#333;strokeWidth=2;" edge="1" parent="1" source="adm-validate" target="adm-etcd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-fa4-l" value="4 valid" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#CFD8DC;labelBackgroundColor=none;" connectable="0" vertex="1" parent="adm-fa4">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-fa5" style="rounded=1;strokeColor=#8E24AA;strokeWidth=2;dashed=1;dashPattern=8 4;" edge="1" parent="1" source="adm-etcd" target="adm-watch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-fa5-l" value="5 watch" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#E1BEE7;labelBackgroundColor=none;" connectable="0" vertex="1" parent="adm-fa5">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-fa6" style="rounded=1;strokeColor=#333;strokeWidth=2;" edge="1" parent="1" source="adm-watch" target="adm-resources">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-fa6-l" value="6 create" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#BBDEFB;labelBackgroundColor=none;" connectable="0" vertex="1" parent="adm-fa6">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== 3. WHAT CFK VALIDATES ===== -->
+        <mxCell id="adm-checks" value="3. What CFK ValidatingWebhook Checks" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="610" width="1500" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-checks-table" value="&lt;table style='font-size:10px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#E1BEE7;font-weight:bold'&gt;&lt;td style='padding:4px;border:1px solid #8E24AA'&gt;CR Type&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #8E24AA'&gt;Validations Performed&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #8E24AA'&gt;Example Rejection&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;Kafka&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Replica count, listener config, KRaft dependency, storage resize (up only)&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:#C62828;font-style:italic'&gt;&quot;authentication type 'plain' not supported with OAuth&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;KRaftController&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Odd replica count (1,3,5), no scale-down, TLS consistency&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:#C62828;font-style:italic'&gt;&quot;replicas must be odd for quorum consensus&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;SchemaRegistry&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Kafka dependency configured, auth matches listener&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:#C62828;font-style:italic'&gt;&quot;dependencies.kafka.bootstrapEndpoint is required&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;Connect&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Kafka dependency, image specified for custom connectors&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:#C62828;font-style:italic'&gt;&quot;dependencies.kafka is required&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;ControlCenter&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Single replica only, Kafka + SR + Connect deps&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:#C62828;font-style:italic'&gt;&quot;replicas must be 1 for ControlCenter&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:4px;border:1px solid #ccc;font-weight:bold'&gt;StatefulSet/Pod deletion&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc'&gt;Prevents unsafe deletes and evictions of Kafka/KRaft pods&lt;/td&gt;&lt;td style='padding:4px;border:1px solid #ccc;color:#C62828;font-style:italic'&gt;&quot;cannot evict pod kafka-0: under-replicated partitions&quot;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=#8E24AA;" vertex="1" parent="1">
+          <mxGeometry x="55" y="640" width="1470" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- ===== 4. RECONCILIATION LOOP ===== -->
+        <mxCell id="adm-recon" value="4. Reconciliation Loop — The Operator Never Stops Watching" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="840" width="1500" height="260" as="geometry" />
+        </mxCell>
+        <!-- Desired -->
+        <mxCell id="adm-desired" value="Desired State&#xa;(CR in etcd)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="885" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-desired-eg" value="replicas: 3&#xa;version: 8.1.1" style="text;html=1;fontSize=8;fontStyle=2;fontFamily=Courier New;fontColor=#666;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="80" y="928" width="130" height="20" as="geometry" />
+        </mxCell>
+        <!-- Operator -->
+        <mxCell id="adm-op" value="CFK Operator&#xa;Reconcile()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#8E24AA;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="885" width="130" height="40" as="geometry" />
+        </mxCell>
+        <!-- Compare -->
+        <mxCell id="adm-compare" value="Compare&#xa;desired vs actual" style="shape=rhombus;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="530" y="875" width="130" height="60" as="geometry" />
+        </mxCell>
+        <!-- Actual -->
+        <mxCell id="adm-actual" value="Actual State&#xa;(live K8s resources)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="975" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-actual-eg" value="e.g. StatefulSet has 2 pods&#xa;(one crashed)" style="text;html=1;fontSize=8;fontStyle=2;fontFamily=Courier New;fontColor=#666;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="310" y="1018" width="170" height="20" as="geometry" />
+        </mxCell>
+        <!-- Drift -->
+        <mxCell id="adm-drift-yes" value="Drift!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="870" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-drift-no" value="No drift — requeue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="740" y="915" width="120" height="25" as="geometry" />
+        </mxCell>
+        <!-- Actions -->
+        <mxCell id="adm-actions" value="Operator Actions" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#E65100;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="910" y="865" width="580" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-act1" value="Scale&#xa;StatefulSet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="920" y="893" width="85" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-act2" value="Rolling&#xa;restart" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="893" width="75" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-act3" value="Update&#xa;ConfigMap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="893" width="80" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-act4" value="Create/update&#xa;Service/Route" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="893" width="95" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-act5" value="Update CR&#xa;status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1295" y="893" width="80" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-act6" value="Create/update&#xa;Secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1385" y="893" width="90" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Reconciliation arrows -->
+        <mxCell id="adm-ra1" style="rounded=1;strokeColor=#2E7D32;strokeWidth=2;" edge="1" parent="1" source="adm-desired" target="adm-op">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-ra1-l" value="read spec" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="adm-ra1">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-ra2" style="rounded=1;strokeColor=#8E24AA;strokeWidth=2;" edge="1" parent="1" source="adm-op" target="adm-compare">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-ra3" style="rounded=1;strokeColor=#1565C0;dashed=1;" edge="1" parent="1" source="adm-actual" target="adm-compare">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-ra3-l" value="read live state" style="edgeLabel;fontSize=8;fillColor=none;" connectable="0" vertex="1" parent="adm-ra3">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-ra4" style="rounded=1;strokeColor=#C62828;strokeWidth=2;" edge="1" parent="1" source="adm-compare" target="adm-drift-yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-ra4b" style="rounded=1;strokeColor=#2E7D32;" edge="1" parent="1" source="adm-compare" target="adm-drift-no">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-ra5" style="rounded=1;strokeColor=#E65100;strokeWidth=2;" edge="1" parent="1" source="adm-drift-yes" target="adm-actions">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Requeue loop -->
+        <mxCell id="adm-requeue" style="rounded=1;strokeColor=#2E7D32;dashed=1;dashPattern=8 4;" edge="1" parent="1" source="adm-drift-no" target="adm-op">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="990" />
+              <mxPoint x="375" y="990" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="adm-requeue-l" value="requeue (periodic re-check)" style="edgeLabel;fontSize=8;fontColor=#2E7D32;fillColor=none;" connectable="0" vertex="1" parent="adm-requeue">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <!-- Action loop -->
+        <mxCell id="adm-actloop" style="rounded=1;strokeColor=#E65100;dashed=1;" edge="1" parent="1" source="adm-act5" target="adm-op">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1335" y="1060" />
+              <mxPoint x="375" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="adm-actloop-l" value="re-reconcile until desired == actual" style="edgeLabel;fontSize=8;fontColor=#E65100;fillColor=none;" connectable="0" vertex="1" parent="adm-actloop">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- ===== 5. CR STATUS ===== -->
+        <mxCell id="adm-status" value="5. CR Status Phases" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF8E1;strokeColor=#F9A825;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1120" width="1500" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-phase-prov" value="PROVISIONING" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1160" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-phase-run" value="RUNNING" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="1160" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-phase-roll" value="ROLLING UPDATE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="1160" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-phase-err" value="ERROR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="610" y="1160" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-pa1" style="rounded=1;strokeColor=#333;" edge="1" parent="1" source="adm-phase-prov" target="adm-phase-run">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-pa1-l" value="all ready" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="adm-pa1">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-pa2" style="rounded=1;strokeColor=#333;" edge="1" parent="1" source="adm-phase-run" target="adm-phase-roll">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-pa2-l" value="config change" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="adm-pa2">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-pa3" style="rounded=1;strokeColor=#333;" edge="1" parent="1" source="adm-phase-roll" target="adm-phase-run">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="485" y="1210" />
+              <mxPoint x="310" y="1210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="adm-pa3-l" value="roll complete" style="edgeLabel;fontSize=7;fillColor=none;" connectable="0" vertex="1" parent="adm-pa3">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="5" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-pa4" style="rounded=1;strokeColor=#C62828;dashed=1;" edge="1" parent="1" source="adm-phase-roll" target="adm-phase-err">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="adm-pa4-l" value="failure" style="edgeLabel;fontSize=7;fillColor=none;fontColor=#C62828;" connectable="0" vertex="1" parent="adm-pa4">
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="adm-status-cmd" value="kubectl get kafka -n confluent-dev                          # shows phase&#xa;kubectl describe kafka kafka -n confluent-dev                # shows conditions&#xa;kubectl get kafka kafka -o jsonpath='{.status.phase}'        # programmatic check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#546E7A;fontSize=9;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="780" y="1148" width="440" height="55" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
