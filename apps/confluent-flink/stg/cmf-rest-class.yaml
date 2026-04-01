@@ -1,0 +1,9 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: default
+  namespace: confluent-stg
+spec:
+  cmfRest:
+    endpoint: http://cmf-service.confluent-stg.svc.cluster.local:80
