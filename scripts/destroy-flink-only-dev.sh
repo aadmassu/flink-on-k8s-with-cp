@@ -30,10 +30,10 @@ for KIND in cmfrestclass flinkenvironment flinkdeployment; do
   done
 done
 
-# ── Step 2: Uninstall CMF ───────────────────────────────────────────────────
+# ── Step 2: Delete CMF ──────────────────────────────────────────────────────
 echo ""
-echo "==> Uninstalling CMF..."
-helm uninstall confluent-cmf -n "$NS" 2>/dev/null || true
+echo "==> Deleting CMF..."
+oc delete -f "$REPO_ROOT/apps/confluent-cmf/$ENV/cmf.yaml" --ignore-not-found 2>/dev/null || true
 
 # ── Step 3: Uninstall Flink Operator ────────────────────────────────────────
 echo ""

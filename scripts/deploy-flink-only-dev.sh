@@ -163,16 +163,13 @@ helm upgrade --install confluent-flink-operator confluent/flink-kubernetes-opera
   --wait --timeout 600s
 echo "    Flink Operator installed."
 
-# ── Step 6: Install CMF ──────────────────────────────────────────────────────
+# ── Step 6: Apply CMF ────────────────────────────────────────────────────────
 echo ""
-echo "==> Installing CMF..."
-helm upgrade --install confluent-cmf confluent/confluent-manager-for-apache-flink \
-  --namespace "$NS" \
-  --version 2.2.0 \
-  -f "$REPO_ROOT/apps/confluent-cmf/$ENV/values.yaml" \
-  -f "$REPO_ROOT/apps/confluent-cmf/openshift-overlay.yaml" \
-  --wait --timeout 600s
-echo "    CMF installed."
+echo "==> Applying CMF manifests..."
+oc apply -f "$REPO_ROOT/apps/confluent-cmf/$ENV/cmf.yaml"
+oc rollout status deployment/confluent-manager-for-apache-flink \
+  -n "$NS" --timeout=300s
+echo "    CMF deployed."
 
 # ── Step 7: Apply Flink CRs ─────────────────────────────────────────────────
 echo ""

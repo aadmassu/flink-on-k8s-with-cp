@@ -1,0 +1,208 @@
+---
+# Source: confluent-manager-for-apache-flink/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: confluent-manager-for-apache-flink
+  namespace: dah-kafka-dev
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/version: "2.2.0"
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: confluent-manager-for-apache-flink-2.2.0
+---
+# Source: confluent-manager-for-apache-flink/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: confluent-manager-for-apache-flink
+  namespace: dah-kafka-dev
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/version: "2.2.0"
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: confluent-manager-for-apache-flink-2.2.0
+data:
+  cmf-config.yaml: |
+    encryption:
+      key:
+        kubernetesSecretName: ""
+        kubernetesSecretProperty: ""
+    cmf:
+      authentication:
+        type: noauth
+      database:
+        jdbc:
+          database: cmf
+          engine: postgresql
+          options: ""
+          password:
+            kubernetesSecretName: ""
+            kubernetesSecretProperty: ""
+          port: 5432
+          url: ""
+          user: cmf
+        type: local
+      k8s:
+        metadataSync: true
+      sql:
+        production: false
+      stackTraceLogging: false
+---
+# Source: confluent-manager-for-apache-flink/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: confluent-manager-for-apache-flink-pvc
+  namespace: dah-kafka-dev
+spec:
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+          storage: 10Gi
+---
+# Source: confluent-manager-for-apache-flink/templates/clusterrole.yaml
+## Create a ClusterRole for the Confluent Manager for Apache Flink if rbac is not namespaced else create a Role in the Release Namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/version: "2.2.0"
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: confluent-manager-for-apache-flink-2.2.0
+  name: confluent-manager-for-apache-flink
+rules:
+  - apiGroups: [ "apps" ]
+    resources: [ "deployments", "deployments/finalizers" ]
+    verbs: [ "*" ]
+  - apiGroups: ["flink.apache.org"]
+    resources: ["flinkdeployments", "flinkdeployments/status", "flinkstatesnapshots", "flinkstatesnapshots/status"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["services", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [ "" ]
+    resources: [ "configmaps", "pods" ]
+    verbs: [ "*" ]
+  - apiGroups: [ "" ]
+    resources: [ "events" ]
+    verbs: [ "get", "list", "watch" ]
+  - apiGroups: [ "" ]
+    resources: [ "serviceaccounts", "secrets" ]
+    verbs: [ "create", "get", "list", "watch", "delete", "update"]
+  - apiGroups: [ "rbac.authorization.k8s.io" ]
+    resources: [ "roles", "rolebindings" ]
+    verbs: [ "create", "get", "list", "watch", "delete", "update", "patch" ]
+---
+# Source: confluent-manager-for-apache-flink/templates/clusterrolebinding.yaml
+### CMF application, by default assumes that the service account has cluster wide access.
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/version: "2.2.0"
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: confluent-manager-for-apache-flink-2.2.0
+  name: confluent-manager-for-apache-flink
+subjects:
+- kind: ServiceAccount
+  name: confluent-manager-for-apache-flink
+  namespace: dah-kafka-dev
+roleRef:
+  kind: ClusterRole
+  name: confluent-manager-for-apache-flink
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: confluent-manager-for-apache-flink/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: cmf-service
+  namespace: dah-kafka-dev
+spec:
+  # Service selects the pods to attach to using the selectors. The selector is a key-value pair, which must match the labels on the pods.
+  selector:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+  ports:
+    # Port for CMF service
+    - name: cmf-service-https
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+---
+# Source: confluent-manager-for-apache-flink/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: confluent-manager-for-apache-flink
+  namespace: dah-kafka-dev
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/version: "2.2.0"
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: confluent-manager-for-apache-flink-2.2.0
+spec:
+  # We do not want to expose the replicas as CMF is supposed to be a single instance
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: confluent-manager-for-apache-flink
+  template:
+    metadata:
+      annotations:
+        rollme: "MgUVk"
+      labels:
+        platform.confluent.io/origin: flink
+        app.kubernetes.io/name: confluent-manager-for-apache-flink
+    spec:
+      serviceAccountName: confluent-manager-for-apache-flink
+      containers:
+        - name: cmf
+          image: "confluentinc/cp-cmf:2.2.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "/opt/config/cmf-config.yaml"
+            - ""
+          ports:
+          - name: api-port
+            containerPort: 8080
+          volumeMounts:
+            - name: cmf-config
+              mountPath: "/opt/config"
+            - name: cmf-storage
+              mountPath: "/app/local"
+          env:
+          resources:
+                limits:
+                  cpu: 500m
+                  memory: 1Gi
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+          livenessProbe:
+            tcpSocket:
+              port: api-port
+            failureThreshold: 5
+            periodSeconds: 20
+          # startup probe disables liveness probes, until pod has booted up
+          # and has a higher failure threshold / runs with higher frequency
+          startupProbe:
+            tcpSocket:
+              port: api-port
+            failureThreshold: 50
+            # if metadata sync is enabled we need to wait longer as we do a table scan and reinstate
+            # all apps from metadata
+            periodSeconds: 60
+
+      volumes:
+        - name: cmf-config
+          configMap:
+            name: confluent-manager-for-apache-flink
+        - name: cmf-storage
+          persistentVolumeClaim:
+            claimName: confluent-manager-for-apache-flink-pvc
