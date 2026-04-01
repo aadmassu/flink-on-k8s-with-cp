@@ -6,9 +6,9 @@ cmf:
   sql:
     production: false
 
-  # No authentication for dev validation — will switch to OAuth later
+  # Basic auth for dev validation — will switch to OAuth later
   authentication:
-    type: noauth
+    type: BASIC
 
   # Local SQLite database — will switch to SQL Server later
   database:
