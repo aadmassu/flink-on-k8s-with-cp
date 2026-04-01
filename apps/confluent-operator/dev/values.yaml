@@ -106,8 +106,8 @@ serviceAccount:
   # Name of the service account; used in RBAC bindings
   name: confluent
 
-# Whether CFK creates RBAC roles/bindings; false = managed out-of-band by platform team
-rbac: false
+# Whether CFK creates RBAC roles/bindings
+rbac: true
 
 # Extra ClusterRole configuration for OpenShift-specific API groups
 clusterRole:
@@ -168,7 +168,7 @@ pod:
   labels: {}
 
 # Deprecated: use license.secretRef instead; kept for backward compatibility
-licenseSecretRef: confluent-license-secret
+licenseSecretRef: ""
 
 # Custom volumes and volume mounts for the operator pod
 # Projects cert-manager PKCS12 keystores (renamed to .jks) + jksPassword.txt
