@@ -28,6 +28,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.14.0"
+
       - name: Install oc CLI
         run: |
           curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
@@ -36,12 +41,22 @@ jobs:
       - name: Login to OpenShift
         run: oc login "${{ inputs.openshift_server }}" --token="${{ secrets.OPENSHIFT_TOKEN }}" --insecure-skip-tls-verify
 
-      - name: Apply CMF
+      - name: Add Helm repo
         run: |
-          oc apply -f apps/confluent-cmf/${{ inputs.environment }}/cmf.yaml
+          helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
+          helm repo update confluent
 
-          echo "Waiting for CMF to be ready..."
-          oc rollout status deployment/confluent-manager-for-apache-flink \
-            -n ${{ env.NS }} --timeout=300s
+      - name: Install CMF
+        run: |
+          ENV=${{ inputs.environment }}
+          helm upgrade --install confluent-cmf confluent/confluent-manager-for-apache-flink \
+            --namespace ${{ env.NS }} \
+            --version 2.2.0 \
+            -f apps/confluent-cmf/${ENV}/values.yaml \
+            -f apps/confluent-cmf/openshift-overlay.yaml \
+            --wait --timeout 10m
 
+      - name: Verify
+        run: |
+          helm status confluent-cmf -n ${{ env.NS }}
           oc get pods -n ${{ env.NS }} -l app.kubernetes.io/name=confluent-manager-for-apache-flink
