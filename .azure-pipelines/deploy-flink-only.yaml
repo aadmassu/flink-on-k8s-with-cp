@@ -1,0 +1,263 @@
+# Flink-only deployment — no ArgoCD, no Kustomize.
+# All components installed via Helm and oc apply.
+#
+# Steps:
+#   1. SCC + namespaces
+#   2. cert-manager (Helm)
+#   3. CFK Operator (Helm) + webhook TLS
+#   4. Flink Operator (Helm)
+#   5. CMF (Helm — noauth + local SQLite)
+#   6. Flink CRs (oc apply)
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values:
+      - dev
+      - qa
+      - stg
+      - prd
+
+  - name: kubernetesServiceConnection
+    displayName: "Kubernetes Service Connection"
+    type: string
+    default: "<your-service-connection>"
+
+variables:
+  ENV: ${{ parameters.environment }}
+  NS: "confluent-${{ parameters.environment }}"
+
+stages:
+  - stage: Deploy
+    displayName: "Flink-Only Deploy (${{ parameters.environment }})"
+    jobs:
+      - job: FlinkOnlyDeploy
+        displayName: "Flink-Only Deployment"
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - checkout: self
+
+          - task: HelmInstaller@1
+            displayName: "Install Helm"
+            inputs:
+              helmVersionToInstall: "3.14.0"
+
+          - task: KubernetesManifest@1
+            displayName: "Set Kubernetes context"
+            inputs:
+              action: "reject"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+
+          - task: Bash@3
+            displayName: "Verify cluster connectivity"
+            inputs:
+              targetType: inline
+              script: |
+                oc cluster-info
+                oc get nodes
+
+          - task: Bash@3
+            displayName: "Create namespaces"
+            inputs:
+              targetType: inline
+              script: |
+                oc create namespace $(NS) --dry-run=client -o yaml | oc apply -f -
+                oc create namespace cert-manager --dry-run=client -o yaml | oc apply -f -
+
+          - task: Bash@3
+            displayName: "Apply OpenShift prerequisites (SCC + bindings)"
+            inputs:
+              targetType: inline
+              script: |
+                oc apply -f openshift-prereqs/$(ENV)/manifests/
+                echo "SCC and ClusterRoleBindings applied."
+
+          - task: Bash@3
+            displayName: "Add Helm repositories"
+            inputs:
+              targetType: inline
+              script: |
+                helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+                helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
+                helm repo update
+
+          - task: HelmDeploy@1
+            displayName: "Install cert-manager"
+            inputs:
+              connectionType: "Kubernetes Service Connection"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+              namespace: cert-manager
+              command: "upgrade"
+              chartType: "Name"
+              chartName: "jetstack/cert-manager"
+              chartVersion: "v1.19.4"
+              releaseName: "cert-manager"
+              arguments: "--install -f apps/cert-manager/$(ENV)/values.yaml -f apps/cert-manager/openshift-overlay.yaml --wait --timeout 3m"
+
+          - task: Bash@3
+            displayName: "Wait for cert-manager CRDs"
+            inputs:
+              targetType: inline
+              script: |
+                for CRD in certificates.cert-manager.io issuers.cert-manager.io; do
+                  echo "Waiting for $CRD..."
+                  RETRIES=0
+                  until oc get crd "$CRD" &>/dev/null; do
+                    RETRIES=$((RETRIES + 1))
+                    if [ "$RETRIES" -ge 30 ]; then echo "ERROR: $CRD not found."; exit 1; fi
+                    sleep 2
+                  done
+                  oc wait --for=condition=Established "crd/$CRD" --timeout=60s
+                done
+                echo "cert-manager CRDs ready."
+
+          - task: HelmDeploy@1
+            displayName: "Install CFK Operator"
+            inputs:
+              connectionType: "Kubernetes Service Connection"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+              namespace: $(NS)
+              command: "upgrade"
+              chartType: "Name"
+              chartName: "confluent/confluent-for-kubernetes"
+              chartVersion: "0.1351.59"
+              releaseName: "confluent-operator"
+              arguments: "--install -f apps/confluent-operator/$(ENV)/values.yaml -f apps/confluent-operator/openshift-overlay.yaml --wait --timeout 3m"
+
+          - task: Bash@3
+            displayName: "Apply CFK webhook TLS"
+            inputs:
+              targetType: inline
+              script: |
+                cat <<'EOF' | oc apply -n $(NS) -f -
+                ---
+                apiVersion: cert-manager.io/v1
+                kind: Issuer
+                metadata:
+                  name: cfk-selfsigned-issuer
+                spec:
+                  selfSigned: {}
+                ---
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: cfk-jks-password
+                stringData:
+                  password: changeit
+                ---
+                apiVersion: cert-manager.io/v1
+                kind: Certificate
+                metadata:
+                  name: confluent-operator-serving-cert
+                spec:
+                  secretName: confluent-operator-serving-cert
+                  issuerRef:
+                    name: cfk-selfsigned-issuer
+                    kind: Issuer
+                  dnsNames:
+                    - confluent-operator.confluent-$(ENV).svc
+                    - confluent-operator.confluent-$(ENV).svc.cluster.local
+                  duration: 8760h
+                  renewBefore: 720h
+                  keystores:
+                    pkcs12:
+                      create: true
+                      passwordSecretRef:
+                        name: cfk-jks-password
+                        key: password
+                ---
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: cfk-jks-password-file
+                stringData:
+                  jksPassword.txt: "jksPassword=changeit"
+                EOF
+
+                oc wait --for=condition=Ready certificate/confluent-operator-serving-cert \
+                  -n $(NS) --timeout=120s
+                echo "CFK webhook TLS ready."
+
+          - task: Bash@3
+            displayName: "Wait for CFK CRDs"
+            inputs:
+              targetType: inline
+              script: |
+                for CRD in flinkenvironments.platform.confluent.io cmfrestclasses.platform.confluent.io; do
+                  echo "Waiting for $CRD..."
+                  RETRIES=0
+                  until oc get crd "$CRD" &>/dev/null; do
+                    RETRIES=$((RETRIES + 1))
+                    if [ "$RETRIES" -ge 30 ]; then echo "ERROR: $CRD not found."; exit 1; fi
+                    sleep 2
+                  done
+                  oc wait --for=condition=Established "crd/$CRD" --timeout=60s
+                done
+                echo "CFK CRDs ready."
+
+          - task: HelmDeploy@1
+            displayName: "Install Flink Operator"
+            inputs:
+              connectionType: "Kubernetes Service Connection"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+              namespace: $(NS)
+              command: "upgrade"
+              chartType: "Name"
+              chartName: "confluent/flink-kubernetes-operator"
+              chartVersion: "1.130.2"
+              releaseName: "confluent-flink-operator"
+              arguments: "--install -f apps/confluent-flink-operator/$(ENV)/values.yaml -f apps/confluent-flink-operator/openshift-overlay.yaml --wait --timeout 3m"
+
+          - task: HelmDeploy@1
+            displayName: "Install CMF"
+            inputs:
+              connectionType: "Kubernetes Service Connection"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+              namespace: $(NS)
+              command: "upgrade"
+              chartType: "Name"
+              chartName: "confluent/confluent-manager-for-apache-flink"
+              chartVersion: "2.2.0"
+              releaseName: "confluent-cmf"
+              arguments: "--install -f apps/confluent-cmf/$(ENV)/values.yaml -f apps/confluent-cmf/openshift-overlay.yaml --wait --timeout 3m"
+
+          - task: Bash@3
+            displayName: "Apply Flink CRs"
+            inputs:
+              targetType: inline
+              script: |
+                oc apply -f apps/confluent-flink/$(ENV)/
+
+                echo "Waiting for Flink session cluster..."
+                RETRIES=0
+                until oc get flinkdeployment flink-session -n $(NS) &>/dev/null; do
+                  RETRIES=$((RETRIES + 1))
+                  if [ "$RETRIES" -ge 30 ]; then echo "ERROR: FlinkDeployment not found."; exit 1; fi
+                  sleep 5
+                done
+                oc wait --for=jsonpath='{.status.jobManagerDeploymentStatus}'=READY \
+                  flinkdeployment/flink-session -n $(NS) --timeout=300s
+                echo "Flink session cluster is READY."
+
+          - task: Bash@3
+            displayName: "Verify deployment"
+            inputs:
+              targetType: inline
+              script: |
+                echo "=== Helm Releases ==="
+                helm list -n $(NS)
+                helm list -n cert-manager
+
+                echo ""
+                echo "=== Pods ==="
+                oc get pods -n $(NS)
+                oc get pods -n cert-manager
+
+                echo ""
+                echo "=== Flink CRs ==="
+                oc get flinkdeployment,flinkenvironment,cmfrestclass -n $(NS)
