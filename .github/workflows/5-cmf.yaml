@@ -41,17 +41,11 @@ jobs:
       - name: Login to OpenShift
         run: oc login "${{ inputs.openshift_server }}" --token="${{ secrets.OPENSHIFT_TOKEN }}" --insecure-skip-tls-verify
 
-      - name: Add Helm repo
-        run: |
-          helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
-          helm repo update confluent
-
       - name: Install CMF
         run: |
           ENV=${{ inputs.environment }}
-          helm upgrade --install confluent-cmf confluent/confluent-manager-for-apache-flink \
+          helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
             --namespace ${{ env.NS }} \
-            --version 2.2.0 \
             -f apps/confluent-cmf/${ENV}/values.yaml \
             -f apps/confluent-cmf/openshift-overlay.yaml \
             --wait --timeout 10m
