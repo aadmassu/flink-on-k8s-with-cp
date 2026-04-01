@@ -1,4 +1,8 @@
 # 5. CMF — Confluent Manager for Apache Flink
+#
+# Required pipeline variables:
+#   OPENSHIFT_SERVER  — OpenShift API URL
+#   OPENSHIFT_TOKEN   — oc login token (mark as secret)
 
 trigger: none
 
@@ -8,11 +12,6 @@ parameters:
     type: string
     default: dev
     values: [dev, qa, stg, prd]
-
-  - name: kubernetesServiceConnection
-    displayName: "Kubernetes Service Connection"
-    type: string
-    default: "<your-service-connection>"
 
 variables:
   ENV: ${{ parameters.environment }}
@@ -33,11 +32,20 @@ stages:
             inputs:
               helmVersionToInstall: "3.14.0"
 
-          - task: KubernetesManifest@1
-            displayName: "Set Kubernetes context"
+          - task: Bash@3
+            displayName: "Install oc CLI"
             inputs:
-              action: "reject"
-              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+              targetType: inline
+              script: |
+                curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
+                  | tar xz -C /usr/local/bin oc kubectl
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
 
           - task: Bash@3
             displayName: "Add Helm repo"
@@ -47,18 +55,17 @@ stages:
                 helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
                 helm repo update confluent
 
-          - task: HelmDeploy@1
+          - task: Bash@3
             displayName: "Install CMF"
             inputs:
-              connectionType: "Kubernetes Service Connection"
-              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
-              namespace: $(NS)
-              command: "upgrade"
-              chartType: "Name"
-              chartName: "confluent/confluent-manager-for-apache-flink"
-              chartVersion: "2.2.0"
-              releaseName: "confluent-cmf"
-              arguments: "--install -f apps/confluent-cmf/$(ENV)/values.yaml -f apps/confluent-cmf/openshift-overlay.yaml --wait --timeout 3m"
+              targetType: inline
+              script: |
+                helm upgrade --install confluent-cmf confluent/confluent-manager-for-apache-flink \
+                  --namespace $(NS) \
+                  --version 2.2.0 \
+                  -f apps/confluent-cmf/$(ENV)/values.yaml \
+                  -f apps/confluent-cmf/openshift-overlay.yaml \
+                  --wait --timeout 3m
 
           - task: Bash@3
             displayName: "Verify"

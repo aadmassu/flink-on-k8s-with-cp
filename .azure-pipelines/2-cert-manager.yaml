@@ -1,4 +1,8 @@
 # 2. cert-manager — TLS certificate management for operator webhooks
+#
+# Required pipeline variables:
+#   OPENSHIFT_SERVER  — OpenShift API URL
+#   OPENSHIFT_TOKEN   — oc login token (mark as secret)
 
 trigger: none
 
@@ -8,11 +12,6 @@ parameters:
     type: string
     default: dev
     values: [dev, qa, stg, prd]
-
-  - name: kubernetesServiceConnection
-    displayName: "Kubernetes Service Connection"
-    type: string
-    default: "<your-service-connection>"
 
 variables:
   ENV: ${{ parameters.environment }}
@@ -32,11 +31,20 @@ stages:
             inputs:
               helmVersionToInstall: "3.14.0"
 
-          - task: KubernetesManifest@1
-            displayName: "Set Kubernetes context"
+          - task: Bash@3
+            displayName: "Install oc CLI"
             inputs:
-              action: "reject"
-              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+              targetType: inline
+              script: |
+                curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
+                  | tar xz -C /usr/local/bin oc kubectl
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
 
           - task: Bash@3
             displayName: "Add Helm repo"
@@ -46,18 +54,17 @@ stages:
                 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
                 helm repo update jetstack
 
-          - task: HelmDeploy@1
+          - task: Bash@3
             displayName: "Install cert-manager"
             inputs:
-              connectionType: "Kubernetes Service Connection"
-              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
-              namespace: cert-manager
-              command: "upgrade"
-              chartType: "Name"
-              chartName: "jetstack/cert-manager"
-              chartVersion: "v1.19.4"
-              releaseName: "cert-manager"
-              arguments: "--install -f apps/cert-manager/$(ENV)/values.yaml -f apps/cert-manager/openshift-overlay.yaml --wait --timeout 3m"
+              targetType: inline
+              script: |
+                helm upgrade --install cert-manager jetstack/cert-manager \
+                  --namespace cert-manager \
+                  --version v1.19.4 \
+                  -f apps/cert-manager/$(ENV)/values.yaml \
+                  -f apps/cert-manager/openshift-overlay.yaml \
+                  --wait --timeout 3m
 
           - task: Bash@3
             displayName: "Wait for CRDs"

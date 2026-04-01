@@ -1,4 +1,8 @@
 # 6. Flink CRs — CMFRestClass, FlinkEnvironment, PVC, session cluster
+#
+# Required pipeline variables:
+#   OPENSHIFT_SERVER  — OpenShift API URL
+#   OPENSHIFT_TOKEN   — oc login token (mark as secret)
 
 trigger: none
 
@@ -8,11 +12,6 @@ parameters:
     type: string
     default: dev
     values: [dev, qa, stg, prd]
-
-  - name: kubernetesServiceConnection
-    displayName: "Kubernetes Service Connection"
-    type: string
-    default: "<your-service-connection>"
 
 variables:
   ENV: ${{ parameters.environment }}
@@ -28,11 +27,20 @@ stages:
         steps:
           - checkout: self
 
-          - task: KubernetesManifest@1
-            displayName: "Set Kubernetes context"
+          - task: Bash@3
+            displayName: "Install oc CLI"
             inputs:
-              action: "reject"
-              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+              targetType: inline
+              script: |
+                curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
+                  | tar xz -C /usr/local/bin oc kubectl
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
 
           - task: Bash@3
             displayName: "Apply Flink CRs"
