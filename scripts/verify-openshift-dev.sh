@@ -39,7 +39,7 @@ done
 # ── CMF pod ──────────────────────────────────────────────────────────────────
 echo ""
 echo "==> CMF pod..."
-if oc get pods -n confluent-$ENV -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null | grep -q Running; then
+if oc get pods -n dah-kafka-$ENV -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null | grep -q Running; then
   pass "CMF pod running"
 else
   fail "CMF pod not running"
@@ -48,7 +48,7 @@ fi
 # ── Kafka status ─────────────────────────────────────────────────────────────
 echo ""
 echo "==> Kafka status..."
-KAFKA_PHASE=$(oc get kafka kafka -n confluent-$ENV -o jsonpath='{.status.phase}' 2>/dev/null || true)
+KAFKA_PHASE=$(oc get kafka kafka -n dah-kafka-$ENV -o jsonpath='{.status.phase}' 2>/dev/null || true)
 if [ "$KAFKA_PHASE" = "RUNNING" ]; then
   pass "Kafka is RUNNING"
 else
@@ -57,8 +57,8 @@ fi
 
 # ── Confluent Platform pods ──────────────────────────────────────────────────
 echo ""
-echo "==> Confluent Platform pods (confluent-$ENV)..."
-oc get pods -n confluent-$ENV --no-headers 2>/dev/null | while read -r line; do
+echo "==> Confluent Platform pods (dah-kafka-$ENV)..."
+oc get pods -n dah-kafka-$ENV --no-headers 2>/dev/null | while read -r line; do
   POD=$(echo "$line" | awk '{print $1}')
   STATUS=$(echo "$line" | awk '{print $3}')
   if [ "$STATUS" = "Running" ]; then
@@ -71,19 +71,19 @@ done
 # ── Flink infra CRs ─────────────────────────────────────────────────────────
 echo ""
 echo "==> Flink infrastructure CRs..."
-oc get cmfrestclass default -n confluent-$ENV &>/dev/null \
+oc get cmfrestclass default -n dah-kafka-$ENV &>/dev/null \
   && pass "CMFRestClass 'default' exists" || fail "CMFRestClass 'default' not found"
 
-oc get flinkenvironment flink-env1 -n confluent-$ENV &>/dev/null \
+oc get flinkenvironment flink-env1 -n dah-kafka-$ENV &>/dev/null \
   && pass "FlinkEnvironment 'flink-env1' exists" || fail "FlinkEnvironment 'flink-env1' not found"
 
-oc get pvc flink-pvc -n confluent-$ENV &>/dev/null \
+oc get pvc flink-pvc -n dah-kafka-$ENV &>/dev/null \
   && pass "PVC 'flink-pvc' exists" || fail "PVC 'flink-pvc' not found"
 
 # ── Flink session cluster ─────────────────────────────────────────────────
 echo ""
 echo "==> Flink session cluster..."
-FLINK_STATUS=$(oc get flinkdeployment flink-session -n confluent-$ENV \
+FLINK_STATUS=$(oc get flinkdeployment flink-session -n dah-kafka-$ENV \
   -o jsonpath='{.status.jobManagerDeploymentStatus}' 2>/dev/null || true)
 if [ "$FLINK_STATUS" = "READY" ]; then
   pass "Flink session cluster is READY"

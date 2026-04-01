@@ -7,7 +7,7 @@ set -euo pipefail
 #   ./scripts/verify-flink-only-dev.sh
 
 ENV="dev"
-NS="confluent-$ENV"
+NS="dah-kafka-$ENV"
 FAILURES=0
 
 check() {

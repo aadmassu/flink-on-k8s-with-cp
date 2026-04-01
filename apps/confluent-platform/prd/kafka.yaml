@@ -3,7 +3,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
 metadata:
   name: kafka
-  namespace: confluent-prd
+  namespace: dah-kafka-prd
   labels:
     app: kafka
 spec:
@@ -244,7 +244,7 @@ spec:
     # Enable metrics collection for Control Center dashboards
     enabled: true
     # Bootstrap endpoint for the metrics reporter to connect to Kafka
-    bootstrapEndpoint: kafka.confluent-prd.svc.cluster.local:9071
+    bootstrapEndpoint: kafka.dah-kafka-prd.svc.cluster.local:9071
     # TLS for metrics reporter connection
     tls:
       enabled: true

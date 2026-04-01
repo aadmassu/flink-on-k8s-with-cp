@@ -8,7 +8,7 @@ clusters:
     environment: dev
     region: openshift
     server: https://dev-cluster.example.com
-    namespace: confluent-dev
+    namespace: dah-kafka-dev
     argocdNamespace: argocd
 
   qa:
@@ -16,7 +16,7 @@ clusters:
     environment: qa
     region: openshift
     server: https://qa-cluster.example.com
-    namespace: confluent-qa
+    namespace: dah-kafka-qa
     argocdNamespace: argocd
 
   stg:
@@ -24,7 +24,7 @@ clusters:
     environment: stg
     region: openshift
     server: https://stg-cluster.example.com
-    namespace: confluent-stg
+    namespace: dah-kafka-stg
     argocdNamespace: argocd
 
   prd:
@@ -32,5 +32,5 @@ clusters:
     environment: prd
     region: openshift
     server: https://prd-cluster.example.com
-    namespace: confluent-prd
+    namespace: dah-kafka-prd
     argocdNamespace: argocd

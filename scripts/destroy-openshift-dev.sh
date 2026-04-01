@@ -6,7 +6,7 @@ set -euo pipefail
 #   - Phase-I ArgoCD ApplicationSets (FKO, CFK, cert-manager — reverse order)
 #   - Finalizer cleanup for stuck CFK/Flink CRs and ArgoCD Applications
 #   - OpenShift prerequisites (SCC + ClusterRoleBindings)
-#   - Namespaces: confluent-dev, cert-manager
+#   - Namespaces: dah-kafka-dev, cert-manager
 #
 # Note: OpenShift GitOps Operator and its namespace (openshift-gitops)
 # are NOT removed — they are managed by the OperatorHub subscription.
@@ -49,9 +49,9 @@ echo ""
 echo "==> Clearing finalizers from CFK/Flink CRs (if any)..."
 for KIND in cmfrestclass flinkenvironment flinkdeployment kafka kraftcontroller connect \
             controlcenter schemaregistry; do
-  for RESOURCE in $(oc get "$KIND" -n confluent-$ENV -o name 2>/dev/null); do
+  for RESOURCE in $(oc get "$KIND" -n dah-kafka-$ENV -o name 2>/dev/null); do
     echo "    Clearing finalizers on $RESOURCE..."
-    oc patch "$RESOURCE" -n confluent-$ENV --type merge \
+    oc patch "$RESOURCE" -n dah-kafka-$ENV --type merge \
       -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
   done
 done
@@ -75,7 +75,7 @@ oc delete -f "$REPO_ROOT/openshift-prereqs/$ENV/manifests/" --ignore-not-found
 # ── Step 5: Delete namespaces ────────────────────────────────────────────────
 echo ""
 echo "==> Deleting namespaces..."
-oc delete ns confluent-$ENV --ignore-not-found --wait --timeout=120s
+oc delete ns dah-kafka-$ENV --ignore-not-found --wait --timeout=120s
 oc delete ns cert-manager --ignore-not-found --wait --timeout=120s
 
 # ── Done ─────────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry
 metadata:
   name: schemaregistry
-  namespace: confluent-dev
+  namespace: dah-kafka-dev
 spec:
   # Single replica for dev; increase to 2+ for HA in stg/prd
   replicas: 1
@@ -53,7 +53,7 @@ spec:
     # Kafka dependency — Schema Registry stores schemas in a _schemas topic
     kafka:
       # Internal bootstrap endpoint (TLS port 9071)
-      bootstrapEndpoint: kafka.confluent-dev.svc.cluster.local:9071
+      bootstrapEndpoint: kafka.dah-kafka-dev.svc.cluster.local:9071
       # OAuth authentication to Kafka
       authentication:
         type: oauth
@@ -84,7 +84,7 @@ spec:
     # MDS dependency — Schema Registry registers with MDS for RBAC enforcement
     mds:
       # MDS REST API endpoint on the Kafka broker
-      endpoint: https://kafka.confluent-dev.svc.cluster.local:8090
+      endpoint: https://kafka.dah-kafka-dev.svc.cluster.local:8090
       # TLS for Schema Registry → MDS connection
       tls:
         enabled: true

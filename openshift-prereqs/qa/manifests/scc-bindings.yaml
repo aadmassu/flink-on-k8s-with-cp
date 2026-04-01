@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: confluent-scc-confluent-qa
+  name: confluent-scc-dah-kafka-qa
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 roleRef:
@@ -12,16 +12,16 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: confluent-operator
-    namespace: confluent-qa
+    namespace: dah-kafka-qa
   - kind: ServiceAccount
     name: flink-kubernetes-operator
-    namespace: confluent-qa
+    namespace: dah-kafka-qa
   - kind: ServiceAccount
     name: flink
-    namespace: confluent-qa
+    namespace: dah-kafka-qa
   - kind: ServiceAccount
     name: cmf
-    namespace: confluent-qa
+    namespace: dah-kafka-qa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

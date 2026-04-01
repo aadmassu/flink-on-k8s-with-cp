@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 ENV="dev"
-NS="confluent-$ENV"
+NS="dah-kafka-$ENV"
 
 echo "==> Verifying cluster connectivity..."
 oc cluster-info || { echo "ERROR: Cannot reach the cluster."; exit 1; }
@@ -104,8 +104,8 @@ spec:
     name: cfk-selfsigned-issuer
     kind: Issuer
   dnsNames:
-    - confluent-operator.confluent-dev.svc
-    - confluent-operator.confluent-dev.svc.cluster.local
+    - confluent-operator.dah-kafka-dev.svc
+    - confluent-operator.dah-kafka-dev.svc.cluster.local
   duration: 8760h
   renewBefore: 720h
   keystores:

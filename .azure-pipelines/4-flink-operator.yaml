@@ -16,7 +16,7 @@ parameters:
 
 variables:
   ENV: ${{ parameters.environment }}
-  NS: "confluent-${{ parameters.environment }}"
+  NS: "dah-kafka-${{ parameters.environment }}"
 
 stages:
   - stage: FlinkOperator

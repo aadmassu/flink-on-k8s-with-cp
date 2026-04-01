@@ -4,7 +4,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestClass
 metadata:
   name: default
-  namespace: confluent-prd
+  namespace: dah-kafka-prd
 spec:
   # Reference to the Kafka cluster this REST class connects to
   kafkaClusterRef:

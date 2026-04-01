@@ -48,7 +48,7 @@ fi
 # ── Step 2: Create and label namespaces ──────────────────────────────────────
 echo ""
 echo "==> Creating and labeling namespaces..."
-for NS in "confluent-$ENV" "cert-manager"; do
+for NS in "dah-kafka-$ENV" "cert-manager"; do
   oc create namespace "$NS" --dry-run=client -o yaml | oc apply -f -
   oc label namespace "$NS" argocd.argoproj.io/managed-by="$ARGOCD_NS" --overwrite
   echo "    Namespace $NS labeled for OpenShift GitOps management."
@@ -133,7 +133,7 @@ echo "==> Waiting for Kafka to reach RUNNING state..."
 # Kafka CR may not exist yet — wait for ArgoCD to create it
 RETRIES=0
 MAX_RETRIES=60
-until oc get kafka kafka -n confluent-$ENV &>/dev/null; do
+until oc get kafka kafka -n dah-kafka-$ENV &>/dev/null; do
   RETRIES=$((RETRIES + 1))
   if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
     echo "ERROR: Kafka CR not found after ${MAX_RETRIES} retries."
@@ -142,7 +142,7 @@ until oc get kafka kafka -n confluent-$ENV &>/dev/null; do
   sleep 5
 done
 oc wait --for=jsonpath='{.status.phase}'=RUNNING kafka/kafka \
-  -n confluent-$ENV --timeout=300s
+  -n dah-kafka-$ENV --timeout=300s
 echo "    Kafka is RUNNING."
 
 # ── Step 8: Deploy Flink infrastructure (CMFRestClass, FlinkEnvironment, PVC, Session Cluster)
@@ -159,7 +159,7 @@ echo "==> Waiting for Flink session cluster to be ready..."
 # FlinkDeployment may not exist yet — wait for ArgoCD to create it
 RETRIES=0
 MAX_RETRIES=30
-until oc get flinkdeployment flink-session -n confluent-$ENV &>/dev/null; do
+until oc get flinkdeployment flink-session -n dah-kafka-$ENV &>/dev/null; do
   RETRIES=$((RETRIES + 1))
   if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
     echo "ERROR: FlinkDeployment flink-session not found after ${MAX_RETRIES} retries."
@@ -168,9 +168,9 @@ until oc get flinkdeployment flink-session -n confluent-$ENV &>/dev/null; do
   sleep 5
 done
 oc wait --for=jsonpath='{.status.jobManagerDeploymentStatus}'=READY \
-  flinkdeployment/flink-session -n confluent-$ENV --timeout=300s
+  flinkdeployment/flink-session -n dah-kafka-$ENV --timeout=300s
 echo "    Flink session cluster is READY."
-echo "    Access Flink UI: oc port-forward svc/flink-session-rest 8081:8081 -n confluent-$ENV"
+echo "    Access Flink UI: oc port-forward svc/flink-session-rest 8081:8081 -n dah-kafka-$ENV"
 
 # ── Step 9: Print summary ──────────────────────────────────────────────────
 echo ""
@@ -181,8 +181,8 @@ echo ""
 echo "--- ArgoCD Applications ---"
 oc get applications -n "$ARGOCD_NS"
 echo ""
-echo "--- Pods in confluent-$ENV ---"
-oc get pods -n confluent-$ENV
+echo "--- Pods in dah-kafka-$ENV ---"
+oc get pods -n dah-kafka-$ENV
 echo ""
 echo "--- cert-manager Pods ---"
 oc get pods -n cert-manager 2>/dev/null || echo "  (using OpenShift-provided cert-manager)"

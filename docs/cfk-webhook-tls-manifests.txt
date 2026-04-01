@@ -3,7 +3,7 @@
 #
 # Prerequisites:
 #   - cert-manager installed
-#   - Namespace: confluent-dev (adjust as needed)
+#   - Namespace: dah-kafka-dev (adjust as needed)
 #
 # How it works:
 #   cert-manager creates a PKCS12 keystore (keystore.p12, truststore.p12)
@@ -18,7 +18,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: cfk-selfsigned-issuer
-  namespace: confluent-dev
+  namespace: dah-kafka-dev
 spec:
   selfSigned: {}
 
@@ -29,7 +29,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: cfk-jks-password
-  namespace: confluent-dev
+  namespace: dah-kafka-dev
 stringData:
   password: changeit
 
@@ -40,15 +40,15 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: confluent-operator-serving-cert
-  namespace: confluent-dev
+  namespace: dah-kafka-dev
 spec:
   secretName: confluent-operator-serving-cert
   issuerRef:
     name: cfk-selfsigned-issuer
     kind: Issuer
   dnsNames:
-    - confluent-operator.confluent-dev.svc
-    - confluent-operator.confluent-dev.svc.cluster.local
+    - confluent-operator.dah-kafka-dev.svc
+    - confluent-operator.dah-kafka-dev.svc.cluster.local
   duration: 8760h      # 1 year
   renewBefore: 720h    # 30 days
   keystores:
@@ -68,7 +68,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: cfk-jks-password-file
-  namespace: confluent-dev
+  namespace: dah-kafka-dev
 stringData:
   jksPassword.txt: "jksPassword=changeit"
 

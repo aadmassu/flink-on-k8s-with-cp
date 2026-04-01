@@ -3,7 +3,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter
 metadata:
   name: controlcenter
-  namespace: confluent-qa
+  namespace: dah-kafka-qa
   labels:
     app: controlcenter
 spec:
@@ -79,7 +79,7 @@ spec:
     # Kafka dependency — Control Center consumes metrics and monitoring data from Kafka
     kafka:
       # Internal bootstrap endpoint (TLS port 9071)
-      bootstrapEndpoint: kafka.confluent-qa.svc.cluster.local:9071
+      bootstrapEndpoint: kafka.dah-kafka-qa.svc.cluster.local:9071
       # OAuth authentication to Kafka
       authentication:
         type: oauth
@@ -110,7 +110,7 @@ spec:
     # Schema Registry dependency — Control Center displays schema info in topic inspector
     schemaRegistry:
       # Schema Registry HTTPS endpoint
-      url: https://schemaregistry.confluent-qa.svc.cluster.local:8081
+      url: https://schemaregistry.dah-kafka-qa.svc.cluster.local:8081
       # TLS for Control Center → Schema Registry connection
       tls:
         enabled: true
@@ -119,7 +119,7 @@ spec:
     connect:
       - name: connect
         # Connect REST API HTTPS endpoint
-        url: https://connect.confluent-qa.svc.cluster.local:8083
+        url: https://connect.dah-kafka-qa.svc.cluster.local:8083
         # TLS for Control Center → Connect connection
         tls:
           enabled: true
@@ -127,7 +127,7 @@ spec:
     # MDS dependency — Control Center uses MDS for RBAC and SSO login
     mds:
       # MDS REST API endpoint on the Kafka broker
-      endpoint: https://kafka.confluent-qa.svc.cluster.local:8090
+      endpoint: https://kafka.dah-kafka-qa.svc.cluster.local:8090
       # TLS for Control Center → MDS connection
       tls:
         enabled: true

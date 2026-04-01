@@ -3,7 +3,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: KRaftController
 metadata:
   name: kraftcontroller
-  namespace: confluent-stg
+  namespace: dah-kafka-stg
 spec:
   # 3 replicas for KRaft quorum; must be odd number for leader election
   replicas: 3

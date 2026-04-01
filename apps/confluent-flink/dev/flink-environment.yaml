@@ -3,13 +3,13 @@ apiVersion: platform.confluent.io/v1beta1
 kind: FlinkEnvironment
 metadata:
   name: flink-env1
-  namespace: confluent-dev
+  namespace: dah-kafka-dev
 spec:
-  kubernetesNamespace: confluent-dev
+  kubernetesNamespace: dah-kafka-dev
   flinkApplicationDefaults:
     spec:
       flinkConfiguration:
         taskmanager.numberOfTaskSlots: "1"
   cmfRestClassRef:
     name: default
-    namespace: confluent-dev
+    namespace: dah-kafka-dev

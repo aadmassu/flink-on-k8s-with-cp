@@ -126,5 +126,5 @@ jobs:
 
           echo ""
           echo "=== Operator Pods ==="
-          oc get pods -n confluent-${ENV}
+          oc get pods -n dah-kafka-${ENV}
           oc get pods -n cert-manager

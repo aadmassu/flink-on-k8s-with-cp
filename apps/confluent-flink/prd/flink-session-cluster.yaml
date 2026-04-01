@@ -3,7 +3,7 @@ apiVersion: flink.apache.org/v1beta1
 kind: FlinkDeployment
 metadata:
   name: flink-session
-  namespace: confluent-prd
+  namespace: dah-kafka-prd
 spec:
   image: confluentinc/cp-flink:2.1.1-cp1-java21
   flinkVersion: v2_1

@@ -40,7 +40,7 @@ namespaced: true
 
 # Namespaces the operator watches; only used when namespaced=true
 namespaceList:
-  - confluent-qa
+  - dah-kafka-qa
 
 # CPU and memory for the operator; size based on number of managed CRs
 resources:

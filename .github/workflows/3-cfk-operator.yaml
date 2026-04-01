@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-      NS: "confluent-${{ inputs.environment }}"
+      NS: "dah-kafka-${{ inputs.environment }}"
 
     steps:
       - name: Checkout
@@ -85,8 +85,8 @@ jobs:
               name: cfk-selfsigned-issuer
               kind: Issuer
             dnsNames:
-              - confluent-operator.confluent-${ENV}.svc
-              - confluent-operator.confluent-${ENV}.svc.cluster.local
+              - confluent-operator.dah-kafka-${ENV}.svc
+              - confluent-operator.dah-kafka-${ENV}.svc.cluster.local
             duration: 8760h
             renewBefore: 720h
             keystores:

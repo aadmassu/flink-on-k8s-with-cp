@@ -3,7 +3,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: flink-pvc
-  namespace: confluent-prd
+  namespace: dah-kafka-prd
 spec:
   accessModes:
     - ReadWriteOnce

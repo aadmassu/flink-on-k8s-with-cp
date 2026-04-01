@@ -3,7 +3,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: Connect
 metadata:
   name: connect
-  namespace: confluent-prd
+  namespace: dah-kafka-prd
 spec:
   # Single replica for dev; increase for production workloads
   replicas: 1
@@ -75,7 +75,7 @@ spec:
     # Kafka dependency — Connect stores connector configs, offsets, and status in Kafka topics
     kafka:
       # Internal bootstrap endpoint (TLS port 9071)
-      bootstrapEndpoint: kafka.confluent-prd.svc.cluster.local:9071
+      bootstrapEndpoint: kafka.dah-kafka-prd.svc.cluster.local:9071
       # OAuth authentication to Kafka
       authentication:
         type: oauth
@@ -106,7 +106,7 @@ spec:
     # Schema Registry dependency — connectors use SR for serialization/deserialization
     schemaRegistry:
       # Schema Registry HTTPS endpoint
-      url: https://schemaregistry.confluent-prd.svc.cluster.local:8081
+      url: https://schemaregistry.dah-kafka-prd.svc.cluster.local:8081
       # TLS for Connect → Schema Registry connection
       tls:
         enabled: true
@@ -114,7 +114,7 @@ spec:
     # MDS dependency — Connect registers with MDS for RBAC enforcement
     mds:
       # MDS REST API endpoint on the Kafka broker
-      endpoint: https://kafka.confluent-prd.svc.cluster.local:8090
+      endpoint: https://kafka.dah-kafka-prd.svc.cluster.local:8090
       # TLS for Connect → MDS connection
       tls:
         enabled: true

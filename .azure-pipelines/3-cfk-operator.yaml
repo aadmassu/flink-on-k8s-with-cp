@@ -16,7 +16,7 @@ parameters:
 
 variables:
   ENV: ${{ parameters.environment }}
-  NS: "confluent-${{ parameters.environment }}"
+  NS: "dah-kafka-${{ parameters.environment }}"
 
 stages:
   - stage: CFK
@@ -91,8 +91,8 @@ stages:
                     name: cfk-selfsigned-issuer
                     kind: Issuer
                   dnsNames:
-                    - confluent-operator.confluent-$(ENV).svc
-                    - confluent-operator.confluent-$(ENV).svc.cluster.local
+                    - confluent-operator.dah-kafka-$(ENV).svc
+                    - confluent-operator.dah-kafka-$(ENV).svc.cluster.local
                   duration: 8760h
                   renewBefore: 720h
                   keystores:

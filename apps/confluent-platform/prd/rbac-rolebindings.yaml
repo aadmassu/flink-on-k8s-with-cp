@@ -6,7 +6,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: fcb-sys-admin-1
-  namespace: confluent-prd
+  namespace: dah-kafka-prd
 spec:
   principal:
     # User type maps to individual Okta accounts
@@ -23,7 +23,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: fcb-sys-admin-2
-  namespace: confluent-prd
+  namespace: dah-kafka-prd
 spec:
   principal:
     type: user

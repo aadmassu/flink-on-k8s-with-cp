@@ -3,7 +3,7 @@
 
 # Namespaces the operator watches; limits blast radius and RBAC scope
 watchNamespaces:
-  - confluent-stg
+  - dah-kafka-stg
 
 # Container image for the operator; pinned for reproducible deployments
 image:

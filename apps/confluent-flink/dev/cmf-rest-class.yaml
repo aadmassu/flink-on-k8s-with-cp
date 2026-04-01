@@ -3,7 +3,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: CMFRestClass
 metadata:
   name: default
-  namespace: confluent-dev
+  namespace: dah-kafka-dev
 spec:
   cmfRest:
-    endpoint: http://cmf-service.confluent-dev.svc.cluster.local:80
+    endpoint: http://cmf-service.dah-kafka-dev.svc.cluster.local:80
