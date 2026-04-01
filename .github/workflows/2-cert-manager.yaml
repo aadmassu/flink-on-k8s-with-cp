@@ -1,0 +1,73 @@
+# 2. cert-manager — TLS certificate management for operator webhooks
+
+name: "2 - cert-manager"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [dev, qa, stg, prd]
+        default: dev
+      openshift_server:
+        description: "OpenShift API server URL"
+        required: true
+        type: string
+
+jobs:
+  cert-manager:
+    name: "cert-manager (${{ inputs.environment }})"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.14.0"
+
+      - name: Install oc CLI
+        run: |
+          curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
+            | tar xz -C /usr/local/bin oc kubectl
+
+      - name: Login to OpenShift
+        run: oc login "${{ inputs.openshift_server }}" --token="${{ secrets.OPENSHIFT_TOKEN }}" --insecure-skip-tls-verify
+
+      - name: Add Helm repo
+        run: |
+          helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+          helm repo update jetstack
+
+      - name: Install cert-manager
+        run: |
+          ENV=${{ inputs.environment }}
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            --namespace cert-manager \
+            --version v1.19.4 \
+            -f apps/cert-manager/${ENV}/values.yaml \
+            -f apps/cert-manager/openshift-overlay.yaml \
+            --wait --timeout 3m
+
+      - name: Wait for CRDs
+        run: |
+          for CRD in certificates.cert-manager.io issuers.cert-manager.io; do
+            echo "Waiting for $CRD..."
+            RETRIES=0
+            until oc get crd "$CRD" &>/dev/null; do
+              RETRIES=$((RETRIES + 1))
+              if [ "$RETRIES" -ge 30 ]; then echo "ERROR: $CRD not found."; exit 1; fi
+              sleep 2
+            done
+            oc wait --for=condition=Established "crd/$CRD" --timeout=60s
+          done
+
+      - name: Verify
+        run: |
+          helm status cert-manager -n cert-manager
+          oc get pods -n cert-manager

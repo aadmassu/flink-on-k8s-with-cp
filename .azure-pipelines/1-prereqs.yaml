@@ -1,0 +1,76 @@
+# 1. OpenShift prerequisites — SCC, ClusterRoleBindings, namespaces
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, stg, prd]
+
+  - name: kubernetesServiceConnection
+    displayName: "Kubernetes Service Connection"
+    type: string
+    default: "<your-service-connection>"
+
+variables:
+  ENV: ${{ parameters.environment }}
+  NS: "confluent-${{ parameters.environment }}"
+
+stages:
+  - stage: Prereqs
+    displayName: "Prerequisites (${{ parameters.environment }})"
+    jobs:
+      - job: Prereqs
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - checkout: self
+
+          - task: KubernetesManifest@1
+            displayName: "Set Kubernetes context"
+            inputs:
+              action: "reject"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+
+          - task: Bash@3
+            displayName: "Verify cluster connectivity"
+            inputs:
+              targetType: inline
+              script: |
+                oc cluster-info
+                oc get nodes
+
+          - task: Bash@3
+            displayName: "Create namespaces"
+            inputs:
+              targetType: inline
+              script: |
+                oc create namespace $(NS) --dry-run=client -o yaml | oc apply -f -
+                oc create namespace cert-manager --dry-run=client -o yaml | oc apply -f -
+                echo "Namespaces ready."
+
+          - task: Bash@3
+            displayName: "Apply SCC and ClusterRoleBindings"
+            inputs:
+              targetType: inline
+              script: |
+                oc apply -f openshift-prereqs/$(ENV)/manifests/
+                echo "SCC and ClusterRoleBindings applied."
+
+          - task: Bash@3
+            displayName: "Verify"
+            inputs:
+              targetType: inline
+              script: |
+                echo "=== Namespaces ==="
+                oc get namespace $(NS) cert-manager
+
+                echo ""
+                echo "=== SCC ==="
+                oc get scc confluent-scc
+
+                echo ""
+                echo "=== ClusterRoleBindings ==="
+                oc get clusterrolebinding -l '!olm.owner' | grep confluent-scc || true

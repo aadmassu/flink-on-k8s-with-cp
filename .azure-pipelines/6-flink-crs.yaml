@@ -1,0 +1,70 @@
+# 6. Flink CRs — CMFRestClass, FlinkEnvironment, PVC, session cluster
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, stg, prd]
+
+  - name: kubernetesServiceConnection
+    displayName: "Kubernetes Service Connection"
+    type: string
+    default: "<your-service-connection>"
+
+variables:
+  ENV: ${{ parameters.environment }}
+  NS: "confluent-${{ parameters.environment }}"
+
+stages:
+  - stage: FlinkCRs
+    displayName: "Flink CRs (${{ parameters.environment }})"
+    jobs:
+      - job: FlinkCRs
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - checkout: self
+
+          - task: KubernetesManifest@1
+            displayName: "Set Kubernetes context"
+            inputs:
+              action: "reject"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+
+          - task: Bash@3
+            displayName: "Apply Flink CRs"
+            inputs:
+              targetType: inline
+              script: |
+                oc apply -f apps/confluent-flink/$(ENV)/
+                echo "Flink CRs applied."
+
+          - task: Bash@3
+            displayName: "Wait for Flink session cluster"
+            inputs:
+              targetType: inline
+              script: |
+                echo "Waiting for FlinkDeployment..."
+                RETRIES=0
+                until oc get flinkdeployment flink-session -n $(NS) &>/dev/null; do
+                  RETRIES=$((RETRIES + 1))
+                  if [ "$RETRIES" -ge 30 ]; then echo "ERROR: FlinkDeployment not found."; exit 1; fi
+                  sleep 5
+                done
+                oc wait --for=jsonpath='{.status.jobManagerDeploymentStatus}'=READY \
+                  flinkdeployment/flink-session -n $(NS) --timeout=300s
+                echo "Flink session cluster is READY."
+
+          - task: Bash@3
+            displayName: "Verify"
+            inputs:
+              targetType: inline
+              script: |
+                echo "=== Flink CRs ==="
+                oc get flinkdeployment,flinkenvironment,cmfrestclass,pvc -n $(NS)
+                echo ""
+                echo "=== Flink Pods ==="
+                oc get pods -n $(NS) -l app=flink-session

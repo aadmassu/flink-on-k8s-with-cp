@@ -1,0 +1,70 @@
+# 4. Flink Operator — Confluent Flink Kubernetes Operator
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, stg, prd]
+
+  - name: kubernetesServiceConnection
+    displayName: "Kubernetes Service Connection"
+    type: string
+    default: "<your-service-connection>"
+
+variables:
+  ENV: ${{ parameters.environment }}
+  NS: "confluent-${{ parameters.environment }}"
+
+stages:
+  - stage: FlinkOperator
+    displayName: "Flink Operator (${{ parameters.environment }})"
+    jobs:
+      - job: FlinkOperator
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - checkout: self
+
+          - task: HelmInstaller@1
+            displayName: "Install Helm"
+            inputs:
+              helmVersionToInstall: "3.14.0"
+
+          - task: KubernetesManifest@1
+            displayName: "Set Kubernetes context"
+            inputs:
+              action: "reject"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+
+          - task: Bash@3
+            displayName: "Add Helm repo"
+            inputs:
+              targetType: inline
+              script: |
+                helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
+                helm repo update confluent
+
+          - task: HelmDeploy@1
+            displayName: "Install Flink Operator"
+            inputs:
+              connectionType: "Kubernetes Service Connection"
+              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+              namespace: $(NS)
+              command: "upgrade"
+              chartType: "Name"
+              chartName: "confluent/flink-kubernetes-operator"
+              chartVersion: "1.130.2"
+              releaseName: "confluent-flink-operator"
+              arguments: "--install -f apps/confluent-flink-operator/$(ENV)/values.yaml -f apps/confluent-flink-operator/openshift-overlay.yaml --wait --timeout 3m"
+
+          - task: Bash@3
+            displayName: "Verify"
+            inputs:
+              targetType: inline
+              script: |
+                helm status confluent-flink-operator -n $(NS)
+                echo ""
+                oc get pods -n $(NS) -l app.kubernetes.io/name=flink-kubernetes-operator
