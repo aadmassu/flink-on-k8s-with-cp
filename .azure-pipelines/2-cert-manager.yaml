@@ -66,7 +66,7 @@ stages:
                   --version v1.19.4 \
                   -f apps/cert-manager/$(ENV)/values.yaml \
                   -f apps/cert-manager/openshift-overlay.yaml \
-                  --wait --timeout 3m
+                  --wait --timeout 10m
 
           - task: Bash@3
             displayName: "Wait for CRDs"

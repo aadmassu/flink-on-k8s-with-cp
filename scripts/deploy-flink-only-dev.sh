@@ -45,7 +45,7 @@ else
     --version v1.19.4 \
     -f "$REPO_ROOT/apps/cert-manager/$ENV/values.yaml" \
     -f "$REPO_ROOT/apps/cert-manager/openshift-overlay.yaml" \
-    --wait --timeout 180s
+    --wait --timeout 600s
   echo "    cert-manager installed."
 fi
 
@@ -72,7 +72,7 @@ helm upgrade --install confluent-operator confluent/confluent-for-kubernetes \
   --version 0.1351.59 \
   -f "$REPO_ROOT/apps/confluent-operator/$ENV/values.yaml" \
   -f "$REPO_ROOT/apps/confluent-operator/openshift-overlay.yaml" \
-  --wait --timeout 180s
+  --wait --timeout 600s
 echo "    CFK Operator installed."
 
 # ── Step 4a: Apply CFK webhook TLS manifests ─────────────────────────────────
@@ -148,7 +148,7 @@ helm upgrade --install confluent-flink-operator confluent/flink-kubernetes-opera
   --version 1.130.2 \
   -f "$REPO_ROOT/apps/confluent-flink-operator/$ENV/values.yaml" \
   -f "$REPO_ROOT/apps/confluent-flink-operator/openshift-overlay.yaml" \
-  --wait --timeout 180s
+  --wait --timeout 600s
 echo "    Flink Operator installed."
 
 # ── Step 6: Install CMF ──────────────────────────────────────────────────────
@@ -159,7 +159,7 @@ helm upgrade --install confluent-cmf confluent/confluent-manager-for-apache-flin
   --version 2.2.0 \
   -f "$REPO_ROOT/apps/confluent-cmf/$ENV/values.yaml" \
   -f "$REPO_ROOT/apps/confluent-cmf/openshift-overlay.yaml" \
-  --wait --timeout 180s
+  --wait --timeout 600s
 echo "    CMF installed."
 
 # ── Step 7: Apply Flink CRs ─────────────────────────────────────────────────

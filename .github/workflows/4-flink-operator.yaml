@@ -54,7 +54,7 @@ jobs:
             --version 1.130.2 \
             -f apps/confluent-flink-operator/${ENV}/values.yaml \
             -f apps/confluent-flink-operator/openshift-overlay.yaml \
-            --wait --timeout 3m
+            --wait --timeout 10m
 
       - name: Verify
         run: |

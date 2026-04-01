@@ -68,7 +68,7 @@ stages:
                   --version 2.2.0 \
                   -f apps/confluent-cmf/$(ENV)/values.yaml \
                   -f apps/confluent-cmf/openshift-overlay.yaml \
-                  --wait --timeout 3m
+                  --wait --timeout 10m
 
           - task: Bash@3
             displayName: "Verify"

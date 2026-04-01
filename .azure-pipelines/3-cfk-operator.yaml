@@ -68,7 +68,7 @@ stages:
                   --version 0.1351.59 \
                   -f apps/confluent-operator/$(ENV)/values.yaml \
                   -f apps/confluent-operator/openshift-overlay.yaml \
-                  --wait --timeout 3m
+                  --wait --timeout 10m
 
           - task: Bash@3
             displayName: "Apply webhook TLS"
