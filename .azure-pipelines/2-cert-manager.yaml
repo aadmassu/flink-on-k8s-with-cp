@@ -14,7 +14,9 @@ parameters:
     values: [dev, qa, stg, prd]
 
 variables:
-  ENV: ${{ parameters.environment }}
+  - group: Openshift-ROSA-VAR-Groups
+  - name: ENV
+    value: ${{ parameters.environment }}
 
 stages:
   - stage: CertManager

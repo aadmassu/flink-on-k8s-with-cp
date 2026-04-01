@@ -14,8 +14,11 @@ parameters:
     values: [dev, qa, stg, prd]
 
 variables:
-  ENV: ${{ parameters.environment }}
-  NS: "dah-kafka-${{ parameters.environment }}"
+  - group: Openshift-ROSA-VAR-Groups
+  - name: ENV
+    value: ${{ parameters.environment }}
+  - name: NS
+    value: "dah-kafka-${{ parameters.environment }}"
 
 stages:
   - stage: CFK
