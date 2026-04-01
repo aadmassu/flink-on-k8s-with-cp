@@ -11,7 +11,7 @@ name: confluent-operator
 # License configuration for Confluent Platform components
 license:
   # Secret containing license.txt; preferred over licenseKey for security
-  secretRef: ""
+  secretRef: confluent-license
   # Directory path in container for license file; takes precedence over secretRef
   directoryPathInContainer: ""
 
@@ -168,7 +168,7 @@ pod:
   labels: {}
 
 # Deprecated: use license.secretRef instead; kept for backward compatibility
-licenseSecretRef: ""
+licenseSecretRef: confluent-license
 
 # Custom volumes and volume mounts for the operator pod
 # Projects cert-manager PKCS12 keystores (renamed to .jks) + jksPassword.txt
