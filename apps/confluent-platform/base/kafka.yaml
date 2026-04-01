@@ -3,6 +3,8 @@ apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
 metadata:
   name: kafka
+  labels:
+    app: kafka
 spec:
   # 3 brokers for production HA; allows 1 broker failure with min.insync.replicas=2
   replicas: 3

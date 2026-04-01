@@ -1,0 +1,937 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" version="29.6.6" pages="5">
+  <diagram id="sasl-mechanisms" name="SASL Authentication Mechanisms">
+    <mxGraphModel dx="2583" dy="1408" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;labelBackgroundColor=none;" value="Kafka Authentication Mechanisms — How Each SASL Method Works" vertex="1">
+          <mxGeometry height="40" width="800" x="250" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="kerb-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="5. SASL/GSSAPI (Kerberos)" vertex="1">
+          <mxGeometry height="200" width="820" x="50" y="1140" as="geometry" />
+        </mxCell>
+        <mxCell id="kerb-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#1565C0;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="90" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="kerb-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#1565C0;labelBackgroundColor=none;" value="Client&#xa;(kinit principal)" vertex="1">
+          <mxGeometry height="25" width="90" x="65" y="1145" as="geometry" />
+        </mxCell>
+        <mxCell id="kerb-kdc" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#0D47A1;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="310" y="1170" as="geometry" />
+        </mxCell>
+        <mxCell id="kerb-kdc-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#0D47A1;labelBackgroundColor=none;" value="KDC&#xa;(Key Distribution Center)&#xa;Active Directory / MIT Kerberos" vertex="1">
+          <mxGeometry height="30" width="170" x="250" y="1228" as="geometry" />
+        </mxCell>
+        <mxCell id="kerb-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="560" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="kerb-broker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker&#xa;(keytab: kafka/broker@REALM)" vertex="1">
+          <mxGeometry height="25" width="155" x="510" y="1238" as="geometry" />
+        </mxCell>
+        <mxCell id="kerb-a1" edge="1" parent="1" source="kerb-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;fontColor=#000000;labelBackgroundColor=none;" target="kerb-kdc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="1180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kerb-a1-l" connectable="0" parent="kerb-a1" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#1565C0;fontColor=#000000;labelBackgroundColor=none;" value="1" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="5" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kerb-a2" edge="1" parent="1" source="kerb-kdc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#0D47A1;strokeWidth=2;entryX=0.948;entryY=0.746;entryDx=0;entryDy=0;entryPerimeter=0;labelBackgroundColor=none;" target="kerb-client">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="220" y="1220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kerb-a2-l" connectable="0" parent="kerb-a2" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#0D47A1;fontColor=#000000;labelBackgroundColor=none;" value="2" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-9" y="-22" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kerb-a3" edge="1" parent="1" source="kerb-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=2;labelBackgroundColor=none;" target="kerb-broker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="1290" />
+              <mxPoint x="585" y="1290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kerb-a3-l" connectable="0" parent="kerb-a3" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#2E7D32;fontColor=#000000;labelBackgroundColor=none;" value="3" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-5" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kerb-steps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;1&lt;/b&gt; Client requests TGT from KDC (AS-REQ)&lt;br&gt;&lt;b&gt;2&lt;/b&gt; KDC returns TGT + service ticket for kafka/broker@REALM&lt;br&gt;&lt;b&gt;3&lt;/b&gt; Client presents service ticket to broker (mutual auth)&lt;br&gt;&lt;br&gt;&lt;b&gt;No passwords over the wire.&lt;/b&gt; Uses tickets + keytabs.&#xa;Enterprise standard. Complex to set up (KDC, DNS, time sync)." vertex="1">
+          <mxGeometry height="110" width="195" x="660" y="1165" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="1. SASL/OAUTHBEARER (OAuth 2.0 / OIDC)" vertex="1">
+          <mxGeometry height="200" width="820" x="50" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="90" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Client App&#xa;(client_id + secret)" vertex="1">
+          <mxGeometry height="25" width="100" x="65" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth-idp" parent="1" style="shape=mxgraph.azure.active_directory;fillColor=#F9A825;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="48" width="45" x="310" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth-idp-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#F9A825;labelBackgroundColor=none;" value="Identity Provider&#xa;(Okta / Azure AD / Keycloak)" vertex="1">
+          <mxGeometry height="25" width="170" x="250" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="560" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth-broker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker&#xa;(validates JWT via JWKS)" vertex="1">
+          <mxGeometry height="25" width="145" x="425" y="143" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth-a1" edge="1" parent="1" source="oauth-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=2;labelBackgroundColor=none;" target="oauth-idp">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="144" />
+              <mxPoint x="170" y="144" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oauth-a1-l" connectable="0" parent="oauth-a1" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#2E7D32;fontColor=#000000;labelBackgroundColor=none;" value="1" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-21" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oauth-a2" edge="1" parent="1" source="oauth-idp" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;labelBackgroundColor=none;" target="oauth-client">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="160" />
+              <mxPoint x="170" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oauth-a2-l" connectable="0" parent="oauth-a2" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#F9A825;fontColor=#000000;labelBackgroundColor=none;" value="2" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oauth-a3" edge="1" parent="1" source="oauth-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=2;labelBackgroundColor=none;" target="oauth-broker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="230" />
+              <mxPoint x="585" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oauth-a3-l" connectable="0" parent="oauth-a3" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#2E7D32;fontColor=#000000;labelBackgroundColor=none;" value="3" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-5" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oauth-a4" edge="1" parent="1" source="oauth-broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=1;dashed=1;labelBackgroundColor=none;" target="oauth-idp">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="130" />
+              <mxPoint x="460" y="130" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oauth-a4-l" connectable="0" parent="oauth-a4" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#000000;fontStyle=1;labelBackgroundColor=none;" value="4 (JWKS)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-20" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oauth-steps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;arcSize=5;" value="&lt;b&gt;1&lt;/b&gt; Client authenticates to IdP (client credentials grant)&lt;br&gt;&lt;b&gt;2&lt;/b&gt; IdP returns JWT access token&lt;br&gt;&lt;b&gt;3&lt;/b&gt; Client sends JWT to broker in SASL handshake&lt;br&gt;&lt;b&gt;4&lt;/b&gt; Broker validates JWT signature via JWKS endpoint&lt;br&gt;&lt;br&gt;&lt;b&gt;Modern standard.&lt;/b&gt; Token-based, short-lived. Integrates&#xa;with Okta, Azure AD, Keycloak. Used by FCB." vertex="1">
+          <mxGeometry height="115" width="195" x="660" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="plain-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#E65100;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="2. SASL/PLAIN (Username + Password)" vertex="1">
+          <mxGeometry height="170" width="820" x="50" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="plain-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#E65100;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="90" y="345" as="geometry" />
+        </mxCell>
+        <mxCell id="plain-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#E65100;labelBackgroundColor=none;" value="Client&#xa;(username + password)" vertex="1">
+          <mxGeometry height="25" width="110" x="55" y="388" as="geometry" />
+        </mxCell>
+        <mxCell id="plain-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="410" y="338" as="geometry" />
+        </mxCell>
+        <mxCell id="plain-broker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker&#xa;(JAAS config with users)" vertex="1">
+          <mxGeometry height="25" width="155" x="360" y="396" as="geometry" />
+        </mxCell>
+        <mxCell id="plain-a1" edge="1" parent="1" source="plain-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E65100;strokeWidth=3;labelBackgroundColor=none;" target="plain-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="plain-a1-l" connectable="0" parent="plain-a1" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#E65100;labelBackgroundColor=none;" value="username + password&#xa;(plaintext in SASL handshake)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-50" y="-35" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="plain-steps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=8;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;arcSize=6;" value="Client sends username + password in the SASL handshake.&#xa;Broker checks against JAAS config (static file).&#xa;&#xa;&lt;b&gt;MUST use TLS (SASL_SSL)&lt;/b&gt; — credentials are in cleartext!&#xa;Simple to set up. Suitable for dev/test.&#xa;Confluent Cloud uses this for API key + secret." vertex="1">
+          <mxGeometry height="80" width="290" x="560" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="plain-warn" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=8;fontStyle=1;align=center;labelBackgroundColor=none;" value="CREDENTIALS SENT IN CLEARTEXT — ALWAYS USE WITH SSL" vertex="1">
+          <mxGeometry height="18" width="290" x="560" y="418" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="3. SASL/PLAIN with LDAP Backend" vertex="1">
+          <mxGeometry height="190" width="820" x="50" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#8E24AA;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="90" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#8E24AA;labelBackgroundColor=none;" value="Client&#xa;(username + password)" vertex="1">
+          <mxGeometry height="25" width="110" x="55" y="583" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="310" y="532" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-broker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker&#xa;(MDS / LDAP plugin)" vertex="1">
+          <mxGeometry height="25" width="140" x="265" y="593" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-server" parent="1" style="shape=mxgraph.azure.active_directory;fillColor=#8E24AA;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="48" width="45" x="542.5" y="535.5" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-server-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#8E24AA;labelBackgroundColor=none;" value="LDAP / Active Directory" vertex="1">
+          <mxGeometry height="15" width="120" x="505" y="583" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-a1" edge="1" parent="1" source="ldap-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;strokeWidth=2;labelBackgroundColor=none;" target="ldap-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-a1-l" connectable="0" parent="ldap-a1" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#8E24AA;fontColor=#000000;labelBackgroundColor=none;" value="1" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ldap-a2" edge="1" parent="1" source="ldap-broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;strokeWidth=2;labelBackgroundColor=none;" target="ldap-server">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ldap-a2-l" connectable="0" parent="ldap-a2" style="edgeLabel;fontSize=10;fontStyle=1;fillColor=#8E24AA;fontColor=#000000;labelBackgroundColor=none;" value="2" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-19" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ldap-steps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=8;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;1&lt;/b&gt; Client sends username + password (SASL/PLAIN)&lt;br&gt;&lt;b&gt;2&lt;/b&gt; Broker delegates auth to LDAP (LDAP bind with user creds)&lt;br&gt;&lt;br&gt;Same wire protocol as SASL/PLAIN but broker&#xa;validates against LDAP instead of a static JAAS file.&#xa;Confluent&#39;s MDS uses this for RBAC + LDAP groups." vertex="1">
+          <mxGeometry height="100" width="210" x="640" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="scram-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E0F7FA;strokeColor=#00838F;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="4. SASL/SCRAM (Salted Challenge Response)" vertex="1">
+          <mxGeometry height="200" width="820" x="50" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="scram-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#00838F;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="90" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="scram-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#00838F;labelBackgroundColor=none;" value="Client" vertex="1">
+          <mxGeometry height="15" width="60" x="80" y="793" as="geometry" />
+        </mxCell>
+        <mxCell id="scram-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="410" y="743" as="geometry" />
+        </mxCell>
+        <mxCell id="scram-broker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker&#xa;(stores salted hash)" vertex="1">
+          <mxGeometry height="25" width="140" x="365" y="798" as="geometry" />
+        </mxCell>
+        <mxCell id="scram-a1" edge="1" parent="1" source="scram-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#00838F;strokeWidth=2;labelBackgroundColor=none;" target="scram-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="scram-a1-l" connectable="0" parent="scram-a1" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#00838F;labelBackgroundColor=none;" value="challenge-response&#xa;(4 round trips)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-40" y="-30" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="scram-steps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F7FA;strokeColor=#00838F;fontSize=8;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;arcSize=7;" value="SCRAM-SHA-256 or SCRAM-SHA-512.&lt;br&gt;&lt;br&gt;&lt;b&gt;Password NEVER sent over the wire.&lt;/b&gt;&lt;br&gt;Client and broker exchange nonces + salted proofs.&#xa;Broker stores only salted hash (not plaintext password).&lt;br&gt;&lt;br&gt;More secure than PLAIN. No external IdP required.&#xa;Users managed via &lt;code&gt;kafka-configs --alter --add-config&lt;/code&gt;.&#xa;Stored in ZooKeeper/KRaft metadata." vertex="1">
+          <mxGeometry height="110" width="290" x="560" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="scram-flow" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;labelBackgroundColor=none;" value="Client → Server: ClientFirst (username + nonce)&#xa;Server → Client: ServerFirst (salt + server nonce + iterations)&#xa;Client → Server: ClientFinal (salted proof)&#xa;Server → Client: ServerFinal (server signature = mutual auth)" vertex="1">
+          <mxGeometry height="55" width="350" x="120" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF8E1;strokeColor=#F9A825;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="4. Delegation Tokens (SASL/SSL)" vertex="1">
+          <mxGeometry height="200" width="820" x="50" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#F9A825;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="90" y="970" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#F9A825;labelBackgroundColor=none;" value="Authenticated Client&#xa;(already has Kerberos/SCRAM)" vertex="1">
+          <mxGeometry height="25" width="130" x="55" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="340" y="962.5" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-broker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker&#xa;(issues token)" vertex="1">
+          <mxGeometry height="25" width="120" x="305" y="1023" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-worker" parent="1" style="shape=mxgraph.azure.user;fillColor=#E65100;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="590" y="970" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-worker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#E65100;labelBackgroundColor=none;" value="Worker / Task&#xa;(uses delegation token)" vertex="1">
+          <mxGeometry height="25" width="110" x="555" y="937.5" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-a1" edge="1" parent="1" source="deleg-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;labelBackgroundColor=none;" target="deleg-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-a1-l" connectable="0" parent="deleg-a1" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#F9A825;labelBackgroundColor=none;" value="1 request token" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-15" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="deleg-a2" edge="1" parent="1" source="deleg-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;labelBackgroundColor=none;" target="deleg-worker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="1070" />
+              <mxPoint x="610" y="1070" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="deleg-a2-l" connectable="0" parent="deleg-a2" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#F9A825;labelBackgroundColor=none;" value="2 distribute token" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-28" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="deleg-a3" edge="1" parent="1" source="deleg-worker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E65100;strokeWidth=2;labelBackgroundColor=none;" target="deleg-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="deleg-a3-l" connectable="0" parent="deleg-a3" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#E65100;labelBackgroundColor=none;" value="3 authenticate&#xa;with token" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-27" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="deleg-steps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;1&lt;/b&gt; Authenticated client requests a delegation token from broker&lt;br&gt;&lt;b&gt;2&lt;/b&gt; Client distributes token to workers (Spark, Flink, etc.)&lt;br&gt;&lt;b&gt;3&lt;/b&gt; Workers authenticate using the token (no Kerberos needed)&lt;br&gt;&lt;br&gt;&lt;b&gt;Use case:&lt;/b&gt; Distributed frameworks (Spark, Flink) where&#xa;sharing keytabs to every executor is impractical.&#xa;Token has an expiry and can be renewed." vertex="1">
+          <mxGeometry height="115" width="195" x="660" y="950" as="geometry" />
+        </mxCell>
+        <mxCell id="compare" parent="1" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=#9E9E9E;shadow=1;labelBackgroundColor=none;arcSize=7;" value="&lt;table style=&quot;font-size:9px;border-collapse:collapse;width:100%&quot;&gt;&lt;tbody&gt;&lt;tr style=&quot;background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial; font-weight: bold;&quot;&gt;&lt;td style=&quot;padding:4px;border:1px solid #1565C0&quot;&gt;Mechanism&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #1565C0&quot;&gt;Password Over Wire?&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #1565C0&quot;&gt;External IdP?&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #1565C0&quot;&gt;Complexity&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #1565C0&quot;&gt;Best For&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;font-weight:bold&quot;&gt;GSSAPI (Kerberos)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#2E7D32&quot;&gt;No (tickets)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;KDC (AD)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#C62828&quot;&gt;High&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;Enterprise with existing AD/Kerberos&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;font-weight:bold&quot;&gt;OAUTHBEARER&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#2E7D32&quot;&gt;No (JWT token)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;Okta/AzureAD/Keycloak&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#F9A825&quot;&gt;Medium&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;Modern cloud-native, Confluent recommended&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;font-weight:bold&quot;&gt;PLAIN&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#C62828&quot;&gt;Yes (cleartext)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;No (static JAAS)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#2E7D32&quot;&gt;Low&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;Dev/test, Confluent Cloud API keys&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;font-weight:bold&quot;&gt;PLAIN + LDAP&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#C62828&quot;&gt;Yes (to broker)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;LDAP/AD&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#F9A825&quot;&gt;Medium&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;Enterprise with LDAP, Confluent RBAC/MDS&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;font-weight:bold&quot;&gt;SCRAM&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#2E7D32&quot;&gt;No (challenge-response)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;No (built-in)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#2E7D32&quot;&gt;Low&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;Self-managed without external IdP&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;font-weight:bold&quot;&gt;Delegation Tokens&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#2E7D32&quot;&gt;No (token)&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;Piggybacks on primary&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc;color:#F9A825&quot;&gt;Medium&lt;/td&gt;&lt;td style=&quot;padding:4px;border:1px solid #ccc&quot;&gt;Spark/Flink distributed workers&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="140" width="580" x="900" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sec-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=9;fontStyle=2;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;All SASL mechanisms should be used with TLS encryption (SASL_SSL listener).&lt;/b&gt;&#xa;SASL alone authenticates the client but does NOT encrypt the data in transit.&#xa;Without TLS, even SCRAM/Kerberos traffic can be sniffed for metadata." vertex="1">
+          <mxGeometry height="45" width="450" x="900" y="310" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sso" name="Single Sign-On (SSO)">
+    <mxGraphModel dx="2066" dy="1126" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sso-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;" value="Confluent Platform — Single Sign-On (SSO)" vertex="1">
+          <mxGeometry height="40" width="600" x="350" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-subtitle" parent="1" style="text;html=1;fontSize=11;fontStyle=2;align=center;fontColor=#666;" value="SSO enables users to authenticate once with their corporate identity provider and access all Confluent components" vertex="1">
+          <mxGeometry height="20" width="800" x="250" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-flow" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=14;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;" value="SSO Authentication Flow (OIDC / OAuth 2.0)" vertex="1">
+          <mxGeometry height="350" width="1400" x="40" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-user" parent="1" style="shape=mxgraph.azure.user;fillColor=#1565C0;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="55" width="55" x="100" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-user-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#1565C0;" value="User&#xa;(Browser)" vertex="1">
+          <mxGeometry height="40" width="65" x="55" y="217.5" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-c3" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#C62828;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="350" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-c3-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#C62828;" value="Control Center&#xa;(or Confluent Cloud)" vertex="1">
+          <mxGeometry height="25" width="100" x="405" y="192.5" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-idp" parent="1" style="shape=mxgraph.azure.active_directory;fillColor=#F9A825;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="60" width="60" x="620" y="157.5" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-idp-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#F9A825;" value="Identity Provider&#xa;(Okta / Azure AD / ADFS / Keycloak)" vertex="1">
+          <mxGeometry height="25" width="175" x="580" y="227.5" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-mds" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="900" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-mds-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;" value="MDS&#xa;(Metadata Service&#xa;on Kafka Broker)" vertex="1">
+          <mxGeometry height="30" width="140" x="860" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="1150" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-broker-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;" value="Kafka Brokers&#xa;(RBAC enforced)" vertex="1">
+          <mxGeometry height="25" width="140" x="1110" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-f1" edge="1" parent="1" source="sso-user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=3;" target="sso-c3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-f1-l" connectable="0" parent="sso-f1" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#1565C0;fontColor=#000000;labelBackgroundColor=none;" value="1" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-2" y="-27" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-f2" edge="1" parent="1" source="sso-c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=3;" target="sso-idp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-f2-l" connectable="0" parent="sso-f2" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#C62828;fontColor=#000000;labelBackgroundColor=none;" value="2" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-27" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-f3" edge="1" parent="1" source="sso-idp" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=3;" target="sso-user">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="140" />
+              <mxPoint x="130" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-f3-l" connectable="0" parent="sso-f3" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#F9A825;fontColor=#000000;labelBackgroundColor=none;" value="3" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-9" y="-30" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-f4" edge="1" parent="1" source="sso-user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=3;" target="sso-c3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="230" y="210" />
+              <mxPoint x="230" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-f4-l" connectable="0" parent="sso-f4" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#1565C0;fontColor=#000000;labelBackgroundColor=none;" value="4" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-3" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-f5" edge="1" parent="1" source="sso-c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=3;" target="sso-mds">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="378" y="290" />
+              <mxPoint x="830" y="290" />
+              <mxPoint x="830" y="187" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-f5-l" connectable="0" parent="sso-f5" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#C62828;fontColor=#000000;labelBackgroundColor=none;" value="5" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-3" y="-30" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-f6" edge="1" parent="1" source="sso-mds" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=3;" target="sso-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-f6-l" connectable="0" parent="sso-f6" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#2E7D32;fontColor=#000000;labelBackgroundColor=none;" value="6" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-3" y="-27" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sso-desc" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#333;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;shadow=1;" value="SSO Flow Steps" vertex="1">
+          <mxGeometry height="190" width="700" x="40" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-s1" parent="1" style="text;html=1;fontSize=10;align=left;spacingLeft=5;" value="&lt;b&gt;&lt;span style=&#39;color:#1565C0&#39;&gt;1&lt;/span&gt;&lt;/b&gt; User opens Control Center (or Confluent Cloud) in browser" vertex="1">
+          <mxGeometry height="18" width="500" x="55" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-s2" parent="1" style="text;html=1;fontSize=10;align=left;spacingLeft=5;" value="&lt;b&gt;&lt;span style=&#39;color:#C62828&#39;&gt;2&lt;/span&gt;&lt;/b&gt; Control Center redirects browser to IdP login page (OIDC authorization endpoint)" vertex="1">
+          <mxGeometry height="18" width="500" x="55" y="508" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-s3" parent="1" style="text;html=1;fontSize=10;align=left;spacingLeft=5;" value="&lt;b&gt;&lt;span style=&#39;color:#F9A825&#39;&gt;3&lt;/span&gt;&lt;/b&gt; User authenticates at IdP (username/password, MFA). IdP redirects back with authorization code" vertex="1">
+          <mxGeometry height="18" width="600" x="55" y="531" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-s4" parent="1" style="text;html=1;fontSize=10;align=left;spacingLeft=5;" value="&lt;b&gt;&lt;span style=&#39;color:#1565C0&#39;&gt;4&lt;/span&gt;&lt;/b&gt; Browser sends authorization code to Control Center" vertex="1">
+          <mxGeometry height="18" width="500" x="55" y="554" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-s5" parent="1" style="text;html=1;fontSize=10;align=left;spacingLeft=5;" value="&lt;b&gt;&lt;span style=&#39;color:#C62828&#39;&gt;5&lt;/span&gt;&lt;/b&gt; Control Center exchanges code for JWT token (via IdP token endpoint), passes to MDS for RBAC" vertex="1">
+          <mxGeometry height="18" width="600" x="55" y="577" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-s6" parent="1" style="text;html=1;fontSize=10;align=left;spacingLeft=5;" value="&lt;b&gt;&lt;span style=&#39;color:#2E7D32&#39;&gt;6&lt;/span&gt;&lt;/b&gt; MDS validates JWT, maps user/groups to RBAC roles, authorizes access to Kafka resources" vertex="1">
+          <mxGeometry height="18" width="600" x="55" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-components" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=3;rounded=1;arcSize=6;shadow=1;" value="Components That Support SSO" vertex="1">
+          <mxGeometry height="190" width="500" x="780" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-c3" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#C62828;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="35" x="810" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-c3-l" parent="1" style="text;html=1;fontSize=8;fontStyle=1;align=center;" value="Control Center&#xa;(OIDC login page)" vertex="1">
+          <mxGeometry height="25" width="80" x="790" y="543" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-cloud" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="35" x="930" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-cloud-l" parent="1" style="text;html=1;fontSize=8;fontStyle=1;align=center;" value="Confluent Cloud&#xa;(SSO via org settings)" vertex="1">
+          <mxGeometry height="25" width="90" x="903" y="543" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-sr" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#8E24AA;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="35" x="1050" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-sr-l" parent="1" style="text;html=1;fontSize=8;fontStyle=1;align=center;" value="Schema Registry&#xa;(via MDS bearer token)" vertex="1">
+          <mxGeometry height="25" width="100" x="1020" y="543" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-connect" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#E65100;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="35" x="1170" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-connect-l" parent="1" style="text;html=1;fontSize=8;fontStyle=1;align=center;" value="Kafka Connect&#xa;(via MDS bearer token)" vertex="1">
+          <mxGeometry height="25" width="100" x="1140" y="543" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-comp-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=8;shadow=1;" value="&lt;b&gt;MDS (Metadata Service)&lt;/b&gt; is the central authorization service.&#xa;It validates JWT tokens from the IdP and enforces RBAC role bindings.&#xa;All CP components delegate authorization to MDS.&#xa;&#xa;&lt;b&gt;RBAC roles:&lt;/b&gt; SystemAdmin, ClusterAdmin, ResourceOwner, DeveloperRead, DeveloperWrite, DeveloperManage" vertex="1">
+          <mxGeometry height="55" width="450" x="800" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-vs" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF8E1;strokeColor=#F9A825;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=3;rounded=1;arcSize=3;shadow=1;" value="SSO vs SASL — When to Use What" vertex="1">
+          <mxGeometry height="270" width="1250" x="30" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-vs-table" parent="1" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=#F9A825;arcSize=5;" value="&lt;table style=&#39;font-size:10px;border-collapse:collapse;width:100%&#39;&gt;&lt;tr style=&#39;background:#FFF9C4;font-weight:bold&#39;&gt;&lt;td style=&#39;padding:5px;border:1px solid #F9A825&#39;&gt;&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #F9A825&#39;&gt;SSO (OIDC)&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #F9A825&#39;&gt;SASL/OAUTHBEARER&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #F9A825&#39;&gt;SASL/PLAIN&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc;font-weight:bold&#39;&gt;Who authenticates?&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Humans (browser-based)&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Applications (service-to-service)&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Applications (simple)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc;font-weight:bold&#39;&gt;Protocol&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;OIDC Authorization Code flow&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;OAuth 2.0 Client Credentials&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Username + password&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc;font-weight:bold&#39;&gt;Used for&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Control Center UI, Cloud Console&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Kafka clients, Connect, SR, Flink&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Kafka clients (basic)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc;font-weight:bold&#39;&gt;MFA support&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc;color:#2E7D32&#39;&gt;Yes (via IdP)&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc;color:#C62828&#39;&gt;No (machine identity)&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc;color:#C62828&#39;&gt;No&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc;font-weight:bold&#39;&gt;Example&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Admin opens C3, redirected to Okta&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;Flink job uses client_id/secret for JWT&lt;/td&gt;&lt;td style=&#39;padding:5px;border:1px solid #ccc&#39;&gt;kcat with API key&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="145" width="1200" x="55" y="695" as="geometry" />
+        </mxCell>
+        <mxCell id="sso-arch" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=10;align=left;spacingLeft=8;shadow=1;fontStyle=2;" value="&lt;b&gt;In practice, you use BOTH:&lt;/b&gt;&lt;br&gt;- &lt;b&gt;SSO (OIDC)&lt;/b&gt; for humans accessing Control Center / Confluent Cloud UI&lt;br&gt;- &lt;b&gt;SASL/OAUTHBEARER&lt;/b&gt; for applications (producers, consumers, connectors, Flink)&lt;br&gt;- Both backed by the &lt;b&gt;same IdP&lt;/b&gt; (Okta, Azure AD) — different OAuth flows but same identity store" vertex="1">
+          <mxGeometry height="65" width="600" x="55" y="860" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="mtls" name="Mutual TLS (mTLS)">
+    <mxGraphModel dx="1377" dy="751" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="mt-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;labelBackgroundColor=none;" value="Mutual TLS (mTLS) — Certificate-Based Authentication" vertex="1">
+          <mxGeometry height="40" width="700" x="300" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-subtitle" parent="1" style="text;html=1;fontSize=11;fontStyle=2;align=center;fontColor=#666;labelBackgroundColor=none;" value="Both client and server present certificates to prove identity — no passwords, no tokens" vertex="1">
+          <mxGeometry height="20" width="600" x="350" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-compare-title" parent="1" style="text;html=1;fontSize=16;fontStyle=1;align=left;labelBackgroundColor=none;" value="Standard TLS vs Mutual TLS" vertex="1">
+          <mxGeometry height="25" width="400" x="40" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-std" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#ECEFF1;strokeColor=#546E7A;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="Standard TLS (one-way)" vertex="1">
+          <mxGeometry height="150" width="600" x="40" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-std-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#546E7A;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="45" width="45" x="100" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-std-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#546E7A;labelBackgroundColor=none;" value="Client&#xa;(no certificate)" vertex="1">
+          <mxGeometry height="20" width="95" x="75" y="213" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-std-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#546E7A;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="360" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-std-broker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#546E7A;labelBackgroundColor=none;" value="Broker&#xa;(presents server cert)" vertex="1">
+          <mxGeometry height="20" width="120" x="325" y="218" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-std-a1" edge="1" parent="1" source="mt-std-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#546E7A;strokeWidth=2;labelBackgroundColor=none;" target="mt-std-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-std-a1-l" connectable="0" parent="mt-std-a1" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#546E7A;labelBackgroundColor=none;" value="Client verifies server cert ✓&#xa;Server does NOT verify client ✗" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-63" y="-27" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mt-std-note" parent="1" style="text;html=1;fontSize=8;fontStyle=2;fontColor=#546E7A;align=left;spacingLeft=5;labelBackgroundColor=none;" value="Only &lt;b&gt;encrypts&lt;/b&gt; the connection.&#xa;Server identity verified.&#xa;Client identity &lt;b&gt;unknown&lt;/b&gt;." vertex="1">
+          <mxGeometry height="40" width="150" x="470" y="168" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-mutual" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="Mutual TLS (two-way)" vertex="1">
+          <mxGeometry height="150" width="600" x="40" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-mtls-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#1565C0;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="45" width="45" x="100" y="335" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-mtls-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#1565C0;labelBackgroundColor=none;" value="Client&#xa;(presents client cert)" vertex="1">
+          <mxGeometry height="20" width="105" x="70" y="383" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-mtls-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="360" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-mtls-broker-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#1565C0;labelBackgroundColor=none;" value="Broker&#xa;(presents server cert)" vertex="1">
+          <mxGeometry height="20" width="120" x="325" y="388" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-mtls-a1" edge="1" parent="1" source="mt-mtls-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=3;labelBackgroundColor=none;" target="mt-mtls-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-mtls-a1-l" connectable="0" parent="mt-mtls-a1" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#1565C0;labelBackgroundColor=none;" value="Client verifies server cert ✓&#xa;Server verifies client cert ✓" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-43" y="-27" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mt-mtls-note" parent="1" style="text;html=1;fontSize=8;fontStyle=2;fontColor=#1565C0;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;Encrypts&lt;/b&gt; the connection AND&#xa;&lt;b&gt;authenticates&lt;/b&gt; both parties.&#xa;No passwords needed." vertex="1">
+          <mxGeometry height="40" width="150" x="470" y="338" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-flow" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=14;verticalAlign=top;spacingTop=5;rounded=1;arcSize=4;shadow=1;labelBackgroundColor=none;" value="mTLS Handshake — Step by Step" vertex="1">
+          <mxGeometry height="340" width="1400" x="40" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-fc" parent="1" style="shape=mxgraph.azure.user;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="55" x="100" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-fc-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Client" vertex="1">
+          <mxGeometry height="18" width="95" x="80" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-fc-store" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;labelBackgroundColor=none;" value="keystore.jks&#xa;(client cert + private key)&#xa;&#xa;truststore.jks&#xa;(CA cert to verify server)" vertex="1">
+          <mxGeometry height="65" width="175" x="60" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-fb" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="65" width="60" x="550" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-fb-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker" vertex="1">
+          <mxGeometry height="18" width="95" x="535" y="595" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-fb-store" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;labelBackgroundColor=none;" value="keystore.jks&#xa;(server cert + private key)&#xa;&#xa;truststore.jks&#xa;(CA cert to verify client)" vertex="1">
+          <mxGeometry height="65" width="175" x="500" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-ca" parent="1" style="shape=mxgraph.signs.safety.locked;fillColor=#F9A825;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="325" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-ca-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#F9A825;labelBackgroundColor=none;" value="Certificate Authority (CA)&#xa;Signs both client &amp;amp; server certs" vertex="1">
+          <mxGeometry height="25" width="175" x="260" y="755" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-ca-c" edge="1" parent="1" source="mt-ca" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=1;dashed=1;labelBackgroundColor=none;" target="mt-fc-store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-ca-c-l" connectable="0" parent="mt-ca-c" style="edgeLabel;fontSize=7;fillColor=none;fontColor=#F9A825;labelBackgroundColor=none;" value="signs" vertex="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-ca-b" edge="1" parent="1" source="mt-ca" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=1;dashed=1;labelBackgroundColor=none;" target="mt-fb-store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-ca-b-l" connectable="0" parent="mt-ca-b" style="edgeLabel;fontSize=7;fillColor=none;fontColor=#F9A825;labelBackgroundColor=none;" value="signs" vertex="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-h1" edge="1" parent="1" source="mt-fc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;labelBackgroundColor=none;" target="mt-fb">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="128" y="510" />
+              <mxPoint x="580" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mt-h1-l" connectable="0" parent="mt-h1" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#1565C0;labelBackgroundColor=none;" value="1  ClientHello (supported ciphers, TLS version)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-51" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mt-h2" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=2;labelBackgroundColor=none;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="550" y="540" as="sourcePoint" />
+            <mxPoint x="155" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mt-h2-l" connectable="0" parent="mt-h2" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#C62828;labelBackgroundColor=none;" value="2  ServerHello + Server Certificate + CertificateRequest" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-63" y="-18" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mt-h3" edge="1" parent="1" source="mt-fc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=2;labelBackgroundColor=none;" target="mt-fb">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="128" y="570" />
+              <mxPoint x="580" y="570" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mt-h3-l" connectable="0" parent="mt-h3" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#2E7D32;labelBackgroundColor=none;" value="3  Client Certificate + KeyExchange + Finished" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-52" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mt-steps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;Step 1:&lt;/b&gt; Client initiates TLS handshake (same as standard TLS)&lt;br&gt;&lt;b&gt;Step 2:&lt;/b&gt; Server sends its certificate AND requests the client&#39;s certificate (&lt;code&gt;CertificateRequest&lt;/code&gt;)&lt;br&gt;&lt;b&gt;Step 3:&lt;/b&gt; Client sends its certificate. Server validates it against its truststore (CA chain).&#xa;   If valid → connection established. If invalid → handshake fails.&lt;br&gt;&lt;br&gt;&lt;b&gt;Identity:&lt;/b&gt; The client&#39;s identity is the certificate&#39;s &lt;b&gt;Distinguished Name (DN)&lt;/b&gt; or &lt;b&gt;Subject Alternative Name (SAN)&lt;/b&gt;.&#xa;Kafka uses this as the &lt;b&gt;principal&lt;/b&gt; for ACLs/RBAC (e.g. &lt;code&gt;CN=producer-app,O=MyOrg&lt;/code&gt;)." vertex="1">
+          <mxGeometry height="100" width="650" x="730" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-config" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF8E1;strokeColor=#F9A825;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="Kafka Broker Configuration for mTLS" vertex="1">
+          <mxGeometry height="240" width="680" x="40" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-broker-cfg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=8;fontFamily=Courier New;verticalAlign=top;spacingTop=5;labelBackgroundColor=none;arcSize=5;" value="# Broker listener config (server.properties)&#xa;listeners=SSL://broker:9093&#xa;security.inter.broker.protocol=SSL&#xa;&#xa;# Server cert&#xa;ssl.keystore.location=/var/ssl/kafka.keystore.jks&#xa;ssl.keystore.password=changeit&#xa;ssl.key.password=changeit&#xa;&#xa;# Trust client certs signed by this CA&#xa;ssl.truststore.location=/var/ssl/kafka.truststore.jks&#xa;ssl.truststore.password=changeit&#xa;&#xa;# REQUIRE client certificate (this is what makes it mTLS)&#xa;ssl.client.auth=required&#xa;&#xa;# Extract principal from client cert DN&#xa;ssl.principal.mapping.rules=RULE:^CN=([^,]*),.*$/$$1/,DEFAULT" vertex="1">
+          <mxGeometry height="195" width="405" x="55" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-client-auth-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;arcSize=11;" value="&lt;b&gt;ssl.client.auth&lt;/b&gt; has 3 values:&lt;br&gt;&lt;br&gt;&lt;b&gt;required&lt;/b&gt; — mTLS enforced. Client MUST present cert.&lt;br&gt;&lt;b&gt;requested&lt;/b&gt; — Client cert optional. If provided, validated.&lt;br&gt;&lt;b&gt;none&lt;/b&gt; — Standard TLS only. No client cert (default).&lt;br&gt;&lt;br&gt;For mTLS authentication, set to &lt;b&gt;required&lt;/b&gt;." vertex="1">
+          <mxGeometry height="100" width="235" x="470" y="875" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-client-config" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="Kafka Client Configuration for mTLS" vertex="1">
+          <mxGeometry height="240" width="350" x="760" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-client-cfg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;align=left;spacingLeft=8;fontFamily=Courier New;verticalAlign=top;spacingTop=5;labelBackgroundColor=none;arcSize=7;" value="# Client config (producer/consumer properties)&#xa;security.protocol=SSL&#xa;&#xa;# Client cert (proves identity to broker)&#xa;ssl.keystore.location=/var/ssl/client.keystore.jks&#xa;ssl.keystore.password=changeit&#xa;ssl.key.password=changeit&#xa;&#xa;# Trust server cert signed by this CA&#xa;ssl.truststore.location=/var/ssl/client.truststore.jks&#xa;ssl.truststore.password=changeit" vertex="1">
+          <mxGeometry height="140" width="315" x="775" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-client-cfg-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;align=left;spacingLeft=5;fontStyle=2;labelBackgroundColor=none;" value="&lt;b&gt;Note:&lt;/b&gt; With mTLS, &lt;code&gt;security.protocol=SSL&lt;/code&gt;&#xa;(not SASL_SSL). No SASL config needed —&#xa;the certificate IS the authentication." vertex="1">
+          <mxGeometry height="40" width="315" x="775" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-when" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#9E9E9E;rounded=1;arcSize=10;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="250" width="1070" x="40" y="1110" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-pros" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;Advantages of mTLS:&lt;/b&gt;&lt;br&gt;- No passwords or tokens to manage, rotate, or leak&lt;br&gt;- Strong cryptographic identity (X.509 certificates)&lt;br&gt;- Works without any external IdP (self-contained)&lt;br&gt;- Encryption + authentication in one step&lt;br&gt;- Well understood by security teams (PKI infrastructure)" vertex="1">
+          <mxGeometry height="90" width="350" x="55" y="1120" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-cons" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;Challenges of mTLS:&lt;/b&gt;&lt;br&gt;- Certificate lifecycle management (issue, rotate, revoke)&lt;br&gt;- Every client needs its own cert + private key (keystore)&lt;br&gt;- Harder to debug than username/password&lt;br&gt;- Scaling: 100 apps = 100 certs to manage&lt;br&gt;- CRL / OCSP for revocation adds complexity" vertex="1">
+          <mxGeometry height="90" width="350" x="425" y="1120" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-vs" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;mTLS vs SASL/OAUTHBEARER:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;mTLS:&lt;/b&gt; Certs are long-lived, managed by PKI. Identity is the cert DN.&#xa;Best when you already have a PKI (cert-manager, Vault, KeyFactor).&lt;br&gt;&lt;b&gt;OAUTHBEARER:&lt;/b&gt; Tokens are short-lived, managed by IdP. Identity is the JWT claims.&#xa;Best when you already have an IdP (Okta, Azure AD).&lt;br&gt;&lt;br&gt;&lt;b&gt;You can combine both:&lt;/b&gt; mTLS for inter-broker communication + SASL/OAUTHBEARER for client auth.&#xa;This is what many enterprises do — brokers trust each other via certs, clients use OAuth." vertex="1">
+          <mxGeometry height="120" width="720" x="55" y="1220" as="geometry" />
+        </mxCell>
+        <mxCell id="mt-cp-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=9;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;In Confluent Platform:&lt;/b&gt;&lt;br&gt;- Inter-broker: Often mTLS (SSL listener)&lt;br&gt;- Client apps: SASL_SSL (OAUTHBEARER or PLAIN)&lt;br&gt;- CP components (SR, Connect, C3): SASL_SSL to brokers&lt;br&gt;- CFK on K8s: cert-manager issues certs, mTLS for webhooks" vertex="1">
+          <mxGeometry height="90" width="280" x="800" y="1120" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ldap-integration" name="Broker → LDAP Authentication">
+    <mxGraphModel dx="1425" dy="777" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ld-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;labelBackgroundColor=none;" value="Broker → LDAP Authentication Flow" vertex="1">
+          <mxGeometry height="40" width="600" x="350" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-subtitle" parent="1" style="text;html=1;fontSize=11;fontStyle=2;align=center;fontColor=#666;labelBackgroundColor=none;" value="Clients authenticate with username/password (SASL/PLAIN). Broker delegates credential validation to LDAP/Active Directory via MDS." vertex="1">
+          <mxGeometry height="20" width="900" x="200" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-flow" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=14;verticalAlign=top;spacingTop=5;rounded=1;arcSize=3;shadow=1;labelBackgroundColor=none;" value="Authentication Flow" vertex="1">
+          <mxGeometry height="395" width="960" x="40" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#8E24AA;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="55" x="100" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-client-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#8E24AA;labelBackgroundColor=none;" value="Kafka Client&#xa;(Producer / Consumer / Connect)" vertex="1">
+          <mxGeometry height="25" width="150" x="70" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-client-cfg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;labelBackgroundColor=none;" value="security.protocol=SASL_SSL&#xa;sasl.mechanism=PLAIN&#xa;sasl.jaas.config=...PlainLoginModule&#xa;  username=&quot;alice&quot;&#xa;  password=&quot;s3cret&quot;;" vertex="1">
+          <mxGeometry height="65" width="210" x="55" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="70" width="60" x="460" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-broker-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker&#xa;+ MDS (Metadata Service)" vertex="1">
+          <mxGeometry height="25" width="155" x="422.5" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-ldap" parent="1" style="shape=mxgraph.azure.active_directory;fillColor=#1565C0;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="60" width="60" x="812.5" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-ldap-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#1565C0;labelBackgroundColor=none;" value="LDAP / Active Directory&#xa;(ldaps://ad.company.com:636)" vertex="1">
+          <mxGeometry height="25" width="175" x="770" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-a1" edge="1" parent="1" source="ld-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;strokeWidth=3;labelBackgroundColor=none;" target="ld-broker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="170" />
+              <mxPoint x="300" y="170" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ld-a1-l" connectable="0" parent="ld-a1" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#8E24AA;labelBackgroundColor=none;" value="1  SASL/PLAIN handshake (username + password over TLS)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-117" y="-25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ld-a2" edge="1" parent="1" source="ld-broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=3;labelBackgroundColor=none;" target="ld-ldap">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="660" y="170" />
+              <mxPoint x="660" y="170" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ld-a2-l" connectable="0" parent="ld-a2" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#1565C0;labelBackgroundColor=none;" value="2  LDAP bind (validate credentials)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-55" y="-32" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ld-a3" edge="1" parent="1" source="ld-ldap" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;dashed=1;labelBackgroundColor=none;" target="ld-broker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="670" y="200" />
+              <mxPoint x="670" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ld-a3-l" connectable="0" parent="ld-a3" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#1565C0;labelBackgroundColor=none;" value="3  LDAP bind success + group memberships" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-89" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ld-a4" edge="1" parent="1" source="ld-broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=2;labelBackgroundColor=none;dashed=1;" target="ld-client">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="320" y="200" />
+              <mxPoint x="320" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ld-a4-l" connectable="0" parent="ld-a4" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#2E7D32;labelBackgroundColor=none;" value="4  Authentication success → RBAC roles applied (via MDS)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-108" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ld-detail" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=9;align=left;spacingLeft=8;shadow=1;labelBackgroundColor=none;arcSize=11;" value="&lt;b&gt;How it works:&lt;/b&gt;&lt;br&gt;&lt;b&gt;1.&lt;/b&gt; Client connects with SASL/PLAIN (username + password over TLS)&lt;br&gt;&lt;b&gt;2.&lt;/b&gt; Broker&#39;s MDS performs an LDAP bind using the client&#39;s credentials&lt;br&gt;&lt;b&gt;3.&lt;/b&gt; LDAP validates credentials and returns group memberships&lt;br&gt;&lt;b&gt;4.&lt;/b&gt; MDS maps LDAP user/groups to Confluent RBAC roles and authorizes&lt;br&gt;&lt;br&gt;The broker &lt;b&gt;never stores passwords&lt;/b&gt; — it delegates to LDAP for every auth request.&#xa;Group-based RBAC: LDAP group &lt;code&gt;cn=kafka-devs&lt;/code&gt; → RBAC role &lt;code&gt;DeveloperRead&lt;/code&gt; on cluster." vertex="1">
+          <mxGeometry height="130" width="425" x="55" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-config" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=5;shadow=1;labelBackgroundColor=none;" value="Broker LDAP Configuration (server.properties)" vertex="1">
+          <mxGeometry height="320" width="480" x="40" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-cfg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;align=left;spacingLeft=8;fontFamily=Courier New;verticalAlign=top;spacingTop=5;labelBackgroundColor=none;arcSize=5;" value="# ---- Listener Configuration ----&#xa;listener.name.sasl_ssl.plain.sasl.jaas.config= \&#xa;  org.apache.kafka.common.security.plain.PlainLoginModule required;&#xa;listener.name.sasl_ssl.plain.sasl.server.callback.handler.class= \&#xa;  io.confluent.security.auth.provider.ldap.LdapAuthenticateCallbackHandler&#xa;&#xa;# ---- LDAP Connection ----&#xa;ldap.java.naming.provider.url=ldaps://ad.company.com:636&#xa;ldap.java.naming.security.protocol=ssl&#xa;ldap.java.naming.security.authentication=simple&#xa;&#xa;# ---- Service Account (for LDAP search) ----&#xa;ldap.java.naming.security.principal=CN=svc-kafka,OU=Service,DC=company,DC=com&#xa;ldap.java.naming.security.credentials=LdapServiceP@ss!&#xa;&#xa;# ---- User Search ----&#xa;ldap.user.search.base=OU=Users,DC=company,DC=com&#xa;ldap.user.name.attribute=sAMAccountName&#xa;ldap.user.object.class=user&#xa;ldap.user.search.filter=(sAMAccountName={0})&#xa;&#xa;# ---- Group Search (for RBAC) ----&#xa;ldap.group.search.base=OU=Groups,DC=company,DC=com&#xa;ldap.group.object.class=group&#xa;ldap.group.name.attribute=cn&#xa;ldap.group.member.attribute=member&#xa;ldap.group.member.attribute.pattern=CN=(.*),OU=.*" vertex="1">
+          <mxGeometry height="280" width="445" x="55" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-cfg-notes" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#9E9E9E;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=3;rounded=1;arcSize=3;shadow=1;labelBackgroundColor=none;" value="Configuration Notes" vertex="1">
+          <mxGeometry height="360" width="397.5" x="562.5" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;LdapAuthenticateCallbackHandler&lt;/b&gt;&#xa;This is the Confluent class that intercepts SASL/PLAIN auth and delegates to LDAP instead of the static JAAS file." vertex="1">
+          <mxGeometry height="40" width="350" x="577.5" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;Service Account&lt;/b&gt;&#xa;The broker uses this account to search LDAP (find user DN, enumerate groups). This is NOT the client&#39;s credentials — it&#39;s the broker&#39;s own LDAP service account." vertex="1">
+          <mxGeometry height="50" width="350" x="577.5" y="585" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-n3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;User Search&lt;/b&gt;&#xa;When client sends username &lt;code&gt;alice&lt;/code&gt;, broker searches:&#xa;&lt;code&gt;(&amp;amp;(objectClass=user)(sAMAccountName=alice))&lt;/code&gt;&#xa;in &lt;code&gt;OU=Users,DC=company,DC=com&lt;/code&gt;&#xa;Then does an LDAP bind with alice&#39;s DN + password." vertex="1">
+          <mxGeometry height="65" width="350" x="577.5" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-n4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;Group Search (RBAC)&lt;/b&gt;&#xa;After authentication, MDS searches for alice&#39;s group memberships:&#xa;&lt;code&gt;(&amp;amp;(objectClass=group)(member=CN=alice,...))&lt;/code&gt;&#xa;Groups are mapped to RBAC roles via ConfluentRolebinding CRs." vertex="1">
+          <mxGeometry height="55" width="350" x="577.5" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-n5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=9;align=left;spacingLeft=5;fontStyle=2;labelBackgroundColor=none;" value="&lt;b&gt;Security:&lt;/b&gt; Always use LDAPS (port 636) or StartTLS.&#xa;Plain LDAP (port 389) sends credentials in cleartext.&#xa;The service account password should be stored in a vault (CyberArk, HashiCorp Vault)." vertex="1">
+          <mxGeometry height="45" width="350" x="577.5" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-tree-title" parent="1" style="text;html=1;fontSize=12;fontStyle=1;align=left;labelBackgroundColor=none;" value="LDAP Directory Tree (Example)" vertex="1">
+          <mxGeometry height="20" width="300" x="40" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-tree" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=9;align=left;spacingLeft=10;fontFamily=Courier New;verticalAlign=top;spacingTop=8;shadow=1;labelBackgroundColor=none;arcSize=8;" value="DC=company,DC=com&#xa;├── OU=Users&#xa;│   ├── CN=alice  (sAMAccountName=alice)&#xa;│   ├── CN=bob    (sAMAccountName=bob)&#xa;│   └── CN=charlie&#xa;├── OU=Groups&#xa;│   ├── CN=kafka-admins   (members: alice)&#xa;│   ├── CN=kafka-devs     (members: bob, charlie)&#xa;│   └── CN=kafka-readonly  (members: charlie)&#xa;└── OU=Service&#xa;    └── CN=svc-kafka  (broker&#39;s service account)" vertex="1">
+          <mxGeometry height="150" width="400" x="40" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="ld-rbac-map" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=9;align=left;spacingLeft=8;fontFamily=Courier New;verticalAlign=top;spacingTop=5;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;RBAC Mapping:&lt;/b&gt;&#xa;kafka-admins  → SystemAdmin (full cluster access)&#xa;kafka-devs    → DeveloperWrite on topic=orders.*&#xa;kafka-readonly → DeveloperRead on topic=*" vertex="1">
+          <mxGeometry height="65" width="340" x="562.5" y="880" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="oidc-integration" name="Broker → OIDC Authentication">
+    <mxGraphModel dx="1530" dy="834" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="oi-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;labelBackgroundColor=none;" value="Broker → OIDC (OAuth 2.0) Authentication Flow" vertex="1">
+          <mxGeometry height="40" width="700" x="300" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-subtitle" parent="1" style="text;html=1;fontSize=11;fontStyle=2;align=center;fontColor=#666;labelBackgroundColor=none;" value="Clients obtain a JWT from an Identity Provider and present it to the broker. Broker validates the token without contacting the IdP for every request." vertex="1">
+          <mxGeometry height="20" width="900" x="200" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-flow" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=14;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="OIDC / OAuth 2.0 Authentication Flow" vertex="1">
+          <mxGeometry height="335" width="1400" x="40" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="55" width="55" x="100" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-client-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Client App&#xa;(has client_id + client_secret)" vertex="1">
+          <mxGeometry height="25" width="160" x="70" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-idp" parent="1" style="shape=mxgraph.azure.active_directory;fillColor=#F9A825;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="60" width="60" x="460" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-idp-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#F9A825;labelBackgroundColor=none;" value="Identity Provider&#xa;(Okta / Azure AD / Keycloak)" vertex="1">
+          <mxGeometry height="25" width="175" x="402.5" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="70" width="60" x="820" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-broker-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Kafka Broker&#xa;(validates JWT locally)" vertex="1">
+          <mxGeometry height="25" width="145" x="780" y="305" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-jwks" parent="1" style="shape=mxgraph.azure.active_directory;fillColor=#F9A825;strokeColor=none;shadow=1;opacity=60;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="510" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-jwks-l" parent="1" style="text;html=1;fontSize=8;fontStyle=1;align=center;fontColor=#F9A825;labelBackgroundColor=none;" value="JWKS Endpoint&#xa;(public keys)" vertex="1">
+          <mxGeometry height="20" width="100" x="540" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-a1" edge="1" parent="1" source="oi-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=3;labelBackgroundColor=none;" target="oi-idp">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="127" y="210" />
+              <mxPoint x="490" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a1-l" connectable="0" parent="oi-a1" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#2E7D32;labelBackgroundColor=none;" value="1  POST /oauth2/token  (client_credentials grant: client_id + client_secret)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-129" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a2" edge="1" parent="1" source="oi-idp" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=3;labelBackgroundColor=none;" target="oi-client">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="260" />
+              <mxPoint x="310" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a2-l" connectable="0" parent="oi-a2" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#F9A825;labelBackgroundColor=none;" value="2  JWT access token (signed, short-lived: ~1 hour)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-67" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a3" edge="1" parent="1" source="oi-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=3;labelBackgroundColor=none;" target="oi-broker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="127" y="380" />
+              <mxPoint x="770" y="380" />
+              <mxPoint x="770" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a3-l" connectable="0" parent="oi-a3" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#2E7D32;labelBackgroundColor=none;" value="3  SASL/OAUTHBEARER handshake (sends JWT token to broker)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-127" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a4" edge="1" parent="1" source="oi-broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;dashed=1;labelBackgroundColor=none;" target="oi-jwks">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="850" y="190" />
+              <mxPoint x="530" y="190" />
+            </Array>
+            <mxPoint x="840" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a4-l" connectable="0" parent="oi-a4" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#F9A825;labelBackgroundColor=none;" value="4  Fetch JWKS&#xa;(cached, periodic)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a5" edge="1" parent="1" source="oi-broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=2;labelBackgroundColor=none;" target="oi-client">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="265" />
+              <mxPoint x="740" y="350" />
+              <mxPoint x="190" y="350" />
+              <mxPoint x="190" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-a5-l" connectable="0" parent="oi-a5" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#2E7D32;labelBackgroundColor=none;" value="5  Auth success → connection established, RBAC roles from JWT claims" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-120" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oi-jwt" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF8E1;strokeColor=#F9A825;fontStyle=1;fontSize=10;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;shadow=1;labelBackgroundColor=none;" value="JWT Token (decoded)" vertex="1">
+          <mxGeometry height="200" width="400" x="1000" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-jwt-content" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=8;fontFamily=Courier New;verticalAlign=top;spacingTop=5;labelBackgroundColor=none;" value="{&#xa;  &quot;iss&quot;: &quot;https://company.okta.com/oauth2/aus123&quot;,&#xa;  &quot;sub&quot;: &quot;producer-app-1&quot;,&#xa;  &quot;aud&quot;: &quot;api://confluent&quot;,&#xa;  &quot;exp&quot;: 1774560000,&#xa;  &quot;iat&quot;: 1774556400,&#xa;  &quot;groups&quot;: [&quot;kafka-producers&quot;, &quot;team-orders&quot;],&#xa;  &quot;client_id&quot;: &quot;0oa1abc2def3ghi4&quot;&#xa;}" vertex="1">
+          <mxGeometry height="120" width="380" x="1010" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-jwt-note" parent="1" style="text;html=1;fontSize=8;fontStyle=2;fontColor=#F9A825;align=left;spacingLeft=5;labelBackgroundColor=none;" value="Broker checks: &lt;b&gt;iss&lt;/b&gt; matches expected, &lt;b&gt;aud&lt;/b&gt; matches expected,&#xa;&lt;b&gt;exp&lt;/b&gt; not expired, &lt;b&gt;signature&lt;/b&gt; valid via JWKS public key" vertex="1">
+          <mxGeometry height="25" width="380" x="1010" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-diff" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=8;fontStyle=2;shadow=1;labelBackgroundColor=none;" value="&lt;b&gt;Key difference from LDAP:&lt;/b&gt; Broker validates the token &lt;b&gt;locally&lt;/b&gt; using cached JWKS public keys.&#xa;No call to IdP per authentication request. Much faster at scale. Token is self-contained (JWT)." vertex="1">
+          <mxGeometry height="40" width="400" x="1000" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-config" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=2;shadow=1;labelBackgroundColor=none;" value="Broker OIDC / OAUTHBEARER Configuration (server.properties)" vertex="1">
+          <mxGeometry height="420" width="600" x="40" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-cfg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;align=left;spacingLeft=8;fontFamily=Courier New;verticalAlign=top;spacingTop=5;labelBackgroundColor=none;arcSize=3;" value="# ---- Listener Configuration ----&#xa;listeners=SASL_SSL://broker:9093&#xa;sasl.enabled.mechanisms=OAUTHBEARER&#xa;security.inter.broker.protocol=SASL_SSL&#xa;inter.broker.listener.name=SASL_SSL&#xa;sasl.mechanism.inter.broker.protocol=OAUTHBEARER&#xa;&#xa;# ---- OAUTHBEARER Server (token validation) ----&#xa;listener.name.sasl_ssl.oauthbearer.sasl.server.callback.handler.class= \&#xa;  io.confluent.kafka.server.plugins.auth.token.TokenBearerValidatorCallbackHandler&#xa;listener.name.sasl_ssl.oauthbearer.sasl.jaas.config= \&#xa;  org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \&#xa;  publicKeyPath=&quot;/var/ssl/public.pem&quot;;&#xa;&#xa;# ---- Token Validation ----&#xa;confluent.metadata.server.token.auth.enable=true&#xa;confluent.metadata.server.openapi.enable=true&#xa;&#xa;# ---- JWKS (JSON Web Key Set) ----&#xa;confluent.metadata.server.authentication.method=BEARER&#xa;confluent.metadata.server.token.key.path=/var/ssl/mds-token-keypair.pem&#xa;&#xa;# ---- OAuth/OIDC Settings ----&#xa;oauthbearer.token.endpoint.url=https://company.okta.com/oauth2/aus123/v1/token&#xa;oauthbearer.jwks.endpoint.url=https://company.okta.com/oauth2/aus123/v1/keys&#xa;oauthbearer.expected.issuer=https://company.okta.com/oauth2/aus123&#xa;oauthbearer.expected.audience=api://confluent&#xa;oauthbearer.sub.claim.name=sub&#xa;oauthbearer.groups.claim.name=groups&#xa;oauthbearer.scope.claim.name=scope" vertex="1">
+          <mxGeometry height="370" width="570" x="55" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-cfg-notes" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#9E9E9E;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=3;rounded=1;arcSize=3;shadow=1;labelBackgroundColor=none;" value="Configuration Notes" vertex="1">
+          <mxGeometry height="420" width="380" x="680" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;Token Endpoint&lt;/b&gt;&#xa;Where clients (and the broker for inter-broker auth) obtain JWT tokens.&#xa;Uses OAuth 2.0 Client Credentials grant (client_id + client_secret → JWT)." vertex="1">
+          <mxGeometry height="45" width="350" x="695" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;JWKS Endpoint&lt;/b&gt;&#xa;Broker fetches the IdP&#39;s public keys from this URL. Caches them locally.&#xa;Used to verify JWT signatures without calling the IdP per request.&#xa;Broker refreshes JWKS periodically (default: every 5 minutes)." vertex="1">
+          <mxGeometry height="55" width="350" x="695" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-n3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;Expected Issuer &amp;amp; Audience&lt;/b&gt;&#xa;Broker rejects tokens where &lt;code&gt;iss&lt;/code&gt; or &lt;code&gt;aud&lt;/code&gt; claims don&#39;t match.&#xa;Prevents tokens issued for other services from being used on Kafka." vertex="1">
+          <mxGeometry height="45" width="350" x="695" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-n4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;Sub Claim &amp;amp; Groups Claim&lt;/b&gt;&#xa;&lt;code&gt;sub&lt;/code&gt; → used as the Kafka principal (e.g. &lt;code&gt;producer-app-1&lt;/code&gt;)&#xa;&lt;code&gt;groups&lt;/code&gt; → mapped to RBAC roles via ConfluentRolebinding&#xa;Custom claim names can be configured if your IdP uses different fields." vertex="1">
+          <mxGeometry height="55" width="350" x="695" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-n5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;labelBackgroundColor=none;" value="&lt;b&gt;Inter-Broker Auth&lt;/b&gt;&#xa;Brokers also use OAUTHBEARER to authenticate with each other.&#xa;Each broker has its own client_id/secret to obtain a JWT from the IdP.&#xa;This replaces Kerberos keytabs for inter-broker communication." vertex="1">
+          <mxGeometry height="55" width="350" x="695" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-n6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=5;fontStyle=2;labelBackgroundColor=none;" value="&lt;b&gt;Token Refresh:&lt;/b&gt; Clients must refresh tokens before expiry.&#xa;Confluent&#39;s OAUTHBEARER callback handler does this automatically.&#xa;If a token expires mid-session, the broker rejects and client reconnects." vertex="1">
+          <mxGeometry height="45" width="350" x="695" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="oi-compare" parent="1" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=#9E9E9E;shadow=1;labelBackgroundColor=none;arcSize=4;" value="&lt;table style=&quot;font-size:9px;border-collapse:collapse;width:100%&quot;&gt;&lt;tbody&gt;&lt;tr style=&quot;background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial; font-weight: bold;&quot;&gt;&lt;td style=&quot;padding:5px;border:1px solid #1565C0&quot;&gt;&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #1565C0&quot;&gt;LDAP (SASL/PLAIN)&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #1565C0&quot;&gt;OIDC (SASL/OAUTHBEARER)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;font-weight:bold&quot;&gt;Credential type&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc&quot;&gt;Username + password&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc&quot;&gt;JWT token (short-lived)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;font-weight:bold&quot;&gt;Validation&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;color:#C62828&quot;&gt;Broker calls LDAP per auth request&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;color:#2E7D32&quot;&gt;Broker validates locally (cached JWKS)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;font-weight:bold&quot;&gt;Scalability&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;color:#C62828&quot;&gt;LDAP is a bottleneck at scale&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;color:#2E7D32&quot;&gt;Scales independently (no IdP call per auth)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;font-weight:bold&quot;&gt;Password on wire&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;color:#C62828&quot;&gt;Yes (to broker, then to LDAP)&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;color:#2E7D32&quot;&gt;No (token only, signed)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;font-weight:bold&quot;&gt;Revocation&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;color:#2E7D32&quot;&gt;Immediate (disable in LDAP)&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;color:#C62828&quot;&gt;Delayed (until token expires)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc;font-weight:bold&quot;&gt;Best for&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc&quot;&gt;Enterprises with existing AD/LDAP&lt;/td&gt;&lt;td style=&quot;padding:5px;border:1px solid #ccc&quot;&gt;Cloud-native, modern IdP (Okta, Azure AD)&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="160" width="600" x="40" y="910" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -3,6 +3,8 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter
 metadata:
   name: controlcenter
+  labels:
+    app: controlcenter
 spec:
   # Single replica; Control Center does not support multi-replica HA
   replicas: 1

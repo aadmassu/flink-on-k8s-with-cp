@@ -1,0 +1,986 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" version="29.6.6" pages="7">
+  <diagram id="cp-overview" name="Confluent Platform Overview">
+    <mxGraphModel dx="1589" dy="866" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="cp-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="Confluent Platform — Component Overview" vertex="1">
+          <mxGeometry height="40" width="600" x="455" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="kraft-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="KRaft Controllers (Metadata Quorum)" vertex="1">
+          <mxGeometry height="225" width="400" x="70" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="kr1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="110" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="kr1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#1565C0;labelBackgroundColor=none;" value="KRaft-0&#xa;(Leader)" vertex="1">
+          <mxGeometry height="25" width="80" x="90" y="318" as="geometry" />
+        </mxCell>
+        <mxCell id="kr2" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="220" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="kr2-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#1565C0;labelBackgroundColor=none;" value="KRaft-1&#xa;(Follower)" vertex="1">
+          <mxGeometry height="25" width="80" x="200" y="335" as="geometry" />
+        </mxCell>
+        <mxCell id="kr3" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="330" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="kr3-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#1565C0;labelBackgroundColor=none;" value="KRaft-2&#xa;(Follower)" vertex="1">
+          <mxGeometry height="25" width="80" x="310" y="318" as="geometry" />
+        </mxCell>
+        <mxCell id="kr-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;align=left;spacingLeft=5;shadow=1;labelBackgroundColor=none;" value="Replaces ZooKeeper.&#xa;Manages cluster metadata,&#xa;broker registration, topic&#xa;configs, partition assignments.&#xa;Raft consensus protocol." vertex="1">
+          <mxGeometry height="60" width="380" x="80" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="kr12" edge="1" parent="1" source="kr1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=1;dashed=1;labelBackgroundColor=none;" target="kr2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kr23" edge="1" parent="1" source="kr2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=1;dashed=1;labelBackgroundColor=none;" target="kr3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kr13" edge="1" parent="1" source="kr1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=1;dashed=1;labelBackgroundColor=none;" target="kr3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="130" y="250" />
+              <mxPoint x="350" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="broker-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="Kafka Brokers (Data Plane)" vertex="1">
+          <mxGeometry height="225" width="450" x="530" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="599.6" y="266" as="geometry" />
+        </mxCell>
+        <mxCell id="b1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Broker-0&#xa;:9092" vertex="1">
+          <mxGeometry height="25" width="80" x="579.6" y="319" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="729.6" y="266" as="geometry" />
+        </mxCell>
+        <mxCell id="b2-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Broker-1&#xa;:9092" vertex="1">
+          <mxGeometry height="25" width="80" x="709.6" y="319" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="859.6" y="266" as="geometry" />
+        </mxCell>
+        <mxCell id="b3-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#2E7D32;labelBackgroundColor=none;" value="Broker-2&#xa;:9092" vertex="1">
+          <mxGeometry height="25" width="80" x="839.6" y="319" as="geometry" />
+        </mxCell>
+        <mxCell id="b-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;shadow=1;labelBackgroundColor=none;" value="Store and replicate topic partitions.&amp;nbsp;&lt;div&gt;Handle produce and fetch requests.&amp;nbsp;&lt;/div&gt;&lt;div&gt;Each broker is leader for some partitions, follower for others.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="425" x="545" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="kr-b" edge="1" parent="1" source="kraft-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#333;strokeWidth=2;labelBackgroundColor=none;" target="broker-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kr-b-l" connectable="0" parent="kr-b" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;labelBackgroundColor=none;" value="metadata&#xa;replication" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-15" y="-36" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="Schema Registry" vertex="1">
+          <mxGeometry height="215" width="280" x="1050" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="sr1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#8E24AA;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="1100" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="sr1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#8E24AA;labelBackgroundColor=none;" value="SR-0&#xa;(Primary)&#xa;:8081" vertex="1">
+          <mxGeometry height="30" width="80" x="1080" y="318" as="geometry" />
+        </mxCell>
+        <mxCell id="sr2" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#8E24AA;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="1230" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="sr2-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#8E24AA;labelBackgroundColor=none;" value="SR-1&#xa;(Secondary)&#xa;:8081" vertex="1">
+          <mxGeometry height="30" width="80" x="1210" y="318" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=8;align=left;spacingLeft=5;shadow=1;labelBackgroundColor=none;" value="Stores Avro, JSON Schema, Protobuf schemas.&amp;nbsp;&lt;div&gt;Enforces&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;compatibility.&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Schemas stored&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;in _schemas topic on brokers.&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="55" width="260" x="1060" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-b" edge="1" parent="1" source="sr-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;strokeWidth=2;labelBackgroundColor=none;" target="broker-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-b-l" connectable="0" parent="sr-b" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#8E24AA;labelBackgroundColor=none;" value="_schemas topic" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-35" y="-25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="connect-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#E65100;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="Kafka Connect" vertex="1">
+          <mxGeometry height="220" width="350" x="70" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="cw1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#E65100;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="120" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="cw1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#E65100;labelBackgroundColor=none;" value="Worker-0&#xa;(Leader)&#xa;:8083" vertex="1">
+          <mxGeometry height="30" width="80" x="100" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="cw2" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#E65100;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="270" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="cw2-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#E65100;labelBackgroundColor=none;" value="Worker-1&#xa;:8083" vertex="1">
+          <mxGeometry height="30" width="80" x="250" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="c-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=8;align=left;spacingLeft=5;shadow=1;labelBackgroundColor=none;" value="Distributed data integration.&lt;br&gt;Source connectors ingest into Kafka.&lt;br&gt;Sink connectors push to external.&lt;br&gt;Workers coordinate via Kafka topics&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;(config, offset, status).&lt;/span&gt;" vertex="1">
+          <mxGeometry height="70" width="330" x="80" y="672.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c-b" edge="1" parent="1" source="connect-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E65100;strokeWidth=2;labelBackgroundColor=none;exitX=0.742;exitY=0.003;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.09;entryY=0.996;entryDx=0;entryDy=0;entryPerimeter=0;" target="broker-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-b-l" connectable="0" parent="c-b" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#E65100;labelBackgroundColor=none;" value="produce / consume&#xa;+ internal topics" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-70" y="-25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c-sr" edge="1" parent="1" source="connect-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;strokeWidth=1;dashed=1;labelBackgroundColor=none;" target="sr-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="245" y="505" />
+              <mxPoint x="730" y="505" />
+              <mxPoint x="1190" y="505" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c-sr-l" connectable="0" parent="c-sr" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#8E24AA;labelBackgroundColor=none;" value="schema lookup" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-10" y="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ksql-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E0F7FA;strokeColor=#00838F;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="ksqlDB" vertex="1">
+          <mxGeometry height="220" width="300" x="492.6" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="ks1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#00838F;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="552.6" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="ks1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#00838F;labelBackgroundColor=none;" value="ksqlDB-0&#xa;:8088" vertex="1">
+          <mxGeometry height="25" width="80" x="532.6" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="ks2" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#00838F;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="682.6" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="ks2-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#00838F;labelBackgroundColor=none;" value="ksqlDB-1&#xa;:8088" vertex="1">
+          <mxGeometry height="25" width="80" x="662.6" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F7FA;strokeColor=#00838F;fontSize=8;align=left;spacingLeft=5;shadow=1;labelBackgroundColor=none;" value="SQL engine for stream processing.&#xa;CREATE STREAM / TABLE queries.&#xa;Materialized views backed by&#xa;Kafka topics + RocksDB state stores." vertex="1">
+          <mxGeometry height="60" width="280" x="502.6" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-b" edge="1" parent="1" source="ksql-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#00838F;strokeWidth=2;labelBackgroundColor=none;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" target="broker-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-b-l" connectable="0" parent="ks-b" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#00838F;labelBackgroundColor=none;" value="read / write&#xa;streams &amp; tables" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="10" y="-35" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rp-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF8E1;strokeColor=#F9A825;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="REST Proxy" vertex="1">
+          <mxGeometry height="220" width="200" x="840" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="rp1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#F9A825;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="910" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="rp1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#F9A825;labelBackgroundColor=none;" value="REST Proxy&#xa;:8082" vertex="1">
+          <mxGeometry height="25" width="90" x="885" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;shadow=1;labelBackgroundColor=none;" value="HTTP/REST interface to Kafka.&lt;br&gt;Produce/consume without native Kafka client libraries.&lt;br&gt;Useful for non-JVM apps." vertex="1">
+          <mxGeometry height="55" width="180" x="850" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-b" edge="1" parent="1" source="rp-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;labelBackgroundColor=none;" target="broker-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-b-l" connectable="0" parent="rp-b" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#F9A825;labelBackgroundColor=none;" value="produce / consume&#xa;via HTTP" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="93" y="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-group" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FCE4EC;strokeColor=#C62828;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;labelBackgroundColor=none;" value="Control Center" vertex="1">
+          <mxGeometry height="210" width="220" x="1100" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#C62828;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="50" width="40" x="1180" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#C62828;labelBackgroundColor=none;" value="Control Center&#xa;:9021" vertex="1">
+          <mxGeometry height="25" width="100" x="1150" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C62828;fontSize=8;align=left;spacingLeft=5;shadow=1;labelBackgroundColor=none;" value="Web UI for monitoring &amp;amp; management.&amp;nbsp;&lt;div&gt;Broker metrics,&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;topic inspection, consumer lag,&lt;/span&gt;&lt;/div&gt;&lt;div&gt;connector status, ksqlDB editor,&lt;br&gt;schema management, alerts.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="65" width="200" x="1110" y="668" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-b" edge="1" parent="1" source="c3-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=2;labelBackgroundColor=none;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" target="broker-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="470" />
+              <mxPoint x="868" y="470" />
+              <mxPoint x="868" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-b-l" connectable="0" parent="c3-b" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#C62828;labelBackgroundColor=none;" value="metrics&#xa;interceptors" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-1" y="-30" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-sr" edge="1" parent="1" source="c3-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;dashed=1;entryX=0.737;entryY=1.006;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.708;exitY=0.005;exitDx=0;exitDy=0;exitPerimeter=0;labelBackgroundColor=none;" target="sr-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-c" edge="1" parent="1" source="c3-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;dashed=1;labelBackgroundColor=none;" target="connect-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="800" />
+              <mxPoint x="240" y="800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-ks" edge="1" parent="1" source="c3-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;dashed=1;labelBackgroundColor=none;exitX=0.298;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;" target="ksql-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1166" y="780" />
+              <mxPoint x="920" y="780" />
+              <mxPoint x="630" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="apps" parent="1" style="shape=mxgraph.azure.user;fillColor=#333;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="735" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="apps-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;labelBackgroundColor=none;" value="Producer /&#xa;Consumer Apps" vertex="1">
+          <mxGeometry height="25" width="100" x="635" y="97.5" as="geometry" />
+        </mxCell>
+        <mxCell id="apps-b" edge="1" parent="1" source="apps" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#333;strokeWidth=2;labelBackgroundColor=none;" target="broker-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="apps-b-l" connectable="0" parent="apps-b" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;labelBackgroundColor=none;" value="produce / consume" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="apps-sr" edge="1" parent="1" source="apps" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;strokeWidth=1;dashed=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" target="sr-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="apps-sr-l" connectable="0" parent="apps-sr" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#8E24AA;labelBackgroundColor=none;" value="schema&#xa;lookup" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ext-db" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;size=8;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="40" width="50" x="110" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="ext-db-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#546E7A;labelBackgroundColor=none;" value="External&#xa;Databases" vertex="1">
+          <mxGeometry height="20" width="90" x="90" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="db-c" edge="1" parent="1" source="ext-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#546E7A;strokeWidth=1;labelBackgroundColor=none;entryX=0.184;entryY=0.989;entryDx=0;entryDy=0;entryPerimeter=0;" target="connect-group">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="174" y="750" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="http-client" parent="1" style="shape=mxgraph.azure.user;fillColor=#F9A825;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="35" width="35" x="922.5" y="831" as="geometry" />
+        </mxCell>
+        <mxCell id="http-client-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#F9A825;labelBackgroundColor=none;" value="HTTP Clients&#xa;(non-JVM)" vertex="1">
+          <mxGeometry height="20" width="100" x="890" y="868" as="geometry" />
+        </mxCell>
+        <mxCell id="http-rp" edge="1" parent="1" source="http-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=1;labelBackgroundColor=none;" target="rp-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="browser" parent="1" style="shape=mxgraph.azure.user;fillColor=#C62828;strokeColor=none;shadow=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="35" width="35" x="1370" y="617.5" as="geometry" />
+        </mxCell>
+        <mxCell id="browser-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#C62828;labelBackgroundColor=none;" value="Browser&#xa;(Admin UI)" vertex="1">
+          <mxGeometry height="20" width="100" x="1337.5" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="br-c3" edge="1" parent="1" source="browser" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;labelBackgroundColor=none;" target="c3-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="kraft-broker" name="KRaft Quorum &amp; Broker Cluster">
+    <mxGraphModel dx="1425" dy="777" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="kb-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;" value="KRaft Quorum &amp; Broker Cluster — How They Work Together" vertex="1">
+          <mxGeometry height="40" width="700" x="300" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kraft" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=2;shadow=1;" value="KRaft Controller Quorum (Raft Consensus)" vertex="1">
+          <mxGeometry height="400" width="550" x="40" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr0" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="250" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr0-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#1565C0;" value="KRaft-0 (LEADER)&#xa;Epoch: 5" vertex="1">
+          <mxGeometry height="25" width="120" x="220" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr0-crown" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1565C0;strokeColor=none;fontColor=#FFF;fontSize=8;fontStyle=1;" value="LEADER" vertex="1">
+          <mxGeometry height="16" width="50" x="252.5" y="109" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#64B5F6;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="60" width="50" x="100" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr1-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#1565C0;" value="KRaft-1&#xa;(Follower)" vertex="1">
+          <mxGeometry height="25" width="90" x="80" y="345" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr2" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#64B5F6;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="60" width="50" x="400" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr2-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#1565C0;" value="KRaft-2&#xa;(Follower)" vertex="1">
+          <mxGeometry height="25" width="90" x="380" y="345" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-raft01" edge="1" parent="1" source="kb-kr0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="kb-kr1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-raft01-l" connectable="0" parent="kb-raft01" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#1565C0;" value="log replication" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kb-raft02" edge="1" parent="1" source="kb-kr0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="kb-kr2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-raft02-l" connectable="0" parent="kb-raft02" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#1565C0;" value="log replication" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kb-raft12" edge="1" parent="1" source="kb-kr1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=1;dashed=1;" target="kb-kr2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-raft12-l" connectable="0" parent="kb-raft12" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#1565C0;" value="heartbeat / vote" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kb-kr-note1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=9;align=left;spacingLeft=5;shadow=1;" value="&lt;b&gt;What KRaft stores:&lt;/b&gt;&lt;br&gt;- Broker registrations&lt;br&gt;- Topic &amp; partition metadata&lt;br&gt;- Partition assignments&lt;br&gt;- ACLs &amp; quotas&lt;br&gt;- Cluster configuration" vertex="1">
+          <mxGeometry height="80" width="180" x="60" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr-note2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=9;align=left;spacingLeft=5;shadow=1;" value="&lt;b&gt;Quorum rules:&lt;/b&gt;&lt;br&gt;- Majority must agree (2 of 3)&lt;br&gt;- Leader elected by vote&lt;br&gt;- Followers replicate log&lt;br&gt;- If leader dies, new election&lt;br&gt;- Odd number required (1,3,5)" vertex="1">
+          <mxGeometry height="80" width="180" x="340" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-brokers" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E8F5E9;strokeColor=#2E7D32;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=4;shadow=1;" value="Broker Cluster (Data Plane)" vertex="1">
+          <mxGeometry height="400" width="550" x="680" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b0" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="60" width="50" x="770" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b0-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;" value="Broker-0" vertex="1">
+          <mxGeometry height="15" width="80" x="755" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b0-parts" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;" value="P0-Leader&#xa;P1-Follower&#xa;P2-Follower" vertex="1">
+          <mxGeometry height="40" width="100" x="740" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="60" width="50" x="930" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b1-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;" value="Broker-1" vertex="1">
+          <mxGeometry height="15" width="80" x="915" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b1-parts" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;" value="P0-Follower&#xa;P1-Leader&#xa;P2-Follower" vertex="1">
+          <mxGeometry height="40" width="100" x="900" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b2" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="60" width="50" x="1090" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b2-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;" value="Broker-2" vertex="1">
+          <mxGeometry height="15" width="80" x="1075" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b2-parts" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=8;align=left;spacingLeft=5;" value="P0-Follower&#xa;P1-Follower&#xa;P2-Leader" vertex="1">
+          <mxGeometry height="40" width="100" x="1060" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-bb01" edge="1" parent="1" source="kb-b0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=1;dashed=1;" target="kb-b1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-bb12" edge="1" parent="1" source="kb-b1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=1;dashed=1;" target="kb-b2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-bb-l" parent="1" style="text;fontSize=8;fontStyle=2;fontColor=#2E7D32;align=center;" value="partition replication (ISR)" vertex="1">
+          <mxGeometry height="12" width="150" x="850" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b-note1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;shadow=1;" value="&lt;b&gt;Broker responsibilities:&lt;/b&gt;&lt;br&gt;- Accept produce requests&lt;br&gt;- Serve fetch requests&lt;br&gt;- Replicate partitions (ISR)&lt;br&gt;- Handle consumer group coordination&lt;br&gt;- Expose JMX metrics" vertex="1">
+          <mxGeometry height="80" width="190" x="700" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-b-note2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;shadow=1;" value="&lt;b&gt;Partition leadership:&lt;/b&gt;&lt;br&gt;Each partition has 1 leader and&lt;br&gt;N-1 followers (replication factor).&lt;br&gt;Leaders handle all reads/writes.&lt;br&gt;Followers replicate for fault tolerance." vertex="1">
+          <mxGeometry height="80" width="200" x="920" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-kr-b-arrow" edge="1" parent="1" source="kb-kraft" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#333;strokeWidth=3;" target="kb-brokers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-comm" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#333;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;shadow=1;" value="KRaft → Broker Communication" vertex="1">
+          <mxGeometry height="170" width="1190" x="40" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-comm1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;1. Broker Registration&lt;/b&gt;&lt;br&gt;On startup, each broker sends a BrokerRegistration&#xa;request to the active KRaft controller. KRaft assigns&#xa;a broker ID and adds it to the metadata log." vertex="1">
+          <mxGeometry height="55" width="270" x="55" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-comm2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;2. Metadata Push&lt;/b&gt;&lt;br&gt;KRaft leader pushes metadata updates (new topics,&#xa;partition reassignments, config changes) to all brokers&#xa;via the metadata log. Brokers apply changes locally." vertex="1">
+          <mxGeometry height="55" width="270" x="340" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-comm3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;3. Heartbeats&lt;/b&gt;&lt;br&gt;Brokers send periodic heartbeats to KRaft.&#xa;If a broker misses heartbeats, KRaft marks it&#xa;as offline and reassigns partition leadership." vertex="1">
+          <mxGeometry height="55" width="270" x="625" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-comm4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;4. Leader Election&lt;/b&gt;&lt;br&gt;When a partition leader fails, KRaft selects a new&#xa;leader from the ISR (in-sync replicas) and pushes&#xa;the update to all brokers. No ZooKeeper needed." vertex="1">
+          <mxGeometry height="55" width="270" x="910" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-comm5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=5;fontStyle=2;" value="&lt;b&gt;Key difference from ZooKeeper:&lt;/b&gt; KRaft uses a single metadata log replicated via Raft consensus.&#xa;Brokers fetch metadata directly from the controller — no more split-brain, no ZK watches, faster failover." vertex="1">
+          <mxGeometry height="35" width="600" x="55" y="620" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="schema-registry" name="Schema Registry">
+    <mxGraphModel dx="2066" dy="1126" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sr-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;" value="Schema Registry — How Serialization &amp; Deserialization Work" vertex="1">
+          <mxGeometry height="40" width="800" x="170" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-producer" parent="1" style="shape=mxgraph.azure.user;fillColor=#2E7D32;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="50" width="50" x="80" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-producer-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#2E7D32;" value="Producer App" vertex="1">
+          <mxGeometry height="18" width="100" x="65" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-sr" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#8E24AA;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="432.5" y="247.5" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-sr-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#8E24AA;" value="Schema Registry&#xa;:8081" vertex="1">
+          <mxGeometry height="25" width="120" x="400" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="430" y="408" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-broker-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#1565C0;" value="Kafka Broker" vertex="1">
+          <mxGeometry height="18" width="100" x="410" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-consumer" parent="1" style="shape=mxgraph.azure.user;fillColor=#C62828;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="50" width="50" x="785" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-consumer-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#C62828;" value="Consumer App" vertex="1">
+          <mxGeometry height="18" width="100" x="755" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-connect" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#E65100;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="429.5" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-connect-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#E65100;" value="Kafka Connect" vertex="1">
+          <mxGeometry height="18" width="100" x="410" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-p1" edge="1" parent="1" source="sr-producer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=3;" target="sr-sr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-p1-l" connectable="0" parent="sr-p1" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#2E7D32;fontColor=#FFF;labelBackgroundColor=none;" value="1" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-12" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-p2" edge="1" parent="1" source="sr-producer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2E7D32;strokeWidth=3;" target="sr-broker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="105" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-p2-l" connectable="0" parent="sr-p2" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#2E7D32;fontColor=#FFF;labelBackgroundColor=none;" value="2" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-pn1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;1&lt;/b&gt; Producer registers schema (or gets cached ID).&#xa;Schema Registry returns schema ID." vertex="1">
+          <mxGeometry height="35" width="322.5" x="57.5" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-pn2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;2&lt;/b&gt; Producer serializes data: [magic byte][schema ID (4 bytes)][Avro/JSON/Proto payload].&#xa;Sends to broker. &lt;b&gt;Broker stores bytes as-is — it does NOT read the schema.&lt;/b&gt;" vertex="1">
+          <mxGeometry height="45" width="320" x="55" y="175" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-c1" edge="1" parent="1" source="sr-consumer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=3;" target="sr-broker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="810" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-c1-l" connectable="0" parent="sr-c1" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#C62828;fontColor=#FFF;labelBackgroundColor=none;" value="3" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-c2" edge="1" parent="1" source="sr-consumer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=3;" target="sr-sr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-c2-l" connectable="0" parent="sr-c2" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#C62828;fontColor=#FFF;labelBackgroundColor=none;" value="4" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-12" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-cn1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C62828;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;3&lt;/b&gt; Consumer fetches bytes from broker.&#xa;Extracts schema ID from the first 5 bytes." vertex="1">
+          <mxGeometry height="35" width="272.5" x="657.5" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-cn2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C62828;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;4&lt;/b&gt; Consumer fetches schema by ID from Schema Registry&#xa;(cached locally after first fetch). Deserializes payload." vertex="1">
+          <mxGeometry height="35" width="270" x="657.5" y="185" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-k1" edge="1" parent="1" source="sr-connect" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E65100;strokeWidth=3;" target="sr-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-k1-l" connectable="0" parent="sr-k1" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#E65100;fontColor=#FFF;labelBackgroundColor=none;" value="5" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-k2" edge="1" parent="1" source="sr-connect" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E65100;strokeWidth=3;" target="sr-sr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="583" />
+              <mxPoint x="300" y="355" />
+              <mxPoint x="458" y="355" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-k2-l" connectable="0" parent="sr-k2" style="edgeLabel;fontSize=12;fontStyle=1;fillColor=#E65100;fontColor=#FFF;labelBackgroundColor=none;" value="6" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr-kn1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;5&lt;/b&gt; Source connector produces to broker with schema.&#xa;Sink connector consumes from broker." vertex="1">
+          <mxGeometry height="30" width="310" x="510" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-kn2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=9;align=left;spacingLeft=5;" value="&lt;b&gt;6&lt;/b&gt; Connect uses converters (AvroConverter, JsonSchemaConverter)&#xa;that interact with Schema Registry automatically." vertex="1">
+          <mxGeometry height="30" width="310" x="510" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-wire" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#333;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;shadow=1;" value="Wire Format (what the broker stores)" vertex="1">
+          <mxGeometry height="100" width="530" x="55" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-wire-diagram" parent="1" style="text;html=1;overflow=fill;rounded=1;whiteSpace=wrap;fillColor=#FAFAFA;strokeColor=none;" value="&lt;table style=&#39;font-size:11px;border-collapse:collapse;font-family:Courier New&#39;&gt;&lt;tr&gt;&lt;td style=&#39;padding:8px;border:2px solid #333;background:#E8F5E9;font-weight:bold&#39;&gt;0x00&lt;br&gt;(magic byte)&lt;/td&gt;&lt;td style=&#39;padding:8px;border:2px solid #333;background:#E3F2FD;font-weight:bold&#39;&gt;00 00 00 19&lt;br&gt;(schema ID = 25)&lt;/td&gt;&lt;td style=&#39;padding:8px;border:2px solid #333;background:#FFF3E0;font-weight:bold&#39;&gt;Avro / JSON / Protobuf binary payload&lt;br&gt;(the actual data)&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="55" width="500" x="75" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="sr-insight" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=10;fontStyle=2;align=left;spacingLeft=8;shadow=1;" value="&lt;b&gt;Key insight:&lt;/b&gt; The broker NEVER reads or validates the schema. It stores raw bytes.&#xa;Schema enforcement happens entirely on the &lt;b&gt;client side&lt;/b&gt; (producer serializer / consumer deserializer)." vertex="1">
+          <mxGeometry height="35" width="530" x="55" y="790" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="kafka-connect" name="Kafka Connect">
+    <mxGraphModel dx="2066" dy="1126" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="kc-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;" value="Kafka Connect — Task Distribution, JDBC Sink &amp; Debezium CDC" vertex="1">
+          <mxGeometry height="40" width="800" x="250" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-cluster" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FFF3E0;strokeColor=#E65100;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;" value="Connect Cluster (Distributed Mode)" vertex="1">
+          <mxGeometry height="250" width="700" x="40" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w0" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#E65100;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="55" width="45" x="100" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w0-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#E65100;" value="Worker-0 (Leader)" vertex="1">
+          <mxGeometry height="15" width="110" x="70" y="178" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w0-tasks" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=8;align=left;spacingLeft=5;" value="JDBC Sink Task-0&#xa;Debezium Task-0" vertex="1">
+          <mxGeometry height="30" width="115" x="70" y="198" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w1" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#E65100;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="55" width="45" x="300" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#E65100;" value="Worker-1" vertex="1">
+          <mxGeometry height="15" width="90" x="280" y="178" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w1-tasks" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=8;align=left;spacingLeft=5;" value="JDBC Sink Task-1&#xa;Debezium Task-1" vertex="1">
+          <mxGeometry height="30" width="115" x="270" y="198" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w2" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#E65100;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="55" width="45" x="500" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w2-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#E65100;" value="Worker-2" vertex="1">
+          <mxGeometry height="15" width="90" x="480" y="178" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w2-tasks" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=8;align=left;spacingLeft=5;" value="JDBC Sink Task-2" vertex="1">
+          <mxGeometry height="20" width="110" x="475" y="198" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-coord-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=8;align=left;spacingLeft=5;shadow=1;" value="&lt;b&gt;Worker coordination:&lt;/b&gt; Workers use 3 internal Kafka topics:&lt;br&gt;&lt;code&gt;connect-configs&lt;/code&gt; (connector definitions), &lt;code&gt;connect-offsets&lt;/code&gt; (progress), &lt;code&gt;connect-status&lt;/code&gt; (task state).&lt;br&gt;Leader distributes tasks across workers. On worker failure, tasks rebalance automatically." vertex="1">
+          <mxGeometry height="50" width="650" x="55" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="892.5" y="163" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-broker-l" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#1565C0;" value="Kafka Brokers" vertex="1">
+          <mxGeometry height="18" width="100" x="870" y="228" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w-b" edge="1" parent="1" source="kc-cluster" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#333;strokeWidth=2;" target="kc-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-w-b-l" connectable="0" parent="kc-w-b" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;" value="internal topics +&#xa;connector data" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kc-sink" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;" value="JDBC Sink Connector (Example)" vertex="1">
+          <mxGeometry height="180" width="900" x="40" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-topic-sink" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=9;fontStyle=1;" value="Topic: orders&#xa;(6 partitions)" vertex="1">
+          <mxGeometry height="35" width="100" x="80" y="417.5" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-st0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=9;fontStyle=1;" value="Task-0&#xa;(P0, P1)" vertex="1">
+          <mxGeometry height="30" width="80" x="280" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-st1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=9;fontStyle=1;" value="Task-1&#xa;(P2, P3)" vertex="1">
+          <mxGeometry height="30" width="80" x="280" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-st2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=9;fontStyle=1;" value="Task-2&#xa;(P4, P5)" vertex="1">
+          <mxGeometry height="30" width="80" x="280" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-sqlserver" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;size=8;shadow=1;" value="" vertex="1">
+          <mxGeometry height="50" width="55" x="480" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-sqlserver-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#546E7A;" value="SQL Server&#xa;(target)" vertex="1">
+          <mxGeometry height="20" width="85" x="465" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-ts" edge="1" parent="1" source="kc-topic-sink" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="kc-st0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-ts1" edge="1" parent="1" source="kc-topic-sink" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="kc-st1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-ts2" edge="1" parent="1" source="kc-topic-sink" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="kc-st2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="230" y="435" />
+              <mxPoint x="230" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kc-st-db" edge="1" parent="1" source="kc-st0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#546E7A;strokeWidth=2;" target="kc-sqlserver">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-st1-db" edge="1" parent="1" source="kc-st1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#546E7A;strokeWidth=2;" target="kc-sqlserver">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-st2-db" edge="1" parent="1" source="kc-st2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#546E7A;strokeWidth=2;" target="kc-sqlserver">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="480" />
+              <mxPoint x="420" y="435" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kc-sink-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=8;align=left;spacingLeft=5;shadow=1;" value="&lt;b&gt;tasks.max=3&lt;/b&gt;: 6 partitions / 3 tasks = 2 partitions per task.&#xa;Each task consumes its assigned partitions and writes to SQL Server via JDBC INSERT/UPSERT." vertex="1">
+          <mxGeometry height="35" width="330" x="580" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-source" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FCE4EC;strokeColor=#C62828;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=8;shadow=1;" value="Debezium CDC Source Connector (Example)" vertex="1">
+          <mxGeometry height="180" width="900" x="40" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-srcdb" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#546E7A;size=8;shadow=1;" value="" vertex="1">
+          <mxGeometry height="50" width="55" x="80" y="635" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-srcdb-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#546E7A;" value="PostgreSQL&#xa;(source)" vertex="1">
+          <mxGeometry height="20" width="85" x="65" y="675" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-srcdb-wal" parent="1" style="text;html=1;fontSize=8;fontStyle=2;fontColor=#C62828;align=center;" value="WAL / txn log" vertex="1">
+          <mxGeometry height="12" width="70" x="80" y="613" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-dt0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=9;fontStyle=1;" value="Task-0&#xa;(reads WAL)" vertex="1">
+          <mxGeometry height="30" width="90" x="280" y="625" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-dt1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#C62828;fontSize=9;fontStyle=1;" value="Task-1&#xa;(reads WAL)" vertex="1">
+          <mxGeometry height="30" width="90" x="280" y="665" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-cdc-topics" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=9;fontStyle=1;align=left;spacingLeft=5;" value="Topics:&#xa;dbserver.public.orders&#xa;dbserver.public.customers&#xa;dbserver.public.products" vertex="1">
+          <mxGeometry height="60" width="180" x="480" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-db-dt" edge="1" parent="1" source="kc-srcdb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=2;" target="kc-dt0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-db-dt1" edge="1" parent="1" source="kc-srcdb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=2;" target="kc-dt1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-dt-topic" edge="1" parent="1" source="kc-dt0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="kc-cdc-topics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-dt1-topic" edge="1" parent="1" source="kc-dt1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="kc-cdc-topics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kc-cdc-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C62828;fontSize=8;align=left;spacingLeft=5;shadow=1;" value="&lt;b&gt;Debezium reads the database transaction log (WAL)&lt;/b&gt; — no polling, no queries.&#xa;Each table change event (INSERT/UPDATE/DELETE) becomes a Kafka message.&#xa;One topic per table. Before &amp; after images included in the event payload." vertex="1">
+          <mxGeometry height="40" width="340" x="580" y="700" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ksqldb" name="ksqlDB">
+    <mxGraphModel dx="689" dy="375" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ks-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;" value="ksqlDB — Stream Processing with SQL" vertex="1">
+          <mxGeometry height="40" width="500" x="350" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="90" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-broker-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#1565C0;" value="Kafka Brokers&#xa;(source topics)" vertex="1">
+          <mxGeometry height="25" width="115" x="60" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-server" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#E0F7FA;strokeColor=#00838F;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=5;rounded=1;arcSize=3;shadow=1;" value="ksqlDB Server" vertex="1">
+          <mxGeometry height="340" width="580" x="300" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-engine" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#00838F;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="55" width="45" x="520" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-engine-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#00838F;" value="Query Engine" vertex="1">
+          <mxGeometry height="15" width="90" x="500" y="198" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-stream" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;" value="CREATE STREAM orders_stream&#xa;(order_id VARCHAR, amount DOUBLE)&#xa;WITH (kafka_topic=&#39;orders&#39;, value_format=&#39;JSON&#39;);" vertex="1">
+          <mxGeometry height="45" width="310" x="320" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-stream-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F7FA;strokeColor=#00838F;fontSize=8;align=left;spacingLeft=5;" value="&lt;b&gt;STREAM&lt;/b&gt; = unbounded sequence of events.&#xa;Append-only, immutable. Backed by a Kafka topic." vertex="1">
+          <mxGeometry height="40" width="230" x="640" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-table" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2EBF2;strokeColor=#00838F;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;" value="CREATE TABLE customer_table&#xa;(customer_id VARCHAR PRIMARY KEY, name VARCHAR)&#xa;WITH (kafka_topic=&#39;customers&#39;, value_format=&#39;JSON&#39;);" vertex="1">
+          <mxGeometry height="45" width="310" x="320" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-table-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F7FA;strokeColor=#00838F;fontSize=8;align=left;spacingLeft=5;" value="&lt;b&gt;TABLE&lt;/b&gt; = materialized view of latest value per key.&#xa;Upsert semantics. State stored in RocksDB." vertex="1">
+          <mxGeometry height="40" width="230" x="640" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-query" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;fontStyle=1;" value="CREATE STREAM enriched_orders AS&#xa;  SELECT o.order_id, o.amount, c.name&#xa;  FROM orders_stream o&#xa;  JOIN customer_table c ON o.customer_id = c.customer_id&#xa;  EMIT CHANGES;" vertex="1">
+          <mxGeometry height="65" width="310" x="320" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-query-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=8;align=left;spacingLeft=5;" value="&lt;b&gt;Persistent query&lt;/b&gt; runs continuously.&#xa;Reads from source, writes to output topic.&#xa;State maintained in RocksDB for joins &amp; aggregations." vertex="1">
+          <mxGeometry height="65" width="230" x="640" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-rocks" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#00838F;strokeColor=none;size=6;shadow=1;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="380" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-rocks-l" parent="1" style="text;html=1;fontSize=8;fontStyle=1;align=center;fontColor=#00838F;" value="RocksDB&#xa;(local state)" vertex="1">
+          <mxGeometry height="20" width="90" x="355" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-b-s" edge="1" parent="1" source="ks-broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=2;" target="ks-stream">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-b-s-l" connectable="0" parent="ks-b-s" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;" value="consume" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ks-broker-out" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="90" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-broker-out-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#1565C0;" value="Kafka Brokers&#xa;(output topics)" vertex="1">
+          <mxGeometry height="25" width="115" x="50" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-q-out" edge="1" parent="1" source="ks-query" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;" target="ks-broker-out">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ks-q-out-l" connectable="0" parent="ks-q-out" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#F9A825;" value="produce to&#xa;output topic" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ks-pull" parent="1" style="shape=mxgraph.azure.user;fillColor=#333;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="35" width="35" x="900" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-pull-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;" value="App / User" vertex="1">
+          <mxGeometry height="15" width="70" x="882" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-pull-q" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=8;align=left;spacingLeft=5;fontFamily=Courier New;" value="SELECT * FROM customer_table&#xa;WHERE customer_id = &#39;C001&#39;;" vertex="1">
+          <mxGeometry height="28" width="220" x="952" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-pull-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontSize=8;align=left;spacingLeft=5;" value="&lt;b&gt;Pull query&lt;/b&gt; — point lookup against&#xa;RocksDB state. Like a REST GET.&#xa;Low latency, no continuous processing." vertex="1">
+          <mxGeometry height="35" width="220" x="900" y="287.5" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-pull-a" edge="1" parent="1" source="ks-pull" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E24AA;strokeWidth=2;" target="ks-engine">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ks-pull-a-l" connectable="0" parent="ks-pull-a" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#8E24AA;" value="pull query" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-17" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="rest-proxy" name="REST Proxy">
+    <mxGraphModel dx="2066" dy="1126" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="rp-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;" value="REST Proxy — HTTP Interface to Kafka" vertex="1">
+          <mxGeometry height="40" width="500" x="300" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-client1" parent="1" style="shape=mxgraph.azure.user;fillColor=#F9A825;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="60" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-c1-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#F9A825;" value="Python App" vertex="1">
+          <mxGeometry height="15" width="80" x="40" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-client2" parent="1" style="shape=mxgraph.azure.user;fillColor=#F9A825;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="60" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-c2-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#F9A825;" value="Go Service" vertex="1">
+          <mxGeometry height="15" width="80" x="40" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-client3" parent="1" style="shape=mxgraph.azure.user;fillColor=#F9A825;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="60" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-c3-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#F9A825;" value="curl / Browser" vertex="1">
+          <mxGeometry height="15" width="90" x="35" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-proxy" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#F9A825;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="70" width="60" x="320" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-proxy-l" parent="1" style="text;html=1;fontSize=12;fontStyle=1;align=center;fontColor=#F9A825;" value="REST Proxy&#xa;:8082" vertex="1">
+          <mxGeometry height="25" width="110" x="345" y="202" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-broker" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#1565C0;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="70" width="60" x="620" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-broker-l" parent="1" style="text;html=1;fontSize=12;fontStyle=1;align=center;fontColor=#1565C0;" value="Kafka Brokers" vertex="1">
+          <mxGeometry height="18" width="110" x="595" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-a1" edge="1" parent="1" source="rp-client1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;" target="rp-proxy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-a2" edge="1" parent="1" source="rp-client2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;" target="rp-proxy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-a3" edge="1" parent="1" source="rp-client3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F9A825;strokeWidth=2;" target="rp-proxy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-a1-l" parent="1" style="text;fontSize=8;fontStyle=1;fontColor=#F9A825;align=center;" value="HTTP/REST" vertex="1">
+          <mxGeometry height="12" width="60" x="180" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-pb" edge="1" parent="1" source="rp-proxy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1565C0;strokeWidth=3;" target="rp-broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-pb-l" connectable="0" parent="rp-pb" style="edgeLabel;fontSize=9;fillColor=none;fontStyle=1;fontColor=#1565C0;" value="Kafka protocol&#xa;(native client)" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-20" y="-35" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rp-apis" parent="1" style="shape=mxgraph.gcp2.standard_rectangle;fillColor=#FAFAFA;strokeColor=#F9A825;fontStyle=1;fontSize=11;verticalAlign=top;spacingTop=3;rounded=1;arcSize=10;shadow=1;" value="REST Proxy API Examples" vertex="1">
+          <mxGeometry height="200" width="700" x="40" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-api1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;" value="&lt;b&gt;Produce:&lt;/b&gt;&#xa;POST /topics/orders&#xa;{&quot;records&quot;: [{&quot;value&quot;: {&quot;order_id&quot;: &quot;123&quot;}}]}" vertex="1">
+          <mxGeometry height="40" width="320" x="55" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-api2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;" value="&lt;b&gt;Consume (create consumer group):&lt;/b&gt;&#xa;POST /consumers/my-group&#xa;{&quot;name&quot;: &quot;my-consumer&quot;, &quot;format&quot;: &quot;json&quot;}" vertex="1">
+          <mxGeometry height="40" width="320" x="55" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-api3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=5;fontFamily=Courier New;" value="&lt;b&gt;Get topics:&lt;/b&gt;  GET /topics&#xa;&lt;b&gt;Get partitions:&lt;/b&gt;  GET /topics/orders/partitions&#xa;&lt;b&gt;Get offsets:&lt;/b&gt;  GET /consumers/my-group/instances/my-consumer/offsets" vertex="1">
+          <mxGeometry height="45" width="400" x="55" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="rp-when" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=9;align=left;spacingLeft=8;shadow=1;" value="&lt;b&gt;When to use REST Proxy:&lt;/b&gt;&lt;br&gt;- Apps that can&#39;t use native Kafka clients (browser, serverless, IoT)&lt;br&gt;- Quick ad-hoc produce/consume without installing client libraries&lt;br&gt;- Firewall constraints (only HTTP/443 allowed)&lt;br&gt;&lt;br&gt;&lt;b&gt;When NOT to use:&lt;/b&gt; High-throughput production workloads (use native clients)" vertex="1">
+          <mxGeometry height="100" width="250" x="480" y="475" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="control-center" name="Control Center">
+    <mxGraphModel dx="2066" dy="1126" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c3-title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;align=center;" value="Control Center — Monitoring &amp; Management Hub" vertex="1">
+          <mxGeometry height="40" width="600" x="300" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-c3" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#C62828;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="80" width="70" x="550" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-c3-l" parent="1" style="text;html=1;fontSize=13;fontStyle=1;align=center;fontColor=#C62828;" value="Control Center&#xa;:9021" vertex="1">
+          <mxGeometry height="25" width="130" x="520" y="285" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-browser" parent="1" style="shape=mxgraph.azure.user;fillColor=#C62828;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="565" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-browser-l" parent="1" style="text;html=1;fontSize=9;fontStyle=1;align=center;fontColor=#C62828;" value="Admin Browser" vertex="1">
+          <mxGeometry height="15" width="90" x="550" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-br-a" edge="1" parent="1" source="c3-browser" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=2;" target="c3-c3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-br-a-l" connectable="0" parent="c3-br-a" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#C62828;" value="HTTPS" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-brokers" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#2E7D32;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="65" width="55" x="130" y="207.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-brokers-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#2E7D32;" value="Kafka Brokers&#xa;(JMX :7778)" vertex="1">
+          <mxGeometry height="25" width="115" x="100" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-b-a" edge="1" parent="1" source="c3-c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=2;" target="c3-brokers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-b-a-l" connectable="0" parent="c3-b-a" style="edgeLabel;fontSize=8;fillColor=none;fontStyle=1;fontColor=#C62828;" value="broker metrics&#xa;topic throughput&#xa;partition health" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-7" y="-40" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-sr" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#8E24AA;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="130" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-sr-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#8E24AA;" value="Schema Registry" vertex="1">
+          <mxGeometry height="15" width="110" x="100" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-sr-a" edge="1" parent="1" source="c3-c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;dashed=1;" target="c3-sr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="440" y="260" />
+              <mxPoint x="440" y="428" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-sr-a-l" connectable="0" parent="c3-sr-a" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#8E24AA;" value="schema versions&#xa;compatibility" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-140" y="-29" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-connect" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#E65100;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="1000" y="212.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-connect-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#E65100;" value="Kafka Connect" vertex="1">
+          <mxGeometry height="15" width="100" x="975" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-co-a" edge="1" parent="1" source="c3-c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;dashed=1;" target="c3-connect">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-co-a-l" connectable="0" parent="c3-co-a" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#E65100;" value="connector status&#xa;task health&#xa;throughput" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-ksql" parent="1" style="shape=mxgraph.signs.tech.server_2;fillColor=#00838F;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="55" width="50" x="1000" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-ksql-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;fontColor=#00838F;" value="ksqlDB" vertex="1">
+          <mxGeometry height="15" width="60" x="995" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-ks-a" edge="1" parent="1" source="c3-c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;dashed=1;" target="c3-ksql">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="260" />
+              <mxPoint x="720" y="428" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-ks-a-l" connectable="0" parent="c3-ks-a" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#00838F;" value="running queries&#xa;throughput&#xa;error rate" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="84" y="-38" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-consumers" parent="1" style="shape=mxgraph.azure.user;fillColor=#333;strokeColor=none;shadow=1;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="565" y="447.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-consumers-l" parent="1" style="text;html=1;fontSize=10;fontStyle=1;align=center;" value="Consumer Groups" vertex="1">
+          <mxGeometry height="15" width="110" x="530" y="487.5" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-cg-a" edge="1" parent="1" source="c3-c3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#C62828;strokeWidth=1;dashed=1;" target="c3-consumers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-cg-a-l" connectable="0" parent="c3-cg-a" style="edgeLabel;fontSize=8;fillColor=none;fontColor=#333;" value="consumer lag&#xa;group membership&#xa;rebalances" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c3-features" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C62828;fontSize=9;align=left;spacingLeft=5;verticalAlign=top;spacingTop=5;shadow=1;overflow=fill;arcSize=2;" value="&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;b&gt;&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&amp;nbsp;Control Center provides:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;table style=&quot;font-size:9px&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td style=&quot;padding:3px&quot;&gt;Broker metrics&lt;/td&gt;&lt;td style=&quot;padding:3px&quot;&gt;Throughput, latency, under-replicated partitions, disk usage&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:3px&quot;&gt;Topic inspection&lt;/td&gt;&lt;td style=&quot;padding:3px&quot;&gt;Browse messages, view schemas, partition distribution&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:3px&quot;&gt;Consumer lag&lt;/td&gt;&lt;td style=&quot;padding:3px&quot;&gt;Per-partition lag, group health, rebalance history&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:3px&quot;&gt;Connector status&lt;/td&gt;&lt;td style=&quot;padding:3px&quot;&gt;Running/failed tasks, throughput, error logs&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:3px&quot;&gt;ksqlDB editor&lt;/td&gt;&lt;td style=&quot;padding:3px&quot;&gt;Write &amp;amp; run queries, view running persistent queries&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:3px&quot;&gt;Schema management&lt;/td&gt;&lt;td style=&quot;padding:3px&quot;&gt;View/edit schemas, compatibility settings&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:3px&quot;&gt;Alerts&lt;/td&gt;&lt;td style=&quot;padding:3px&quot;&gt;Under-replicated partitions, consumer lag, broker down&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="200" width="510" x="50" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="c3-how" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#C62828;fontSize=9;align=left;spacingLeft=8;shadow=1;" value="&lt;b&gt;How Control Center collects metrics:&lt;/b&gt;&lt;br&gt;1. &lt;b&gt;Monitoring Interceptors&lt;/b&gt; on producers/consumers report to &lt;code&gt;_confluent-monitoring&lt;/code&gt; topic&lt;br&gt;2. Control Center &lt;b&gt;consumes&lt;/b&gt; from monitoring topics on the brokers&lt;br&gt;3. Queries &lt;b&gt;REST APIs&lt;/b&gt; on Connect (:8083), ksqlDB (:8088), Schema Registry (:8081)&lt;br&gt;4. Stores aggregated metrics in internal topics (&lt;code&gt;_confluent-command&lt;/code&gt;, &lt;code&gt;_confluent-metrics&lt;/code&gt;)" vertex="1">
+          <mxGeometry height="80" width="480" x="580" y="520" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
