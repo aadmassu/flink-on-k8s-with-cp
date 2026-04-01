@@ -1,6 +1,6 @@
 # 2. cert-manager — TLS certificate management for operator webhooks
 #
-# Required pipeline variables:
+# Required pipeline variables (via Openshift-ROSA-VAR-Groups):
 #   OPENSHIFT_SERVER  — OpenShift API URL
 #   OPENSHIFT_TOKEN   — oc login token (mark as secret)
 
@@ -28,39 +28,29 @@ stages:
         steps:
           - checkout: self
 
-          - task: HelmInstaller@1
-            displayName: "Install Helm"
-            inputs:
-              helmVersionToInstall: "3.14.0"
-
           - task: Bash@3
-            displayName: "Install oc CLI"
+            displayName: "Install oc + helm CLI"
             inputs:
               targetType: inline
               script: |
                 curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
                   | tar xz -C /usr/local/bin oc kubectl
+                curl -sL https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz \
+                  | tar xz --strip-components=1 -C /usr/local/bin linux-amd64/helm
 
           - task: Bash@3
-            displayName: "Login to OpenShift"
+            displayName: "Login + Install cert-manager"
             inputs:
               targetType: inline
               script: |
+                set -euo pipefail
+
                 oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
+                oc whoami
 
-          - task: Bash@3
-            displayName: "Add Helm repo"
-            inputs:
-              targetType: inline
-              script: |
                 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
                 helm repo update jetstack
 
-          - task: Bash@3
-            displayName: "Install cert-manager"
-            inputs:
-              targetType: inline
-              script: |
                 helm upgrade --install cert-manager jetstack/cert-manager \
                   --namespace cert-manager \
                   --version v1.19.4 \
@@ -68,13 +58,9 @@ stages:
                   -f apps/cert-manager/openshift-overlay.yaml \
                   --wait --timeout 10m
 
-          - task: Bash@3
-            displayName: "Wait for CRDs"
-            inputs:
-              targetType: inline
-              script: |
+                echo "==> Waiting for CRDs..."
                 for CRD in certificates.cert-manager.io issuers.cert-manager.io; do
-                  echo "Waiting for $CRD..."
+                  echo "    $CRD..."
                   RETRIES=0
                   until oc get crd "$CRD" &>/dev/null; do
                     RETRIES=$((RETRIES + 1))
@@ -83,13 +69,7 @@ stages:
                   done
                   oc wait --for=condition=Established "crd/$CRD" --timeout=60s
                 done
-                echo "cert-manager CRDs ready."
 
-          - task: Bash@3
-            displayName: "Verify"
-            inputs:
-              targetType: inline
-              script: |
-                helm status cert-manager -n cert-manager
                 echo ""
+                helm status cert-manager -n cert-manager
                 oc get pods -n cert-manager

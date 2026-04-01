@@ -1,7 +1,7 @@
 # 1. OpenShift prerequisites — SCC, ClusterRoleBindings, namespaces
 #
-# Required pipeline variables (set in Azure DevOps > Pipelines > Edit > Variables):
-#   OPENSHIFT_SERVER  — OpenShift API URL (e.g. https://api.cfk-dev.oe41.p1.openshiftapps.com:6443)
+# Required pipeline variables (via Openshift-ROSA-VAR-Groups):
+#   OPENSHIFT_SERVER  — OpenShift API URL
 #   OPENSHIFT_TOKEN   — oc login token (mark as secret)
 
 trigger: none
@@ -39,42 +39,26 @@ stages:
                   | tar xz -C /usr/local/bin oc kubectl
 
           - task: Bash@3
-            displayName: "Login to OpenShift"
+            displayName: "Login + Apply prerequisites"
             inputs:
               targetType: inline
               script: |
+                set -euo pipefail
+
                 oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
-
-          - task: Bash@3
-            displayName: "Verify cluster connectivity"
-            inputs:
-              targetType: inline
-              script: |
+                oc whoami
                 oc cluster-info
-                oc get nodes
 
-          - task: Bash@3
-            displayName: "Create namespaces"
-            inputs:
-              targetType: inline
-              script: |
+                echo ""
+                echo "==> Creating namespaces..."
                 oc create namespace $(NS) --dry-run=client -o yaml | oc apply -f -
                 oc create namespace cert-manager --dry-run=client -o yaml | oc apply -f -
-                echo "Namespaces ready."
 
-          - task: Bash@3
-            displayName: "Apply SCC and ClusterRoleBindings"
-            inputs:
-              targetType: inline
-              script: |
+                echo ""
+                echo "==> Applying SCC and ClusterRoleBindings..."
                 oc apply -f openshift-prereqs/$(ENV)/manifests/
-                echo "SCC and ClusterRoleBindings applied."
 
-          - task: Bash@3
-            displayName: "Verify"
-            inputs:
-              targetType: inline
-              script: |
+                echo ""
                 echo "=== Namespaces ==="
                 oc get namespace $(NS) cert-manager
 

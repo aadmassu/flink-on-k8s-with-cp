@@ -1,6 +1,6 @@
 # 6. Flink CRs — CMFRestClass, FlinkEnvironment, PVC, session cluster
 #
-# Required pipeline variables:
+# Required pipeline variables (via Openshift-ROSA-VAR-Groups):
 #   OPENSHIFT_SERVER  — OpenShift API URL
 #   OPENSHIFT_TOKEN   — oc login token (mark as secret)
 
@@ -39,25 +39,18 @@ stages:
                   | tar xz -C /usr/local/bin oc kubectl
 
           - task: Bash@3
-            displayName: "Login to OpenShift"
+            displayName: "Login + Apply Flink CRs"
             inputs:
               targetType: inline
               script: |
-                oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
+                set -euo pipefail
 
-          - task: Bash@3
-            displayName: "Apply Flink CRs"
-            inputs:
-              targetType: inline
-              script: |
+                oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
+                oc whoami
+
                 oc apply -f apps/confluent-flink/$(ENV)/
                 echo "Flink CRs applied."
 
-          - task: Bash@3
-            displayName: "Wait for Flink session cluster"
-            inputs:
-              targetType: inline
-              script: |
                 echo "Waiting for FlinkDeployment..."
                 RETRIES=0
                 until oc get flinkdeployment flink-session -n $(NS) &>/dev/null; do
@@ -69,11 +62,7 @@ stages:
                   flinkdeployment/flink-session -n $(NS) --timeout=300s
                 echo "Flink session cluster is READY."
 
-          - task: Bash@3
-            displayName: "Verify"
-            inputs:
-              targetType: inline
-              script: |
+                echo ""
                 echo "=== Flink CRs ==="
                 oc get flinkdeployment,flinkenvironment,cmfrestclass,pvc -n $(NS)
                 echo ""
