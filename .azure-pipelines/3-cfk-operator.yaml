@@ -43,43 +43,16 @@ stages:
                 helm version
 
           - task: Bash@3
-            displayName: "Login + Install CFK Operator"
+            displayName: "Apply webhook TLS (before Helm install)"
             inputs:
               targetType: inline
               script: |
                 set -euo pipefail
 
-                echo "==> Logging in to OpenShift..."
                 oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
                 oc whoami
-                oc cluster-info
 
-                echo ""
-                echo "==> Adding Helm repo..."
-                helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
-                helm repo update confluent
-
-                echo ""
-                echo "==> Installing CFK Operator..."
-                helm upgrade --install confluent-operator confluent/confluent-for-kubernetes \
-                  --namespace $(NS) \
-                  --version 0.1351.59 \
-                  -f apps/confluent-operator/$(ENV)/values.yaml \
-                  -f apps/confluent-operator/openshift-overlay.yaml \
-                  --wait --timeout 10m
-
-                echo ""
-                echo "==> CFK Operator installed."
-                helm status confluent-operator -n $(NS)
-
-          - task: Bash@3
-            displayName: "Apply webhook TLS"
-            inputs:
-              targetType: inline
-              script: |
-                set -euo pipefail
-                oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
-
+                echo "==> Creating webhook TLS secrets (must exist before operator pods start)..."
                 cat <<'EOF' | oc apply -n $(NS) -f -
                 ---
                 apiVersion: cert-manager.io/v1
@@ -125,9 +98,34 @@ stages:
                   jksPassword.txt: "jksPassword=changeit"
                 EOF
 
+                echo "==> Waiting for certificate to be issued..."
                 oc wait --for=condition=Ready certificate/confluent-operator-serving-cert \
                   -n $(NS) --timeout=120s
-                echo "CFK webhook TLS ready."
+                echo "Webhook TLS secrets ready."
+
+          - task: Bash@3
+            displayName: "Install CFK Operator"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
+
+                helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
+                helm repo update confluent
+
+                echo "==> Installing CFK Operator..."
+                helm upgrade --install confluent-operator confluent/confluent-for-kubernetes \
+                  --namespace $(NS) \
+                  --version 0.1351.59 \
+                  -f apps/confluent-operator/$(ENV)/values.yaml \
+                  -f apps/confluent-operator/openshift-overlay.yaml \
+                  --wait --timeout 10m
+
+                echo ""
+                echo "==> CFK Operator installed."
+                helm status confluent-operator -n $(NS)
 
           - task: Bash@3
             displayName: "Wait for CFK CRDs"

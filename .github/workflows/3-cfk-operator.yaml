@@ -46,17 +46,7 @@ jobs:
           helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
           helm repo update confluent
 
-      - name: Install CFK Operator
-        run: |
-          ENV=${{ inputs.environment }}
-          helm upgrade --install confluent-operator confluent/confluent-for-kubernetes \
-            --namespace ${{ env.NS }} \
-            --version 0.1351.59 \
-            -f apps/confluent-operator/${ENV}/values.yaml \
-            -f apps/confluent-operator/openshift-overlay.yaml \
-            --wait --timeout 10m
-
-      - name: Apply webhook TLS
+      - name: Apply webhook TLS (before Helm install)
         run: |
           ENV=${{ inputs.environment }}
           cat <<EOF | oc apply -n ${{ env.NS }} -f -
@@ -107,6 +97,16 @@ jobs:
           oc wait --for=condition=Ready certificate/confluent-operator-serving-cert \
             -n ${{ env.NS }} --timeout=120s
           echo "CFK webhook TLS ready."
+
+      - name: Install CFK Operator
+        run: |
+          ENV=${{ inputs.environment }}
+          helm upgrade --install confluent-operator confluent/confluent-for-kubernetes \
+            --namespace ${{ env.NS }} \
+            --version 0.1351.59 \
+            -f apps/confluent-operator/${ENV}/values.yaml \
+            -f apps/confluent-operator/openshift-overlay.yaml \
+            --wait --timeout 10m
 
       - name: Wait for CFK CRDs
         run: |

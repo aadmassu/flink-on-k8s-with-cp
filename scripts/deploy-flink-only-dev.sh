@@ -62,22 +62,11 @@ for CRD in certificates.cert-manager.io issuers.cert-manager.io; do
 done
 echo "    cert-manager CRDs ready."
 
-# ── Step 4: Install CFK Operator ─────────────────────────────────────────────
-echo ""
-echo "==> Installing Confluent Operator (CFK)..."
-helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
-helm repo update confluent
-helm upgrade --install confluent-operator confluent/confluent-for-kubernetes \
-  --namespace "$NS" \
-  --version 0.1351.59 \
-  -f "$REPO_ROOT/apps/confluent-operator/$ENV/values.yaml" \
-  -f "$REPO_ROOT/apps/confluent-operator/openshift-overlay.yaml" \
-  --wait --timeout 600s
-echo "    CFK Operator installed."
-
-# ── Step 4a: Apply CFK webhook TLS manifests ─────────────────────────────────
+# ── Step 4: Apply CFK webhook TLS manifests (must exist before operator pods start)
 echo ""
 echo "==> Applying CFK webhook TLS manifests..."
+helm repo add confluent https://packages.confluent.io/helm 2>/dev/null || true
+helm repo update confluent
 oc apply -n "$NS" -f - <<'CERT_EOF'
 ---
 apiVersion: cert-manager.io/v1
@@ -125,6 +114,17 @@ CERT_EOF
 oc wait --for=condition=Ready certificate/confluent-operator-serving-cert \
   -n "$NS" --timeout=120s
 echo "    CFK webhook TLS ready."
+
+# ── Step 4a: Install CFK Operator ────────────────────────────────────────────
+echo ""
+echo "==> Installing Confluent Operator (CFK)..."
+helm upgrade --install confluent-operator confluent/confluent-for-kubernetes \
+  --namespace "$NS" \
+  --version 0.1351.59 \
+  -f "$REPO_ROOT/apps/confluent-operator/$ENV/values.yaml" \
+  -f "$REPO_ROOT/apps/confluent-operator/openshift-overlay.yaml" \
+  --wait --timeout 600s
+echo "    CFK Operator installed."
 
 # ── Step 4b: Wait for CFK CRDs ──────────────────────────────────────────────
 echo ""
