@@ -26,7 +26,7 @@ spec:
               - $values/apps/cert-manager/{{environment}}/values.yaml
               - $values/apps/cert-manager/openshift-overlay.yaml
         - repoURL: https://Psyncopate-Internal@dev.azure.com/Psyncopate-Internal/Confluent/_git/flink-on-k8s-with-cp
-          targetRevision: feature/openshift
+          targetRevision: feature/openshift-rosa
           ref: values
       destination:
         server: "{{url}}"
