@@ -1,0 +1,315 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: confluent-stg
+  labels:
+    app: kafka
+spec:
+  # 3 brokers for production HA; allows 1 broker failure with min.insync.replicas=2
+  replicas: 3
+  # Confluent Platform license; secret must contain license.txt
+  license:
+    secretRef: confluent-license
+  # Container images for the Kafka broker
+  image:
+    # Confluent Server (enterprise Kafka with RBAC, MDS, audit logs)
+    application: confluentinc/cp-server:8.1.1
+    # Init container that configures volumes, permissions, and networking before startup
+    init: confluentinc/confluent-init-container:3.1.1
+  # Persistent volume size for Kafka log segments (message data)
+  dataVolumeCapacity: 50Gi
+
+  ## ASSUMPTION: FCB's corporate CA (in tls-certs) covers Okta's HTTPS endpoints,
+  ## so no separate JKS truststore is needed for OAuth token/JWKS calls.
+  ##
+  ## IF THIS ASSUMPTION IS WRONG (Okta uses a different CA), uncomment below and
+  ## add JVM overrides at the bottom of this file:
+  ##
+  ## mountedVolumes:
+  ##   volumes:
+  ##     - name: oauth-truststore
+  ##       secret:
+  ##         secretName: oauth-truststore
+  ##   volumeMounts:
+  ##     - name: oauth-truststore
+  ##       mountPath: /mnt/oauth-truststore
+  ##
+  ## And add under configOverrides:
+  ##   jvm:
+  ##     - "-Djavax.net.ssl.trustStoreType=JKS"
+  ##     - "-Djavax.net.ssl.trustStore=/mnt/oauth-truststore/truststore.jks"
+  ##     - "-Djavax.net.ssl.trustStorePassword=<truststore-password>"
+
+  podTemplate:
+    # Pod annotations for monitoring discovery
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "7778"
+      # Dynatrace metrics scraping
+      metrics.dynatrace.com/scrape: "true"
+      metrics.dynatrace.com/port: "7778"
+    # CPU and memory allocation for each Kafka broker pod
+    resources:
+      requests:
+        cpu: "1"
+        memory: 4Gi
+      limits:
+        cpu: "2"
+        memory: 8Gi
+    # Security context for the pod; required for file ownership on persistent volumes
+    podSecurityContext:
+      fsGroup: 1000
+      runAsUser: 1000
+      runAsNonRoot: true
+    # Spread brokers across availability zones for fault tolerance
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - kafka
+              topologyKey: topology.kubernetes.io/zone
+
+  # RBAC authorization via MDS; controls topic/group/cluster-level access
+  authorization:
+    type: rbac
+    # Super users bypass RBAC; must be OAuth client IDs used for internal broker operations
+    superUsers:
+      ## TODO: Replace with FCB's Okta OAuth client IDs
+      - "User:<fcb-broker-oauth-client-id>"
+      - "User:<fcb-client-oauth-client-id>"
+
+  # TLS encryption for all broker communication
+  tls:
+    ## TODO: Replace with FCB's TLS secret name
+    secretRef: tls-certs
+
+  listeners:
+    # Internal listener for pod-to-pod communication within the cluster (port 9071)
+    internal:
+      # OAuth authentication for internal service-to-service calls
+      authentication:
+        type: oauth
+        # Secret containing OAuth client credentials (username/password)
+        jaasConfig:
+          secretRef: oauth-jass
+        # Okta OAuth provider settings for token validation
+        oauthSettings:
+          ## TODO: Replace all Okta endpoints with FCB's Okta org/authorization server
+          # OAuth audience — must match the audience configured in Okta
+          audience: api://confluent
+          # Token issuer URL — must match the iss claim in the JWT
+          expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+          # JWT claim containing user's group memberships for RBAC
+          groupsClaimName: groups
+          # JWT claim used as the principal identity
+          subClaimName: sub
+          # Endpoint to fetch Okta's public keys for token signature verification
+          jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+          # Endpoint where clients request OAuth tokens
+          tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+          # OAuth scope requested when obtaining tokens
+          scope: confluent
+      # Enable TLS on the internal listener
+      tls:
+        enabled: true
+
+    # External listener exposed via OpenShift Routes for clients outside the cluster
+    external:
+      # OAuth authentication for external clients (Flink jobs, producers, consumers)
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-jass
+        oauthSettings:
+          audience: api://confluent
+          expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+          groupsClaimName: groups
+          subClaimName: sub
+          jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+          tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+          scope: confluent
+      # Enable TLS on the external listener
+      tls:
+        enabled: true
+      # Expose via OpenShift Route for external access
+      externalAccess:
+        type: route
+        route:
+          ## TODO: Replace with FCB's OpenShift route domain
+          domain: dev.confluent.fcbint.net
+
+  # Metadata Service (MDS) — central RBAC authority for all Confluent components
+  services:
+    mds:
+      # Enable TLS for MDS REST API
+      tls:
+        enabled: true
+      # RSA key pair for signing/verifying MDS RBAC tokens
+      tokenKeyPair:
+        secretRef: mds-token
+      # OAuth provider config — validates tokens from Okta for RBAC decisions
+      provider:
+        oauth:
+          configurations:
+            # OAuth audience for token validation
+            audience: api://confluent
+            # Expected token issuer
+            expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+            # JWT claim for group memberships
+            groupsClaimName: groups
+            # JWT claim for user identity
+            subClaimName: sub
+            # JWKS endpoint for token signature verification
+            jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+            # OAuth scope
+            scope: confluent
+        # SSO config — enables browser-based Okta login for Control Center and other UIs
+        sso:
+          # OIDC client credentials for the authorization code flow
+          clientCredentials:
+            ## TODO: Replace with FCB's OIDC client credentials secret
+            secretRef: oauth-jass-oidc
+          configurations:
+            # OIDC issuer URL
+            issuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+            # OAuth audience
+            audience: api://confluent
+            # Okta authorization endpoint — user is redirected here to log in
+            authorizeBaseEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/authorize
+            # Okta token endpoint — exchanges auth code for tokens
+            tokenBaseEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+            # JWKS endpoint for SSO token verification
+            jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+            # JWT claim for group memberships
+            groupsClaimName: groups
+            # Use email as the user identity (matches Okta user profile)
+            subClaimName: email
+            # OIDC scopes to request during SSO login
+            groupsClaimScope: openid profile email
+            # Enable refresh tokens for long-lived SSO sessions
+            refreshToken: true
+
+  dependencies:
+    # KRaft controller dependency — Kafka brokers connect to controllers for metadata
+    kRaftController:
+      # Reference to the KRaftController CR by name
+      clusterRef:
+        name: kraftcontroller
+      # OAuth authentication for broker-to-controller communication
+      controllerListener:
+        authentication:
+          type: oauth
+          jaasConfig:
+            secretRef: oauth-jass
+          oauthSettings:
+            audience: api://confluent
+            expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+            groupsClaimName: groups
+            subClaimName: sub
+            jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+            tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+            scope: confluent
+        # TLS for broker-to-controller communication
+        tls:
+          enabled: true
+          secretRef: tls-certs
+
+    # Embedded Kafka REST API used by CFK for RBAC management (topic creation, ACLs)
+    kafkaRest:
+      # OAuth authentication for the embedded REST client
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-jass
+        oauthSettings:
+          audience: api://confluent
+          expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+          groupsClaimName: groups
+          subClaimName: sub
+          jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+          tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+          # 'kafka' scope for REST API operations
+          scope: kafka
+
+  # Confluent metrics reporter — sends broker metrics to a _confluent-metrics topic
+  metricReporter:
+    # Enable metrics collection for Control Center dashboards
+    enabled: true
+    # Bootstrap endpoint for the metrics reporter to connect to Kafka
+    bootstrapEndpoint: kafka.confluent-stg.svc.cluster.local:9071
+    # TLS for metrics reporter connection
+    tls:
+      enabled: true
+      secretRef: tls-certs
+    # OAuth authentication for the metrics reporter Kafka client
+    authentication:
+      type: oauth
+      jaasConfig:
+        secretRef: oauth-jass
+      oauthSettings:
+        audience: api://confluent
+        expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+        groupsClaimName: groups
+        subClaimName: sub
+        jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+        tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+        scope: kafka
+
+  configOverrides:
+    server:
+      # Prevent accidental topic creation by producers
+      - auto.create.topics.enable=false
+      # All new topics get 3 replicas across brokers
+      - default.replication.factor=3
+      # Require 2 in-sync replicas to acknowledge writes (prevents data loss)
+      - min.insync.replicas=2
+      # Default partition count for new topics
+      - num.partitions=3
+      # Retain messages for 7 days before deletion
+      - log.retention.hours=168
+
+      # ---- Broker internal clients — OAuth config for inter-broker communication ----
+      # Protocol for internal broker communication
+      - security.protocol=SASL_SSL
+      # SASL mechanism for OAuth bearer token authentication
+      - sasl.mechanism=OAUTHBEARER
+      # Okta token endpoint for obtaining access tokens
+      - sasl.oauthbearer.token.endpoint.url=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+      # Okta JWKS endpoint for validating token signatures
+      - sasl.oauthbearer.jwks.endpoint.url=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+      # Expected issuer in the JWT token
+      - sasl.oauthbearer.expected.issuer=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+      # OAuth scope for internal broker operations
+      - sasl.oauthbearer.scope=confluent
+
+      # ---- Metrics Reporter — OAuth config for the confluent metrics reporter client ----
+      - confluent.metrics.reporter.security.protocol=SASL_SSL
+      - confluent.metrics.reporter.sasl.mechanism=OAUTHBEARER
+      - confluent.metrics.reporter.sasl.oauthbearer.token.endpoint.url=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+      - confluent.metrics.reporter.sasl.oauthbearer.jwks.endpoint.url=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+      - confluent.metrics.reporter.sasl.oauthbearer.expected.issuer=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+      - confluent.metrics.reporter.sasl.oauthbearer.scope=kafka
+
+      # ---- License client — OAuth config for the license validation client ----
+      - confluent.license.security.protocol=SASL_SSL
+      - confluent.license.sasl.mechanism=OAUTHBEARER
+      - confluent.license.sasl.oauthbearer.token.endpoint.url=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+      - confluent.license.sasl.oauthbearer.jwks.endpoint.url=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+      - confluent.license.sasl.oauthbearer.expected.issuer=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+      - confluent.license.sasl.oauthbearer.scope=kafka
+
+      # ---- Kafka REST security plugin — OAuth config for the embedded REST proxy ----
+      - confluent.kafkarest.security.protocol=SASL_SSL
+      - confluent.kafkarest.sasl.mechanism=OAUTHBEARER
+      - confluent.kafkarest.sasl.oauthbearer.token.endpoint.url=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+      - confluent.kafkarest.sasl.oauthbearer.jwks.endpoint.url=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+      - confluent.kafkarest.sasl.oauthbearer.expected.issuer=https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+      - confluent.kafkarest.sasl.oauthbearer.scope=kafka

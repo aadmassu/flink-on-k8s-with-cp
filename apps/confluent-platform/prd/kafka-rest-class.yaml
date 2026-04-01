@@ -1,0 +1,34 @@
+---
+# KafkaRestClass configures how CFK connects to Kafka's REST API for RBAC management
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaRestClass
+metadata:
+  name: default
+  namespace: confluent-prd
+spec:
+  # Reference to the Kafka cluster this REST class connects to
+  kafkaClusterRef:
+    name: kafka
+  kafkaRest:
+    # OAuth authentication for the Kafka REST API client
+    authentication:
+      type: oauth
+      oauth:
+        # Secret containing OAuth client credentials
+        secretRef: oauth-jass
+        configuration:
+          ## TODO: Replace all Okta endpoints with FCB's Okta org/authorization server
+          # OAuth audience — must match Okta config
+          audience: api://confluent
+          # Expected JWT issuer
+          expectedIssuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+          # JWT claim for group memberships
+          groupsClaimName: groups
+          # JWT claim for user identity
+          subClaimName: sub
+          # JWKS endpoint for token signature verification
+          jwksEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+          # Token endpoint for obtaining access tokens
+          tokenEndpointUri: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+          # 'kafka' scope for REST API operations (different from 'confluent' used by internal clients)
+          scope: kafka
