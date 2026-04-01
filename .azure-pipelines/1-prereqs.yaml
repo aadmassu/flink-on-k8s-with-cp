@@ -3,6 +3,7 @@
 # Required pipeline variables (via Openshift-ROSA-VAR-Groups):
 #   OPENSHIFT_SERVER  — OpenShift API URL
 #   OPENSHIFT_TOKEN   — oc login token (mark as secret)
+#   CONFLUENT_LICENSE — Confluent license key JWT (mark as secret)
 
 trigger: none
 
@@ -57,6 +58,12 @@ stages:
                 echo ""
                 echo "==> Applying SCC and ClusterRoleBindings..."
                 oc apply -f openshift-prereqs/$(ENV)/manifests/
+
+                echo ""
+                echo "==> Creating Confluent license secret..."
+                oc create secret generic confluent-license \
+                  --from-literal=license.txt="$(CONFLUENT_LICENSE)" \
+                  -n $(NS) --dry-run=client -o yaml | oc apply -f -
 
                 echo ""
                 echo "=== Namespaces ==="

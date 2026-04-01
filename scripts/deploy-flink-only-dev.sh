@@ -32,6 +32,18 @@ echo "==> Applying OpenShift prerequisites (SCC + bindings)..."
 oc apply -f "$REPO_ROOT/openshift-prereqs/$ENV/manifests/"
 echo "    SCC and ClusterRoleBindings applied."
 
+# ── Step 2a: Create Confluent license secret ─────────────────────────────────
+echo ""
+echo "==> Creating Confluent license secret..."
+if [ -z "${CONFLUENT_LICENSE:-}" ]; then
+  echo "WARNING: CONFLUENT_LICENSE not set. CFK will run in eval mode."
+else
+  oc create secret generic confluent-license \
+    --from-literal=license.txt="$CONFLUENT_LICENSE" \
+    -n "$NS" --dry-run=client -o yaml | oc apply -f -
+  echo "    License secret created."
+fi
+
 # ── Step 3: Install cert-manager ─────────────────────────────────────────────
 echo ""
 echo "==> Installing cert-manager..."
