@@ -7,7 +7,7 @@ stages:
     displayName: "Check Server Tools"
     jobs:
       - job: CheckTools
-        pool: DevOps-LFCB
+        pool: DevOpsLinux
         steps:
           - checkout: self
             env:
@@ -22,9 +22,8 @@ stages:
                 TOOL_DIR="$(Pipeline.Workspace)/tools"
                 mkdir -p "$TOOL_DIR"
 
-                echo "Downloading kubectl..."
-                curl -sSLk -o "$TOOL_DIR/kubectl" \
-                  "https://artifactory.fcbint.net/artifactory/kubectl-remote/v1.31.0/bin/linux/amd64/kubectl"
+                echo "Downloading https://artifactory.fcbint.net/artifactory/kubectl-remote/v1.31.0/bin/linux/amd64/kubectl"
+                curl -sSLk -o "$TOOL_DIR/kubectl" "https://artifactory.fcbint.net/artifactory/kubectl-remote/v1.31.0/bin/linux/amd64/kubectl"
                 chmod +x "$TOOL_DIR/kubectl"
 
                 echo "##vso[task.prependpath]$TOOL_DIR"
@@ -39,9 +38,8 @@ stages:
                 TOOL_DIR="$(Pipeline.Workspace)/tools"
                 mkdir -p "$TOOL_DIR"
 
-                echo "Downloading helm..."
-                curl -sSLk -o /tmp/helm.tar.gz \
-                  "https://artifactory.fcbint.net/artifactory/helm-chart/helm-v3.18.3-linux-amd64.tar.gz"
+                echo "Downloading https://artifactory.fcbint.net/artifactory/helm-client/helm-v3.18.3-linux-amd64.tar.gz"
+                curl -sSLk -o /tmp/helm.tar.gz "https://artifactory.fcbint.net/artifactory/helm-client/helm-v3.18.3-linux-amd64.tar.gz"
                 tar xz -C "$TOOL_DIR" --strip-components=1 -f /tmp/helm.tar.gz linux-amd64/helm
                 chmod +x "$TOOL_DIR/helm"
                 rm -f /tmp/helm.tar.gz
@@ -58,11 +56,10 @@ stages:
                 TOOL_DIR="$(Pipeline.Workspace)/tools"
                 mkdir -p "$TOOL_DIR"
 
-                echo "Downloading oc..."
-                curl -sSLk -o "$TOOL_DIR/oc" \
-                  "https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz"
+                echo "Downloading https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz/oc"
+                curl -L -o "$TOOL_DIR/oc" "https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz/oc"
+                
                 chmod +x "$TOOL_DIR/oc"
-                rm -f /tmp/oc.tar.gz
 
                 echo "##vso[task.prependpath]$TOOL_DIR"
                 "$TOOL_DIR/oc" version --client
