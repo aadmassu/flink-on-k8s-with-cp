@@ -1,58 +1,38 @@
 # Azure DevOps Pipelines
 
-This directory contains two Azure DevOps pipelines for deploying Confluent and Flink operators on **OpenShift** via the OpenShift GitOps Operator (ArgoCD).
+Deployment pipelines for Confluent Platform and Flink on OpenShift. Run in order 1-6.
 
 ## Pipelines
 
-| Pipeline | File | Use When |
-|---|---|---|
-| **Full Deploy** | `full-deploy.yaml` | Deploying to a cluster that does **not** have ArgoCD installed |
-| **Deploy Operators** | `deploy-operators.yaml` | ArgoCD (OpenShift GitOps) is **already** running on the cluster |
-
-## Full Deploy (`full-deploy.yaml`)
-
-Performs an end-to-end deployment:
-
-1. Installs ArgoCD via Helm into the `openshift-gitops` namespace
-2. Deploys cert-manager (via ArgoCD ApplicationSet)
-3. Deploys Confluent Operator and Flink Operator (via ArgoCD ApplicationSets)
-
-### Parameters
-
-| Parameter | Default | Description |
-|---|---|---|
-| `environment` | `dev` | Target environment (`dev`, `qa`, `stg`, `prd`) |
-| `kubernetesServiceConnection` | `<your-service-connection>` | Azure DevOps Kubernetes service connection name |
-| `argocdNamespace` | `openshift-gitops` | Namespace for ArgoCD installation |
-
-## Deploy Operators (`deploy-operators.yaml`)
-
-Deploys operators into an existing ArgoCD instance:
-
-1. Verifies ArgoCD is running
-2. Deploys cert-manager, Confluent Operator, and Flink Operator via ApplicationSets
-
-### Parameters
-
-| Parameter | Default | Description |
-|---|---|---|
-| `environment` | `dev` | Target environment (`dev`, `qa`, `stg`, `prd`) |
-| `kubernetesServiceConnection` | `<your-service-connection>` | Azure DevOps Kubernetes service connection name |
-| `argocdNamespace` | `openshift-gitops` | Namespace where ArgoCD is installed |
+| # | Pipeline | What it deploys |
+|---|----------|-----------------|
+| 1 | `1-prereqs.yaml` | Namespaces, SCC, ClusterRoleBindings, license secret |
+| 2 | `2-cert-manager.yaml` | cert-manager via Helm |
+| 3 | `3-cfk-operator.yaml` | CFK Operator via Helm + webhook TLS certs |
+| 4 | `4-flink-operator.yaml` | Flink Kubernetes Operator via Helm |
+| 5 | `5-cmf.yaml` | Confluent Manager for Apache Flink via Helm (local chart) |
+| 6 | `6-flink-crs.yaml` | Flink CRs via `oc apply` (CMFRestClass, FlinkEnvironment, session cluster) |
 
 ## Prerequisites
 
-- Azure DevOps Kubernetes service connection configured for the target OpenShift cluster
-- OpenShift GitOps Operator installed (or standalone ArgoCD)
-- Helm repositories accessible (`argoproj.github.io`, `packages.confluent.io`, `charts.jetstack.io`)
-- ApplicationSet files in `gitops-config/openshift/<env>/` with correct cluster URLs
-- OpenShift prerequisites (SCCs + bindings) applied via `openshift-prereqs/`
+### Variable Group
+
+All pipelines use the `Openshift-ROSA-VAR-Groups` variable group. Create it in **Pipelines > Library**:
+
+| Variable | Secret | Description |
+|---|---|---|
+| `OPENSHIFT_SERVER` | No | OpenShift API URL (e.g. `https://api.cluster.example.com:6443`) |
+| `OPENSHIFT_TOKEN` | Yes | `oc login` token or service account token |
+| `CONFLUENT_LICENSE` | Yes | Confluent license JWT |
+
+### Cluster Requirements
+
+- OpenShift 4.x cluster with `cluster-admin` access
+- Helm chart repositories accessible (`charts.jetstack.io`, `packages.confluent.io`)
 
 ## Cross-References
 
 | Resource | Path |
 |---|---|
-| GitHub Actions workflows | [`.github/workflows/`](../.github/workflows/) |
-| ApplicationSet definitions | [`gitops-config/openshift/`](../gitops-config/openshift/) |
-| OpenShift prerequisites | [`openshift-prereqs/`](../openshift-prereqs/) |
 | Helm values and overlays | [`apps/`](../apps/) |
+| Local Helm charts | [`charts/`](../charts/) |
