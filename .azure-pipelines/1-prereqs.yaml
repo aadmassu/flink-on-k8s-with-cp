@@ -30,6 +30,8 @@ stages:
           vmImage: "ubuntu-latest"
         steps:
           - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
 
           - task: Bash@3
             displayName: "Install oc CLI"

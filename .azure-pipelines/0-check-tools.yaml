@@ -9,6 +9,10 @@ stages:
       - job: CheckTools
         pool: DevOps-LFCB
         steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
           - task: Bash@3
             displayName: "System info"
             inputs:
