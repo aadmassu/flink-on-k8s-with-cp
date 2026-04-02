@@ -92,7 +92,7 @@ stages:
               targetType: inline
               script: |
                 echo "=== oc ==="
-                which oc && oc version --client
+                which oc 2>/dev/null && oc version --client || echo "oc NOT found"
 
           - task: Bash@3
             displayName: "Check helm CLI"
@@ -100,7 +100,7 @@ stages:
               targetType: inline
               script: |
                 echo "=== helm ==="
-                which helm && helm version
+                which helm 2>/dev/null && helm version || echo "helm NOT found"
 
           - task: Bash@3
             displayName: "Check kubectl CLI"
@@ -108,7 +108,7 @@ stages:
               targetType: inline
               script: |
                 echo "=== kubectl ==="
-                which kubectl && kubectl version --client
+                which kubectl 2>/dev/null && kubectl version --client || echo "kubectl NOT found"
 
           - task: Bash@3
             displayName: "Check other tools"
