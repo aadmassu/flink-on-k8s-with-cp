@@ -57,7 +57,7 @@ stages:
                 mkdir -p "$TOOL_DIR"
 
                 echo "Downloading https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz/oc"
-                curl -L -o "$TOOL_DIR/oc" "https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz/oc"
+                curl -sSLk -o "$TOOL_DIR/oc" "https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz/oc"
                 
                 chmod +x "$TOOL_DIR/oc"
 
