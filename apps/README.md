@@ -1,28 +1,25 @@
-# Apps — Application Source Definitions
+# Apps — Helm Values & Kubernetes Manifests
 
-This directory contains all Helm values, Kustomize overlays, and raw Kubernetes manifests consumed by the ArgoCD ApplicationSets in [`gitops-config/`](../gitops-config/).
+This directory contains all Helm values and Kubernetes manifests for deploying Confluent Platform and Flink on OpenShift, deployed via Azure DevOps pipelines in [`.azure-pipelines/`](../.azure-pipelines/).
 
 ---
 
 ## Directory Overview
 
-| Directory | Type | Phase | Description |
-|-----------|------|-------|-------------|
-| [`argocd/`](argocd/) | Helm values | Bootstrap | ArgoCD Helm values and self-management Application manifests |
-| [`cert-manager/`](cert-manager/) | Helm values | Phase-I | cert-manager Helm values with OpenShift overlay |
-| [`confluent-operator/`](confluent-operator/) | Helm values | Phase-I | CFK (Confluent for Kubernetes) operator Helm values with OpenShift overlay |
-| [`confluent-flink-operator/`](confluent-flink-operator/) | Helm values | Phase-I | Flink Kubernetes Operator Helm values with OpenShift overlay |
-| [`confluent-cmf/`](confluent-cmf/) | Helm values | Phase-II | Confluent Manager for Apache Flink (CMF) Helm values with OpenShift overlay |
-| [`confluent-platform/`](confluent-platform/) | Kustomize | Phase-II | Confluent Platform CRDs (KRaft, Kafka, SR, Connect, C3) via CFK |
-| [`confluent-flink/`](confluent-flink/) | Kustomize | Phase-II | Flink infrastructure CRs (CMFRestClass, FlinkEnvironment, session cluster, PVC) |
+| Directory | Type | Pipeline | Description |
+|-----------|------|----------|-------------|
+| [`cert-manager/`](cert-manager/) | Helm values | 2-cert-manager | cert-manager for operator webhook TLS |
+| [`confluent-operator/`](confluent-operator/) | Helm values | 3-cfk-operator | Confluent for Kubernetes (CFK) operator |
+| [`confluent-flink-operator/`](confluent-flink-operator/) | Helm values | 4-flink-operator | Confluent Flink Kubernetes Operator |
+| [`confluent-cmf/`](confluent-cmf/) | Helm values | 5-cmf | Confluent Manager for Apache Flink (CMF) |
+| [`confluent-flink/`](confluent-flink/) | Plain YAML | 6-flink-crs | Flink CRs (CMFRestClass, FlinkEnvironment, session cluster, PVC) |
+| [`confluent-platform/`](confluent-platform/) | Plain YAML | — | Confluent Platform CRs (KRaft, Kafka, SR, Connect, C3) |
 
 ---
 
-## Patterns
+## Structure
 
-### Helm-based apps (ArgoCD, cert-manager, operators, CMF)
-
-Each Helm-based app follows this structure:
+### Helm-based apps (cert-manager, operators, CMF)
 
 ```
 apps/<component>/
@@ -30,36 +27,40 @@ apps/<component>/
 ├── qa/values.yaml
 ├── stg/values.yaml
 ├── prd/values.yaml
-└── openshift-overlay.yaml     # Platform-specific overrides (null security contexts for SCC)
+└── openshift-overlay.yaml     # Nullifies security contexts for OpenShift SCC
 ```
 
-ArgoCD ApplicationSets use **multi-source Helm** — one source for the chart, one Git ref for `valueFiles`. The OpenShift overlay is layered on top of the per-environment values to nullify `podSecurityContext` fields, allowing OpenShift SCCs to assign UIDs.
+Pipelines install with both value files layered:
 
-### Kustomize-based apps (Confluent Platform, Flink CRs)
+```bash
+helm upgrade --install <release> <chart> \
+  -f apps/<component>/<env>/values.yaml \
+  -f apps/<component>/openshift-overlay.yaml
+```
 
-Each Kustomize-based app follows this structure:
+### Plain YAML apps (Confluent Platform, Flink CRs)
 
 ```
 apps/<component>/
-├── base/                 # Base manifests (namespace-agnostic)
-│   ├── kustomization.yaml
-│   └── *.yaml
-├── dev/kustomization.yaml    # Overlay — sets namespace, patches endpoints
-├── qa/kustomization.yaml
-├── stg/kustomization.yaml
-└── prd/kustomization.yaml
+├── dev/*.yaml     # Flat manifests with namespace baked in
+├── qa/*.yaml
+├── stg/*.yaml
+└── prd/*.yaml
 ```
 
-ArgoCD ApplicationSets use **Git directory** source, pointing at the per-environment overlay directory. ArgoCD auto-detects Kustomize and runs `kustomize build`.
+Pipelines apply directly:
+
+```bash
+oc apply -f apps/<component>/<env>/
+```
 
 ---
 
-## Cross-References
+## Environments
 
-| Resource | Path |
-|----------|------|
-| ArgoCD ApplicationSets | [`gitops-config/`](../gitops-config/) |
-| OpenShift prerequisites (SCCs) | [`openshift-prereqs/`](../openshift-prereqs/) |
-| Deploy script | [`scripts/deploy-openshift-dev.sh`](../scripts/deploy-openshift-dev.sh) |
-| Phase-I guide | [`PHASE-I.md`](../docs/PHASE-I.md) |
-| Phase-II guide | [`PHASE-II.md`](../docs/PHASE-II.md) |
+| Environment | Namespace |
+|---|---|
+| dev | `dah-kafka-dev` |
+| qa | `dah-kafka-qa` |
+| stg | `dah-kafka-stg` |
+| prd | `dah-kafka-prd` |
