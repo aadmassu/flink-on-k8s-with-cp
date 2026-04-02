@@ -58,10 +58,15 @@ stages:
                 TOOL_DIR="$(Pipeline.Workspace)/tools"
                 mkdir -p "$TOOL_DIR"
 
-                echo "Downloading oc..."
-                curl -sSLk -o /tmp/oc.tar.gz \
-                  "https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz"
-                tar xz -C "$TOOL_DIR" -f /tmp/oc.tar.gz oc
+                OC_URL="https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz"
+                echo "Downloading oc from: $OC_URL"
+                curl -vSLk -o /tmp/oc.tar.gz "$OC_URL" 2>&1 | tail -20
+                echo ""
+                echo "File type: $(file /tmp/oc.tar.gz)"
+                echo "File size: $(wc -c < /tmp/oc.tar.gz) bytes"
+                echo "First bytes: $(xxd /tmp/oc.tar.gz | head -3)"
+                echo ""
+                tar xzf /tmp/oc.tar.gz -C "$TOOL_DIR" oc
                 chmod +x "$TOOL_DIR/oc"
                 rm -f /tmp/oc.tar.gz
 
