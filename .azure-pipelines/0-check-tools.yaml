@@ -1,4 +1,4 @@
-# 0. Check server capabilities — verify oc and helm are available
+# 0. Check server capabilities — download and verify oc, helm, kubectl
 
 trigger: none
 
@@ -12,6 +12,61 @@ stages:
           - checkout: self
             env:
               GIT_SSL_NO_VERIFY: "true"
+
+          - task: Bash@3
+            displayName: "Download kubectl"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                TOOL_DIR="$(Pipeline.Workspace)/tools"
+                mkdir -p "$TOOL_DIR"
+
+                echo "Downloading kubectl..."
+                curl -sSLk -o "$TOOL_DIR/kubectl" \
+                  "https://artifactory.fcbint.net/artifactory/kubectl-remote/v1.31.0/bin/linux/amd64/kubectl"
+                chmod +x "$TOOL_DIR/kubectl"
+
+                echo "##vso[task.prependpath]$TOOL_DIR"
+                "$TOOL_DIR/kubectl" version --client
+
+          - task: Bash@3
+            displayName: "Download helm"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                TOOL_DIR="$(Pipeline.Workspace)/tools"
+                mkdir -p "$TOOL_DIR"
+
+                echo "Downloading helm..."
+                curl -sSLk -o /tmp/helm.tar.gz \
+                  "https://artifactory.fcbint.net/artifactory/helm-chart/helm-v3.18.3-linux-amd64.tar.gz"
+                tar xz -C "$TOOL_DIR" --strip-components=1 -f /tmp/helm.tar.gz linux-amd64/helm
+                chmod +x "$TOOL_DIR/helm"
+                rm -f /tmp/helm.tar.gz
+
+                echo "##vso[task.prependpath]$TOOL_DIR"
+                "$TOOL_DIR/helm" version
+
+          - task: Bash@3
+            displayName: "Download oc"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                TOOL_DIR="$(Pipeline.Workspace)/tools"
+                mkdir -p "$TOOL_DIR"
+
+                echo "Downloading oc..."
+                curl -sSLk -o /tmp/oc.tar.gz \
+                  "https://artifactory.fcbint.net/artifactory/openshift-tools/client/linux/openshift-client-linux.4.14.9.tar.gz"
+                tar xz -C "$TOOL_DIR" -f /tmp/oc.tar.gz oc
+                chmod +x "$TOOL_DIR/oc"
+                rm -f /tmp/oc.tar.gz
+
+                echo "##vso[task.prependpath]$TOOL_DIR"
+                "$TOOL_DIR/oc" version --client
 
           - task: Bash@3
             displayName: "System info"
@@ -37,7 +92,7 @@ stages:
               targetType: inline
               script: |
                 echo "=== oc ==="
-                which oc 2>/dev/null && oc version --client || echo "oc NOT found"
+                which oc && oc version --client
 
           - task: Bash@3
             displayName: "Check helm CLI"
@@ -45,7 +100,7 @@ stages:
               targetType: inline
               script: |
                 echo "=== helm ==="
-                which helm 2>/dev/null && helm version || echo "helm NOT found"
+                which helm && helm version
 
           - task: Bash@3
             displayName: "Check kubectl CLI"
@@ -53,7 +108,7 @@ stages:
               targetType: inline
               script: |
                 echo "=== kubectl ==="
-                which kubectl 2>/dev/null && kubectl version --client || echo "kubectl NOT found"
+                which kubectl && kubectl version --client
 
           - task: Bash@3
             displayName: "Check other tools"
