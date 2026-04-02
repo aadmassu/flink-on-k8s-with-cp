@@ -1,0 +1,72 @@
+# 0. Check server capabilities — verify oc and helm are available
+
+trigger: none
+
+stages:
+  - stage: CheckTools
+    displayName: "Check Server Tools"
+    jobs:
+      - job: CheckTools
+        pool: DevOps-LFCB
+        steps:
+          - task: Bash@3
+            displayName: "System info"
+            inputs:
+              targetType: inline
+              script: |
+                echo "=== OS ==="
+                uname -a
+                cat /etc/os-release 2>/dev/null || true
+
+                echo ""
+                echo "=== User ==="
+                whoami
+                id
+
+                echo ""
+                echo "=== PATH ==="
+                echo "$PATH"
+
+          - task: Bash@3
+            displayName: "Check oc CLI"
+            inputs:
+              targetType: inline
+              script: |
+                echo "=== oc ==="
+                which oc 2>/dev/null && oc version --client || echo "oc NOT found"
+
+          - task: Bash@3
+            displayName: "Check helm CLI"
+            inputs:
+              targetType: inline
+              script: |
+                echo "=== helm ==="
+                which helm 2>/dev/null && helm version || echo "helm NOT found"
+
+          - task: Bash@3
+            displayName: "Check kubectl CLI"
+            inputs:
+              targetType: inline
+              script: |
+                echo "=== kubectl ==="
+                which kubectl 2>/dev/null && kubectl version --client || echo "kubectl NOT found"
+
+          - task: Bash@3
+            displayName: "Check other tools"
+            inputs:
+              targetType: inline
+              script: |
+                echo "=== curl ==="
+                which curl 2>/dev/null && curl --version | head -1 || echo "curl NOT found"
+
+                echo ""
+                echo "=== git ==="
+                which git 2>/dev/null && git --version || echo "git NOT found"
+
+                echo ""
+                echo "=== docker ==="
+                which docker 2>/dev/null && docker --version || echo "docker NOT found"
+
+                echo ""
+                echo "=== podman ==="
+                which podman 2>/dev/null && podman --version || echo "podman NOT found"
