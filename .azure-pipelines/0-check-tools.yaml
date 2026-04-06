@@ -108,10 +108,10 @@ stages:
               targetType: inline
               script: |
                 set -euo pipefail
-                echo "Logging in to OpenShift at $(openshift-dev-api)..."
-                oc login "$(openshift-dev-api)" \
-                  --username="$(openshift-service-account-name)" \
-                  --password="$(openshift-service-account-pwd)" \
+                echo "Logging in to OpenShift at $OC_API..."
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
                   --insecure-skip-tls-verify
 
                 echo ""
@@ -119,8 +119,13 @@ stages:
                 oc whoami
 
                 echo ""
-                echo "=== Switching to namespace $(openshift-dev-namespace) ==="
-                oc project "$(openshift-dev-namespace)"
+                echo "=== Switching to namespace $OC_NS ==="
+                oc project "$OC_NS"
+            env:
+              OC_API: $(openshift-dev-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: $(openshift-dev-namespace)
 
           - task: Bash@3
             displayName: "List CRDs"
@@ -141,8 +146,10 @@ stages:
               targetType: inline
               script: |
                 set -euo pipefail
-                echo "=== Secrets in $(openshift-dev-namespace) ==="
-                oc get secrets -n "$(openshift-dev-namespace)"
+                echo "=== Secrets in $OC_NS ==="
+                oc get secrets -n "$OC_NS"
+            env:
+              OC_NS: $(openshift-dev-namespace)
 
           - task: Bash@3
             displayName: "List Pods"
@@ -150,5 +157,7 @@ stages:
               targetType: inline
               script: |
                 set -euo pipefail
-                echo "=== Pods in $(openshift-dev-namespace) ==="
-                oc get pods -n "$(openshift-dev-namespace)" -o wide
+                echo "=== Pods in $OC_NS ==="
+                oc get pods -n "$OC_NS" -o wide
+            env:
+              OC_NS: $(openshift-dev-namespace)
