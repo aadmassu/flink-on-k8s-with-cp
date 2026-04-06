@@ -7,6 +7,7 @@
 #   openshift-service-account-name  — service account username
 #   openshift-service-account-pwd   — service account password (secret)
 #   openshift-dev-namespace         — target namespace
+#   openshift-dev-api               — OpenShift API server URL
 
 trigger: none
 
@@ -16,10 +17,6 @@ parameters:
     type: string
     default: dev
     values: [dev, qa, stg, prd]
-  - name: openshiftServer
-    displayName: "OpenShift API Server URL"
-    type: string
-
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: dev-openshift-credentials
@@ -111,8 +108,8 @@ stages:
               targetType: inline
               script: |
                 set -euo pipefail
-                echo "Logging in to OpenShift at ${{ parameters.openshiftServer }}..."
-                oc login "${{ parameters.openshiftServer }}" \
+                echo "Logging in to OpenShift at $(openshift-dev-api)..."
+                oc login "$(openshift-dev-api)" \
                   --username="$(openshift-service-account-name)" \
                   --password="$(openshift-service-account-pwd)" \
                   --insecure-skip-tls-verify
