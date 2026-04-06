@@ -1,9 +1,12 @@
-# 0. Check server capabilities — download and verify oc, helm, kubectl
+# Pipeline:  0-check-tools
+# Purpose:   Verify CLI tools, OpenShift connectivity, and service account RBAC
+# Author:    Ayele Admassu
+# Created:   2026-04-06
 #
-# Required pipeline variables (via <env>-openshift-credentials variable group):
-#   openshift-service-account-name — service account username
-#   openshift-service-account-pwd  — service account password (mark as secret)
-#   openshift-dev-namespace        — target namespace
+# Variable Group: <env>-openshift-credentials
+#   openshift-service-account-name  — service account username
+#   openshift-service-account-pwd   — service account password (secret)
+#   openshift-dev-namespace         — target namespace
 
 trigger: none
 
