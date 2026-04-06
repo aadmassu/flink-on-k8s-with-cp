@@ -1,6 +1,29 @@
 # 0. Check server capabilities — download and verify oc, helm, kubectl
+#
+# Required pipeline variables (via dev-openshift-credentials):
+#   openshift-service-account-name — service account username
+#   openshift-service-account-pwd  — service account password (mark as secret)
 
 trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, stg, prd]
+  - name: openshiftServer
+    displayName: "OpenShift API Server URL"
+    type: string
+  - name: namespace
+    displayName: "Target Namespace"
+    type: string
+    default: "dah-kafka-dev"
+
+variables:
+  - group: dev-openshift-credentials
+  - name: NS
+    value: ${{ parameters.namespace }}
 
 stages:
   - stage: CheckTools
@@ -76,3 +99,54 @@ stages:
                 echo ""
                 echo "=== podman ==="
                 which podman 2>/dev/null && podman --version || echo "podman NOT found"
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Logging in to OpenShift at ${{ parameters.openshiftServer }}..."
+                oc login "${{ parameters.openshiftServer }}" \
+                  --username="$(openshift-service-account-name)" \
+                  --password="$(openshift-service-account-pwd)" \
+                  --insecure-skip-tls-verify
+
+                echo ""
+                echo "=== Logged-in user ==="
+                oc whoami
+
+                echo ""
+                echo "=== Switching to namespace $(NS) ==="
+                oc project "$(NS)"
+
+          - task: Bash@3
+            displayName: "List CRDs"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "=== Flink-related CRDs ==="
+                oc get crds | grep -i flink || echo "No Flink CRDs found"
+
+                echo ""
+                echo "=== Confluent-related CRDs ==="
+                oc get crds | grep -i confluent || echo "No Confluent CRDs found"
+
+          - task: Bash@3
+            displayName: "List Secrets"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "=== Secrets in $(NS) ==="
+                oc get secrets -n "$(NS)"
+
+          - task: Bash@3
+            displayName: "List Pods"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "=== Pods in $(NS) ==="
+                oc get pods -n "$(NS)" -o wide
