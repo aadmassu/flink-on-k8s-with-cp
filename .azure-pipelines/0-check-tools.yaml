@@ -1,6 +1,6 @@
 # 0. Check server capabilities — download and verify oc, helm, kubectl
 #
-# Required pipeline variables (via dev-openshift-credentials):
+# Required pipeline variables (via <env>-openshift-credentials variable group):
 #   openshift-service-account-name — service account username
 #   openshift-service-account-pwd  — service account password (mark as secret)
 #   openshift-dev-namespace        — target namespace
@@ -8,11 +8,24 @@
 trigger: none
 
 parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, stg, prd]
   - name: openshiftServer
     displayName: "OpenShift API Server URL"
     type: string
+
 variables:
-  - group: dev-openshift-credentials
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: dev-openshift-credentials
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: qa-openshift-credentials
+  - ${{ if eq(parameters.environment, 'stg') }}:
+    - group: stg-openshift-credentials
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: prd-openshift-credentials
 
 stages:
   - stage: CheckTools
