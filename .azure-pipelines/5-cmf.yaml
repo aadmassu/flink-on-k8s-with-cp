@@ -72,11 +72,25 @@ stages:
               script: |
                 set -euo pipefail
 
-                helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
+                echo "=== Git commit ==="
+                git rev-parse HEAD
+
+                echo ""
+                echo "=== Rendered RBAC kinds ==="
+                helm template confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
-                  --set namespaced=true \
                   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
                   -f apps/confluent-cmf/openshift-overlay.yaml \
+                  --set namespaced=true \
+                  | grep "kind:" || true
+
+                echo ""
+                echo "=== Installing CMF ==="
+                helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
+                  --namespace "$OC_NS" \
+                  -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
+                  -f apps/confluent-cmf/openshift-overlay.yaml \
+                  --set namespaced=true \
                   --wait --timeout 10m
 
                 echo ""
