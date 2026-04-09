@@ -11,7 +11,22 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/52dbe29b-505a-4172-852f-3118a59a16cf.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/d4cb102a-9068-44fd-bbea-565cdc45f5bc.sh
+=== Git commit ===
+2c3a4c6dd7c9a0163b9d09582ffc437cc425f7ed
+
+=== Rendered RBAC kinds ===
+kind: ServiceAccount
+kind: ConfigMap
+kind: PersistentVolumeClaim
+kind: ClusterRole
+kind: ClusterRoleBinding
+- kind: ServiceAccount
+  kind: ClusterRole
+kind: Service
+kind: Deployment
+
+=== Installing CMF ===
 Release "confluent-cmf" does not exist. Installing it now.
 Error: Unable to continue with install: could not get information about the resource ClusterRoleBinding "confluent-manager-for-apache-flink" in namespace "": clusterrolebindings.rbac.authorization.k8s.io "confluent-manager-for-apache-flink" is forbidden: User "dv_db_dah_azdo-svc" cannot get resource "clusterrolebindings" in API group "rbac.authorization.k8s.io" at the cluster scope
 ##[error]Bash exited with code '1'.
