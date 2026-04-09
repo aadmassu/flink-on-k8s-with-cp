@@ -1,6 +1,7 @@
 Install CMF
 
 View raw log
+
 Starting: Install CMF
 ==============================================================================
 Task         : Bash
@@ -9,25 +10,42 @@ Version      : 3.231.4
 Author       : Microsoft Corporation
 Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
 ==============================================================================
+/opt/azure_pipelines/externals/node20_1/bin/node -v
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libm.so.6: version `GLIBC_2.27' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.20' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `CXXABI_1.3.9' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.21' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libc.so.6: version `GLIBC_2.28' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libc.so.6: version `GLIBC_2.25' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/d4cb102a-9068-44fd-bbea-565cdc45f5bc.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/7212047f-c642-45ff-83a8-75c2be52087b.sh
 === Git commit ===
-2c3a4c6dd7c9a0163b9d09582ffc437cc425f7ed
+71837f33b211c553c185baefcaa9fe9884bdc645
 
 === Rendered RBAC kinds ===
 kind: ServiceAccount
 kind: ConfigMap
 kind: PersistentVolumeClaim
-kind: ClusterRole
-kind: ClusterRoleBinding
+kind: Role
+kind: RoleBinding
 - kind: ServiceAccount
-  kind: ClusterRole
+  kind: Role
 kind: Service
 kind: Deployment
 
 === Installing CMF ===
 Release "confluent-cmf" does not exist. Installing it now.
-Error: Unable to continue with install: could not get information about the resource ClusterRoleBinding "confluent-manager-for-apache-flink" in namespace "": clusterrolebindings.rbac.authorization.k8s.io "confluent-manager-for-apache-flink" is forbidden: User "dv_db_dah_azdo-svc" cannot get resource "clusterrolebindings" in API group "rbac.authorization.k8s.io" at the cluster scope
+I0409 15:35:04.423380   21603 warnings.go:110] "Warning: [required-configmap-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata"
+I0409 15:35:04.443524   21603 warnings.go:110] "Warning: [required-network-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata"
+Error: 5 errors occurred:
+	* serviceaccounts is forbidden: User "dv_db_dah_azdo-svc" cannot create resource "serviceaccounts" in API group "" in the namespace "dah-flink-dev"
+	* admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] pvc did not specify an allowed and valid storage class name <default>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+	* roles.rbac.authorization.k8s.io is forbidden: User "dv_db_dah_azdo-svc" cannot create resource "roles" in API group "rbac.authorization.k8s.io" in the namespace "dah-flink-dev"
+	* rolebindings.rbac.authorization.k8s.io is forbidden: User "dv_db_dah_azdo-svc" cannot create resource "rolebindings" in API group "rbac.authorization.k8s.io" in the namespace "dah-flink-dev"
+	* admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+
+
 ##[error]Bash exited with code '1'.
 Finishing: Install CMF
