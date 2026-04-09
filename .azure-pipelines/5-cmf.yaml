@@ -74,7 +74,7 @@ stages:
 
                 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
-                  -f apps/confluent-cmf/$(ENV)/values.yaml \
+                  -f apps/confluent-cmf/$ENV/values.yaml \
                   -f apps/confluent-cmf/openshift-overlay.yaml \
                   --wait --timeout 10m
 
