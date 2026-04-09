@@ -1,3 +1,6 @@
+Install CMF
+
+View raw log
 Starting: Install CMF
 ==============================================================================
 Task         : Bash
@@ -8,9 +11,8 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/5e3cfda9-5a2d-4022-8d7b-e077531bc802.sh
-/opt/azure_pipelines/_work/_temp/5e3cfda9-5a2d-4022-8d7b-e077531bc802.sh: line 3: ENV: command not found
+/bin//bash /opt/azure_pipelines/_work/_temp/c2d8398f-f9f5-454c-a5b4-3a184d860c42.sh
 Release "confluent-cmf" does not exist. Installing it now.
-Error: open apps/confluent-cmf//values.yaml: no such file or directory
+Error: Unable to continue with install: could not get information about the resource ClusterRoleBinding "confluent-manager-for-apache-flink" in namespace "": clusterrolebindings.rbac.authorization.k8s.io "confluent-manager-for-apache-flink" is forbidden: User "dv_db_dah_azdo-svc" cannot get resource "clusterrolebindings" in API group "rbac.authorization.k8s.io" at the cluster scope
 ##[error]Bash exited with code '1'.
 Finishing: Install CMF
