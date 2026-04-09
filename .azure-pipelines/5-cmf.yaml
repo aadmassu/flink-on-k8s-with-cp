@@ -74,7 +74,8 @@ stages:
 
                 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
-                  -f apps/confluent-cmf/$ENV/values.yaml \
+                  --set namespaced=true \
+                  -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
                   -f apps/confluent-cmf/openshift-overlay.yaml \
                   --wait --timeout 10m
 
@@ -83,4 +84,4 @@ stages:
                 oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
             env:
               OC_NS: dah-flink-${{ parameters.environment }}
-              ENV: ${{ parameters.environment }}
+              TARGET_ENV: ${{ parameters.environment }}
