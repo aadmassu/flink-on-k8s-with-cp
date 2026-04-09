@@ -1,8 +1,13 @@
-# 5. CMF — Confluent Manager for Apache Flink
+# Pipeline:  5-cmf
+# Purpose:   Install Confluent Manager for Apache Flink (CMF) via Helm
+# Author:    Ayele Admassu
+# Created:   2026-04-09
 #
-# Required pipeline variables (via Openshift-ROSA-VAR-Groups):
-#   OPENSHIFT_SERVER  — OpenShift API URL
-#   OPENSHIFT_TOKEN   — oc login token (mark as secret)
+# Variable Group: <env>-openshift-credentials
+#   openshift-service-account-name  — service account username
+#   openshift-service-account-pwd   — service account password (secret)
+#   openshift-dev-namespace         — target namespace
+#   openshift-dev-api               — OpenShift API server URL
 
 trigger: none
 
@@ -12,21 +17,22 @@ parameters:
     type: string
     default: dev
     values: [dev, qa, stg, prd]
-
 variables:
-  - group: Openshift-ROSA-VAR-Groups
-  - name: ENV
-    value: ${{ parameters.environment }}
-  - name: NS
-    value: "dah-kafka-${{ parameters.environment }}"
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: dev-openshift-credentials
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: qa-openshift-credentials
+  - ${{ if eq(parameters.environment, 'stg') }}:
+    - group: stg-openshift-credentials
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: prd-openshift-credentials
 
 stages:
   - stage: CMF
     displayName: "CMF (${{ parameters.environment }})"
     jobs:
       - job: CMF
-        pool:
-          vmImage: "ubuntu-latest"
+        pool: DevOpsLinux
         steps:
           - checkout: self
             env:
@@ -35,21 +41,46 @@ stages:
           - template: templates/install-tools.yaml
 
           - task: Bash@3
-            displayName: "Login + Install CMF"
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Logging in to OpenShift at $OC_API..."
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+
+                echo ""
+                echo "=== Logged-in user ==="
+                oc whoami
+
+                echo ""
+                echo "=== Switching to namespace $OC_NS ==="
+                oc project "$OC_NS"
+            env:
+              OC_API: $(openshift-dev-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: $(openshift-dev-namespace)
+
+          - task: Bash@3
+            displayName: "Install CMF"
             inputs:
               targetType: inline
               script: |
                 set -euo pipefail
 
-                oc login "$(OPENSHIFT_SERVER)" --token="$(OPENSHIFT_TOKEN)" --insecure-skip-tls-verify
-                oc whoami
-
                 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
-                  --namespace $(NS) \
+                  --namespace "$OC_NS" \
                   -f apps/confluent-cmf/$(ENV)/values.yaml \
                   -f apps/confluent-cmf/openshift-overlay.yaml \
                   --wait --timeout 10m
 
                 echo ""
-                helm status confluent-cmf -n $(NS)
-                oc get pods -n $(NS) -l app.kubernetes.io/name=confluent-manager-for-apache-flink
+                helm status confluent-cmf -n "$OC_NS"
+                oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
+            env:
+              OC_NS: $(openshift-dev-namespace)
+              ENV: ${{ parameters.environment }}
