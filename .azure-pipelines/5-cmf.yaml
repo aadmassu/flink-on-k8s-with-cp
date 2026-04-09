@@ -32,15 +32,7 @@ stages:
             env:
               GIT_SSL_NO_VERIFY: "true"
 
-          - task: Bash@3
-            displayName: "Install oc + helm CLI"
-            inputs:
-              targetType: inline
-              script: |
-                curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
-                  | tar xz -C /usr/local/bin oc kubectl
-                curl -sL https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz \
-                  | tar xz --strip-components=1 -C /usr/local/bin linux-amd64/helm
+          - template: templates/install-tools.yaml
 
           - task: Bash@3
             displayName: "Login + Install CMF"
