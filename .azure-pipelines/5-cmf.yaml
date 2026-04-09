@@ -76,13 +76,13 @@ stages:
                 git rev-parse HEAD
 
                 echo ""
-                echo "=== Rendered RBAC kinds ==="
+                echo "=== Resources CMF will create ==="
                 helm template confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
                   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
                   -f apps/confluent-cmf/openshift-overlay.yaml \
                   --set namespaced=true \
-                  | grep "kind:" || true
+                  | grep -E "^kind:|^  name:|^  namespace:" || true
 
                 echo ""
                 echo "=== Installing CMF ==="
