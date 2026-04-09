@@ -9,16 +9,9 @@ Version      : 3.231.4
 Author       : Microsoft Corporation
 Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
 ==============================================================================
-/opt/azure_pipelines/externals/node20_1/bin/node -v
-/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libm.so.6: version `GLIBC_2.27' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
-/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.20' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
-/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `CXXABI_1.3.9' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
-/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.21' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
-/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libc.so.6: version `GLIBC_2.28' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
-/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libc.so.6: version `GLIBC_2.25' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/3d682e4d-a40a-4b1f-b776-7cbcf3b58671.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/52dbe29b-505a-4172-852f-3118a59a16cf.sh
 Release "confluent-cmf" does not exist. Installing it now.
 Error: Unable to continue with install: could not get information about the resource ClusterRoleBinding "confluent-manager-for-apache-flink" in namespace "": clusterrolebindings.rbac.authorization.k8s.io "confluent-manager-for-apache-flink" is forbidden: User "dv_db_dah_azdo-svc" cannot get resource "clusterrolebindings" in API group "rbac.authorization.k8s.io" at the cluster scope
 ##[error]Bash exited with code '1'.
