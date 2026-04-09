@@ -15,6 +15,14 @@ cmf:
 
 namespaced: true
 
+rbac: false
+serviceAccount:
+  create: false
+  name: dv_db_dah_azdo-svc
+
+persistence:
+  storageClassName: ocs-storagecluster-ceph-rbd
+
 resources:
   requests:
     cpu: 100m
