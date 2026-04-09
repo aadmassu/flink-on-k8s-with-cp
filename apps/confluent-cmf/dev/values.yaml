@@ -15,10 +15,9 @@ cmf:
 
 namespaced: true
 
-rbac: false
+rbac: true
 serviceAccount:
-  create: false
-  name: confluent-manager-for-apache-flink
+  create: true
 
 persistence:
   storageClassName: ocs-storagecluster-ceph-rbd
