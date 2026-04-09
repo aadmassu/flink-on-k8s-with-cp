@@ -1,7 +1,4 @@
-Login to OpenShift
-
-View raw log
-Starting: Login to OpenShift
+Starting: Install CMF
 ==============================================================================
 Task         : Bash
 Description  : Run a Bash script on macOS, Linux, or Windows
@@ -11,8 +8,9 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/8700e0fc-3c8c-4ddf-9285-90b26df5e297.sh
-Logging in to OpenShift at $(openshift-dev-api)...
-error: dial tcp: lookup $(openshift-dev-api): no such host - verify you have provided the correct host and port and that the server is currently running.
+/bin//bash /opt/azure_pipelines/_work/_temp/5e3cfda9-5a2d-4022-8d7b-e077531bc802.sh
+/opt/azure_pipelines/_work/_temp/5e3cfda9-5a2d-4022-8d7b-e077531bc802.sh: line 3: ENV: command not found
+Release "confluent-cmf" does not exist. Installing it now.
+Error: open apps/confluent-cmf//values.yaml: no such file or directory
 ##[error]Bash exited with code '1'.
-Finishing: Login to OpenShift
+Finishing: Install CMF
