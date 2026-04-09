@@ -202,6 +202,9 @@ cmf:
 # create required resources out of band to be used by the Operator. In this case, follow the
 # templates/clusterrole.yaml and templates/clusterrolebiding.yaml to create proper required resources.
 rbac: true
+# When set to true, creates namespace-scoped Role/RoleBinding instead of ClusterRole/ClusterRoleBinding.
+# Use this when the service account lacks cluster-wide permissions.
+namespaced: false
 ## Creates a default service account for the CMF pod if service.account.create is set to true.
 # In order to use a custom service account, set the name field to the desired service account name and set create to false.
 # Also note that the new service account must have the necessary permissions to run the CMF pod, i.e cluster wide permissions.

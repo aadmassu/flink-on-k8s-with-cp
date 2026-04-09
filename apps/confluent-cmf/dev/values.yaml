@@ -13,6 +13,8 @@ cmf:
   database:
     type: local
 
+namespaced: true
+
 resources:
   requests:
     cpu: 100m

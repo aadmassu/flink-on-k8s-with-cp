@@ -63,7 +63,7 @@ stages:
               OC_API: $(openshift-dev-api)
               OC_USER: $(openshift-service-account-name)
               OC_PWD: $(openshift-service-account-pwd)
-              OC_NS: $(openshift-dev-namespace)
+              OC_NS: dah-flink-${{ parameters.environment }}
 
           - task: Bash@3
             displayName: "Install CMF"
@@ -82,5 +82,5 @@ stages:
                 helm status confluent-cmf -n "$OC_NS"
                 oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
             env:
-              OC_NS: $(openshift-dev-namespace)
+              OC_NS: dah-flink-${{ parameters.environment }}
               ENV: ${{ parameters.environment }}
