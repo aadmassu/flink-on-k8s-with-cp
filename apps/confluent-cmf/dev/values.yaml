@@ -13,6 +13,13 @@ cmf:
   database:
     type: local
 
+image:
+  repository: artifactory.fcbint.net/docker-remote/confluentinc
+  name: cp-cmf
+  tag: 2.2.0
+
+imagePullSecretRef: artifactory-pull-secret
+
 additionalLabels:
   fcbint.net/app-id: "11547"
 
