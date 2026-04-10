@@ -15,9 +15,10 @@ cmf:
 
 namespaced: true
 
-rbac: true
+rbac: false
 serviceAccount:
-  create: true
+  create: false
+  name: flink
 
 persistence:
   storageClassName: ocs-storagecluster-ceph-rbd
