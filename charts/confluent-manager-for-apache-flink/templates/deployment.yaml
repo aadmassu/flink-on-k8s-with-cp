@@ -22,7 +22,7 @@ spec:
         {{- end }}
       labels:
         platform.confluent.io/origin: flink
-        {{- include "cmf.selectorLabels" . | nindent 8 }}
+        {{- include "cmf.labels" . | nindent 8 }}
     spec:
       {{- if .Values.serviceAccount.create }}
       serviceAccountName: {{ include "cmf.name" . }}
@@ -86,6 +86,11 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 16 }}
+          readinessProbe:
+            tcpSocket:
+              port: api-port
+            failureThreshold: 3
+            periodSeconds: 10
           livenessProbe:
             tcpSocket:
               port: api-port
