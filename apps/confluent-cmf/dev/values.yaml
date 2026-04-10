@@ -23,7 +23,7 @@ cmf:
 
 image:
   repository: artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc
-  name: confluent-manager-for-apache-flink
+  name: cp-cmf
   tag: 2.2.0
 
 additionalLabels:
