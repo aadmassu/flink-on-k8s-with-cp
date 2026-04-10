@@ -12,6 +12,14 @@ cmf:
   # Local SQLite database — will switch to SQL Server later
   database:
     type: local
+    # To use external SQL Server, replace the above with:
+    # type: jdbc
+    # jdbc:
+    #   url: "jdbc:sqlserver://<host>:<port>;databaseName=<db>"
+    #   username: <user>
+    #   password:
+    #     kubernetesSecretName: cmf-db-credentials
+    #     kubernetesSecretProperty: password
 
 image:
   repository: artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc
