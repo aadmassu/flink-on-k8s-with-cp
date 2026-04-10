@@ -13,6 +13,9 @@ cmf:
   database:
     type: local
 
+additionalLabels:
+  fcbint.net/app-id: "11547"
+
 namespaced: true
 
 rbac: false
