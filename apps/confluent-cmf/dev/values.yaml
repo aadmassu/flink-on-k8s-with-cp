@@ -22,7 +22,7 @@ cmf:
     #     kubernetesSecretProperty: password
 
 image:
-  repository: artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc
+  repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc
   name: cp-cmf
   tag: 2.2.0
 
