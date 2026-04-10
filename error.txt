@@ -1,73 +1,3 @@
-OpenShift Resource Common Metadata
-Summary
-In OpenShift, labels and annotations provide a means for attaching metadata to Kubernetes objects. While they are similar in that they are key/value pairs,
-their uses differ. The following provides a description of labels and annotations, as well as the required labels and annotations for given Kubernetes objects
-/resources.
-Reference Documentation
-Monitoring OpenShift | Pod annotations
-OpenShift HAProxy Ingress Annotations - Cloud Services - FCB Confluence Prod
-Descriptions
-Labels and Selectors
-Labels are key/value pairs that are attached to objects such as Pods. They enable users to map their own organizational structures onto system
-objects in a loosely coupled fashion, without requiring clients to store these mappings. Labels can be used to organize and to select subsets of
-objects. Labels can be attached to objects at creation time and subsequently added and modified at any time. Each Key must be unique for a
-given object.
-Unlike names and UIDs, labels do not provide uniqueness. In general, we expect many objects to carry the same label(s). Via a label selector, the
-client/user can identify a set of objects. The label selector is the core grouping primitive in Kubernetes
-Annotations
-Annotations are means of attaching arbitrary non-identifying metadata to Kubernetes objects, where client tools and libraries can retrieve this
-metadata. In contrast to labels, annotations are not used to identify and select objects. The metadata in an annotation can be small or large,
-structured or unstructured, and can include characters not permitted by labels. It is possible to use labels as well as annotations in the metadata
-of the same object.
-Label Guidelines
-Namespaces
-The following labels are required on all namespaces created on the OpenShift platform.
-kubernetes.io/metadata.name: <team input>-<environment>-<zone>
-fcbint.net/network: <network-zone>
-fcbint.net/app-tier: <correlate to CMDB Application>
-fcbint.net/app-id: <CMDB Application ID>
-All Other Objects/Resources
-The following labels are required on all other objects and resources created on the OpenShift platform. This includes ingress, services, all
-workload types, configmaps and secrets.
-app.kubernetes.io/name:
-app.kubernetes.io/instance:
-app.kubernetes.io/component:
-fcbint.net/app-id: <CMDB Application ID>
-Recommended
-The following labels are recommended on all objects and resources created on the OpenShift platform.
-app.kubernetes.io/version: <semantic version>
-Annotation Guidelines
-Namespaces
-The following annotations are required on all namespaces created on the OpenShift platform.
-fcbint.net/contact: <email distribution list>
-fcbint.net/ritm: <RITM000000>
-collectord.io/index: <splunk index for log forwarding>
-openshift.io/requester: <requestor name>
-Ingress
-The following annotations are recommended, as applicable, on Ingress resources created on the OpenShift platform.
-See: OpenShift HAProxy Ingress Annotations - Cloud Services - FCB Confluence Prod
-Certificates
-The following annotations are required on all Keyfactor-issued certificate objects created on the OpenShift platform. This is in compliance with
-the Keyfactor Certificate CMDB Tracking (Link: TODO).
-metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: (team email address)
-metadata.command-issuer.keyfactor.com/Environment:
-Non-Prod-DEV
-Non-Prod-QA
-Non-Prod-UAT
-Prod-Corp
-metadata.command-issuer.keyfactor.com/Description: (Free form - describe your service)
-metadata.command-issuer.keyfactor.com/Organization: FCB
-metadata.command-issuer.keyfactor.com/Application-ID: <CMDB Application ID>
-metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
-Workloads
-The following annotations are recommended, as applicable, on workload resources (Deployments, Statefulsets, Jobs, CronJobs, etc).
-See the following for log control overrides: Monitoring OpenShift | Pod annotations
-
-
-
-Install CMF
-
-View raw log
 Starting: Install CMF
 ==============================================================================
 Task         : Bash
@@ -78,9 +8,9 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/c54c5a74-e513-49fc-a40f-00262bb9c82b.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/2d14ecbc-840e-4bfa-a4e0-36fba837d5c3.sh
 === Git commit ===
-b0583f49f92a3ee4c5bc62bc2a2e7c6b14449900
+8f2c3cc8b5e032d156d2ed94e0c6cb64426b8f79
 
 === Resources CMF will create ===
 kind: ConfigMap
@@ -97,6 +27,6 @@ kind: Deployment
   namespace: dah-flink-dev
 
 === Installing CMF ===
-Error: UPGRADE FAILED: failed to create resource: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+Error: UPGRADE FAILED: context deadline exceeded
 ##[error]Bash exited with code '1'.
 Finishing: Install CMF
