@@ -1,16 +1,40 @@
-Pconfluent-manager-for-apache-flink-5fb4ccdb5b-wjlg5
+Pconfluent-manager-for-apache-flink-57556f6d67-np72t
 NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:15 PM
+Apr 10, 2026, 2:50 PM
 Generated from kubelet on dp12055oxc-wpxl-srrn8
-8 times in the last 1 minute
-MountVolume.MountDevice failed for volume "pvc-d16221a7-89a9-4c90-94ab-3c2dc0792c7b" : kubernetes.io/csi: attacher.MountDevice failed to create newCsiDriverClient: driver name openshift-storage.rbd.csi.ceph.com not found in the list of registered CSI drivers
-PodPconfluent-manager-for-apache-flink-5fb4ccdb5b-wjlg5
+5 times in the last 1 minute
+Back-off pulling image "artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.2.0"
+PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
 NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:14 PM
-Generated from attachdetach-controller
-AttachVolume.Attach succeeded for volume "pvc-d16221a7-89a9-4c90-94ab-3c2dc0792c7b"
-PodPconfluent-manager-for-apache-flink-5fb4ccdb5b-wjlg5
+Apr 10, 2026, 2:50 PM
+Generated from kubelet on dp12055oxc-wpxl-srrn8
+5 times in the last 1 minute
+Error: ImagePullBackOff
+PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
 NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:14 PM
+Apr 10, 2026, 2:49 PM
+Generated from kubelet on dp12055oxc-wpxl-srrn8
+3 times in the last 1 minute
+Pulling image "artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.2.0"
+PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
+NamespaceNSdah-flink-dev
+Apr 10, 2026, 2:49 PM
+Generated from kubelet on dp12055oxc-wpxl-srrn8
+3 times in the last 1 minute
+Failed to pull image "artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.2.0": initializing source docker://artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.2.0: reading manifest 2.2.0 in artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf: manifest unknown: The named manifest is not known to the registry.
+PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
+NamespaceNSdah-flink-dev
+Apr 10, 2026, 2:49 PM
+Generated from kubelet on dp12055oxc-wpxl-srrn8
+3 times in the last 1 minute
+Error: ErrImagePull
+PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
+NamespaceNSdah-flink-dev
+Apr 10, 2026, 2:48 PM
+Generated from multus
+Add eth0 [10.40.12.12/24] from ovn-kubernetes
+PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
+NamespaceNSdah-flink-dev
+Apr 10, 2026, 2:48 PM
 Generated from default-scheduler
-Successfully assigned dah-flink-dev/confluent-manager-for-apache-flink-5fb4ccdb5b-wjlg5 to dp12055oxc-wpxl-srrn8
+Successfully assigned dah-flink-dev/confluent-manager-for-apache-flink-57556f6d67-np72t to dp12055oxc-wpxl-srrn8
