@@ -14,8 +14,8 @@ cmf:
     type: local
 
 image:
-  repository: artifactory.fcbint.net/docker-remote/confluentinc
-  name: cp-cmf
+  repository: artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc
+  name: confluent-manager-for-apache-flink
   tag: 2.2.0
 
 imagePullSecretRef: artifactory-pull-secret
