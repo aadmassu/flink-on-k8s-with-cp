@@ -1,40 +1,50 @@
-Pconfluent-manager-for-apache-flink-57556f6d67-np72t
-NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:50 PM
-Generated from kubelet on dp12055oxc-wpxl-srrn8
-5 times in the last 1 minute
-Back-off pulling image "artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.2.0"
-PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
-NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:50 PM
-Generated from kubelet on dp12055oxc-wpxl-srrn8
-5 times in the last 1 minute
-Error: ImagePullBackOff
-PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
-NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:49 PM
-Generated from kubelet on dp12055oxc-wpxl-srrn8
-3 times in the last 1 minute
-Pulling image "artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.2.0"
-PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
-NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:49 PM
-Generated from kubelet on dp12055oxc-wpxl-srrn8
-3 times in the last 1 minute
-Failed to pull image "artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.2.0": initializing source docker://artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.2.0: reading manifest 2.2.0 in artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf: manifest unknown: The named manifest is not known to the registry.
-PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
-NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:49 PM
-Generated from kubelet on dp12055oxc-wpxl-srrn8
-3 times in the last 1 minute
-Error: ErrImagePull
-PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
-NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:48 PM
-Generated from multus
-Add eth0 [10.40.12.12/24] from ovn-kubernetes
-PodPconfluent-manager-for-apache-flink-57556f6d67-np72t
-NamespaceNSdah-flink-dev
-Apr 10, 2026, 2:48 PM
-Generated from default-scheduler
-Successfully assigned dah-flink-dev/confluent-manager-for-apache-flink-57556f6d67-np72t to dp12055oxc-wpxl-srrn8
+[2026-04-13 16:31:20.227] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "4.1.0 - add statement table"
+[2026-04-13 16:31:20.230] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "5.1.0 - add computepool table"
+[2026-04-13 16:31:20.233] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "6.1.0 - add tables for secret"
+[2026-04-13 16:31:20.236] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "7.1.0 - add app events"
+[2026-04-13 16:31:20.238] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "8.1.0 - add app instances"
+[2026-04-13 16:31:20.240] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "9.1.0 - add catalog table"
+[2026-04-13 16:31:20.323] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "10.1.0 - add statement exception table"
+[2026-04-13 16:31:20.327] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "11.1.0 - add instance column to app.sqlite"
+[2026-04-13 16:31:20.332] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "12.1.0 - add sql default cols to env"
+[2026-04-13 16:31:20.335] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "13.1.0 - add secret key cols to env"
+[2026-04-13 16:31:20.338] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "14.1.0 - add system table"
+[2026-04-13 16:31:20.339] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "15.1.0 - add last checkpointed offset for result to statement"
+[2026-04-13 16:31:20.341] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "16.1.0 - add savepoint table"
+[2026-04-13 16:31:20.343] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "17.1.0 - add path details"
+[2026-04-13 16:31:20.426] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "18.1.0 - add detached savepoint table"
+[2026-04-13 16:31:20.429] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "19.1.0 - add database table"
+[2026-04-13 16:31:20.431] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "20.1.0 - add deployment scope to license"
+[2026-04-13 16:31:20.432] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "21.1.0 - migrate kafka clusters to databases"
+[2026-04-13 16:31:20.433] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Starting migration V21_1_0: Migrating Kafka clusters from catalogs to databases
+[2026-04-13 16:31:20.433] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Executing query: SELECT name, uid, creation_timestamp, spec, metadata_payload FROM catalog WHERE type = 'KAFKA'
+[2026-04-13 16:31:20.433] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Query returned 0 catalogs
+[2026-04-13 16:31:20.433] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Found 0 Kafka catalogs to process
+[2026-04-13 16:31:20.433] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Migration completed successfully. Created 0 KafkaDatabase records
+[2026-04-13 16:31:20.436] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "22.1.0 - change primary key for license"
+[2026-04-13 16:31:20.441] [main] INFO - o.f.c.i.c.DbMigrate - Successfully applied 22 migrations to schema "main", now at version v22.1.0 (execution time 00:00.087s)
+[2026-04-13 16:31:20.736] [main] INFO - i.c.c.c.d.DatabaseConfiguration - Setting Hibernate dialect to: org.hibernate.community.dialect.SQLiteDialect
+[2026-04-13 16:31:20.834] [main] INFO - o.h.j.i.u.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+[2026-04-13 16:31:21.029] [main] INFO - o.h.Version - HHH000412: Hibernate ORM core version 6.6.26.Final
+[2026-04-13 16:31:21.055] [main] INFO - o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+[2026-04-13 16:31:21.843] [main] INFO - o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+[2026-04-13 16:31:22.042] [main] INFO - o.h.o.c.pooling - HHH10001005: Database info:
+Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.DriverManagerDataSource@50b38342']
+Database driver: undefined/unknown
+Database version: 3.45.2
+Autocommit mode: undefined/unknown
+Isolation level: undefined/unknown
+Minimum pool size: undefined/unknown
+Maximum pool size: undefined/unknown
+[2026-04-13 16:31:23.341] [main] INFO - o.h.v.i.u.Version - HV000001: Hibernate Validator 8.0.3.Final
+[2026-04-13 16:31:25.646] [main] INFO - o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+[2026-04-13 16:31:25.736] [main] INFO - o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+[2026-04-13 16:31:26.533] [main] INFO - o.s.d.j.r.q.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+[2026-04-13 16:31:29.735] [main] INFO - o.a.f.k.o.c.FlinkConfigManager - Setting default configuration to {parallelism.default=1, kubernetes.operator.dynamic.config.enabled=false, taskmanager.numberOfTaskSlots=1, kubernetes.operator.reconcile.interval=15 s, kubernetes.operator.metrics.reporter.slf4j.interval=5 MINUTE, kubernetes.operator.observer.progress-check.interval=5 s, kubernetes.operator.metrics.reporter.slf4j.factory.class=org.apache.flink.metrics.slf4j.Slf4jReporterFactory}
+[2026-04-13 16:31:36.143] [main] WARN - o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'applicationController' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/api/v1/controller/ApplicationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'metadataSync' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/CmfMetadataSync.class]: Unsatisfied dependency expressed through constructor parameter 6: Error creating bean with name 'deployer' defined in class path resource [io/confluent/cmf/di/CmfDefaultProductionConfig.class]: Failed to instantiate [io.confluent.cmf.kubernetes.deployment.ApplicationDeployer]: Factory method 'deployer' threw exception with message: Kubernetes is unreachable
+[2026-04-13 16:31:36.144] [main] INFO - o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+[2026-04-13 16:31:36.147] [main] INFO - o.a.c.c.StandardService - Stopping service [Tomcat]
+[2026-04-13 16:31:36.156] [main] INFO - o.s.b.a.l.ConditionEvaluationReportLogger -
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+[2026-04-13 16:31:36.157] [main] ERROR - i.c.c.ShutdownOnApplicationFailedEventListener - Fatal exception occurred, stopping application
+class org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'applicationController' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/api/v1/controller/ApplicationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'metadataSync' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/CmfMetadataSync.class]: Unsatisfied dependency expressed through constructor parameter 6: Error creating bean with name 'deployer' defined in class path resource [io/confluent/cmf/di/CmfDefaultProductionConfig.class]: Failed to instantiate [io.confluent.cmf.kubernetes.deployment.ApplicationDeployer]: Factory method 'deployer' threw exception with message: Kubernetes is unreachable
