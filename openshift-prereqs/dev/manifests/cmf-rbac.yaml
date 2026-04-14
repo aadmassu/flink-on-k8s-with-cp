@@ -7,31 +7,44 @@ metadata:
   name: flink
   namespace: dah-flink-dev
 ---
-# Namespace-scoped Role granting CMF the permissions it needs
+# Namespace-scoped Role granting CMF + Flink Operator + Flink Jobs the permissions they need
+# Covers: CMF (manage apps, environments, catalogs), Flink Operator (manage deployments),
+#         and Flink Jobs (pods, configmaps)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: flink
   namespace: dah-flink-dev
 rules:
-  - apiGroups: ["apps"]
-    resources: ["deployments", "deployments/finalizers"]
-    verbs: ["*"]
-  - apiGroups: ["flink.apache.org"]
-    resources: ["flinkdeployments", "flinkdeployments/status", "flinkstatesnapshots", "flinkstatesnapshots/status"]
-    verbs: ["*"]
+  # Core resources — CMF + Flink Operator + Flink Jobs
   - apiGroups: [""]
-    resources: ["services"]
-    verbs: ["get", "list", "watch"]
+    resources: ["pods", "services", "events", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
   - apiGroups: [""]
-    resources: ["configmaps", "pods"]
-    verbs: ["*"]
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["serviceaccounts", "secrets"]
+    resources: ["serviceaccounts"]
     verbs: ["create", "get", "list", "watch", "delete", "update"]
+  # Apps — Flink Operator manages deployments and replicasets
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/finalizers", "deployments/scale", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Flink CRDs — CMF + Flink Operator
+  - apiGroups: ["flink.apache.org"]
+    resources: ["flinkdeployments", "flinkdeployments/finalizers", "flinkdeployments/status",
+                "flinksessionjobs", "flinksessionjobs/finalizers", "flinksessionjobs/status",
+                "flinkstatesnapshots", "flinkstatesnapshots/finalizers", "flinkstatesnapshots/status"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Ingress — Flink Operator creates ingresses for Flink UI
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["extensions"]
+    resources: ["deployments", "ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Leader election — Flink Operator uses leases for HA
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # RBAC — CMF creates roles/rolebindings for Flink jobs
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["roles", "rolebindings"]
     verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
