@@ -1,47 +1,4 @@
-Database driver: undefined/unknown
-Database version: 3.45.2
-Autocommit mode: undefined/unknown
-Isolation level: undefined/unknown
-Minimum pool size: undefined/unknown
-Maximum pool size: undefined/unknown
-[2026-04-14 18:49:27.044] [main] INFO - o.h.v.i.u.Version - HV000001: Hibernate Validator 8.0.3.Final
-[2026-04-14 18:49:29.850] [main] INFO - o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-[2026-04-14 18:49:29.938] [main] INFO - o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
-[2026-04-14 18:49:30.826] [main] INFO - o.s.d.j.r.q.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
-[2026-04-14 18:49:34.237] [main] INFO - o.a.f.k.o.c.FlinkConfigManager - Setting default configuration to {parallelism.default=1, taskmanager.numberOfTaskSlots=1, kubernetes.operator.dynamic.config.enabled=false, kubernetes.operator.reconcile.interval=15 s, kubernetes.operator.metrics.reporter.slf4j.interval=5 MINUTE, kubernetes.operator.observer.progress-check.interval=5 s, kubernetes.operator.metrics.reporter.slf4j.factory.class=org.apache.flink.metrics.slf4j.Slf4jReporterFactory}
-[2026-04-14 18:49:36.540] [main] INFO - i.c.c.s.CmfMetadataSync - Starting metadata sync.
-[2026-04-14 18:49:36.542] [main] INFO - i.c.c.s.CmfMetadataSync - Syncing all applications on K8s, max rate (req/sec): 200, waitTimePerAppRestore: 5
-[2026-04-14 18:49:36.933] [main] INFO - i.c.c.s.CmfMetadataSync - Finished syncing all FlinkApplications, numSynced:0
-[2026-04-14 18:49:36.934] [main] INFO - i.c.c.s.CmfMetadataSync - Syncing all statements which have a corresponding FlinkDeployment on K8s, max rate (req/sec): 200, waitTimePerAppRestore: 5
-[2026-04-14 18:49:37.035] [main] INFO - i.c.c.s.CmfMetadataSync - Finished syncing all Statements, numSynced:0
-[2026-04-14 18:49:37.039] [main] INFO - i.c.c.s.CmfMetadataSync - Finished syncing all Savepoints, numSynced:0
-[2026-04-14 18:49:37.039] [main] INFO - i.c.c.s.CmfMetadataSync - Finished syncing metadata at 0
-[2026-04-14 18:49:37.841] [main] INFO - i.c.l.LicenseManager - Trial license for Confluent Enterprise expires in 30 days on 2026-05-14.
-[2026-04-14 18:49:37.842] [main] INFO - i.c.c.l.LicenseInitiator - License initialized with deployment scope: CP
-[2026-04-14 18:49:37.853] [main] INFO - i.c.c.l.CMFLicenseStore - CMF License Store started
-[2026-04-14 18:49:37.854] [main] INFO - i.c.c.s.ApplicationService - Application service initialized at 431897831040956
-[2026-04-14 18:49:38.627] [main] INFO - i.c.c.s.SelectStatementCache - Building SELECT statement timeout cache on startup...
-[2026-04-14 18:49:38.631] [main] INFO - i.c.c.s.SelectStatementCache - SELECT statement timeout cache built successfully. Added 0 SELECT statements to timeout cache.
-[2026-04-14 18:49:38.729] [main] INFO - i.c.c.s.StatementService - Statement service initialized at 431898706105307
-[2026-04-14 18:49:38.838] [main] INFO - i.c.c.c.k.KafkaConfiguration - OAuth bearer allowed URLs 'cmf.kafka.oauthbearerAllowedUrls' not configured, skipping system property setup
-[2026-04-14 18:49:38.840] [main] INFO - i.c.c.s.SecurityInterceptorConfig - Authorization is disabled.
-[2026-04-14 18:49:39.035] [main] INFO - i.c.c.s.SecretService - SecretService initialized at epoch: 1776192579035
-[2026-04-14 18:49:39.244] [main] INFO - i.c.c.s.SystemService - Initialized CMF database with the following system properties: sql.production.enabled=false, cmfDbInstanceId=ca6cbfbe-a492-482d-8b19-1ae3a98c604e
-[2026-04-14 18:49:41.124] [main] INFO - i.c.c.k.e.K8sFKOExceptionEventWatcher - Started watcher for Kubernetes events
-[2026-04-14 18:49:41.233] [main] INFO - i.c.c.s.DeploymentObserverInitializer - Initializing deployment observer
-[2026-04-14 18:49:41.233] [main] INFO - i.c.c.k.d.K8sFlinkDeploymentObserver - Starting watch for deployments on the K8s cluster
-[2026-04-14 18:49:41.234] [main] WARN - i.f.k.c.d.i.VersionUsageUtils - The client is using resource type 'flinkdeployments' with unstable version 'v1beta1'
-[2026-04-14 18:49:41.236] [main] INFO - i.c.c.s.SavepointObserverInitializer - Initializing savepoint observer
-[2026-04-14 18:49:41.236] [main] INFO - i.c.c.k.d.K8sSavepointObserver - Starting watch for savepoints on the K8s cluster
-[2026-04-14 18:49:41.238] [main] WARN - i.f.k.c.d.i.VersionUsageUtils - The client is using resource type 'flinkstatesnapshots' with unstable version 'v1beta1'
-[2026-04-14 18:49:41.331] [main] INFO - i.c.c.s.ScheduledSelectStatementTimeoutTask - Scheduled SELECT statement timeout task with 1 minute interval and 10 minute timeout
-[2026-04-14 18:49:41.333] [SimpleAsyncTaskScheduler-3] INFO - i.c.c.s.ScheduledStatementCleanupTask - Starting cleanup of statements.
-[2026-04-14 18:49:41.427] [SimpleAsyncTaskScheduler-3] INFO - i.c.c.s.ScheduledStatementCleanupTask - Cleanup completed. Total statements deleted: 0
-[2026-04-14 18:49:42.330] [main] INFO - i.c.c.s.SecurityInterceptorConfig - Authentication is disabled.
-[2026-04-14 18:49:42.824] [Thread-7] ERROR - i.f.k.c.i.i.c.Reflector - listSyncAndWatch failed for flink.apache.org/v1beta1/flinkstatesnapshots, will stop
-class java.util.concurrent.CompletionException: io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://10.245.0.1:443/apis/flink.apache.org/v1beta1/flinkstatesnapshots?resourceVersion=0. Message: flinkstatesnapshots.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" at the cluster scope. Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=flink.apache.org, kind=flinkstatesnapshots, name=null, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=flinkstatesnapshots.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" at the cluster scope, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalPrope...
+[2026-04-14 18:49:42.824] [Thread-7] ERROR - i.f.k.c.i.i.c.Reflector - listSyncAndWatch failed for flink.apache.org/v1beta1/flinkstatesnapshots, will stop 
+class java.util.concurrent.CompletionException: io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://10.245.0.1:443/apis/flink.apache.org/v1beta1/flinkstatesnapshots?resourceVersion=0. Message: flinkstatesnapshots.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" at the cluster scope. Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=flink.apache.org, kind=flinkstatesnapshots, name=null, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=flinkstatesnapshots.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" at the cluster scope, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
 [2026-04-14 18:49:42.825] [Thread-6] ERROR - i.f.k.c.i.i.c.Reflector - listSyncAndWatch failed for flink.apache.org/v1beta1/flinkdeployments, will stop
 class java.util.concurrent.CompletionException: io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://10.245.0.1:443/apis/flink.apache.org/v1beta1/flinkdeployments?resourceVersion=0. Message: flinkdeployments.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkdeployments" in API group "flink.apache.org" at the cluster scope. Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=flink.apache.org, kind=flinkdeployments, name=null, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=flinkdeployments.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkdeployments" in API group "flink.apache.org" at the cluster scope, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
-[2026-04-14 18:49:53.340] [main] INFO - o.a.c.h.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
-[2026-04-14 18:49:53.434] [main] INFO - o.s.b.w.e.t.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
-[2026-04-14 18:49:53.441] [main] INFO - i.c.c.CmfApplication - Started CmfApplication in 42.803 seconds (process running for 47.097)
