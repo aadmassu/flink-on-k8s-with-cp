@@ -1,3 +1,50 @@
+[2026-04-14 14:01:55.831] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Migration completed successfully. Created 0 KafkaDatabase records
+[2026-04-14 14:01:55.833] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "22.1.0 - change primary key for license"
+[2026-04-14 14:01:55.838] [main] INFO - o.f.c.i.c.DbMigrate - Successfully applied 22 migrations to schema "main", now at version v22.1.0 (execution time 00:00.085s)
+[2026-04-14 14:01:56.123] [main] INFO - i.c.c.c.d.DatabaseConfiguration - Setting Hibernate dialect to: org.hibernate.community.dialect.SQLiteDialect
+[2026-04-14 14:01:56.144] [main] INFO - o.h.j.i.u.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+[2026-04-14 14:01:56.343] [main] INFO - o.h.Version - HHH000412: Hibernate ORM core version 6.6.26.Final
+[2026-04-14 14:01:56.445] [main] INFO - o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+[2026-04-14 14:01:57.147] [main] INFO - o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+[2026-04-14 14:01:57.340] [main] INFO - o.h.o.c.pooling - HHH10001005: Database info:
+Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.DriverManagerDataSource@50b38342']
+Database driver: undefined/unknown
+Database version: 3.45.2
+Autocommit mode: undefined/unknown
+Isolation level: undefined/unknown
+Minimum pool size: undefined/unknown
+Maximum pool size: undefined/unknown
+[2026-04-14 14:01:58.642] [main] INFO - o.h.v.i.u.Version - HV000001: Hibernate Validator 8.0.3.Final
+[2026-04-14 14:02:01.157] [main] INFO - o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+[2026-04-14 14:02:01.238] [main] INFO - o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+[2026-04-14 14:02:02.128] [main] INFO - o.s.d.j.r.q.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+[2026-04-14 14:02:05.464] [main] INFO - o.a.f.k.o.c.FlinkConfigManager - Setting default configuration to {parallelism.default=1, kubernetes.operator.dynamic.config.enabled=false, taskmanager.numberOfTaskSlots=1, kubernetes.operator.reconcile.interval=15 s, kubernetes.operator.metrics.reporter.slf4j.interval=5 MINUTE, kubernetes.operator.observer.progress-check.interval=5 s, kubernetes.operator.metrics.reporter.slf4j.factory.class=org.apache.flink.metrics.slf4j.Slf4jReporterFactory}
+[2026-04-14 14:02:07.743] [main] INFO - i.c.c.s.CmfMetadataSync - Starting metadata sync.
+[2026-04-14 14:02:07.744] [main] INFO - i.c.c.s.CmfMetadataSync - Syncing all applications on K8s, max rate (req/sec): 200, waitTimePerAppRestore: 5
+[2026-04-14 14:02:08.143] [main] INFO - i.c.c.s.CmfMetadataSync - Finished syncing all FlinkApplications, numSynced:0
+[2026-04-14 14:02:08.143] [main] INFO - i.c.c.s.CmfMetadataSync - Syncing all statements which have a corresponding FlinkDeployment on K8s, max rate (req/sec): 200, waitTimePerAppRestore: 5
+[2026-04-14 14:02:08.243] [main] INFO - i.c.c.s.CmfMetadataSync - Finished syncing all Statements, numSynced:0
+[2026-04-14 14:02:08.246] [main] INFO - i.c.c.s.CmfMetadataSync - Finished syncing all Savepoints, numSynced:0
+[2026-04-14 14:02:08.246] [main] INFO - i.c.c.s.CmfMetadataSync - Finished syncing metadata at 0
+[2026-04-14 14:02:09.031] [main] INFO - i.c.l.LicenseManager - Trial license for Confluent Enterprise expires in 29 days on 2026-05-14.
+[2026-04-14 14:02:09.032] [main] INFO - i.c.c.l.LicenseInitiator - License initialized with deployment scope: CP
+[2026-04-14 14:02:09.041] [main] INFO - i.c.c.l.CMFLicenseStore - CMF License Store started
+[2026-04-14 14:02:09.042] [main] INFO - i.c.c.s.ApplicationService - Application service initialized at 414649019420971
+[2026-04-14 14:02:09.840] [main] INFO - i.c.c.s.SelectStatementCache - Building SELECT statement timeout cache on startup...
+[2026-04-14 14:02:09.844] [main] INFO - i.c.c.s.SelectStatementCache - SELECT statement timeout cache built successfully. Added 0 SELECT statements to timeout cache.
+[2026-04-14 14:02:09.938] [main] INFO - i.c.c.s.StatementService - Statement service initialized at 414649915684775
+[2026-04-14 14:02:10.127] [main] INFO - i.c.c.c.k.KafkaConfiguration - OAuth bearer allowed URLs 'cmf.kafka.oauthbearerAllowedUrls' not configured, skipping system property setup
+[2026-04-14 14:02:10.129] [main] INFO - i.c.c.s.SecurityInterceptorConfig - Authorization is disabled.
+[2026-04-14 14:02:10.331] [main] INFO - i.c.c.s.SecretService - SecretService initialized at epoch: 1776175330331
+[2026-04-14 14:02:10.542] [main] INFO - i.c.c.s.SystemService - Initialized CMF database with the following system properties: sql.production.enabled=false, cmfDbInstanceId=f8085357-964c-432b-ad87-a1d55965053d
+[2026-04-14 14:02:10.826] [Thread-4] ERROR - i.f.k.c.i.i.c.Reflector - listSyncAndWatch failed for v1/events, will stop
+class java.util.concurrent.CompletionException: io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://10.245.0.1:443/api/v1/events?resourceVersion=0. Message: events is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "events" in API group "" at the cluster scope. Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=null, kind=events, name=null, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=events is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "events" in API group "" at the cluster scope, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
+[2026-04-14 14:02:10.827] [main] WARN - o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'k8sFKOExceptionEventWatcher': Invocation of init method failed
+[2026-04-14 14:02:10.828] [main] INFO - i.c.c.l.LicenseInitiator - Shutting down LicenseManager
+[2026-04-14 14:02:10.836] [main] INFO - i.c.c.l.CMFLicenseStore - CMF License Store stopped
+[2026-04-14 14:02:10.838] [main] INFO - o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+[2026-04-14 14:02:10.841] [main] INFO - o.a.c.c.StandardService - Stopping service [Tomcat]
+[2026-04-14 14:02:10.938] [main] INFO - o.s.b.a.l.ConditionEvaluationReportLogger -
 Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-[2026-04-14 13:58:55.730] [main] ERROR - i.c.c.ShutdownOnApplicationFailedEventListener - Fatal exception occurred, stopping application
+[2026-04-14 14:02:10.939] [main] ERROR - i.c.c.ShutdownOnApplicationFailedEventListener - Fatal exception occurred, stopping application
 class org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'k8sFKOExceptionEventWatcher': Invocation of init method failed
