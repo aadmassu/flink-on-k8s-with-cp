@@ -3,6 +3,10 @@
 # Flink-only validation environment (no local Kafka)
 
 cmf:
+  k8s:
+    watchNamespaces:
+      - dah-flink-dev
+
   sql:
     production: false
 
