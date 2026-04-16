@@ -64,28 +64,31 @@ roleRef:
   name: flink
   apiGroup: rbac.authorization.k8s.io
 ---
-# ClusterRole for cluster-scoped event watching (CMF requires this)
-# CMF's k8sFKOExceptionEventWatcher bean watches events at cluster scope.
-# This is read-only — no create, modify, or delete access.
+# ClusterRole for cluster-scoped read-only access (CMF requires this)
+# CMF hardcodes cluster-scoped watches for events and Flink CRDs.
+# All verbs are read-only — no create, modify, or delete access.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: cmf-event-reader
+  name: cmf-cluster-reader
 rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["flink.apache.org"]
+    resources: ["flinkdeployments", "flinkstatesnapshots"]
+    verbs: ["get", "list", "watch"]
 ---
-# ClusterRoleBinding granting the flink SA cluster-scoped event access
+# ClusterRoleBinding granting the flink SA cluster-scoped read-only access
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cmf-event-reader-dah-flink-dev
+  name: cmf-cluster-reader-dah-flink-dev
 subjects:
   - kind: ServiceAccount
     name: flink
     namespace: dah-flink-dev
 roleRef:
   kind: ClusterRole
-  name: cmf-event-reader
+  name: cmf-cluster-reader
   apiGroup: rbac.authorization.k8s.io
