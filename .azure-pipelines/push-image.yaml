@@ -81,7 +81,7 @@ stages:
 
                 echo ""
                 echo "=== Logging in to Artifactory ==="
-                echo "$ART_PWD" | $CONTAINER_CLI login "$REGISTRY" --username "$ART_USER" --password-stdin
+                echo "$ART_PWD" | $CONTAINER_CLI login artifactory.fcbint.net --username "$ART_USER" --password-stdin
 
                 echo ""
                 echo "=== Pushing $TARGET_IMAGE ==="
