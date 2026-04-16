@@ -1,0 +1,148 @@
+Starting CMF with external configurations from /opt/config/cmf-config.yaml
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+2026-04-16T18:31:56.845159694Z main WARN Converter key 'rEx' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.RootThrowablePatternConverter].
+2026-04-16T18:31:56.924914327Z main WARN Converter key 'ex' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.ThrowablePatternConverter].
+2026-04-16T18:31:56.925209493Z main WARN Converter key 'throwable' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.ThrowablePatternConverter].
+[33m2026-04-16 18:31:56,929[m [36mi.c.c.l.ConditionalStackTracePatternConverter[m [32m[INFO ] [.] Stack trace logging enabled: false
+[m[2026-04-16 18:31:57.343] [main] INFO  - i.c.c.CmfApplication - Starting CmfApplication v2.4-SNAPSHOT using Java 21.0.10 with PID 2 (/app/cmf.jar started by 1001320000 in /app)
+[2026-04-16 18:31:57.347] [main] INFO  - i.c.c.CmfApplication - No active profile set, falling back to 1 default profile: "default"
+[2026-04-16 18:31:57.541] [main] INFO  - i.c.c.LogBootstrapInformation - --------------------------------------
+[2026-04-16 18:31:57.623] [main] INFO  - i.c.c.LogBootstrapInformation -  Starting Confluent Manager for Apache Flink® (Version: <unknown>, Rev:<unknown>, Date:1970-01-01T01:00:00+01:00)
+[2026-04-16 18:31:57.623] [main] INFO  - i.c.c.LogBootstrapInformation -  OS current user: 1001320000
+[2026-04-16 18:31:57.624] [main] INFO  - i.c.c.LogBootstrapInformation -  JVM: OpenJDK 64-Bit Server VM - Azul Systems, Inc. - 21/21.0.10+7-LTS
+[2026-04-16 18:31:57.624] [main] INFO  - i.c.c.LogBootstrapInformation -  Arch: amd64
+[2026-04-16 18:31:57.625] [main] INFO  - i.c.c.LogBootstrapInformation -  Maximum heap size: 247 MiBytes
+[2026-04-16 18:31:57.626] [main] INFO  - i.c.c.LogBootstrapInformation -  JAVA_HOME: /usr/lib/jvm/jre-21
+[2026-04-16 18:31:57.626] [main] INFO  - i.c.c.LogBootstrapInformation -  JVM Options: (none)
+[2026-04-16 18:31:57.626] [main] INFO  - i.c.c.LogBootstrapInformation -  Program Arguments:
+[2026-04-16 18:31:57.628] [main] INFO  - i.c.c.LogBootstrapInformation -     --spring.config.location=classpath:/,/opt/config/cmf-config.yaml
+[2026-04-16 18:31:57.628] [main] INFO  - i.c.c.LogBootstrapInformation - --------------------------------------
+[2026-04-16 18:32:02.733] [main] INFO  - o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+[2026-04-16 18:32:03.334] [main] INFO  - o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 591 ms. Found 16 JPA repository interfaces.
+[2026-04-16 18:32:07.343] [main] INFO  - o.s.b.w.e.t.TomcatWebServer - Tomcat initialized with port 8080 (http)
+[2026-04-16 18:32:07.424] [main] INFO  - o.a.c.h.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+[2026-04-16 18:32:07.427] [main] INFO  - o.a.c.c.StandardService - Starting service [Tomcat]
+[2026-04-16 18:32:07.427] [main] INFO  - o.a.c.c.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.54]
+[2026-04-16 18:32:07.628] [main] INFO  - o.a.c.c.C.[.[.[/] - Initializing Spring embedded WebApplicationContext
+[2026-04-16 18:32:07.629] [main] INFO  - o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 9998 ms
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+[2026-04-16 18:32:08.133] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Configuring the CMF database with type: local
+[2026-04-16 18:32:08.133] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Creating SQLite datasource for CMF
+[2026-04-16 18:32:09.534] [main] INFO  - o.f.c.FlywayExecutor - Database: jdbc:sqlite:local/cmf.db (SQLite 3.45)
+[2026-04-16 18:32:09.647] [main] INFO  - o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "main"."flyway_schema_history" does not exist yet
+[2026-04-16 18:32:09.650] [main] INFO  - o.f.c.i.c.DbValidate - Successfully validated 29 migrations (execution time 00:00.024s)
+[2026-04-16 18:32:09.727] [main] INFO  - o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "main"."flyway_schema_history" ...
+[2026-04-16 18:32:09.826] [main] INFO  - o.f.c.i.c.DbMigrate - Current version of schema "main": << Empty Schema >>
+[2026-04-16 18:32:09.832] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "1.1.0 - initial schema"
+[2026-04-16 18:32:09.840] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "2.1.0 - add license table"
+[2026-04-16 18:32:09.844] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "3.1.0 - add application table"
+[2026-04-16 18:32:09.926] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "4.1.0 - add statement table"
+[2026-04-16 18:32:09.929] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "5.1.0 - add computepool table"
+[2026-04-16 18:32:09.932] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "6.1.0 - add tables for secret"
+[2026-04-16 18:32:09.935] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "7.1.0 - add app events"
+[2026-04-16 18:32:09.938] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "8.1.0 - add app instances"
+[2026-04-16 18:32:10.025] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "9.1.0 - add catalog table"
+[2026-04-16 18:32:10.028] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "10.1.0 - add statement exception table"
+[2026-04-16 18:32:10.031] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "11.1.0 - add instance column to app.sqlite"
+[2026-04-16 18:32:10.035] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "12.1.0 - add sql default cols to env"
+[2026-04-16 18:32:10.038] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "13.1.0 - add secret key cols to env"
+[2026-04-16 18:32:10.040] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "14.1.0 - add system table"
+[2026-04-16 18:32:10.125] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "15.1.0 - add last checkpointed offset for result to statement"
+[2026-04-16 18:32:10.128] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "16.1.0 - add savepoint table"
+[2026-04-16 18:32:10.131] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "17.1.0 - add path details"
+[2026-04-16 18:32:10.134] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "18.1.0 - add detached savepoint table"
+[2026-04-16 18:32:10.136] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "19.1.0 - add database table"
+[2026-04-16 18:32:10.138] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "20.1.0 - add deployment scope to license"
+[2026-04-16 18:32:10.139] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "21.1.0 - migrate kafka clusters to databases"
+[2026-04-16 18:32:10.140] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Starting migration V21_1_0: Migrating Kafka clusters from catalogs to databases
+[2026-04-16 18:32:10.140] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Executing query: SELECT name, uid, creation_timestamp, spec, metadata_payload FROM catalog WHERE type = 'KAFKA'
+[2026-04-16 18:32:10.140] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Query returned 0 catalogs
+[2026-04-16 18:32:10.141] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Found 0 Kafka catalogs to process
+[2026-04-16 18:32:10.141] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Migration completed successfully. Created 0 KafkaDatabase records
+[2026-04-16 18:32:10.144] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "22.1.0 - change primary key for license"
+[2026-04-16 18:32:10.225] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "23.1.0 - add metadata payload to environment"
+[2026-04-16 18:32:10.228] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "24.1.0 - add kubernetes cluster table"
+[2026-04-16 18:32:10.231] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "25.1.0 - add status message to kubernetes cluster"
+[2026-04-16 18:32:10.233] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "26.1.0 - add shared computepool columns"
+[2026-04-16 18:32:10.236] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "27.1.0 - rename alter environments to ddl environments"
+[2026-04-16 18:32:10.238] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "28.1.0 - add kubernetes version to kubernetes cluster"
+[2026-04-16 18:32:10.240] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "29.1.0 - rename is sql production to is encryption enabled"
+[2026-04-16 18:32:10.328] [main] INFO  - o.f.c.i.c.DbMigrate - Successfully applied 29 migrations to schema "main", now at version v29.1.0 (execution time 00:00.011s)
+[2026-04-16 18:32:10.343] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Initialized SpecificationUtils with dialect: SQLITE
+[2026-04-16 18:32:10.626] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Setting Hibernate dialect to: org.hibernate.community.dialect.SQLiteDialect
+[2026-04-16 18:32:10.647] [main] INFO  - o.h.j.i.u.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+[2026-04-16 18:32:10.848] [main] INFO  - o.h.Version - HHH000412: Hibernate ORM core version 6.6.45.Final
+[2026-04-16 18:32:10.941] [main] INFO  - o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+[2026-04-16 18:32:11.849] [main] INFO  - o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+[2026-04-16 18:32:12.044] [main] INFO  - o.h.o.c.pooling - HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.DriverManagerDataSource@3f3a6091']
+	Database driver: undefined/unknown
+	Database version: 3.45.2
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+[2026-04-16 18:32:13.229] [main] INFO  - o.h.v.i.u.Version - HV000001: Hibernate Validator 8.0.3.Final
+[2026-04-16 18:32:16.057] [main] INFO  - o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+[2026-04-16 18:32:16.134] [main] INFO  - o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+[2026-04-16 18:32:17.129] [main] INFO  - o.s.d.j.r.q.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+[2026-04-16 18:32:19.868] [main] INFO  - o.a.f.k.o.c.FlinkConfigManager - Setting default configuration to {parallelism.default=1, kubernetes.operator.dynamic.config.enabled=false, taskmanager.numberOfTaskSlots=1, kubernetes.operator.reconcile.interval=15 s, kubernetes.operator.metrics.reporter.slf4j.interval=5 MINUTE, kubernetes.operator.observer.progress-check.interval=5 s, kubernetes.operator.metrics.reporter.slf4j.factory.class=org.apache.flink.metrics.slf4j.Slf4jReporterFactory}
+[2026-04-16 18:32:20.442] [main] INFO  - i.c.c.k.r.K8sClientFactory - Creating KubernetesClient for default cluster using in-cluster config
+[2026-04-16 18:32:22.339] [main] WARN  - i.c.c.k.FkoVersionValidator - Unable to validate Flink Kubernetes Operator installation on cluster 'default-k8s-cluster'.
+class io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://10.245.0.1:443/apis/apiextensions.k8s.io/v1/customresourcedefinitions/flinkdeployments.flink.apache.org. Message: customresourcedefinitions.apiextensions.k8s.io "flinkdeployments.flink.apache.org" is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot get resource "customresourcedefinitions" in API group "apiextensions.k8s.io" at the cluster scope. Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=apiextensions.k8s.io, kind=customresourcedefinitions, name=flinkdeployments.flink.apache.org, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=customresourcedefinitions.apiextensions.k8s.io "flinkdeployments.flink.apache.org" is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot get resource "customresourcedefinitions" in API group "apiextensions.k8s.io" at the cluster scope, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
+[2026-04-16 18:32:22.344] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Initializing Kubernetes cluster manager
+[2026-04-16 18:32:22.344] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Initializing default cluster 'default-k8s-cluster'
+[2026-04-16 18:32:22.434] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Connected to default cluster, K8s version: v1.31.14
+[2026-04-16 18:32:22.434] [main] INFO  - i.c.c.k.r.ManagedK8sClientRegistry - Registered cluster 'default-k8s-cluster' with pre-created client
+[2026-04-16 18:32:22.835] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Default cluster 'default-k8s-cluster' initialized successfully
+[2026-04-16 18:32:22.835] [main] INFO  - i.c.c.k.r.KubeconfigFileWatcher - Kubeconfig directory does not exist, file watcher will not start: /etc/cmf/kubeconfig
+[2026-04-16 18:32:22.835] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Scanning kubeconfig directory for remote clusters: /etc/cmf/kubeconfig
+[2026-04-16 18:32:22.835] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Kubeconfig directory is missing, not a directory, or not readable; skipping remote cluster discovery: /etc/cmf/kubeconfig
+[2026-04-16 18:32:22.836] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Remote cluster discovery complete: 0 discovered, 0 registered, 0 errors
+[2026-04-16 18:32:22.948] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Kubernetes cluster manager initialization complete
+[2026-04-16 18:32:23.635] [main] INFO  - i.c.l.LicenseManager - Trial license for Confluent Enterprise expires in 30 days on 2026-05-16.
+[2026-04-16 18:32:23.636] [main] INFO  - i.c.c.l.LicenseInitiator - License initialized with deployment scope: CP
+[2026-04-16 18:32:23.644] [main] INFO  - i.c.c.l.CMFLicenseStore - CMF License Store started
+[2026-04-16 18:32:23.740] [main] INFO  - i.c.c.s.CmfMetadataSync - Starting metadata sync.
+[2026-04-16 18:32:23.741] [main] INFO  - i.c.c.s.CmfMetadataSync - Syncing all applications on K8s, max rate (req/sec): 200, waitTimePerAppRestore: 5
+[2026-04-16 18:32:23.828] [main] INFO  - i.c.c.s.CmfMetadataSync - Finished syncing all FlinkApplications, numSynced:0
+[2026-04-16 18:32:23.828] [main] INFO  - i.c.c.s.CmfMetadataSync - Syncing all statements which have a corresponding FlinkDeployment on K8s, max rate (req/sec): 200, waitTimePerAppRestore: 5
+[2026-04-16 18:32:23.835] [main] INFO  - i.c.c.s.CmfMetadataSync - Finished syncing all Statements, numSynced:0
+[2026-04-16 18:32:23.839] [main] INFO  - i.c.c.s.CmfMetadataSync - Finished syncing all Savepoints, numSynced:0
+[2026-04-16 18:32:23.839] [main] INFO  - i.c.c.s.CmfMetadataSync - Finished syncing metadata at 0
+[2026-04-16 18:32:23.943] [main] INFO  - i.c.c.s.ApplicationService - Application service initialized at 603663920804113
+[2026-04-16 18:32:24.853] [main] INFO  - i.c.c.s.SelectStatementCache - Building SELECT statement timeout cache on startup...
+[2026-04-16 18:32:24.856] [main] INFO  - i.c.c.s.SelectStatementCache - SELECT statement timeout cache built successfully. Added 0 SELECT statements to timeout cache.
+[2026-04-16 18:32:24.946] [main] INFO  - i.c.c.s.StatementService - Statement service initialized at 603664923626992
+[2026-04-16 18:32:25.144] [main] INFO  - i.c.c.c.k.KafkaConfiguration - OAuth bearer allowed URLs 'cmf.kafka.oauthbearerAllowedUrls' not configured, skipping system property setup
+[2026-04-16 18:32:25.225] [main] INFO  - i.c.c.s.SecurityInterceptorConfig - Authorization is disabled.
+[2026-04-16 18:32:25.441] [main] INFO  - i.c.c.s.SecretService - SecretService initialized at epoch: 1776364345441
+[2026-04-16 18:32:25.640] [main] INFO  - i.c.c.s.SystemService - Initialized CMF database with the following system properties: encryption.enabled=false, cmfDbInstanceId=ad989265-71d2-4076-ae5c-008ac6dc7491
+[2026-04-16 18:32:25.739] [main] INFO  - i.c.c.s.DeploymentObserverInitializer - Initializing deployment observer
+[2026-04-16 18:32:25.842] [main] INFO  - i.c.c.k.d.AbstractK8sObserver - Starting watch for deployment on cluster 'default-k8s-cluster'
+[2026-04-16 18:32:25.932] [main] WARN  - i.f.k.c.d.i.VersionUsageUtils - The client is using resource type 'flinkdeployments' with unstable version 'v1beta1'
+[2026-04-16 18:32:25.934] [main] INFO  - i.c.c.k.d.AbstractMultiClusterObserverManager - Started deployment observer for cluster 'default-k8s-cluster' (1 total observers)
+[2026-04-16 18:32:25.935] [main] INFO  - i.c.c.s.FKOEventWatcherInitializer - Initializing FKO exception event watcher
+[2026-04-16 18:32:25.938] [Thread-2] ERROR - i.f.k.c.i.i.c.Reflector - listSyncAndWatch failed for flink.apache.org/v1beta1/flinkdeployments, will stop
+class java.util.concurrent.CompletionException: io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://10.245.0.1:443/apis/flink.apache.org/v1beta1/flinkdeployments?resourceVersion=0. Message: flinkdeployments.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkdeployments" in API group "flink.apache.org" at the cluster scope. Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=flink.apache.org, kind=flinkdeployments, name=null, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=flinkdeployments.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkdeployments" in API group "flink.apache.org" at the cluster scope, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
+[2026-04-16 18:32:28.135] [main] INFO  - i.c.c.k.e.MultiClusterFKOEventWatcherManager - Started fko-event watcher for cluster 'default-k8s-cluster' (1 total watchers)
+[2026-04-16 18:32:28.224] [main] INFO  - i.c.c.s.SavepointObserverInitializer - Initializing savepoint observer
+[2026-04-16 18:32:28.228] [main] INFO  - i.c.c.k.d.AbstractK8sObserver - Starting watch for savepoint on cluster 'default-k8s-cluster'
+[2026-04-16 18:32:28.230] [main] WARN  - i.f.k.c.d.i.VersionUsageUtils - The client is using resource type 'flinkstatesnapshots' with unstable version 'v1beta1'
+[2026-04-16 18:32:28.231] [main] INFO  - i.c.c.k.d.AbstractMultiClusterObserverManager - Started savepoint observer for cluster 'default-k8s-cluster' (1 total observers)
+[2026-04-16 18:32:28.235] [Thread-5] ERROR - i.f.k.c.i.i.c.Reflector - listSyncAndWatch failed for flink.apache.org/v1beta1/flinkstatesnapshots, will stop
+class java.util.concurrent.CompletionException: io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://10.245.0.1:443/apis/flink.apache.org/v1beta1/flinkstatesnapshots?resourceVersion=0. Message: flinkstatesnapshots.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" at the cluster scope. Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=flink.apache.org, kind=flinkstatesnapshots, name=null, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=flinkstatesnapshots.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" at the cluster scope, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
+[2026-04-16 18:32:28.328] [main] INFO  - i.c.c.s.ScheduledSelectStatementTimeoutTask - Scheduled SELECT statement timeout task with 1 minute interval and 10 minute timeout
+[2026-04-16 18:32:28.331] [SimpleAsyncTaskScheduler-3] INFO  - i.c.c.s.ScheduledStatementCleanupTask - Starting cleanup of statements.
+[2026-04-16 18:32:28.331] [main] INFO  - i.c.c.s.SessionJobObserverInitializer - Initializing session job observer
+[2026-04-16 18:32:28.334] [main] INFO  - i.c.c.k.d.AbstractK8sObserver - Starting watch for session-job on cluster 'default-k8s-cluster'
+[2026-04-16 18:32:28.334] [main] WARN  - i.f.k.c.d.i.VersionUsageUtils - The client is using resource type 'flinksessionjobs' with unstable version 'v1beta1'
+[2026-04-16 18:32:28.335] [main] INFO  - i.c.c.k.d.AbstractMultiClusterObserverManager - Started session-job observer for cluster 'default-k8s-cluster' (1 total observers)
+[2026-04-16 18:32:28.424] [SimpleAsyncTaskScheduler-3] INFO  - i.c.c.s.ScheduledStatementCleanupTask - Cleanup completed. Total statements deleted: 0
+[2026-04-16 18:32:28.425] [Thread-6] ERROR - i.f.k.c.i.i.c.Reflector - listSyncAndWatch failed for flink.apache.org/v1beta1/flinksessionjobs, will stop
+class java.util.concurrent.CompletionException: io.fabric8.kubernetes.client.KubernetesClientException: Failure executing: GET at: https://10.245.0.1:443/apis/flink.apache.org/v1beta1/flinksessionjobs?resourceVersion=0. Message: flinksessionjobs.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinksessionjobs" in API group "flink.apache.org" at the cluster scope. Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=flink.apache.org, kind=flinksessionjobs, name=null, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=flinksessionjobs.flink.apache.org is forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinksessionjobs" in API group "flink.apache.org" at the cluster scope, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
+[2026-04-16 18:32:29.231] [main] INFO  - i.c.c.s.SecurityInterceptorConfig - Authentication is disabled.
+[2026-04-16 18:32:40.539] [main] INFO  - o.a.c.h.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+[2026-04-16 18:32:40.633] [main] INFO  - o.s.b.w.e.t.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+[2026-04-16 18:32:40.636] [main] INFO  - i.c.c.k.r.KubernetesClusterHeartbeatTask - Started heartbeat task (interval: 60 seconds)
+[2026-04-16 18:32:40.642] [main] INFO  - i.c.c.CmfApplication - Started CmfApplication in 45.695 seconds (process running for 50.633)
