@@ -24,7 +24,7 @@ cmf:
 image:
   repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc
   name: cp-cmf
-  tag: 2.2.0
+  tag: 2.3.0-fcb-preview
 
 additionalLabels:
   fcbint.net/app-id: "11547"
