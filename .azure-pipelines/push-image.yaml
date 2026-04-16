@@ -4,8 +4,8 @@
 # Created:   2026-04-16
 #
 # Variable Group: <env>-openshift-credentials
-#   artifactory-username  — Artifactory service account username
-#   artifactory-password  — Artifactory service account password (secret)
+#   artifactory-svc-user          — Artifactory service account username
+#   artifactory-svc-user-password — Artifactory service account password (secret)
 
 trigger: none
 
@@ -93,5 +93,5 @@ stages:
             env:
               IMAGE_TAG: ${{ parameters.imageTag }}
               TARGET_TAG: ${{ parameters.targetTag }}
-              ART_USER: $(artifactory-username)
-              ART_PWD: $(artifactory-password)
+              ART_USER: $(artifactory-svc-user)
+              ART_PWD: $(artifactory-svc-user-password)
