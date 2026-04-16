@@ -38,7 +38,7 @@ namespaced: true
 rbac: false
 serviceAccount:
   create: false
-  name: flink
+  name: flink-operator
 
 persistence:
   create: false
