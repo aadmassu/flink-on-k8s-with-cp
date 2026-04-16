@@ -1,53 +1,28 @@
-Starting: Load, tag, and push image
-==============================================================================
-Task         : Bash
-Description  : Run a Bash script on macOS, Linux, or Windows
-Version      : 3.231.4
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/b2a9a414-ac28-4292-b084-fee707a39ce4.sh
-=== Loading image from cp-cmf-2.3.0-fcb-amd64.tar ===
-Using docker
-Loaded image: confluentinc/cp-cmf:2.3.0-fcb-amd64
+forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkdeployments" in API group "flink.apache.org" in the namespace "dah-flink-dev"
+forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" in the namespace "dah-flink-dev"
+forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinksessionjobs" in API group "flink.apache.org" in the namespace "dah-flink-dev".
 
-=== Tagging as artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview ===
-
-=== Logging in to Artifactory ===
-
-WARNING! Your credentials are stored unencrypted in '/home/FCPD.FCBINT.NET/pd_azure_bld-svc/.docker/config.json'.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/go/credential-store/
-
-Login Succeeded
-
-=== Pushing artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview ===
-The push refers to repository [artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf]
-216bb75c0207: Preparing
-25ca2bd6f59a: Preparing
-5f70bf18a086: Preparing
-8fd392d9f23c: Preparing
-18a089a4fcc4: Preparing
-b51229e9f4f3: Preparing
-805c06bdce53: Preparing
-eb1b304b4ac2: Preparing
-cfb40e11cc09: Preparing
-eb1b304b4ac2: Waiting
-cfb40e11cc09: Waiting
-b51229e9f4f3: Waiting
-805c06bdce53: Waiting
-5f70bf18a086: Layer already exists
-b51229e9f4f3: Pushed
-25ca2bd6f59a: Pushed
-18a089a4fcc4: Pushed
-805c06bdce53: Pushed
-216bb75c0207: Pushed
-cfb40e11cc09: Pushed
-eb1b304b4ac2: Pushed
-8fd392d9f23c: Pushed
-2.3.0-fcb-preview: digest: sha256:8613f9fc141d8300c8a3e19f4cd166fc7a3e91daedf16266cf0f3c7c71932a60 size: 2194
-
-=== Done ===
-Image pushed: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview
+OK We got a Preview CMF Image from Confluent. Now all role/rolebindings will be namespace scoped. 
+ 
+ 
+but I see these 3 errors for flink SA
+ 
+forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkdeployments" in API group "flink.apache.org" in the namespace "dah-flink-dev"
+forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" in the namespace "dah-flink-dev"
+forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinksessionjobs" in API group "flink.apache.org" in the namespace "dah-flink-dev".
+ 
+hi Mulder, Rick, 
+can you help with above issue 
+ 
+That's easy to fix, standby
+ 
+sure thaks
+ 
+The flink-operator serviceaccount would already have those perms, however, it's not created in that namespace.  Let me find out the best path forward.
+ 
+Are you intending to deploy other workloads that use the same flink service account?
+ 
+yes
+ 
+I'm deploying a different sa then - change to the flink-operator sa.
+ 
