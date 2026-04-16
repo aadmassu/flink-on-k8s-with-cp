@@ -8,7 +8,7 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/fd2dbbea-b156-4eec-924f-8f8655f69a36.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/1c1e6a18-dfcb-45df-902f-631ae4df8121.sh
 === Loading image from cp-cmf-2.3.0-fcb-amd64.tar ===
 Using docker
 Loaded image: confluentinc/cp-cmf:2.3.0-fcb-amd64
@@ -17,3 +17,5 @@ Loaded image: confluentinc/cp-cmf:2.3.0-fcb-amd64
 
 === Logging in to Artifactory ===
 Error response from daemon: Get "https://artifactory.fcbint.net/v2/": unknown: Bad Credentials
+##[error]Bash exited with code '1'.
+Finishing: Load, tag, and push image
