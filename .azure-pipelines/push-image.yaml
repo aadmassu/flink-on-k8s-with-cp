@@ -1,0 +1,97 @@
+# Pipeline:  push-image
+# Purpose:   Load a Docker image from repo tar file and push to Artifactory
+# Author:    Ayele Admassu
+# Created:   2026-04-16
+#
+# Variable Group: <env>-openshift-credentials
+#   artifactory-username  — Artifactory service account username
+#   artifactory-password  — Artifactory service account password (secret)
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, stg, prd]
+  - name: imageTag
+    displayName: "Image Tag"
+    type: string
+    default: "2.3.0-fcb-amd64"
+    values:
+      - "2.2.0"
+      - "2.3.0-fcb-amd64"
+  - name: targetTag
+    displayName: "Target Tag in Artifactory"
+    type: string
+    default: "2.3.0-fcb-preview"
+
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: dev-openshift-credentials
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: qa-openshift-credentials
+  - ${{ if eq(parameters.environment, 'stg') }}:
+    - group: stg-openshift-credentials
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: prd-openshift-credentials
+
+stages:
+  - stage: PushImage
+    displayName: "Push Image (${{ parameters.targetTag }})"
+    jobs:
+      - job: PushImage
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - task: Bash@3
+            displayName: "Load, tag, and push image"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                REGISTRY="artifactory.fcbint.net/camdepositsharedservices-docker-dev"
+                SOURCE_TAR="cp-cmf-$IMAGE_TAG.tar"
+                TARGET_IMAGE="$REGISTRY/confluentinc/cp-cmf:$TARGET_TAG"
+
+                echo "=== Loading image from $SOURCE_TAR ==="
+                if [ ! -f "$SOURCE_TAR" ]; then
+                  echo "ERROR: $SOURCE_TAR not found in repo root"
+                  exit 1
+                fi
+
+                # Use podman if available, otherwise docker
+                CONTAINER_CLI="docker"
+                if command -v podman &>/dev/null; then
+                  CONTAINER_CLI="podman"
+                fi
+                echo "Using $CONTAINER_CLI"
+
+                $CONTAINER_CLI load < "$SOURCE_TAR"
+
+                echo ""
+                echo "=== Tagging as $TARGET_IMAGE ==="
+                SOURCE_IMAGE="confluentinc/cp-cmf:$IMAGE_TAG"
+                $CONTAINER_CLI tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
+
+                echo ""
+                echo "=== Logging in to Artifactory ==="
+                echo "$ART_PWD" | $CONTAINER_CLI login "$REGISTRY" --username "$ART_USER" --password-stdin
+
+                echo ""
+                echo "=== Pushing $TARGET_IMAGE ==="
+                $CONTAINER_CLI push "$TARGET_IMAGE"
+
+                echo ""
+                echo "=== Done ==="
+                echo "Image pushed: $TARGET_IMAGE"
+            env:
+              IMAGE_TAG: ${{ parameters.imageTag }}
+              TARGET_TAG: ${{ parameters.targetTag }}
+              ART_USER: $(artifactory-username)
+              ART_PWD: $(artifactory-password)
