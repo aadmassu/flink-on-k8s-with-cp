@@ -6,6 +6,9 @@
 # Variable Group: dev-openshift-credentials
 #   artifactory-svc-user          — Artifactory service account username
 #   artifactory-svc-user-password — Artifactory service account password (secret)
+#   openshift-service-account-name  — service account username
+#   openshift-service-account-pwd   — service account password (secret)
+#   openshift-dev-api               — OpenShift API server URL
 
 trigger: none
 
@@ -22,6 +25,28 @@ stages:
           - checkout: self
             env:
               GIT_SSL_NO_VERIFY: "true"
+
+          - template: templates/install-tools.yaml
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Logging in to OpenShift at $OC_API..."
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+
+                echo ""
+                oc whoami
+                oc project dah-flink-dev
+            env:
+              OC_API: $(openshift-dev-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
 
           - task: Bash@3
             displayName: "Pull, tag, and push busybox"
@@ -61,3 +86,30 @@ stages:
             env:
               ART_USER: $(artifactory-svc-user)
               ART_PWD: $(artifactory-svc-user-password)
+
+          - task: Bash@3
+            displayName: "Run busybox in dah-flink-dev"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                REGISTRY="artifactory.fcbint.net"
+                REPO="camdepositsharedservices-docker-dev"
+                NS="dah-flink-dev"
+
+                echo "=== Deploying busybox pod in $NS ==="
+                oc run busybox --image="$REGISTRY/$REPO/busybox:latest" \
+                  --restart=Never \
+                  --namespace="$NS" \
+                  --labels="app.kubernetes.io/name=busybox,app.kubernetes.io/instance=busybox,app.kubernetes.io/component=network-test,fcbint.net/app-id=11547" \
+                  --command -- sleep 3600 \
+                  --dry-run=client -o yaml | oc apply -f -
+
+                echo ""
+                echo "=== Waiting for pod to be ready ==="
+                oc wait --for=condition=Ready pod/busybox -n "$NS" --timeout=120s
+
+                echo ""
+                echo "=== Pod status ==="
+                oc get pod busybox -n "$NS" -o wide
