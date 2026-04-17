@@ -1,28 +1,29 @@
-forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkdeployments" in API group "flink.apache.org" in the namespace "dah-flink-dev"
-forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" in the namespace "dah-flink-dev"
-forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinksessionjobs" in API group "flink.apache.org" in the namespace "dah-flink-dev".
+Starting: Install CMF
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/e6ccede5-9000-4de7-88a8-8c3823bede61.sh
+=== Git commit ===
+df40f281e9df3852a0205c08c1e0812a7b962766
 
-OK We got a Preview CMF Image from Confluent. Now all role/rolebindings will be namespace scoped. 
- 
- 
-but I see these 3 errors for flink SA
- 
-forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkdeployments" in API group "flink.apache.org" in the namespace "dah-flink-dev"
-forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinkstatesnapshots" in API group "flink.apache.org" in the namespace "dah-flink-dev"
-forbidden: User "system:serviceaccount:dah-flink-dev:flink" cannot list resource "flinksessionjobs" in API group "flink.apache.org" in the namespace "dah-flink-dev".
- 
-hi Mulder, Rick, 
-can you help with above issue 
- 
-That's easy to fix, standby
- 
-sure thaks
- 
-The flink-operator serviceaccount would already have those perms, however, it's not created in that namespace.  Let me find out the best path forward.
- 
-Are you intending to deploy other workloads that use the same flink service account?
- 
-yes
- 
-I'm deploying a different sa then - change to the flink-operator sa.
- 
+=== Resources CMF will create ===
+kind: ConfigMap
+  name: confluent-manager-for-apache-flink
+  namespace: dah-flink-dev
+kind: Service
+  name: cmf-service
+  namespace: dah-flink-dev
+kind: Deployment
+  name: confluent-manager-for-apache-flink
+  namespace: dah-flink-dev
+
+=== Installing CMF ===
+Error: UPGRADE FAILED: another operation (install/upgrade/rollback) is in progress
+##[error]Bash exited with code '1'.
+Finishing: Install CMF
