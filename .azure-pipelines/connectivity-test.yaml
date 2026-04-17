@@ -1,5 +1,5 @@
-# Pipeline:  push-busybox
-# Purpose:   Pull busybox from Docker Hub and push to Artifactory for network testing
+# Pipeline:  connectivity-test
+# Purpose:   Push busybox to Artifactory, deploy in namespace, and test SQL Server connectivity
 # Author:    Ayele Admassu
 # Created:   2026-04-17
 #
@@ -113,3 +113,22 @@ stages:
                 echo ""
                 echo "=== Pod status ==="
                 oc get pod busybox -n "$NS" -o wide
+
+          - task: Bash@3
+            displayName: "Test SQL Server connectivity"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                NS="dah-flink-dev"
+
+                echo "=== Testing SQL Server connectivity ==="
+                oc exec busybox -n "$NS" -- nc -zv db-dahbronze-d 3085
+
+                echo ""
+                echo "=== Testing DNS resolution ==="
+                oc exec busybox -n "$NS" -- nslookup db-dahbronze-d || true
+
+                echo ""
+                echo "=== Connectivity test complete ==="
