@@ -8,7 +8,7 @@ cmf:
       - dah-flink-dev
 
   sql:
-    production: true
+    production: false
 
   # Authentication disabled for dev — will switch to OAuth later
   # Valid types: BASIC, MTLS, OAUTH (omit block entirely to disable)
@@ -18,6 +18,8 @@ cmf:
     jdbc:
       engine: sqlserver
       url: ""
+      port: 3085
+      database: DAHFLINK
       user: ""
       options: "encrypt=true;trustServerCertificate=true;"
       password:
