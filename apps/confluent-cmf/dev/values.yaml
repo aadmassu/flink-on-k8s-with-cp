@@ -8,22 +8,21 @@ cmf:
       - dah-flink-dev
 
   sql:
-    production: false
+    production: true
 
   # Authentication disabled for dev — will switch to OAuth later
   # Valid types: BASIC, MTLS, OAUTH (omit block entirely to disable)
 
-  # Local SQLite database — will switch to SQL Server later
   database:
-    type: local
-    # To use external SQL Server, replace the above with:
-    # type: jdbc
-    # jdbc:
-    #   url: "jdbc:sqlserver://<host>:<port>;databaseName=<db>"
-    #   username: <user>
-    #   password:
-    #     kubernetesSecretName: cmf-db-credentials
-    #     kubernetesSecretProperty: password
+    type: jdbc
+    jdbc:
+      engine: sqlserver
+      url: ""
+      user: ""
+      options: "encrypt=true;trustServerCertificate=true;"
+      password:
+        kubernetesSecretName: cmf-db-credentials
+        kubernetesSecretProperty: password
 
 image:
   repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc

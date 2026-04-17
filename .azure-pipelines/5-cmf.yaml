@@ -93,12 +93,20 @@ stages:
                 fi
 
                 echo ""
+                echo "=== Creating CMF database credentials secret ==="
+                oc create secret generic cmf-db-credentials \
+                  --from-literal=password="$CMF_DB_PWD" \
+                  -n "$OC_NS" --dry-run=client -o yaml | oc apply -f -
+
+                echo ""
                 echo "=== Installing CMF ==="
                 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
                   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
                   -f apps/confluent-cmf/openshift-overlay.yaml \
                   --set namespaced=true \
+                  --set cmf.database.jdbc.url="$CMF_DB_URL" \
+                  --set cmf.database.jdbc.user="$CMF_DB_USER" \
                   --wait --timeout 10m
 
                 echo ""
@@ -107,3 +115,6 @@ stages:
             env:
               OC_NS: dah-flink-${{ parameters.environment }}
               TARGET_ENV: ${{ parameters.environment }}
+              CMF_DB_URL: $(dev-cmf-sql-server-jdbc-url)
+              CMF_DB_USER: $(dev-cmf-sql-server-user)
+              CMF_DB_PWD: $(dev-cmf-sql-server-user-password)
