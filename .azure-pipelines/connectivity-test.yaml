@@ -65,24 +65,28 @@ stages:
                 fi
                 echo "Using $CONTAINER_CLI"
 
-                echo "=== Pulling busybox from Docker Hub ==="
-                $CONTAINER_CLI pull busybox:latest
-
-                echo ""
-                echo "=== Tagging as $TARGET_IMAGE ==="
-                $CONTAINER_CLI tag busybox:latest "$TARGET_IMAGE"
-
-                echo ""
                 echo "=== Logging in to Artifactory ==="
                 echo "$ART_PWD" | $CONTAINER_CLI login "$REGISTRY" --username "$ART_USER" --password-stdin
 
                 echo ""
-                echo "=== Pushing $TARGET_IMAGE ==="
-                $CONTAINER_CLI push "$TARGET_IMAGE"
+                echo "=== Checking if busybox exists in Artifactory ==="
+                if $CONTAINER_CLI pull "$TARGET_IMAGE" 2>/dev/null; then
+                  echo "Image already exists in Artifactory, skipping push."
+                else
+                  echo "Image not found in Artifactory, pulling from Docker Hub..."
+                  $CONTAINER_CLI pull busybox:latest
 
-                echo ""
-                echo "=== Done ==="
-                echo "Image pushed: $TARGET_IMAGE"
+                  echo ""
+                  echo "=== Tagging as $TARGET_IMAGE ==="
+                  $CONTAINER_CLI tag busybox:latest "$TARGET_IMAGE"
+
+                  echo ""
+                  echo "=== Pushing $TARGET_IMAGE ==="
+                  $CONTAINER_CLI push "$TARGET_IMAGE"
+
+                  echo ""
+                  echo "Image pushed: $TARGET_IMAGE"
+                fi
             env:
               ART_USER: $(artifactory-svc-user)
               ART_PWD: $(artifactory-svc-user-password)
