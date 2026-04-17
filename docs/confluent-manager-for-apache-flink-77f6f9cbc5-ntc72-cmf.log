@@ -1,0 +1,39 @@
+Starting CMF with external configurations from /opt/config/cmf-config.yaml
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+2026-04-17T19:13:45.528852839Z main WARN Converter key 'rEx' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.RootThrowablePatternConverter].
+2026-04-17T19:13:45.530074207Z main WARN Converter key 'ex' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.ThrowablePatternConverter].
+2026-04-17T19:13:45.530206238Z main WARN Converter key 'throwable' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.ThrowablePatternConverter].
+[33m2026-04-17 19:13:45,612[m [36mi.c.c.l.ConditionalStackTracePatternConverter[m [32m[INFO ] [.] Stack trace logging enabled: false
+[m[2026-04-17 19:13:45.929] [main] INFO  - i.c.c.CmfApplication - Starting CmfApplication v2.4-SNAPSHOT using Java 21.0.10 with PID 2 (/app/cmf.jar started by 1001320000 in /app)
+[2026-04-17 19:13:45.933] [main] INFO  - i.c.c.CmfApplication - No active profile set, falling back to 1 default profile: "default"
+[2026-04-17 19:13:46.122] [main] INFO  - i.c.c.LogBootstrapInformation - --------------------------------------
+[2026-04-17 19:13:46.129] [main] INFO  - i.c.c.LogBootstrapInformation -  Starting Confluent Manager for Apache Flink® (Version: <unknown>, Rev:<unknown>, Date:1970-01-01T01:00:00+01:00)
+[2026-04-17 19:13:46.129] [main] INFO  - i.c.c.LogBootstrapInformation -  OS current user: 1001320000
+[2026-04-17 19:13:46.129] [main] INFO  - i.c.c.LogBootstrapInformation -  JVM: OpenJDK 64-Bit Server VM - Azul Systems, Inc. - 21/21.0.10+7-LTS
+[2026-04-17 19:13:46.129] [main] INFO  - i.c.c.LogBootstrapInformation -  Arch: amd64
+[2026-04-17 19:13:46.130] [main] INFO  - i.c.c.LogBootstrapInformation -  Maximum heap size: 247 MiBytes
+[2026-04-17 19:13:46.130] [main] INFO  - i.c.c.LogBootstrapInformation -  JAVA_HOME: /usr/lib/jvm/jre-21
+[2026-04-17 19:13:46.130] [main] INFO  - i.c.c.LogBootstrapInformation -  JVM Options: (none)
+[2026-04-17 19:13:46.130] [main] INFO  - i.c.c.LogBootstrapInformation -  Program Arguments:
+[2026-04-17 19:13:46.213] [main] INFO  - i.c.c.LogBootstrapInformation -     --spring.config.location=classpath:/,/opt/config/cmf-config.yaml
+[2026-04-17 19:13:46.213] [main] INFO  - i.c.c.LogBootstrapInformation - --------------------------------------
+[2026-04-17 19:13:50.833] [main] INFO  - o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+[2026-04-17 19:13:51.423] [main] INFO  - o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 503 ms. Found 16 JPA repository interfaces.
+[2026-04-17 19:13:55.916] [main] INFO  - o.s.b.w.e.t.TomcatWebServer - Tomcat initialized with port 8080 (http)
+[2026-04-17 19:13:55.934] [main] INFO  - o.a.c.h.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+[2026-04-17 19:13:55.937] [main] INFO  - o.a.c.c.StandardService - Starting service [Tomcat]
+[2026-04-17 19:13:55.937] [main] INFO  - o.a.c.c.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.54]
+[2026-04-17 19:13:56.225] [main] INFO  - o.a.c.c.C.[.[.[/] - Initializing Spring embedded WebApplicationContext
+[2026-04-17 19:13:56.226] [main] INFO  - o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 10012 ms
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+[2026-04-17 19:13:56.823] [main] WARN  - i.c.c.c.CmfConfig - The 'cmf.sql.production' flag is deprecated. Use 'encryption.enabled' instead. Treating encryption as enabled because cmf.sql.production=true.
+[2026-04-17 19:13:56.824] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Configuring the CMF database with type: jdbc
+[2026-04-17 19:13:56.824] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Creating sqlserver datasource for host: jdbc:sqlserver://db-dahbronze-d;port=3085;databaseName=DAHFLINK;encrypt=true;trustServerCertificate=true;, port: 5432, database: cmf
+[2026-04-17 19:13:56.927] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Using database password from CMF_JDBC_PASSWORD environment variable.
+[2026-04-17 19:13:57.016] [main] WARN  - o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to initialize dependency 'flyway' of LoadTimeWeaverAware bean 'entityManagerFactory': Error creating bean with name 'flyway' defined in class path resource [org/springframework/boot/autoconfigure/flyway/FlywayAutoConfiguration$FlywayConfiguration.class]: Failed to instantiate [org.flywaydb.core.Flyway]: Factory method 'flyway' threw exception with message: org.springframework.jdbc.support.MetaDataAccessException: Could not get Connection for extracting meta-data
+[2026-04-17 19:13:57.019] [main] INFO  - o.a.c.c.StandardService - Stopping service [Tomcat]
+[2026-04-17 19:13:57.030] [main] INFO  - o.s.b.a.l.ConditionEvaluationReportLogger - 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+[2026-04-17 19:13:57.218] [main] ERROR - o.s.b.SpringApplication - Application run failed
+class org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to initialize dependency 'flyway' of LoadTimeWeaverAware bean 'entityManagerFactory': Error creating bean with name 'flyway' defined in class path resource [org/springframework/boot/autoconfigure/flyway/FlywayAutoConfiguration$FlywayConfiguration.class]: Failed to instantiate [org.flywaydb.core.Flyway]: Factory method 'flyway' threw exception with message: org.springframework.jdbc.support.MetaDataAccessException: Could not get Connection for extracting meta-data
