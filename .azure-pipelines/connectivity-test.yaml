@@ -89,12 +89,16 @@ stages:
                 if $CONTAINER_CLI pull "$TARGET_IMAGE" 2>/dev/null; then
                   echo "Image already exists in Artifactory, skipping push."
                 else
-                  echo "Image not found in Artifactory, pulling from Docker Hub..."
-                  $CONTAINER_CLI pull busybox:latest
+                  echo "Image not found in Artifactory, loading from tarball..."
+                  if [ ! -f busybox-latest.tar ]; then
+                    echo "ERROR: busybox-latest.tar not found in repo root"
+                    exit 1
+                  fi
+                  $CONTAINER_CLI load < busybox-latest.tar
 
                   echo ""
                   echo "=== Tagging as $TARGET_IMAGE ==="
-                  $CONTAINER_CLI tag busybox:latest "$TARGET_IMAGE"
+                  $CONTAINER_CLI tag busybox:1.36 "$TARGET_IMAGE"
 
                   echo ""
                   echo "=== Pushing $TARGET_IMAGE ==="
