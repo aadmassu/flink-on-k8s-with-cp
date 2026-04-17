@@ -1,0 +1,63 @@
+# Pipeline:  push-busybox
+# Purpose:   Pull busybox from Docker Hub and push to Artifactory for network testing
+# Author:    Ayele Admassu
+# Created:   2026-04-17
+#
+# Variable Group: dev-openshift-credentials
+#   artifactory-svc-user          — Artifactory service account username
+#   artifactory-svc-user-password — Artifactory service account password (secret)
+
+trigger: none
+
+variables:
+  - group: dev-openshift-credentials
+
+stages:
+  - stage: PushBusybox
+    displayName: "Push busybox to Artifactory"
+    jobs:
+      - job: PushBusybox
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - task: Bash@3
+            displayName: "Pull, tag, and push busybox"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                REGISTRY="artifactory.fcbint.net"
+                REPO="camdepositsharedservices-docker-dev"
+                TARGET_IMAGE="$REGISTRY/$REPO/busybox:latest"
+
+                CONTAINER_CLI="docker"
+                if command -v podman &>/dev/null; then
+                  CONTAINER_CLI="podman"
+                fi
+                echo "Using $CONTAINER_CLI"
+
+                echo "=== Pulling busybox from Docker Hub ==="
+                $CONTAINER_CLI pull busybox:latest
+
+                echo ""
+                echo "=== Tagging as $TARGET_IMAGE ==="
+                $CONTAINER_CLI tag busybox:latest "$TARGET_IMAGE"
+
+                echo ""
+                echo "=== Logging in to Artifactory ==="
+                echo "$ART_PWD" | $CONTAINER_CLI login "$REGISTRY" --username "$ART_USER" --password-stdin
+
+                echo ""
+                echo "=== Pushing $TARGET_IMAGE ==="
+                $CONTAINER_CLI push "$TARGET_IMAGE"
+
+                echo ""
+                echo "=== Done ==="
+                echo "Image pushed: $TARGET_IMAGE"
+            env:
+              ART_USER: $(artifactory-svc-user)
+              ART_PWD: $(artifactory-svc-user-password)
