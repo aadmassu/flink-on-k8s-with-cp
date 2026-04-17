@@ -85,6 +85,14 @@ stages:
                   | grep -E "^kind:|^  name:|^  namespace:" || true
 
                 echo ""
+                echo "=== Checking for stuck Helm release ==="
+                STATUS=$(helm status confluent-cmf -n "$OC_NS" -o json 2>/dev/null | grep -o '"status":"[^"]*"' | head -1 || true)
+                if echo "$STATUS" | grep -qE "pending-install|pending-upgrade|pending-rollback"; then
+                  echo "Found stuck release ($STATUS), rolling back..."
+                  helm rollback confluent-cmf -n "$OC_NS" || helm uninstall confluent-cmf -n "$OC_NS" --no-hooks
+                fi
+
+                echo ""
                 echo "=== Installing CMF ==="
                 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
