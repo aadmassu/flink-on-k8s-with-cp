@@ -8,9 +8,9 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/e6ccede5-9000-4de7-88a8-8c3823bede61.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/c0d7f48d-f0f4-467d-bc5e-c939d1dd4f08.sh
 === Git commit ===
-df40f281e9df3852a0205c08c1e0812a7b962766
+05d16cf7a36e829474c16ed9e619b08d4c744bf8
 
 === Resources CMF will create ===
 kind: ConfigMap
@@ -23,7 +23,36 @@ kind: Deployment
   name: confluent-manager-for-apache-flink
   namespace: dah-flink-dev
 
+=== Checking for stuck Helm release ===
+Found stuck release ("status":"pending-upgrade"), rolling back...
+Rollback was a success! Happy Helming!
+
 === Installing CMF ===
-Error: UPGRADE FAILED: another operation (install/upgrade/rollback) is in progress
-##[error]Bash exited with code '1'.
-Finishing: Install CMF
+Release "confluent-cmf" has been upgraded. Happy Helming!
+NAME: confluent-cmf
+LAST DEPLOYED: Fri Apr 17 14:34:21 2026
+NAMESPACE: dah-flink-dev
+STATUS: deployed
+REVISION: 19
+TEST SUITE: None
+NOTES:
+Confluent Manager for Apache Flink®
+
+Confluent Manager for Apache Flink® provides a management solution for Apache Flink clusters using Confluent Platform.
+It includes various templates and configurations to deploy and manage Flink applications.
+
+Thank you for installing confluent-manager-for-apache-flink!
+#################################################################################
+#                              !!! WARNING !!!                                  #
+#                        NON-PRODUCTION DEPLOYMENT                              #
+#################################################################################
+
+This is a NON-PRODUCTION deployment of Confluent Manager for Apache Flink®.
+This deployment is NOT suitable for production use. If 'cmf.sql.production' is set
+	to 'false' sensitive data like secrets in the database are not encrypted.
+
+To deploy in production mode, set cmf.sql.production=true in your values.yaml and
+	create an encryption key, according to the documentation.
+
+Note: A CMF database that has been initialized as a non-production mode deployment can not be
+turned into a production mode later on.
