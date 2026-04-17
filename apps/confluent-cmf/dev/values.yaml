@@ -24,6 +24,11 @@ cmf:
         kubernetesSecretName: cmf-db-credentials
         kubernetesSecretProperty: password
 
+encryption:
+  key:
+    kubernetesSecretName: cmf-encryption-key
+    kubernetesSecretProperty: key
+
 image:
   repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc
   name: cp-cmf

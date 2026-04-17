@@ -93,9 +93,13 @@ stages:
                 fi
 
                 echo ""
-                echo "=== Creating CMF database credentials secret ==="
+                echo "=== Creating CMF secrets ==="
                 oc create secret generic cmf-db-credentials \
                   --from-literal=password="$CMF_DB_PWD" \
+                  -n "$OC_NS" --dry-run=client -o yaml | oc apply -f -
+
+                oc create secret generic cmf-encryption-key \
+                  --from-literal=key="$CMF_ENC_KEY" \
                   -n "$OC_NS" --dry-run=client -o yaml | oc apply -f -
 
                 echo ""
@@ -118,3 +122,4 @@ stages:
               CMF_DB_URL: $(dev-cmf-sql-server-jdbc-url)
               CMF_DB_USER: $(dev-cmf-sql-server-user)
               CMF_DB_PWD: $(dev-cmf-sql-server-user-password)
+              CMF_ENC_KEY: $(dev-cmf-encryption-key)
