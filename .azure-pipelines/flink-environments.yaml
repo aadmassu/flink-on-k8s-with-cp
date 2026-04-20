@@ -127,6 +127,17 @@ stages:
                 }
 
                 echo ""
+                echo "=== Waiting for CMF pod to be Ready ==="
+                oc wait --for=condition=Ready pod \
+                  -l app.kubernetes.io/name=confluent-manager-for-apache-flink \
+                  -n "$OC_NS" --timeout=180s
+
+                echo ""
+                echo "=== CMF pod status ==="
+                oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
+                oc get endpoints cmf-service -n "$OC_NS"
+
+                echo ""
                 echo "=== Verifying CMF is reachable via OpenShift API proxy ==="
                 echo "API server: $API_SERVER"
                 call_cmf GET "/cmf/api/v1/environments" | head -50 || {
