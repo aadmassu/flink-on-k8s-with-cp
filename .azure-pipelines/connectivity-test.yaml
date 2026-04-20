@@ -165,21 +165,50 @@ stages:
               OC_NS: $(openshift-dev-namespace)
 
           - task: Bash@3
-            displayName: "Test SQL Server connectivity"
+            displayName: "Connectivity Test"
             inputs:
               targetType: inline
               script: |
                 set -euo pipefail
 
-                echo "=== Testing DNS resolution ==="
+                test_connection() {
+                  local host=$1
+                  local port=$2
+                  local label=$3
+                  echo ""
+                  echo "--- $label: $host:$port ---"
+                  if oc exec busybox -n "$OC_NS" -- nc -zv -w 5 "$host" "$port" 2>&1; then
+                    echo "OK: $label reachable at $host:$port"
+                  else
+                    echo "FAIL: $label unreachable at $host:$port"
+                  fi
+                }
+
+                echo "=== SQL Server ==="
                 oc exec busybox -n "$OC_NS" -- nslookup "$DB_HOST" || true
+                test_connection "$DB_HOST" 3085 "SQL Server"
 
                 echo ""
-                echo "=== Testing SQL Server connectivity ==="
-                oc exec busybox -n "$OC_NS" -- nc -zv -w 5 "$DB_HOST" 3085
+                echo "=== Kafka Brokers ==="
+                IFS=',' read -ra BROKERS <<< "$KAFKA_BROKERS"
+                for broker in "${BROKERS[@]}"; do
+                  test_connection "$broker" 9092 "Kafka broker (plaintext)"
+                  test_connection "$broker" 9094 "Kafka broker (TLS)"
+                done
+
+                echo ""
+                echo "=== Schema Registry ==="
+                test_connection "$SCHEMA_REGISTRY_HOST" 8081 "Schema Registry"
+
+                echo ""
+                echo "=== Kafka REST Proxy ==="
+                test_connection "$REST_PROXY_HOST" 8082 "Kafka REST Proxy"
 
                 echo ""
                 echo "=== Connectivity test complete ==="
             env:
               OC_NS: $(openshift-dev-namespace)
               DB_HOST: $(dev-cmf-sql-server-jdbc-url)
+              KAFKA_BROKERS: $(dev-kafka-broker-hosts)
+              SCHEMA_REGISTRY_HOST: $(dev-schema-registry-host)
+              REST_PROXY_HOST: $(dev-kafka-rest-proxy-host)
