@@ -134,6 +134,19 @@ stages:
                   exit 1
                 }
 
+                echo ""
+                echo "=== Discovering CMF API paths (OpenAPI) ==="
+                for openapi_path in "/v3/api-docs" "/swagger.json" "/openapi.json" "/cmf/api/v1/openapi.json"; do
+                  code=$(curl -sS -k -o /dev/null -w "%{http_code}" \
+                    -H "Authorization: Bearer $OC_TOKEN" \
+                    "$PROXY_BASE$openapi_path")
+                  if [ "$code" = "200" ]; then
+                    echo "Found OpenAPI at: $openapi_path"
+                    call_cmf GET "$openapi_path" | grep -oE '"/cmf/api/v[0-9]+/[^"]*"' | sort -u | head -30
+                    break
+                  fi
+                done
+
                 ENV_FILE_NAME=$(json_name "$ENV_FILE")
                 echo ""
                 echo "Environment name parsed: '$ENV_FILE_NAME'"
