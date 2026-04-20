@@ -210,6 +210,11 @@ stages:
                 test_dns "$REST_PROXY_HOST" "Kafka REST Proxy"
 
                 echo ""
+                echo "=== NetApp S3 ==="
+                S3_HOST=$(echo "$S3_URL" | sed -E 's|^https?://||; s|/.*$||')
+                test_dns "$S3_HOST" "NetApp S3"
+
+                echo ""
                 echo "=== DNS resolution test complete ==="
             env:
               OC_NS: $(openshift-dev-namespace)
@@ -217,6 +222,7 @@ stages:
               KAFKA_BROKERS: $(dev-kafka-broker-hosts)
               SCHEMA_REGISTRY_HOST: $(dev-schema-registry-host)
               REST_PROXY_HOST: $(dev-kafka-rest-proxy-host)
+              S3_URL: $(dev-net-app-s3-url)
 
           - task: Bash@3
             displayName: "Connectivity Test"
@@ -258,6 +264,11 @@ stages:
                 test_connection "$REST_PROXY_HOST" 8082 "Kafka REST Proxy"
 
                 echo ""
+                echo "=== NetApp S3 ==="
+                S3_HOST=$(echo "$S3_URL" | sed -E 's|^https?://||; s|/.*$||')
+                test_connection "$S3_HOST" 443 "NetApp S3 (HTTPS)"
+
+                echo ""
                 echo "=== Connectivity test complete ==="
             env:
               OC_NS: $(openshift-dev-namespace)
@@ -265,3 +276,4 @@ stages:
               KAFKA_BROKERS: $(dev-kafka-broker-hosts)
               SCHEMA_REGISTRY_HOST: $(dev-schema-registry-host)
               REST_PROXY_HOST: $(dev-kafka-rest-proxy-host)
+              S3_URL: $(dev-net-app-s3-url)
