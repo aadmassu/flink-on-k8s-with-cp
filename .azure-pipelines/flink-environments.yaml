@@ -74,13 +74,12 @@ stages:
                   exit 1
                 fi
 
-                echo "=== Starting port-forward to CMF ==="
-                oc port-forward -n "$OC_NS" svc/cmf-service 8080:80 >/dev/null 2>&1 &
-                PF_PID=$!
-                trap "kill $PF_PID 2>/dev/null || true" EXIT
-                sleep 3
+                CMF_URL="http://cmf-service.$OC_NS.svc.cluster.local:80"
 
-                CMF_URL="http://localhost:8080"
+                # Extract "name" field from a JSON file using grep/sed
+                json_name() {
+                  grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "$1" | head -1 | sed -E 's/.*"name"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/'
+                }
 
                 apply_resource() {
                   local path=$1
@@ -95,31 +94,33 @@ stages:
                   http_code=$(curl -s -o /dev/null -w "%{http_code}" "$CMF_URL$path/$name")
 
                   if [ "$http_code" = "200" ]; then
-                    echo "Exists, updating with PUT..."
-                    curl -sS -X PUT "$CMF_URL$path/$name" \
-                      -H "Content-Type: application/json" \
-                      --data-binary "@$file" | tee /tmp/response.json
-                  else
-                    echo "Does not exist (HTTP $http_code), creating with POST..."
-                    curl -sS -X POST "$CMF_URL$path" \
-                      -H "Content-Type: application/json" \
-                      --data-binary "@$file" | tee /tmp/response.json
+                    echo "$label '$name' already exists, skipping create."
+                    return 0
                   fi
+
+                  echo "Creating $label '$name' with POST..."
+                  curl -sS -X POST "$CMF_URL$path" \
+                    -H "Content-Type: application/json" \
+                    --data-binary "@$file" | tee /tmp/response.json
                   echo ""
                 }
 
                 echo ""
-                echo "=== Verifying CMF is reachable ==="
+                echo "=== Verifying CMF is reachable at $CMF_URL ==="
                 curl -sS "$CMF_URL/cmf/api/v1/environments" | head -50 || {
                   echo "ERROR: CMF not reachable at $CMF_URL"
                   exit 1
                 }
 
-                ENV_FILE_NAME=$(jq -r '.name' "$ENV_FILE")
+                ENV_FILE_NAME=$(json_name "$ENV_FILE")
+                echo ""
+                echo "Environment name parsed: '$ENV_FILE_NAME'"
                 apply_resource "/cmf/api/v1/environments" "$ENV_FILE" "$ENV_FILE_NAME" "Environment"
 
                 if [ -f "$DB_FILE" ]; then
-                  DB_FILE_NAME=$(jq -r '.name' "$DB_FILE")
+                  DB_FILE_NAME=$(json_name "$DB_FILE")
+                  echo ""
+                  echo "Database name parsed: '$DB_FILE_NAME'"
                   apply_resource "/cmf/api/v1/environments/$ENV_FILE_NAME/databases" \
                                  "$DB_FILE" "$DB_FILE_NAME" "Kafka Database"
                 fi
