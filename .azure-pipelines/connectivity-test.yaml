@@ -119,6 +119,18 @@ stages:
                 REPO="camdepositsharedservices-docker-dev"
                 IMAGE_TAG="1.36"
 
+                echo "=== Checking if busybox pod is already running ==="
+                if oc get pod busybox -n "$OC_NS" --no-headers 2>/dev/null | grep -q "Running"; then
+                  echo "busybox pod is already running, skipping deploy."
+                  oc get pod busybox -n "$OC_NS" -o wide
+                  exit 0
+                fi
+
+                echo ""
+                echo "=== Cleaning up any existing non-Running busybox pod ==="
+                oc delete pod busybox -n "$OC_NS" --ignore-not-found --wait=true
+
+                echo ""
                 echo "=== Deploying busybox pod in $OC_NS ==="
                 cat <<EOF | oc apply -f -
                 apiVersion: v1
