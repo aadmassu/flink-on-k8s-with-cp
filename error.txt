@@ -8,35 +8,35 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/9a158873-2a91-45fa-acfc-722b71a908d0.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/7d7a7f2c-ee01-404b-87ad-f9bb533dc624.sh
 === Testing DNS resolution ===
 Server:		10.245.0.10
 Address:	10.245.0.10:53
 
-** server can't find DAHFLINK.dah-flink-dev.svc.cluster.local: NXDOMAIN
+** server can't find db-dabronze-d.svc.cluster.local: NXDOMAIN
 
-** server can't find DAHFLINK.cluster.local: NXDOMAIN
+** server can't find db-dabronze-d.cluster.local: NXDOMAIN
 
-** server can't find DAHFLINK.svc.cluster.local: NXDOMAIN
+** server can't find db-dabronze-d.dah-flink-dev.svc.cluster.local: NXDOMAIN
 
-** server can't find DAHFLINK.svc.cluster.local: NXDOMAIN
+** server can't find db-dabronze-d.svc.cluster.local: NXDOMAIN
 
-** server can't find DAHFLINK.dah-flink-dev.svc.cluster.local: NXDOMAIN
+** server can't find db-dabronze-d.dah-flink-dev.svc.cluster.local: NXDOMAIN
 
-** server can't find DAHFLINK.cluster.local: NXDOMAIN
+** server can't find db-dabronze-d.cluster.local: NXDOMAIN
 
-** server can't find DAHFLINK.dv-p.ocp.fcbint.net: NXDOMAIN
+** server can't find db-dabronze-d.fcpd.fcbint.net: NXDOMAIN
 
-** server can't find DAHFLINK.fcpd.fcbint.net: NXDOMAIN
+** server can't find db-dabronze-d.fcpd.fcbint.net: NXDOMAIN
 
-** server can't find DAHFLINK.fcpd.fcbint.net: NXDOMAIN
+** server can't find db-dabronze-d.dv-p.ocp.fcbint.net: NXDOMAIN
 
-** server can't find DAHFLINK.dv-p.ocp.fcbint.net: NXDOMAIN
+** server can't find db-dabronze-d.dv-p.ocp.fcbint.net: NXDOMAIN
 
 command terminated with exit code 1
 
 === Testing SQL Server connectivity ===
-nc: bad address 'DAHFLINK'
+nc: bad address 'db-dabronze-d'
 command terminated with exit code 1
 ##[error]Bash exited with code '1'.
 Finishing: Test SQL Server connectivity
