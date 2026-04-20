@@ -8,99 +8,26 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/41c4682b-4218-4d22-9d85-66d208365e9e.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/39b77ba3-aafd-4ded-85e5-6026ed984b6d.sh
 
-=== Verifying CMF is reachable at http://cmf-service.dah-flink-dev.svc.cluster.local:80 ===
-curl: (6) Could not resolve host: cmf-service.dah-flink-dev.svc.cluster.local
-ERROR: CMF not reachable at http://cmf-service.dah-flink-dev.svc.cluster.local:80
-##[error]Bash exited with code '1'.
+=== Verifying CMF is reachable via OpenShift API proxy ===
+API server: https://api.dv-p.ocp.fcbint.net:6443
+{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
+Environment name parsed: 'dev'
+
+=== Environment: dev ===
+Creating Environment 'dev' with POST...
+{"errors":[{"message":"Unrecognized property 'spec' at path 'spec'."}]}
+
+Database name parsed: 'fcb-kafka'
+
+=== Kafka Database: fcb-kafka ===
+Creating Kafka Database 'fcb-kafka' with POST...
+{"errors":[{"message":"Resource not found: [cmf/api/v1/environments/dev/databases]"}]}
+
+=== Current environments ===
+{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
+=== Current databases in dev ===
+{"errors":[{"message":"Resource not found: [cmf/api/v1/environments/dev/databases]"}]}
+=== Done ===
 Finishing: Apply Flink environment and catalog
-
-
-MORE FCB Guidlines 
-
-Ingress
-Summary
-The following describes guidelines and best practices, specific to the Kubernetes "Ingress" resource.
-
-Reference Documentation
-Ingress [networking.k8s.io/v1] - Network APIs | API reference | OpenShift Container Platform 4.16
-Cert-manager Annotations
-OpenShift Service Guidelines and Best Practices
-OpenShift HAProxy Ingress Annotations
-OpenShift Resource Common Metadata
-Ingress Guidelines
-Must declare a TLS (https) endpoint
-Must only be created for workloads that require inbound access from outside of the OpenShift cluster
-Must declare a distinct hostname across all clusters
-Must use a public Certificate Authority (CA) issuer for publicly available hostnames
-Must use reencrypt or edge for TLS Termination
-Must reference a Service object type of ClusterIP. Sterling may use a LoadBalancer type
-Must only use HAProxy Ingress annotations supported by OpenShift
-All traffic originating from outside the OpenShift cluster must go through an Ingress controller. Sterling may use MetalLB
-Ingress Best Practices
-Front API Services with an API Gateway
-
-Plan ingress paths to avoid conflicts
-Remove ingresses that are not in use on a given cluster
-Create a site-specific ingress on DR cluster for DR testing
-Ingress Anti-Patterns
-passthrough TLS Termination
-Sharing of hostnames between multiple ingresses, even on different clusters
-Manually creating and managing certificate objects
-
-
-More Guidelines on HAProxy Ingress Annotations
-
-Summary
-
-The following describes HAProxy Ingress annotations supported by OpenShift.
-
-
-
-haproxy.router.openshift.io/balance
-
-Sets the load-balancing algorithm. Available options are random, source, roundrobin, and leastconn. The default value is source for TLS passthrough routes. For all other routes, the default is random.
-
-haproxy.router.openshift.io/pod-concurrent-connections
-
-Sets the maximum number of connections that are allowed to a backing pod from a router.
-Note: If there are multiple pods, each can have this many connections. If you have multiple routers, there is no coordination among them, each may connect this many times. If not set, or set to 0, there is no limit.
-
-haproxy.router.openshift.io/rate-limit-connections
-
-Setting 'true' or 'TRUE' enables rate limiting functionality which is implemented through stick-tables on the specific backend per route.
-Note: Using this annotation provides basic protection against denial-of-service attacks.
-
-haproxy.router.openshift.io/rate-limit-connections.rate-http
-
-Limits the rate at which a client with the same source IP address can make HTTP requests. It accepts a numeric value.
-Note: Using this annotation provides basic protection against denial-of-service attacks.
-
-haproxy.router.openshift.io/timeout
-
-Sets a server-side timeout for the route. (TimeUnits)  Supported time units are microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h), or days (d).  Example value: "60s"
-
-haproxy.router.openshift.io/ip_whitelist
-
-Sets an allowlist for the route. The allowlist is a space-separated list of IP addresses and CIDR ranges for the approved source addresses. Requests from IP addresses that are not in the allowlist are dropped.
-
-The maximum number of IP addresses and CIDR ranges directly visible in the haproxy.config file is 61. [1]
-
-haproxy.router.openshift.io/rewrite-target
-
-Sets the rewrite path of the request on the backend.
-
-haproxy.router.openshift.io/set-forwarded-headers
-
-Sets the policy for handling the Forwarded and X-Forwarded-For HTTP headers per route. The values are:
-
-append: appends the header, preserving any existing header. This is the default value.
-
-replace: sets the header, removing any existing header.
-
-never: never sets the header, but preserves any existing header.
-
-if-none: sets the header if it is not already set.
-
-s
