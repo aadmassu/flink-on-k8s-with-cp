@@ -67,6 +67,7 @@ stages:
 
                 ENV_NAME="${{ parameters.environment }}"
                 ENV_FILE="apps/confluent-flink/$ENV_NAME/environment.json"
+                CATALOG_FILE="apps/confluent-flink/$ENV_NAME/kafka-catalog.json"
                 DB_FILE="apps/confluent-flink/$ENV_NAME/kafka-database.json"
 
                 if [ ! -f "$ENV_FILE" ]; then
@@ -74,22 +75,19 @@ stages:
                   exit 1
                 fi
 
-                # Use OpenShift API proxy to reach CMF's internal service.
-                # No port-forward, no ingress — authenticates via the current oc token.
                 API_SERVER=$(oc whoami --show-server)
                 OC_TOKEN=$(oc whoami -t)
                 PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/cmf-service:80/proxy"
 
-                # Extract "name" field from a JSON file using grep/sed
+                # Extract top-level "name" (environment) or "metadata.name" (catalog/database)
                 json_name() {
-                  grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "$1" | head -1 | sed -E 's/.*"name"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/'
+                  python3 -c "import json,sys; d=json.load(open('$1')); print(d.get('name') or d.get('metadata',{}).get('name',''))"
                 }
 
                 call_cmf() {
                   local method=$1
                   local path=$2
                   local file=${3:-}
-
                   if [ -n "$file" ]; then
                     curl -sS -k -X "$method" \
                       -H "Authorization: Bearer $OC_TOKEN" \
@@ -103,30 +101,28 @@ stages:
                   fi
                 }
 
-                apply_resource() {
-                  local path=$1
-                  local file=$2
-                  local name=$3
+                # POST if not exists, skip if exists (409 safe)
+                create_if_missing() {
+                  local collection_path=$1
+                  local item_path=$2
+                  local file=$3
                   local label=$4
+                  local name=$5
 
                   echo ""
                   echo "=== $label: $name ==="
-
                   http_code=$(curl -sS -k -o /dev/null -w "%{http_code}" \
                     -H "Authorization: Bearer $OC_TOKEN" \
-                    "$PROXY_BASE$path/$name")
-
+                    "$PROXY_BASE$item_path")
                   if [ "$http_code" = "200" ]; then
-                    echo "$label '$name' already exists, skipping create."
+                    echo "$label '$name' already exists, skipping."
                     return 0
                   fi
-
-                  echo "Creating $label '$name' with POST..."
-                  call_cmf POST "$path" "$file"
+                  echo "Creating $label '$name' with POST to $collection_path..."
+                  call_cmf POST "$collection_path" "$file"
                   echo ""
                 }
 
-                echo ""
                 echo "=== Waiting for CMF pod to be Ready ==="
                 oc wait --for=condition=Ready pod \
                   -l app.kubernetes.io/name=confluent-manager-for-apache-flink \
@@ -138,60 +134,50 @@ stages:
                 oc get endpoints cmf-service -n "$OC_NS"
 
                 echo ""
-                echo "=== Verifying CMF is reachable via OpenShift API proxy ==="
-                echo "API server: $API_SERVER"
+                echo "=== Verifying CMF is reachable ==="
                 call_cmf GET "/cmf/api/v1/environments" | head -50 || {
                   echo "ERROR: CMF not reachable via proxy"
                   exit 1
                 }
 
-                echo ""
-                echo "=== Discovering CMF API paths (OpenAPI) ==="
-                for openapi_path in "/v3/api-docs" "/swagger.json" "/openapi.json" "/cmf/api/v1/openapi.json"; do
-                  code=$(curl -sS -k -o /dev/null -w "%{http_code}" \
-                    -H "Authorization: Bearer $OC_TOKEN" \
-                    "$PROXY_BASE$openapi_path")
-                  if [ "$code" = "200" ]; then
-                    echo "Found OpenAPI at: $openapi_path"
-                    call_cmf GET "$openapi_path" | grep -oE '"/cmf/api/v[0-9]+/[^"]*"' | sort -u | head -30
-                    break
-                  fi
-                done
-
+                # 1) Environment (POST = create-or-update per spec)
                 ENV_FILE_NAME=$(json_name "$ENV_FILE")
                 echo ""
-                echo "Environment name parsed: '$ENV_FILE_NAME'"
-                apply_resource "/cmf/api/v1/environments" "$ENV_FILE" "$ENV_FILE_NAME" "Environment"
+                echo "=== Environment: $ENV_FILE_NAME (upsert) ==="
+                call_cmf POST "/cmf/api/v1/environments" "$ENV_FILE"
+                echo ""
 
-                if [ -f "$DB_FILE" ]; then
-                  DB_FILE_NAME=$(json_name "$DB_FILE")
-                  echo ""
-                  echo "Database name parsed: '$DB_FILE_NAME'"
+                # 2) Kafka Catalog (top-level)
+                if [ -f "$CATALOG_FILE" ]; then
+                  CAT_NAME=$(json_name "$CATALOG_FILE")
+                  create_if_missing \
+                    "/cmf/api/v1/catalogs/kafka" \
+                    "/cmf/api/v1/catalogs/kafka/$CAT_NAME" \
+                    "$CATALOG_FILE" \
+                    "Kafka Catalog" "$CAT_NAME"
+                fi
 
-                  # Try a few known CMF API paths for Kafka catalog/database registration
-                  for candidate_path in \
-                      "/cmf/api/v1/kafka-catalogs" \
-                      "/cmf/api/v1/databases" \
-                      "/cmf/api/v1/environments/$ENV_FILE_NAME/kafka-catalogs" \
-                      "/cmf/api/v1/environments/$ENV_FILE_NAME/databases"; do
-                    echo ""
-                    echo "--- Trying path: $candidate_path ---"
-                    code=$(curl -sS -k -o /dev/null -w "%{http_code}" \
-                      -H "Authorization: Bearer $OC_TOKEN" \
-                      "$PROXY_BASE$candidate_path")
-                    echo "GET $candidate_path => HTTP $code"
-                    if [ "$code" = "200" ]; then
-                      echo "Found working endpoint: $candidate_path"
-                      apply_resource "$candidate_path" "$DB_FILE" "$DB_FILE_NAME" "Kafka Database"
-                      break
-                    fi
-                  done
+                # 3) Kafka Database (nested under catalog)
+                if [ -f "$DB_FILE" ] && [ -n "${CAT_NAME:-}" ]; then
+                  DB_NAME=$(json_name "$DB_FILE")
+                  create_if_missing \
+                    "/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases" \
+                    "/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases/$DB_NAME" \
+                    "$DB_FILE" \
+                    "Kafka Database" "$DB_NAME"
                 fi
 
                 echo ""
                 echo "=== Current environments ==="
-                call_cmf GET "/cmf/api/v1/environments" | head -50
-
+                call_cmf GET "/cmf/api/v1/environments" | head -100
+                echo ""
+                echo "=== Current Kafka catalogs ==="
+                call_cmf GET "/cmf/api/v1/catalogs/kafka" | head -100
+                if [ -n "${CAT_NAME:-}" ]; then
+                  echo ""
+                  echo "=== Current databases in $CAT_NAME ==="
+                  call_cmf GET "/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases" | head -100
+                fi
                 echo ""
                 echo "=== Done ==="
             env:
