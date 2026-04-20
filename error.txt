@@ -8,12 +8,7 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/b35d2403-ce82-4475-8371-5584edf8af8f.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/145884a6-32aa-4c65-a0a0-83feb20bde60.sh
 === Deploying busybox pod in dah-flink-dev ===
 Warning: [startup] Container <busybox> in your <Pod> <busybox> has no <startupProbe>
-Error from server (Forbidden): admission webhook "validation.gatekeeper.sh" denied the request: [readiness-liveness] Container <busybox> in your <Pod> <busybox> has no <livenessProbe>
-[readiness-liveness] Container <busybox> in your <Pod> <busybox> has no <readinessProbe>
-[disallow-latest] container <busybox> uses a disallowed tag <artifactory.fcbint.net/camdepositsharedservices-docker-dev/busybox:latest>; disallowed tags are ["latest"]
-error: no objects passed to apply
-##[error]Bash exited with code '1'.
-Finishing: Run busybox in namespace
+Error from server (Forbidden): error when creating "STDIN": pods "busybox" is forbidden: failed quota: compute-resources: must specify limits.cpu for: busybox; limits.memory for: busybox; requests.cpu for: busybox; requests.memory for: busybox
