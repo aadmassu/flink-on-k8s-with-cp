@@ -1,86 +1,106 @@
-Service Guidelines
-Must only be created for workloads that expose traffic
-Must declare a type of ClusterIP. Sterling may use a LoadBlancer type
-Must only expose ports that require ingress
-Must only use IPv4
-Must declare selectors
-Must not create or manually managing EndpointSlice objects
-Service Best Practices
-Use multiple selectors to ensure routing to the correct workload pod(s)
-Expose https ports with valid TLS certificates for service-to-service communication
-Avoid http/non-TLS wherever possible (e.g. 80, 8080)
-Expose pod https ports (e.g. 8443) as service port 443
-Reference port names rather than numbers (ports.targetPort)
-See Best Practices for Deployment and Statefulset
-Service Anti-Patterns
-Creating a Service for workloads that do not exposed traffic
-Declaring a Service type of NodePort, LoadBalancer or ExternalName
-Opening ports that don't need ingress
-Declaring IPv6 in ipFamilies
-Creating or manually managing EndpointSlice objects
-Creating a Service without specifying selectors
+Starting: Apply Flink environment and catalog
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/41c4682b-4218-4d22-9d85-66d208365e9e.sh
 
-Created by Long, Jacob, last updated by Philipps, Tom on Oct 21, 2025  2 minute read
+=== Verifying CMF is reachable at http://cmf-service.dah-flink-dev.svc.cluster.local:80 ===
+curl: (6) Could not resolve host: cmf-service.dah-flink-dev.svc.cluster.local
+ERROR: CMF not reachable at http://cmf-service.dah-flink-dev.svc.cluster.local:80
+##[error]Bash exited with code '1'.
+Finishing: Apply Flink environment and catalog
+
+
+MORE FCB Guidlines 
+
+Ingress
 Summary
-In OpenShift, labels and annotations provide a means for attaching metadata to Kubernetes objects. While they are similar in that they are key/value pairs, their uses differ. The following provides a description of labels and annotations, as well as the required labels and annotations for given Kubernetes objects/resources.
+The following describes guidelines and best practices, specific to the Kubernetes "Ingress" resource.
 
 Reference Documentation
-Monitoring OpenShift | Pod annotations
-OpenShift HAProxy Ingress Annotations - Cloud Services - FCB Confluence Prod
-Descriptions
-Labels and Selectors 
-Labels are key/value pairs that are attached to objects such as Pods. They enable users to map their own organizational structures onto system objects in a loosely coupled fashion, without requiring clients to store these mappings. Labels can be used to organize and to select subsets of objects. Labels can be attached to objects at creation time and subsequently added and modified at any time. Each Key must be unique for a given object.
+Ingress [networking.k8s.io/v1] - Network APIs | API reference | OpenShift Container Platform 4.16
+Cert-manager Annotations
+OpenShift Service Guidelines and Best Practices
+OpenShift HAProxy Ingress Annotations
+OpenShift Resource Common Metadata
+Ingress Guidelines
+Must declare a TLS (https) endpoint
+Must only be created for workloads that require inbound access from outside of the OpenShift cluster
+Must declare a distinct hostname across all clusters
+Must use a public Certificate Authority (CA) issuer for publicly available hostnames
+Must use reencrypt or edge for TLS Termination
+Must reference a Service object type of ClusterIP. Sterling may use a LoadBalancer type
+Must only use HAProxy Ingress annotations supported by OpenShift
+All traffic originating from outside the OpenShift cluster must go through an Ingress controller. Sterling may use MetalLB
+Ingress Best Practices
+Front API Services with an API Gateway
 
-Unlike names and UIDs, labels do not provide uniqueness. In general, we expect many objects to carry the same label(s). Via a label selector, the client/user can identify a set of objects. The label selector is the core grouping primitive in Kubernetes
-
-Annotations
-Annotations are means of attaching arbitrary non-identifying metadata to Kubernetes objects, where client tools and libraries can retrieve this metadata. In contrast to labels, annotations are not used to identify and select objects. The metadata in an annotation can be small or large, structured or unstructured, and can include characters not permitted by labels. It is possible to use labels as well as annotations in the metadata of the same object.
-
-Label Guidelines
-Namespaces
-The following labels are required on all namespaces created on the OpenShift platform.
-
-kubernetes.io/metadata.name: <team input>-<environment>-<zone>
-fcbint.net/network: <network-zone>
-fcbint.net/app-tier: <correlate to CMDB Application>
-fcbint.net/app-id: <CMDB Application ID>
-All Other Objects/Resources
-The following labels are required on all other objects and resources created on the OpenShift platform. This includes ingress, services, all workload types, configmaps and secrets.
-
-app.kubernetes.io/name:
-app.kubernetes.io/instance:
-app.kubernetes.io/component: 
-fcbint.net/app-id: <CMDB Application ID>
-Recommended
-The following labels are recommended on all objects and resources created on the OpenShift platform.
-
-app.kubernetes.io/version: <semantic version>
-Annotation Guidelines
-Namespaces
-The following annotations are required on all namespaces created on the OpenShift platform.
-
-fcbint.net/contact: <email distribution list>
-fcbint.net/ritm: <RITM000000>
-collectord.io/index: <splunk index for log forwarding>
-openshift.io/requester: <requestor name>
-Ingress
-The following annotations are recommended, as applicable, on Ingress resources created on the OpenShift platform.
-
-See: OpenShift HAProxy Ingress Annotations - Cloud Services - FCB Confluence Prod
-Certificates
-The following annotations are required on all Keyfactor-issued certificate objects created on the OpenShift platform.  This is in compliance with the Keyfactor Certificate CMDB Tracking (Link: TODO).
-
-metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: (team email address)
-metadata.command-issuer.keyfactor.com/Environment:
-Non-Prod-DEV
-Non-Prod-QA
-Non-Prod-UAT
-Prod-Corp
-metadata.command-issuer.keyfactor.com/Description: (Free form - describe your service)
-metadata.command-issuer.keyfactor.com/Organization: FCB
-metadata.command-issuer.keyfactor.com/Application-ID: <CMDB Application ID>
-metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
-Workloads
-The following annotations are recommended, as applicable, on workload resources (Deployments, Statefulsets, Jobs, CronJobs, etc).
+Plan ingress paths to avoid conflicts
+Remove ingresses that are not in use on a given cluster
+Create a site-specific ingress on DR cluster for DR testing
+Ingress Anti-Patterns
+passthrough TLS Termination
+Sharing of hostnames between multiple ingresses, even on different clusters
+Manually creating and managing certificate objects
 
 
+More Guidelines on HAProxy Ingress Annotations
+
+Summary
+
+The following describes HAProxy Ingress annotations supported by OpenShift.
+
+
+
+haproxy.router.openshift.io/balance
+
+Sets the load-balancing algorithm. Available options are random, source, roundrobin, and leastconn. The default value is source for TLS passthrough routes. For all other routes, the default is random.
+
+haproxy.router.openshift.io/pod-concurrent-connections
+
+Sets the maximum number of connections that are allowed to a backing pod from a router.
+Note: If there are multiple pods, each can have this many connections. If you have multiple routers, there is no coordination among them, each may connect this many times. If not set, or set to 0, there is no limit.
+
+haproxy.router.openshift.io/rate-limit-connections
+
+Setting 'true' or 'TRUE' enables rate limiting functionality which is implemented through stick-tables on the specific backend per route.
+Note: Using this annotation provides basic protection against denial-of-service attacks.
+
+haproxy.router.openshift.io/rate-limit-connections.rate-http
+
+Limits the rate at which a client with the same source IP address can make HTTP requests. It accepts a numeric value.
+Note: Using this annotation provides basic protection against denial-of-service attacks.
+
+haproxy.router.openshift.io/timeout
+
+Sets a server-side timeout for the route. (TimeUnits)  Supported time units are microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h), or days (d).  Example value: "60s"
+
+haproxy.router.openshift.io/ip_whitelist
+
+Sets an allowlist for the route. The allowlist is a space-separated list of IP addresses and CIDR ranges for the approved source addresses. Requests from IP addresses that are not in the allowlist are dropped.
+
+The maximum number of IP addresses and CIDR ranges directly visible in the haproxy.config file is 61. [1]
+
+haproxy.router.openshift.io/rewrite-target
+
+Sets the rewrite path of the request on the backend.
+
+haproxy.router.openshift.io/set-forwarded-headers
+
+Sets the policy for handling the Forwarded and X-Forwarded-For HTTP headers per route. The values are:
+
+append: appends the header, preserving any existing header. This is the default value.
+
+replace: sets the header, removing any existing header.
+
+never: never sets the header, but preserves any existing header.
+
+if-none: sets the header if it is not already set.
+
+s
