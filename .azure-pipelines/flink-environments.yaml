@@ -74,11 +74,33 @@ stages:
                   exit 1
                 fi
 
-                CMF_URL="http://cmf-service.$OC_NS.svc.cluster.local:80"
+                # Use OpenShift API proxy to reach CMF's internal service.
+                # No port-forward, no ingress — authenticates via the current oc token.
+                API_SERVER=$(oc whoami --show-server)
+                OC_TOKEN=$(oc whoami -t)
+                PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/cmf-service:80/proxy"
 
                 # Extract "name" field from a JSON file using grep/sed
                 json_name() {
                   grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "$1" | head -1 | sed -E 's/.*"name"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/'
+                }
+
+                call_cmf() {
+                  local method=$1
+                  local path=$2
+                  local file=${3:-}
+
+                  if [ -n "$file" ]; then
+                    curl -sS -k -X "$method" \
+                      -H "Authorization: Bearer $OC_TOKEN" \
+                      -H "Content-Type: application/json" \
+                      --data-binary "@$file" \
+                      "$PROXY_BASE$path"
+                  else
+                    curl -sS -k -X "$method" \
+                      -H "Authorization: Bearer $OC_TOKEN" \
+                      "$PROXY_BASE$path"
+                  fi
                 }
 
                 apply_resource() {
@@ -90,8 +112,9 @@ stages:
                   echo ""
                   echo "=== $label: $name ==="
 
-                  # Check if resource exists
-                  http_code=$(curl -s -o /dev/null -w "%{http_code}" "$CMF_URL$path/$name")
+                  http_code=$(curl -sS -k -o /dev/null -w "%{http_code}" \
+                    -H "Authorization: Bearer $OC_TOKEN" \
+                    "$PROXY_BASE$path/$name")
 
                   if [ "$http_code" = "200" ]; then
                     echo "$label '$name' already exists, skipping create."
@@ -99,16 +122,15 @@ stages:
                   fi
 
                   echo "Creating $label '$name' with POST..."
-                  curl -sS -X POST "$CMF_URL$path" \
-                    -H "Content-Type: application/json" \
-                    --data-binary "@$file" | tee /tmp/response.json
+                  call_cmf POST "$path" "$file"
                   echo ""
                 }
 
                 echo ""
-                echo "=== Verifying CMF is reachable at $CMF_URL ==="
-                curl -sS "$CMF_URL/cmf/api/v1/environments" | head -50 || {
-                  echo "ERROR: CMF not reachable at $CMF_URL"
+                echo "=== Verifying CMF is reachable via OpenShift API proxy ==="
+                echo "API server: $API_SERVER"
+                call_cmf GET "/cmf/api/v1/environments" | head -50 || {
+                  echo "ERROR: CMF not reachable via proxy"
                   exit 1
                 }
 
@@ -127,11 +149,11 @@ stages:
 
                 echo ""
                 echo "=== Current environments ==="
-                curl -sS "$CMF_URL/cmf/api/v1/environments" | head -50
+                call_cmf GET "/cmf/api/v1/environments" | head -50
 
                 echo ""
                 echo "=== Current databases in $ENV_FILE_NAME ==="
-                curl -sS "$CMF_URL/cmf/api/v1/environments/$ENV_FILE_NAME/databases" | head -50
+                call_cmf GET "/cmf/api/v1/environments/$ENV_FILE_NAME/databases" | head -50
 
                 echo ""
                 echo "=== Done ==="
