@@ -165,6 +165,48 @@ stages:
               OC_NS: $(openshift-dev-namespace)
 
           - task: Bash@3
+            displayName: "DNS Resolution Test"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                test_dns() {
+                  local host=$1
+                  local label=$2
+                  echo ""
+                  echo "--- $label: $host ---"
+                  oc exec busybox -n "$OC_NS" -- nslookup "$host" 2>&1 || echo "FAIL: DNS lookup failed for $host"
+                }
+
+                echo "=== SQL Server ==="
+                test_dns "$DB_HOST" "SQL Server"
+
+                echo ""
+                echo "=== Kafka Brokers ==="
+                IFS=',' read -ra BROKERS <<< "$KAFKA_BROKERS"
+                for broker in "${BROKERS[@]}"; do
+                  test_dns "$broker" "Kafka broker"
+                done
+
+                echo ""
+                echo "=== Schema Registry ==="
+                test_dns "$SCHEMA_REGISTRY_HOST" "Schema Registry"
+
+                echo ""
+                echo "=== Kafka REST Proxy ==="
+                test_dns "$REST_PROXY_HOST" "Kafka REST Proxy"
+
+                echo ""
+                echo "=== DNS resolution test complete ==="
+            env:
+              OC_NS: $(openshift-dev-namespace)
+              DB_HOST: $(dev-cmf-sql-server-jdbc-url)
+              KAFKA_BROKERS: $(dev-kafka-broker-hosts)
+              SCHEMA_REGISTRY_HOST: $(dev-schema-registry-host)
+              REST_PROXY_HOST: $(dev-kafka-rest-proxy-host)
+
+          - task: Bash@3
             displayName: "Connectivity Test"
             inputs:
               targetType: inline
@@ -185,7 +227,6 @@ stages:
                 }
 
                 echo "=== SQL Server ==="
-                oc exec busybox -n "$OC_NS" -- nslookup "$DB_HOST" || true
                 test_connection "$DB_HOST" 3085 "SQL Server"
 
                 echo ""
