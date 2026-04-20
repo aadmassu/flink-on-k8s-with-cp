@@ -1,4 +1,4 @@
-Starting: Run busybox in namespace
+Starting: Test SQL Server connectivity
 ==============================================================================
 Task         : Bash
 Description  : Run a Bash script on macOS, Linux, or Windows
@@ -8,7 +8,35 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/145884a6-32aa-4c65-a0a0-83feb20bde60.sh
-=== Deploying busybox pod in dah-flink-dev ===
-Warning: [startup] Container <busybox> in your <Pod> <busybox> has no <startupProbe>
-Error from server (Forbidden): error when creating "STDIN": pods "busybox" is forbidden: failed quota: compute-resources: must specify limits.cpu for: busybox; limits.memory for: busybox; requests.cpu for: busybox; requests.memory for: busybox
+/bin//bash /opt/azure_pipelines/_work/_temp/9a158873-2a91-45fa-acfc-722b71a908d0.sh
+=== Testing DNS resolution ===
+Server:		10.245.0.10
+Address:	10.245.0.10:53
+
+** server can't find DAHFLINK.dah-flink-dev.svc.cluster.local: NXDOMAIN
+
+** server can't find DAHFLINK.cluster.local: NXDOMAIN
+
+** server can't find DAHFLINK.svc.cluster.local: NXDOMAIN
+
+** server can't find DAHFLINK.svc.cluster.local: NXDOMAIN
+
+** server can't find DAHFLINK.dah-flink-dev.svc.cluster.local: NXDOMAIN
+
+** server can't find DAHFLINK.cluster.local: NXDOMAIN
+
+** server can't find DAHFLINK.dv-p.ocp.fcbint.net: NXDOMAIN
+
+** server can't find DAHFLINK.fcpd.fcbint.net: NXDOMAIN
+
+** server can't find DAHFLINK.fcpd.fcbint.net: NXDOMAIN
+
+** server can't find DAHFLINK.dv-p.ocp.fcbint.net: NXDOMAIN
+
+command terminated with exit code 1
+
+=== Testing SQL Server connectivity ===
+nc: bad address 'DAHFLINK'
+command terminated with exit code 1
+##[error]Bash exited with code '1'.
+Finishing: Test SQL Server connectivity
