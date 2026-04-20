@@ -176,7 +176,7 @@ stages:
 
                 echo ""
                 echo "=== Testing SQL Server connectivity ==="
-                oc exec busybox -n "$OC_NS" -- nc -zv "$DB_HOST" 3085
+                oc exec busybox -n "$OC_NS" -- nc -zv -w 5 "$DB_HOST" 3085
 
                 echo ""
                 echo "=== Connectivity test complete ==="
