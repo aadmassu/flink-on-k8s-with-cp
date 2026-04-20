@@ -1,4 +1,4 @@
-Starting: Test SQL Server connectivity
+Starting: Apply Flink environment and catalog
 ==============================================================================
 Task         : Bash
 Description  : Run a Bash script on macOS, Linux, or Windows
@@ -6,37 +6,33 @@ Version      : 3.231.4
 Author       : Microsoft Corporation
 Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
 ==============================================================================
+/opt/azure_pipelines/externals/node20_1/bin/node -v
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libm.so.6: version `GLIBC_2.27' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.20' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `CXXABI_1.3.9' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.21' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libc.so.6: version `GLIBC_2.28' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
+/opt/azure_pipelines/externals/node20_1/bin/node: /lib64/libc.so.6: version `GLIBC_2.25' not found (required by /opt/azure_pipelines/externals/node20_1/bin/node)
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/7d7a7f2c-ee01-404b-87ad-f9bb533dc624.sh
-=== Testing DNS resolution ===
-Server:		10.245.0.10
-Address:	10.245.0.10:53
+/bin//bash /opt/azure_pipelines/_work/_temp/8dde9dcb-76f6-49c1-95e3-61a6b3547b11.sh
+=== Starting port-forward to CMF ===
 
-** server can't find db-dabronze-d.svc.cluster.local: NXDOMAIN
+=== Verifying CMF is reachable ===
+{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}/opt/azure_pipelines/_work/_temp/8dde9dcb-76f6-49c1-95e3-61a6b3547b11.sh: line 53: jq: command not found
 
-** server can't find db-dabronze-d.cluster.local: NXDOMAIN
+=== Environment:  ===
+Exists, updating with PUT...
+{"errors":[{"message":"Request method 'PUT' is not supported"}]}
+/opt/azure_pipelines/_work/_temp/8dde9dcb-76f6-49c1-95e3-61a6b3547b11.sh: line 57: jq: command not found
 
-** server can't find db-dabronze-d.dah-flink-dev.svc.cluster.local: NXDOMAIN
+=== Kafka Database:  ===
+Does not exist (HTTP 404), creating with POST...
+{"errors":[{"message":"Resource not found: [cmf/api/v1/environments/databases]"}]}
 
-** server can't find db-dabronze-d.svc.cluster.local: NXDOMAIN
-
-** server can't find db-dabronze-d.dah-flink-dev.svc.cluster.local: NXDOMAIN
-
-** server can't find db-dabronze-d.cluster.local: NXDOMAIN
-
-** server can't find db-dabronze-d.fcpd.fcbint.net: NXDOMAIN
-
-** server can't find db-dabronze-d.fcpd.fcbint.net: NXDOMAIN
-
-** server can't find db-dabronze-d.dv-p.ocp.fcbint.net: NXDOMAIN
-
-** server can't find db-dabronze-d.dv-p.ocp.fcbint.net: NXDOMAIN
-
-command terminated with exit code 1
-
-=== Testing SQL Server connectivity ===
-nc: bad address 'db-dabronze-d'
-command terminated with exit code 1
-##[error]Bash exited with code '1'.
-Finishing: Test SQL Server connectivity
+=== Current environments ===
+{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
+=== Current databases in  ===
+{"errors":[{"message":"Resource not found: [cmf/api/v1/environments/databases]"}]}
+=== Done ===
+Finishing: Apply Flink environment and catalog
