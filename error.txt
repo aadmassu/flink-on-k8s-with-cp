@@ -1,1 +1,19 @@
-K7iIa5CbuF6zGT2DsRzd9SmkEvPn7MU30Aox1rtTltw=
+Starting: Run busybox in namespace
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/667d1311-87ff-4895-883c-ca45376c90e1.sh
+=== Deploying busybox pod in dah-flink-dev ===
+Warning: [startup] Container <busybox> in your <Pod> <busybox> has no <startupProbe>
+Error from server (Forbidden): admission webhook "validation.gatekeeper.sh" denied the request: [readiness-liveness] Container <busybox> in your <Pod> <busybox> has no <livenessProbe>
+[readiness-liveness] Container <busybox> in your <Pod> <busybox> has no <readinessProbe>
+[disallow-latest] container <busybox> uses a disallowed tag <artifactory.fcbint.net/camdepositsharedservices-docker-dev/busybox:latest>; disallowed tags are ["latest"]
+error: no objects passed to apply
+##[error]Bash exited with code '1'.
+Finishing: Run busybox in namespace
