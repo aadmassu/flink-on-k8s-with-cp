@@ -8,32 +8,45 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/562c9ab4-3268-4f5c-95c9-dd5a1025100a.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/329cbdff-11dd-420b-a686-baf4b4f236d5.sh
 
 === Verifying CMF is reachable via OpenShift API proxy ===
 API server: https://api.dv-p.ocp.fcbint.net:6443
 {"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
-Environment name parsed: 'dev'
+=== Discovering CMF API paths (OpenAPI) ===
 
-=== Environment: dev ===
-Creating Environment 'dev' with POST...
-{"errors":[{"message":"name: size must be between 4 and 2147483647"}]}
+Environment name parsed: 'dah-flink-dev'
+
+=== Environment: dah-flink-dev ===
+Creating Environment 'dah-flink-dev' with POST...
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {},
+  "status": "Failure",
+  "message": "no endpoints available for service \"cmf-service:80\"",
+  "reason": "ServiceUnavailable",
+  "code": 503
+}
 
 Database name parsed: 'dah_kafka_dev'
 
 --- Trying path: /cmf/api/v1/kafka-catalogs ---
-GET /cmf/api/v1/kafka-catalogs => HTTP 404
+GET /cmf/api/v1/kafka-catalogs => HTTP 503
 
 --- Trying path: /cmf/api/v1/databases ---
-GET /cmf/api/v1/databases => HTTP 404
+GET /cmf/api/v1/databases => HTTP 503
 
---- Trying path: /cmf/api/v1/environments/dev/kafka-catalogs ---
-GET /cmf/api/v1/environments/dev/kafka-catalogs => HTTP 404
+--- Trying path: /cmf/api/v1/environments/dah-flink-dev/kafka-catalogs ---
+GET /cmf/api/v1/environments/dah-flink-dev/kafka-catalogs => HTTP 503
 
---- Trying path: /cmf/api/v1/environments/dev/databases ---
-GET /cmf/api/v1/environments/dev/databases => HTTP 404
+--- Trying path: /cmf/api/v1/environments/dah-flink-dev/databases ---
+GET /cmf/api/v1/environments/dah-flink-dev/databases => HTTP 503
 
 === Current environments ===
-{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
-=== Done ===
-Finishing: Apply Flink environment and catalog
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {},
+  "status": "Failure",
+  "message": "no endpoints available for service \"cmf-service:80\"",
