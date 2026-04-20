@@ -143,17 +143,30 @@ stages:
                   DB_FILE_NAME=$(json_name "$DB_FILE")
                   echo ""
                   echo "Database name parsed: '$DB_FILE_NAME'"
-                  apply_resource "/cmf/api/v1/environments/$ENV_FILE_NAME/databases" \
-                                 "$DB_FILE" "$DB_FILE_NAME" "Kafka Database"
+
+                  # Try a few known CMF API paths for Kafka catalog/database registration
+                  for candidate_path in \
+                      "/cmf/api/v1/kafka-catalogs" \
+                      "/cmf/api/v1/databases" \
+                      "/cmf/api/v1/environments/$ENV_FILE_NAME/kafka-catalogs" \
+                      "/cmf/api/v1/environments/$ENV_FILE_NAME/databases"; do
+                    echo ""
+                    echo "--- Trying path: $candidate_path ---"
+                    code=$(curl -sS -k -o /dev/null -w "%{http_code}" \
+                      -H "Authorization: Bearer $OC_TOKEN" \
+                      "$PROXY_BASE$candidate_path")
+                    echo "GET $candidate_path => HTTP $code"
+                    if [ "$code" = "200" ]; then
+                      echo "Found working endpoint: $candidate_path"
+                      apply_resource "$candidate_path" "$DB_FILE" "$DB_FILE_NAME" "Kafka Database"
+                      break
+                    fi
+                  done
                 fi
 
                 echo ""
                 echo "=== Current environments ==="
                 call_cmf GET "/cmf/api/v1/environments" | head -50
-
-                echo ""
-                echo "=== Current databases in $ENV_FILE_NAME ==="
-                call_cmf GET "/cmf/api/v1/environments/$ENV_FILE_NAME/databases" | head -50
 
                 echo ""
                 echo "=== Done ==="

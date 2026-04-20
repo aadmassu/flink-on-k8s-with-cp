@@ -1,10 +1,8 @@
 {
-  "name": "fcb-kafka",
-  "spec": {
-    "type": "KAFKA",
-    "bootstrapServers": "d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094",
-    "schemaRegistry": {
-      "url": "http://d11547varc-4559.fcpd.fcbint.net:8081"
-    }
+  "name": "dah_kafka_dev",
+  "type": "KAFKA",
+  "bootstrapServers": "d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094",
+  "schemaRegistry": {
+    "url": "http://d11547varc-4559.fcpd.fcbint.net:8081"
   }
 }

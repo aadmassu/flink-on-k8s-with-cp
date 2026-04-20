@@ -1,26 +1,24 @@
 {
   "name": "dev",
-  "spec": {
-    "kubernetesNamespace": "dah-flink-dev",
-    "flinkApplicationDefaults": {
-      "spec": {
-        "image": "artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-flink:2.1.1-cp1-java21",
-        "flinkVersion": "v2_1",
-        "serviceAccount": "flink-operator",
-        "flinkConfiguration": {
-          "taskmanager.numberOfTaskSlots": "2"
-        },
-        "jobManager": {
-          "resource": {
-            "memory": "1024m",
-            "cpu": 0.5
-          }
-        },
-        "taskManager": {
-          "resource": {
-            "memory": "1024m",
-            "cpu": 0.5
-          }
+  "kubernetesNamespace": "dah-flink-dev",
+  "flinkApplicationDefaults": {
+    "spec": {
+      "image": "artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-flink:2.1.1-cp1-java21",
+      "flinkVersion": "v2_1",
+      "serviceAccount": "flink-operator",
+      "flinkConfiguration": {
+        "taskmanager.numberOfTaskSlots": "2"
+      },
+      "jobManager": {
+        "resource": {
+          "memory": "1024m",
+          "cpu": 0.5
+        }
+      },
+      "taskManager": {
+        "resource": {
+          "memory": "1024m",
+          "cpu": 0.5
         }
       }
     }
