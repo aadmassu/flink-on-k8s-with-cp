@@ -169,7 +169,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                set -euo pipefail
+                set -uo pipefail
 
                 test_dns() {
                   local host=$1
@@ -211,7 +211,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                set -euo pipefail
+                set -uo pipefail
 
                 test_connection() {
                   local host=$1
