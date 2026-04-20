@@ -102,6 +102,10 @@ stages:
                   --from-literal=key="$CMF_ENC_KEY" \
                   -n "$OC_NS" --dry-run=client -o yaml | oc apply -f -
 
+                oc create secret generic confluent-license \
+                  --from-literal=license.txt="$CMF_LICENSE" \
+                  -n "$OC_NS" --dry-run=client -o yaml | oc apply -f -
+
                 echo ""
                 echo "=== Installing CMF ==="
                 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
@@ -123,3 +127,4 @@ stages:
               CMF_DB_USER: $(dev-cmf-sql-server-user)
               CMF_DB_PWD: $(dev-cmf-sql-server-user-password)
               CMF_ENC_KEY: $(dev-cmf-encryption-key)
+              CMF_LICENSE: $(dev-confluent-license)

@@ -31,6 +31,9 @@ encryption:
     kubernetesSecretName: cmf-encryption-key
     kubernetesSecretProperty: key
 
+license:
+  secretRef: confluent-license
+
 image:
   repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc
   name: cp-cmf
