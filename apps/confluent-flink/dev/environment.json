@@ -1,5 +1,5 @@
 {
-  "name": "fcb-flink-dev",
+  "name": "dah-flink-dev",
   "kubernetesNamespace": "dah-flink-dev",
   "flinkApplicationDefaults": {
     "spec": {
