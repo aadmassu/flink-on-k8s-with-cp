@@ -3,7 +3,12 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: flink-pvc
-  namespace: dah-kafka-dev
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: flink
+    app.kubernetes.io/instance: flink-session
+    app.kubernetes.io/component: flink-storage
+    fcbint.net/app-id: "11547"
 spec:
   accessModes:
     - ReadWriteOnce
