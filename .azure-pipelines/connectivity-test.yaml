@@ -73,7 +73,8 @@ stages:
 
                 REGISTRY="artifactory.fcbint.net"
                 REPO="camdepositsharedservices-docker-dev"
-                TARGET_IMAGE="$REGISTRY/$REPO/busybox:latest"
+                IMAGE_TAG="1.36"
+                TARGET_IMAGE="$REGISTRY/$REPO/busybox:$IMAGE_TAG"
 
                 CONTAINER_CLI="docker"
                 if command -v podman &>/dev/null; then
@@ -89,16 +90,12 @@ stages:
                 if $CONTAINER_CLI pull "$TARGET_IMAGE" 2>/dev/null; then
                   echo "Image already exists in Artifactory, skipping push."
                 else
-                  echo "Image not found in Artifactory, loading from tarball..."
-                  if [ ! -f busybox-latest.tar ]; then
-                    echo "ERROR: busybox-latest.tar not found in repo root"
-                    exit 1
-                  fi
-                  $CONTAINER_CLI load < busybox-latest.tar
+                  echo "Image not found in Artifactory, pulling from Docker Hub..."
+                  $CONTAINER_CLI pull "busybox:$IMAGE_TAG"
 
                   echo ""
                   echo "=== Tagging as $TARGET_IMAGE ==="
-                  $CONTAINER_CLI tag busybox:1.36 "$TARGET_IMAGE"
+                  $CONTAINER_CLI tag "busybox:$IMAGE_TAG" "$TARGET_IMAGE"
 
                   echo ""
                   echo "=== Pushing $TARGET_IMAGE ==="
@@ -120,14 +117,35 @@ stages:
 
                 REGISTRY="artifactory.fcbint.net"
                 REPO="camdepositsharedservices-docker-dev"
+                IMAGE_TAG="1.36"
 
                 echo "=== Deploying busybox pod in $OC_NS ==="
-                oc run busybox --image="$REGISTRY/$REPO/busybox:latest" \
-                  --restart=Never \
-                  --namespace="$OC_NS" \
-                  --labels="app.kubernetes.io/name=busybox,app.kubernetes.io/instance=busybox,app.kubernetes.io/component=network-test,fcbint.net/app-id=11547" \
-                  --command -- sleep 3600 \
-                  --dry-run=client -o yaml | oc apply -f -
+                cat <<EOF | oc apply -f -
+                apiVersion: v1
+                kind: Pod
+                metadata:
+                  name: busybox
+                  namespace: $OC_NS
+                  labels:
+                    app.kubernetes.io/name: busybox
+                    app.kubernetes.io/instance: busybox
+                    app.kubernetes.io/component: network-test
+                    fcbint.net/app-id: "11547"
+                spec:
+                  restartPolicy: Never
+                  containers:
+                    - name: busybox
+                      image: $REGISTRY/$REPO/busybox:$IMAGE_TAG
+                      command: ["sleep", "3600"]
+                      readinessProbe:
+                        exec:
+                          command: ["true"]
+                        periodSeconds: 10
+                      livenessProbe:
+                        exec:
+                          command: ["true"]
+                        periodSeconds: 30
+                EOF
 
                 echo ""
                 echo "=== Waiting for pod to be ready ==="
