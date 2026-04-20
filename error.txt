@@ -8,7 +8,7 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/39b77ba3-aafd-4ded-85e5-6026ed984b6d.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/562c9ab4-3268-4f5c-95c9-dd5a1025100a.sh
 
 === Verifying CMF is reachable via OpenShift API proxy ===
 API server: https://api.dv-p.ocp.fcbint.net:6443
@@ -17,17 +17,23 @@ Environment name parsed: 'dev'
 
 === Environment: dev ===
 Creating Environment 'dev' with POST...
-{"errors":[{"message":"Unrecognized property 'spec' at path 'spec'."}]}
+{"errors":[{"message":"name: size must be between 4 and 2147483647"}]}
 
-Database name parsed: 'fcb-kafka'
+Database name parsed: 'dah_kafka_dev'
 
-=== Kafka Database: fcb-kafka ===
-Creating Kafka Database 'fcb-kafka' with POST...
-{"errors":[{"message":"Resource not found: [cmf/api/v1/environments/dev/databases]"}]}
+--- Trying path: /cmf/api/v1/kafka-catalogs ---
+GET /cmf/api/v1/kafka-catalogs => HTTP 404
+
+--- Trying path: /cmf/api/v1/databases ---
+GET /cmf/api/v1/databases => HTTP 404
+
+--- Trying path: /cmf/api/v1/environments/dev/kafka-catalogs ---
+GET /cmf/api/v1/environments/dev/kafka-catalogs => HTTP 404
+
+--- Trying path: /cmf/api/v1/environments/dev/databases ---
+GET /cmf/api/v1/environments/dev/databases => HTTP 404
 
 === Current environments ===
 {"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
-=== Current databases in dev ===
-{"errors":[{"message":"Resource not found: [cmf/api/v1/environments/dev/databases]"}]}
 === Done ===
 Finishing: Apply Flink environment and catalog
