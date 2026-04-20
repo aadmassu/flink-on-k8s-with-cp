@@ -1,18 +1,31 @@
-[2026-04-20 20:08:58.808] [http-nio-8080-exec-4] INFO - o.a.c.c.C.[.[.[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
-[2026-04-20 20:08:58.809] [http-nio-8080-exec-4] INFO - o.s.w.s.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
-[2026-04-20 20:08:58.810] [http-nio-8080-exec-4] INFO - o.s.w.s.DispatcherServlet - Completed initialization in 1 ms
-[2026-04-20 20:08:59.383] [http-nio-8080-exec-1] [2db9ea31] WARN - i.c.c.a.v.c.CmfExceptionHandler - Handled unexpected exception on the REST API
-class org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'PUT' is not supported
-[2026-04-20 20:08:59.483] [http-nio-8080-exec-6] [6a1e8d66] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/environments/databases]
-[2026-04-20 20:08:59.508] [http-nio-8080-exec-10] [56492be2] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/environments/databases]
-[2026-04-20 20:08:59.681] [http-nio-8080-exec-9] [8f80edd1] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/environments/databases]
-[2026-04-20 20:39:57.737] [http-nio-8080-exec-7] [1efff75f] WARN - i.c.c.a.v.c.CmfExceptionHandler - Failed to parse request body: JSON parse error: Unrecognized field "spec" (class io.confluent.cmf.api.v1.entity.PostEnvironmentDto), not marked as ignorable
-class org.springframework.http.converter.HttpMessageNotReadableException: JSON parse error: Unrecognized field "spec" (class io.confluent.cmf.api.v1.entity.PostEnvironmentDto), not marked as ignorable
-[2026-04-20 20:39:57.790] [http-nio-8080-exec-6] [b6400dc1] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/environments/dev/databases/fcb-kafka]
-[2026-04-20 20:39:57.829] [http-nio-8080-exec-8] [46fd963e] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/environments/dev/databases]
-[2026-04-20 20:39:57.925] [http-nio-8080-exec-1] [f6ba6488] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/environments/dev/databases]
-[2026-04-20 21:00:46.023] [http-nio-8080-exec-4] [9331c097] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/kafka-catalogs]
-[2026-04-20 21:00:46.114] [http-nio-8080-exec-8] [1c415d91] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/databases]
-[2026-04-20 21:00:46.150] [http-nio-8080-exec-6] [c6bc865c] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/environments/dev/kafka-catalogs]
-[2026-04-20 21:00:46.183] [http-nio-8080-exec-2] [0cc73138] WARN - i.c.c.a.v.c.CmfExceptionHandler - Resource not found: [cmf/api/v1/environments/dev/databases]
-[2026-04-20 21:06:35.282] [http-nio-8080-exec-4] [eddde848] ERROR - i.c.c.a.v.c.CmfExceptionHandler - Service shutdown
+Starting: Apply Flink environment and catalog
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/541c9b9d-afa1-47e3-9986-c9a7123122ea.sh
+=== Waiting for CMF pod to be Ready ===
+pod/confluent-manager-for-apache-flink-674b565bd-gvt9w condition met
+
+=== CMF pod status ===
+NAME                                                 READY   STATUS    RESTARTS        AGE
+confluent-manager-for-apache-flink-674b565bd-gvt9w   1/1     Running   2 (2m26s ago)   110m
+NAME          ENDPOINTS         AGE
+cmf-service   10.40.12.7:8080   11d
+
+=== Verifying CMF is reachable ===
+{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
+=== Environment: dah-flink-dev (upsert) ===
+{"errors":[{"message":"Failure executing: GET at: https://10.245.0.1:443/api/v1/namespaces/dah-flink-dev/serviceaccounts/cmf-env-sa-dah-flink-dev. Message: serviceaccounts \"cmf-env-sa-dah-flink-dev\" is forbidden: User \"system:serviceaccount:dah-flink-dev:flink-operator\" cannot get resource \"serviceaccounts\" in API group \"\" in the namespace \"dah-flink-dev\". Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=null, kind=serviceaccounts, name=cmf-env-sa-dah-flink-dev, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=serviceaccounts \"cmf-env-sa-dah-flink-dev\" is forbidden: User \"system:serviceaccount:dah-flink-dev:flink-operator\" cannot get resource \"serviceaccounts\" in API group \"\" in the namespace \"dah-flink-dev\", metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={})."}]}
+
+=== Current environments ===
+{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
+=== Current Kafka catalogs ===
+{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"metadata":{"size":0},"items":[]}
+=== Done ===
+Finishing: Apply Flink environment and catalog
