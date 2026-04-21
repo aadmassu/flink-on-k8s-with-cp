@@ -1,0 +1,68 @@
+---
+# Per-environment ServiceAccount that CMF expects to exist.
+# Name pattern is hardcoded in CMF: cmf-env-sa-<envName>
+# CMF tries to create this automatically, but FCB policy requires pre-creation.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cmf-env-sa-dah-flink-dev
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: cmf-env-sa
+    app.kubernetes.io/instance: cmf-env-sa-dah-flink-dev
+    app.kubernetes.io/component: cmf-environment
+    fcbint.net/app-id: "11547"
+---
+# Role for the per-environment SA — used by Flink apps deployed through CMF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cmf-env-role-dah-flink-dev
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: cmf-env-role
+    app.kubernetes.io/instance: cmf-env-role-dah-flink-dev
+    app.kubernetes.io/component: cmf-environment
+    fcbint.net/app-id: "11547"
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets", "events"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/finalizers", "replicasets"]
+    verbs: ["*"]
+  - apiGroups: ["flink.apache.org"]
+    resources: ["flinkdeployments", "flinkdeployments/finalizers", "flinkdeployments/status",
+                "flinksessionjobs", "flinksessionjobs/finalizers", "flinksessionjobs/status",
+                "flinkstatesnapshots", "flinkstatesnapshots/finalizers", "flinkstatesnapshots/status"]
+    verbs: ["*"]
+---
+# Bind the per-environment SA to its Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cmf-env-rb-dah-flink-dev
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: cmf-env-rb
+    app.kubernetes.io/instance: cmf-env-rb-dah-flink-dev
+    app.kubernetes.io/component: cmf-environment
+    fcbint.net/app-id: "11547"
+subjects:
+  - kind: ServiceAccount
+    name: cmf-env-sa-dah-flink-dev
+    namespace: dah-flink-dev
+roleRef:
+  kind: Role
+  name: cmf-env-role-dah-flink-dev
+  apiGroup: rbac.authorization.k8s.io
+---
+# ALSO NEEDED: the SA that CMF runs as (currently flink-operator) must have
+# 'get' permission on serviceaccounts so CMF can verify cmf-env-sa-dah-flink-dev exists.
+# Tom's team needs to add this rule to the flink-operator Role:
+#
+#   - apiGroups: [""]
+#     resources: ["serviceaccounts"]
+#     verbs: ["get"]
+#
+# Without this, CMF still can't verify the pre-created SA exists.
