@@ -2,7 +2,7 @@
   "apiVersion": "cmf.confluent.io/v1",
   "kind": "KafkaDatabase",
   "metadata": {
-    "name": "dah_kafka_dev",
+    "name": "dah-kafka-dev",
     "labels": {
       "environment": "dev",
       "managedBy": "CMF"
