@@ -15,17 +15,24 @@ parameters:
     type: string
     default: dev
     values: [dev, qa, stg, prd]
-  - name: imageTag
-    displayName: "Image Tag"
+  - name: sourceTar
+    displayName: "Source tar filename in repo root"
     type: string
-    default: "2.3.0-fcb-amd64"
+    default: "cp-cmf-2.3.0-fcb-2-amd64.tar"
     values:
-      - "2.2.0"
-      - "2.3.0-fcb-amd64"
+      - "cp-cmf-2.3.0-fcb-amd64.tar"
+      - "cp-cmf-2.3.0-fcb-2-amd64.tar"
+  - name: sourceImage
+    displayName: "Source image ref (as embedded in the tar)"
+    type: string
+    default: "confluentinc/cp-cmf:5632522f7-amd64"
+    values:
+      - "confluentinc/cp-cmf:2.3.0-fcb-amd64"
+      - "confluentinc/cp-cmf:5632522f7-amd64"
   - name: targetTag
     displayName: "Target Tag in Artifactory"
     type: string
-    default: "2.3.0-fcb-preview"
+    default: "2.3.0-fcb-preview-2"
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -56,7 +63,6 @@ stages:
                 set -euo pipefail
 
                 REGISTRY="artifactory.fcbint.net/camdepositsharedservices-docker-dev"
-                SOURCE_TAR="cp-cmf-$IMAGE_TAG.tar"
                 TARGET_IMAGE="$REGISTRY/confluentinc/cp-cmf:$TARGET_TAG"
 
                 echo "=== Loading image from $SOURCE_TAR ==="
@@ -75,8 +81,7 @@ stages:
                 $CONTAINER_CLI load < "$SOURCE_TAR"
 
                 echo ""
-                echo "=== Tagging as $TARGET_IMAGE ==="
-                SOURCE_IMAGE="confluentinc/cp-cmf:$IMAGE_TAG"
+                echo "=== Tagging $SOURCE_IMAGE as $TARGET_IMAGE ==="
                 $CONTAINER_CLI tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
 
                 echo ""
@@ -91,7 +96,8 @@ stages:
                 echo "=== Done ==="
                 echo "Image pushed: $TARGET_IMAGE"
             env:
-              IMAGE_TAG: ${{ parameters.imageTag }}
+              SOURCE_TAR: ${{ parameters.sourceTar }}
+              SOURCE_IMAGE: ${{ parameters.sourceImage }}
               TARGET_TAG: ${{ parameters.targetTag }}
               ART_USER: $(artifactory-svc-user)
               ART_PWD: $(artifactory-svc-user-password)
