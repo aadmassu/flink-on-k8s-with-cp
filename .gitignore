@@ -26,6 +26,9 @@ Thumbs.db
 # Helm
 *.tgz
 
+# Docker image tarballs (too large for git)
+*.tar
+
 # Generated image manifests (output of discover-charts-and-images.sh)
 images-phase*.txt
 
