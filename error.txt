@@ -1,20 +1,9 @@
-Starting: Apply Flink environment and catalog
-==============================================================================
-Task         : Bash
-Description  : Run a Bash script on macOS, Linux, or Windows
-Version      : 3.231.4
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/1365583f-97d1-45e8-8242-c68a4d36f74e.sh
 === Waiting for CMF pod to be Ready ===
 pod/confluent-manager-for-apache-flink-789cd75665-bj9mc condition met
 
 === CMF pod status ===
 NAME                                                  READY   STATUS    RESTARTS   AGE
-confluent-manager-for-apache-flink-789cd75665-bj9mc   1/1     Running   0          3m40s
+confluent-manager-for-apache-flink-789cd75665-bj9mc   1/1     Running   0          21m
 NAME          ENDPOINTS         AGE
 cmf-service   10.40.12.9:8080   11d
 
@@ -24,17 +13,16 @@ cmf-service   10.40.12.9:8080   11d
 {"errors":[{"message":"Unable to create or update Environment 'dah-flink-dev': Error setting up ServiceAccount 'cmf-env-sa-dah-flink-dev' and its associated Role or RoleBinding in namespace 'dah-flink-dev'. underlyingCause: Failure executing: GET at: https://10.245.0.1:443/api/v1/namespaces/dah-flink-dev/serviceaccounts/cmf-env-sa-dah-flink-dev. Message: serviceaccounts \"cmf-env-sa-dah-flink-dev\" is forbidden: User \"system:serviceaccount:dah-flink-dev:flink-operator\" cannot get resource \"serviceaccounts\" in API group \"\" in the namespace \"dah-flink-dev\". Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=null, kind=serviceaccounts, name=cmf-env-sa-dah-flink-dev, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=serviceaccounts \"cmf-env-sa-dah-flink-dev\" is forbidden: User \"system:serviceaccount:dah-flink-dev:flink-operator\" cannot get resource \"serviceaccounts\" in API group \"\" in the namespace \"dah-flink-dev\", metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={})."}]}
 
 === Kafka Catalog: fcb-catalog ===
-Creating Kafka Catalog 'fcb-catalog' with POST to /cmf/api/v1/catalogs/kafka...
-{"apiVersion":"cmf.confluent.io/v1","kind":"KafkaCatalog","metadata":{"name":"fcb-catalog","creationTimestamp":"2026-04-21T17:54:15.982Z","updateTimestamp":"2026-04-21T17:54:15.982Z","uid":"5072f7d0-54a4-49dc-bd04-6aa11c48bb59","labels":{"environment":"dev","managedBy":"CMF"},"annotations":{}},"spec":{"srInstance":{"connectionConfig":{"schema.registry.url":"http://d11547varc-4559.fcpd.fcbint.net:8081"},"connectionSecretId":null},"kafkaClusters":[]},"status":{"environmentsWithAccess":[]}}
+Kafka Catalog 'fcb-catalog' already exists, skipping.
 
-=== Kafka Database: dah_kafka_dev ===
-Creating Kafka Database 'dah_kafka_dev' with POST to /cmf/api/v1/catalogs/kafka/fcb-catalog/databases...
-{"errors":[{"message":"Database 'dah_kafka_dev' not created in catalog 'fcb-catalog'. Invalid name: 'dah_kafka_dev'. It must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character (e.g. 'my-name',  or 'abc-123'), and the length must be no more than 45 characters."}]}
+=== Kafka Database: dah-kafka-dev ===
+Creating Kafka Database 'dah-kafka-dev' with POST to /cmf/api/v1/catalogs/kafka/fcb-catalog/databases...
+{"apiVersion":"cmf.confluent.io/v1","kind":"KafkaDatabase","metadata":{"name":"dah-kafka-dev","creationTimestamp":"2026-04-21T18:11:36.180Z","updateTimestamp":"2026-04-21T18:11:36.180Z","uid":"5701b994-29a0-4885-9917-e24a8c2dd907","labels":{"environment":"dev","managedBy":"CMF"},"annotations":{}},"spec":{"kafkaCluster":{"connectionConfig":{"bootstrap.servers":"d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094","security.protocol":"PLAINTEXT"},"connectionSecretId":null},"ddlEnvironments":["dah-flink-dev"]},"status":{"environmentsWithAccess":[]}}
 
 === Current environments ===
 {"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"unpaged":false,"paged":true},"metadata":{"size":0},"items":[]}
 === Current Kafka catalogs ===
 {"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"unpaged":false,"paged":true},"metadata":{"size":1},"items":[{"apiVersion":"cmf.confluent.io/v1","kind":"KafkaCatalog","metadata":{"name":"fcb-catalog","creationTimestamp":"2026-04-21T17:54:15.982Z","updateTimestamp":"2026-04-21T17:54:15.982Z","uid":"5072f7d0-54a4-49dc-bd04-6aa11c48bb59","labels":{"environment":"dev","managedBy":"CMF"},"annotations":{}},"spec":{"srInstance":{"connectionConfig":{"schema.registry.url":"http://d11547varc-4559.fcpd.fcbint.net:8081"},"connectionSecretId":null},"kafkaClusters":[]},"status":{"environmentsWithAccess":[]}}]}
 === Current databases in fcb-catalog ===
-{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"unpaged":false,"paged":true},"metadata":{"size":0},"items":[]}
+{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"unpaged":false,"paged":true},"metadata":{"size":1},"items":[{"apiVersion":"cmf.confluent.io/v1","kind":"KafkaDatabase","metadata":{"name":"dah-kafka-dev","creationTimestamp":"2026-04-21T18:11:36.180Z","updateTimestamp":"2026-04-21T18:11:36.180Z","uid":"5701b994-29a0-4885-9917-e24a8c2dd907","labels":{"environment":"dev","managedBy":"CMF"},"annotations":{}},"spec":{"kafkaCluster":{"connectionConfig":{"bootstrap.servers":"d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094","security.protocol":"PLAINTEXT"},"connectionSecretId":null},"ddlEnvironments":["dah-flink-dev"]},"status":{"environmentsWithAccess":[]}}]}
 === Done ===
