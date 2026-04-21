@@ -8,7 +8,7 @@ cmf:
       - dah-flink-dev
 
   sql:
-    production: false
+    production: true
 
   # Authentication disabled for dev — will switch to OAuth later
   # Valid types: BASIC, MTLS, OAUTH (omit block entirely to disable)
