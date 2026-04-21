@@ -19,16 +19,6 @@ parameters:
     displayName: "Source tar filename in repo root"
     type: string
     default: "cp-cmf-2.3.0-fcb-2-amd64.tar"
-    values:
-      - "cp-cmf-2.3.0-fcb-amd64.tar"
-      - "cp-cmf-2.3.0-fcb-2-amd64.tar"
-  - name: sourceImage
-    displayName: "Source image ref (as embedded in the tar)"
-    type: string
-    default: "confluentinc/cp-cmf:5632522f7-amd64"
-    values:
-      - "confluentinc/cp-cmf:2.3.0-fcb-amd64"
-      - "confluentinc/cp-cmf:5632522f7-amd64"
   - name: targetTag
     displayName: "Target Tag in Artifactory"
     type: string
@@ -78,7 +68,13 @@ stages:
                 fi
                 echo "Using $CONTAINER_CLI"
 
-                $CONTAINER_CLI load < "$SOURCE_TAR"
+                LOAD_OUTPUT=$($CONTAINER_CLI load < "$SOURCE_TAR")
+                echo "$LOAD_OUTPUT"
+                SOURCE_IMAGE=$(echo "$LOAD_OUTPUT" | grep -oE 'Loaded image:?\s+\S+' | awk '{print $NF}' | head -1)
+                if [ -z "$SOURCE_IMAGE" ]; then
+                  echo "ERROR: Could not detect loaded image from tar"
+                  exit 1
+                fi
 
                 echo ""
                 echo "=== Tagging $SOURCE_IMAGE as $TARGET_IMAGE ==="
@@ -97,7 +93,6 @@ stages:
                 echo "Image pushed: $TARGET_IMAGE"
             env:
               SOURCE_TAR: ${{ parameters.sourceTar }}
-              SOURCE_IMAGE: ${{ parameters.sourceImage }}
               TARGET_TAG: ${{ parameters.targetTag }}
               ART_USER: $(artifactory-svc-user)
               ART_PWD: $(artifactory-svc-user-password)
