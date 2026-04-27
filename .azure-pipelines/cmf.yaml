@@ -94,17 +94,26 @@ stages:
 
                 echo ""
                 echo "=== Creating CMF secrets ==="
-                oc create secret generic cmf-db-credentials \
-                  --from-literal=password="$CMF_DB_PWD" \
-                  -n "$OC_NS" --dry-run=client -o yaml | oc apply -f -
+                # FCB Common Metadata standard requires these labels on every object
+                # (https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata)
+                create_labeled_secret() {
+                  local name=$1
+                  local key=$2
+                  local value=$3
+                  oc create secret generic "$name" \
+                    --from-literal="$key=$value" \
+                    -n "$OC_NS" --dry-run=client -o yaml \
+                    | oc label --local -f - --dry-run=client -o yaml \
+                        app.kubernetes.io/name=confluent-manager-for-apache-flink \
+                        app.kubernetes.io/instance="$name" \
+                        app.kubernetes.io/component=cmf \
+                        fcbint.net/app-id=11547 \
+                    | oc apply -f -
+                }
 
-                oc create secret generic cmf-encryption-key \
-                  --from-literal=key="$CMF_ENC_KEY" \
-                  -n "$OC_NS" --dry-run=client -o yaml | oc apply -f -
-
-                oc create secret generic confluent-license \
-                  --from-literal=license.txt="$CMF_LICENSE" \
-                  -n "$OC_NS" --dry-run=client -o yaml | oc apply -f -
+                create_labeled_secret cmf-db-credentials password "$CMF_DB_PWD"
+                create_labeled_secret cmf-encryption-key key "$CMF_ENC_KEY"
+                create_labeled_secret confluent-license license.txt "$CMF_LICENSE"
 
                 echo ""
                 echo "=== Installing CMF ==="
