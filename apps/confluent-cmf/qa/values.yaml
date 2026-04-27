@@ -12,18 +12,22 @@ cmf:
 
   # Authentication disabled for qa — will switch to OAuth later
 
+  # TEMPORARY: using local SQLite on pod ephemeral storage until the DBA team
+  # provides the QA SQL Server database name + service account.
+  # When the QA DB is ready, set type back to jdbc and uncomment the jdbc block.
+  # NOTE: state is lost on pod restart in this mode (persistence.create: false).
   database:
-    type: jdbc
-    jdbc:
-      engine: sqlserver
-      url: ""
-      port: 3085
-      database: DAHFLINK
-      user: ""
-      options: "encrypt=true;trustServerCertificate=true;"
-      password:
-        kubernetesSecretName: cmf-db-credentials
-        kubernetesSecretProperty: password
+    type: local
+    # jdbc:
+    #   engine: sqlserver
+    #   url: ""
+    #   port: 3085
+    #   database: DAHFLINK
+    #   user: ""
+    #   options: "encrypt=true;trustServerCertificate=true;"
+    #   password:
+    #     kubernetesSecretName: cmf-db-credentials
+    #     kubernetesSecretProperty: password
 
 encryption:
   key:
