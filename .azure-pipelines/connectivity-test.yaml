@@ -10,7 +10,11 @@
 #   openshift-service-account-pwd   — service account password (secret)
 #   openshift-dev-api               — OpenShift API server URL
 #   openshift-dev-namespace         — target namespace
-#   dev-cmf-sql-server-jdbc-url     — SQL Server hostname
+#   <env>-cmf-sql-server-jdbc-url   — SQL Server hostname
+#   <env>-kafka-broker-hosts        — comma-separated Kafka broker hostnames
+#   <env>-schema-registry-hosts     — Schema Registry hostname
+#   <env>-kafka-rest-proxy-hosts    — Kafka REST Proxy hostname
+#   <env>-net-app-s3-url            — NetApp S3 endpoint URL
 
 trigger: none
 
@@ -218,11 +222,11 @@ stages:
                 echo "=== DNS resolution test complete ==="
             env:
               OC_NS: $(openshift-dev-namespace)
-              DB_HOST: $(dev-cmf-sql-server-jdbc-url)
-              KAFKA_BROKERS: $(dev-kafka-broker-hosts)
-              SCHEMA_REGISTRY_HOST: $(dev-schema-registry-host)
-              REST_PROXY_HOST: $(dev-kafka-rest-proxy-host)
-              S3_URL: $(dev-net-app-s3-url)
+              DB_HOST: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
+              KAFKA_BROKERS: $(${{ parameters.environment }}-kafka-broker-hosts)
+              SCHEMA_REGISTRY_HOST: $(${{ parameters.environment }}-schema-registry-hosts)
+              REST_PROXY_HOST: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
+              S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
 
           - task: Bash@3
             displayName: "Connectivity Test"
@@ -272,8 +276,8 @@ stages:
                 echo "=== Connectivity test complete ==="
             env:
               OC_NS: $(openshift-dev-namespace)
-              DB_HOST: $(dev-cmf-sql-server-jdbc-url)
-              KAFKA_BROKERS: $(dev-kafka-broker-hosts)
-              SCHEMA_REGISTRY_HOST: $(dev-schema-registry-host)
-              REST_PROXY_HOST: $(dev-kafka-rest-proxy-host)
-              S3_URL: $(dev-net-app-s3-url)
+              DB_HOST: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
+              KAFKA_BROKERS: $(${{ parameters.environment }}-kafka-broker-hosts)
+              SCHEMA_REGISTRY_HOST: $(${{ parameters.environment }}-schema-registry-hosts)
+              REST_PROXY_HOST: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
+              S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
