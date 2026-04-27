@@ -1,4 +1,4 @@
-Starting: DNS Resolution Test
+Starting: Install CMF
 ==============================================================================
 Task         : Bash
 Description  : Run a Bash script on macOS, Linux, or Windows
@@ -8,44 +8,85 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//b***h /opt/azure_pipelines/_work/_temp/09a534a7-bad8-45ff-b610-f63a61608eaa.sh
-=== SQL Server ===
+/bin//b***h /opt/azure_pipelines/_work/_temp/f5db26a7-e82b-4f4d-ace0-5011cf3b5180.sh
+=== Git commit ===
+6684ad2c37576993276156faf3f06db4b3bf7a2c
 
---- SQL Server: $(dev-cmf-sql-server-jdbc-url) ---
-Server:		10.245.0.10
-Address:	10.245.0.10:53
+=== Resources CMF will create ===
+kind: ConfigMap
+  name: confluent-manager-for-apache-flink
+  namespace: dah-flink-qa
+kind: Service
+  name: cmf-service
+  namespace: dah-flink-qa
+kind: Deployment
+  name: confluent-manager-for-apache-flink
+  namespace: dah-flink-qa
 
-** server can't find $(dev-cmf-sql-server-jdbc-url).cluster.local: NXDOMAIN
+=== Checking for stuck Helm rele***e ===
 
-** server can't find $(dev-cmf-sql-server-jdbc-url).svc.cluster.local: NXDOMAIN
+=== Creating CMF secrets ===
+Warning: [required-secret-labels] Ple***e review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+secret/cmf-db-credentials created
+Warning: [required-secret-labels] Ple***e review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+secret/cmf-encryption-key created
+Warning: [required-secret-labels] Ple***e review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+secret/confluent-license created
 
-** server can't find $(dev-cmf-sql-server-jdbc-url).cluster.local: NXDOMAIN
+=== Installing CMF ===
+Rele***e "confluent-cmf" does not exist. Installing it now.
+I0427 15:52:32.934545  469046 warnings.go:110] "Warning: [required-network-labels] Ple***e review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata"
 
-** server can't find $(dev-cmf-sql-server-jdbc-url).dah-flink-qa.svc.cluster.local: NXDOMAIN
 
-** server can't find $(dev-cmf-sql-server-jdbc-url).svc.cluster.local: NXDOMAIN
 
-** server can't find $(dev-cmf-sql-server-jdbc-url).dah-flink-qa.svc.cluster.local: NXDOMAIN
-
-** server can't find $(dev-cmf-sql-server-jdbc-url).qa-p.ocp.fcbint.net: NXDOMAIN
-
-** server can't find $(dev-cmf-sql-server-jdbc-url).qa-p.ocp.fcbint.net: NXDOMAIN
-
-** server can't find $(dev-cmf-sql-server-jdbc-url).fcpd.fcbint.net: NXDOMAIN
-
-** server can't find $(dev-cmf-sql-server-jdbc-url).fcpd.fcbint.net: NXDOMAIN
-
-command terminated with exit code 1
-FAIL: DNS lookup failed for $(dev-cmf-sql-server-jdbc-url)
-
-=== Kafka Brokers ===
-
---- Kafka broker: $(dev-kafka-broker-hosts) ---
-Server:		10.245.0.10
-Address:	10.245.0.10:53
-
-** server can't find $(dev-kafka-broker-hosts).dah-flink-qa.svc.cluster.local: NXDOMAIN
-
-** server can't find $(dev-kafka-broker-hosts).svc.cluster.local: NXDOMAIN
-
-** server can't find $(dev-kafka-broker-hosts).cluster.local: NXDOMAIN
+---- Contrainer error log ------
+[2026-04-27 19:55:55.081] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "20.1.0 - add deployment scope to license"
+[2026-04-27 19:55:55.164] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "21.1.0 - migrate kafka clusters to databases"
+[2026-04-27 19:55:55.165] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Starting migration V21_1_0: Migrating Kafka clusters from catalogs to databases
+[2026-04-27 19:55:55.165] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Executing query: SELECT name, uid, creation_timestamp, spec, metadata_payload FROM catalog WHERE type = 'KAFKA'
+[2026-04-27 19:55:55.165] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Query returned 0 catalogs
+[2026-04-27 19:55:55.165] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Found 0 Kafka catalogs to process
+[2026-04-27 19:55:55.165] [main] INFO - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Migration completed successfully. Created 0 KafkaDatabase records
+[2026-04-27 19:55:55.169] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "22.1.0 - change primary key for license"
+[2026-04-27 19:55:55.173] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "23.1.0 - add metadata payload to environment"
+[2026-04-27 19:55:55.176] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "24.1.0 - add kubernetes cluster table"
+[2026-04-27 19:55:55.179] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "25.1.0 - add status message to kubernetes cluster"
+[2026-04-27 19:55:55.181] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "26.1.0 - add shared computepool columns"
+[2026-04-27 19:55:55.183] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "27.1.0 - rename alter environments to ddl environments"
+[2026-04-27 19:55:55.264] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "28.1.0 - add kubernetes version to kubernetes cluster"
+[2026-04-27 19:55:55.266] [main] INFO - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "29.1.0 - rename is sql production to is encryption enabled"
+[2026-04-27 19:55:55.272] [main] INFO - o.f.c.i.c.DbMigrate - Successfully applied 29 migrations to schema "main", now at version v29.1.0 (execution time 00:00.335s)
+[2026-04-27 19:55:55.365] [main] INFO - i.c.c.c.d.DatabaseConfiguration - Initialized SpecificationUtils with dialect: SQLITE
+[2026-04-27 19:55:55.570] [main] INFO - i.c.c.c.d.DatabaseConfiguration - Setting Hibernate dialect to: org.hibernate.community.dialect.SQLiteDialect
+[2026-04-27 19:55:55.677] [main] INFO - o.h.j.i.u.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+[2026-04-27 19:55:55.885] [main] INFO - o.h.Version - HHH000412: Hibernate ORM core version 6.6.45.Final
+[2026-04-27 19:55:56.101] [main] INFO - o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+[2026-04-27 19:55:57.064] [main] INFO - o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+[2026-04-27 19:55:57.277] [main] INFO - o.h.o.c.pooling - HHH10001005: Database info:
+Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.DriverManagerDataSource@1786150f']
+Database driver: undefined/unknown
+Database version: 3.45.2
+Autocommit mode: undefined/unknown
+Isolation level: undefined/unknown
+Minimum pool size: undefined/unknown
+Maximum pool size: undefined/unknown
+[2026-04-27 19:55:58.678] [main] INFO - o.h.v.i.u.Version - HV000001: Hibernate Validator 8.0.3.Final
+[2026-04-27 19:56:01.496] [main] INFO - o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+[2026-04-27 19:56:01.585] [main] INFO - o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+[2026-04-27 19:56:02.579] [main] INFO - o.s.d.j.r.q.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+[2026-04-27 19:56:05.884] [main] INFO - o.a.f.k.o.c.FlinkConfigManager - Setting default configuration to {parallelism.default=1, kubernetes.operator.dynamic.config.enabled=false, taskmanager.numberOfTaskSlots=1, kubernetes.operator.reconcile.interval=15 s, kubernetes.operator.metrics.reporter.slf4j.interval=5 MINUTE, kubernetes.operator.observer.progress-check.interval=5 s, kubernetes.operator.metrics.reporter.slf4j.factory.class=org.apache.flink.metrics.slf4j.Slf4jReporterFactory}
+[2026-04-27 19:56:06.568] [main] INFO - i.c.c.k.r.K8sClientFactory - Creating KubernetesClient for default cluster using in-cluster config
+[2026-04-27 19:56:07.573] [main] INFO - i.c.c.k.FkoVersionValidator - Flink Kubernetes Operator version check: Skipping CRD registration check in namespace-scoped mode (cluster-scoped resource, not accessible with Role-only RBAC).
+[2026-04-27 19:56:12.783] [main] WARN - i.c.c.k.FkoVersionValidator - Unable to validate Flink Kubernetes Operator installation on cluster 'default-k8s-cluster'.
+class io.fabric8.kubernetes.client.KubernetesClientException: Operation: [list] for kind: [Deployment] with name: [null] in namespace: [dah-flink-qa] failed.
+[2026-04-27 19:56:12.788] [main] INFO - i.c.c.k.r.ManagedK8sClusterManager - Initializing Kubernetes cluster manager
+[2026-04-27 19:56:12.788] [main] INFO - i.c.c.k.r.ManagedK8sClusterManager - Initializing default cluster 'default-k8s-cluster'
+[2026-04-27 19:56:17.792] [main] ERROR - i.c.c.k.r.ManagedK8sClusterManager - Failed to initialize default cluster 'default-k8s-cluster'
+class io.fabric8.kubernetes.client.KubernetesClientException: An error has occurred.
+[2026-04-27 19:56:17.794] [main] WARN - o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'applicationController' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/api/v1/controller/ApplicationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'metadataSync' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/CmfMetadataSync.class]: Unsatisfied dependency expressed through constructor parameter 4: Error creating bean with name 'flinkApplicationConverter' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/kubernetes/converter/FlinkApplicationConverter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'environmentServ...
+[2026-04-27 19:56:17.795] [main] INFO - o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+[2026-04-27 19:56:17.801] [main] INFO - o.a.c.c.StandardService - Stopping service [Tomcat]
+[2026-04-27 19:56:17.862] [main] INFO - o.s.b.a.l.ConditionEvaluationReportLogger -
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+[2026-04-27 19:56:17.862] [main] ERROR - i.c.c.ShutdownOnApplicationFailedEventListener - Fatal exception occurred, stopping application
+class org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'applicationController' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/api/v1/controller/ApplicationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'metadataSync' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/CmfMetadataSync.class]: Unsatisfied dependency expressed through constructor parameter 4: Error creating bean with name 'flinkApplicationConverter' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/kubernetes/converter/FlinkApplicationConverter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'environmentService' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/EnvironmentService.class]: Unsatisfied dependency expressed through constructor parameter 9:...
