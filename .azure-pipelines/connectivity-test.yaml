@@ -12,8 +12,8 @@
 #   openshift-dev-namespace         — target namespace
 #   <env>-cmf-sql-server-jdbc-url   — SQL Server hostname
 #   <env>-kafka-broker-hosts        — comma-separated Kafka broker hostnames
-#   <env>-schema-registry-hosts     — Schema Registry hostname
-#   <env>-kafka-rest-proxy-hosts    — Kafka REST Proxy hostname
+#   <env>-schema-registry-hosts     — comma-separated Schema Registry hostnames
+#   <env>-kafka-rest-proxy-hosts    — comma-separated Kafka REST Proxy hostnames
 #   <env>-net-app-s3-url            — NetApp S3 endpoint URL
 
 trigger: none
@@ -207,11 +207,17 @@ stages:
 
                 echo ""
                 echo "=== Schema Registry ==="
-                test_dns "$SCHEMA_REGISTRY_HOST" "Schema Registry"
+                IFS=',' read -ra SR_HOSTS <<< "$SCHEMA_REGISTRY_HOSTS"
+                for sr in "${SR_HOSTS[@]}"; do
+                  test_dns "$sr" "Schema Registry"
+                done
 
                 echo ""
                 echo "=== Kafka REST Proxy ==="
-                test_dns "$REST_PROXY_HOST" "Kafka REST Proxy"
+                IFS=',' read -ra REST_HOSTS <<< "$REST_PROXY_HOSTS"
+                for rp in "${REST_HOSTS[@]}"; do
+                  test_dns "$rp" "Kafka REST Proxy"
+                done
 
                 echo ""
                 echo "=== NetApp S3 ==="
@@ -224,8 +230,8 @@ stages:
               OC_NS: $(openshift-dev-namespace)
               DB_HOST: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
               KAFKA_BROKERS: $(${{ parameters.environment }}-kafka-broker-hosts)
-              SCHEMA_REGISTRY_HOST: $(${{ parameters.environment }}-schema-registry-hosts)
-              REST_PROXY_HOST: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
+              SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+              REST_PROXY_HOSTS: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
               S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
 
           - task: Bash@3
@@ -261,11 +267,17 @@ stages:
 
                 echo ""
                 echo "=== Schema Registry ==="
-                test_connection "$SCHEMA_REGISTRY_HOST" 8081 "Schema Registry"
+                IFS=',' read -ra SR_HOSTS <<< "$SCHEMA_REGISTRY_HOSTS"
+                for sr in "${SR_HOSTS[@]}"; do
+                  test_connection "$sr" 8081 "Schema Registry"
+                done
 
                 echo ""
                 echo "=== Kafka REST Proxy ==="
-                test_connection "$REST_PROXY_HOST" 8082 "Kafka REST Proxy"
+                IFS=',' read -ra REST_HOSTS <<< "$REST_PROXY_HOSTS"
+                for rp in "${REST_HOSTS[@]}"; do
+                  test_connection "$rp" 8082 "Kafka REST Proxy"
+                done
 
                 echo ""
                 echo "=== NetApp S3 ==="
@@ -278,6 +290,6 @@ stages:
               OC_NS: $(openshift-dev-namespace)
               DB_HOST: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
               KAFKA_BROKERS: $(${{ parameters.environment }}-kafka-broker-hosts)
-              SCHEMA_REGISTRY_HOST: $(${{ parameters.environment }}-schema-registry-hosts)
-              REST_PROXY_HOST: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
+              SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+              REST_PROXY_HOSTS: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
               S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
