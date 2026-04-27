@@ -123,8 +123,8 @@ stages:
             env:
               OC_NS: dah-flink-${{ parameters.environment }}
               TARGET_ENV: ${{ parameters.environment }}
-              CMF_DB_URL: $(dev-cmf-sql-server-jdbc-url)
-              CMF_DB_USER: $(dev-cmf-sql-server-user)
-              CMF_DB_PWD: $(dev-cmf-sql-server-user-password)
-              CMF_ENC_KEY: $(dev-cmf-encryption-key)
-              CMF_LICENSE: $(dev-confluent-license)
+              CMF_DB_URL: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
+              CMF_DB_USER: $(${{ parameters.environment }}-cmf-sql-server-user)
+              CMF_DB_PWD: $(${{ parameters.environment }}-cmf-sql-server-user-password)
+              CMF_ENC_KEY: $(${{ parameters.environment }}-cmf-encryption-key)
+              CMF_LICENSE: $(${{ parameters.environment }}-confluent-license)
