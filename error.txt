@@ -1,28 +1,51 @@
-=== Waiting for CMF pod to be Ready ===
-pod/confluent-manager-for-apache-flink-789cd75665-bj9mc condition met
+Starting: DNS Resolution Test
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//b***h /opt/azure_pipelines/_work/_temp/09a534a7-bad8-45ff-b610-f63a61608eaa.sh
+=== SQL Server ===
 
-=== CMF pod status ===
-NAME                                                  READY   STATUS    RESTARTS   AGE
-confluent-manager-for-apache-flink-789cd75665-bj9mc   1/1     Running   0          21m
-NAME          ENDPOINTS         AGE
-cmf-service   10.40.12.9:8080   11d
+--- SQL Server: $(dev-cmf-sql-server-jdbc-url) ---
+Server:		10.245.0.10
+Address:	10.245.0.10:53
 
-=== Verifying CMF is reachable ===
-{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"unpaged":false,"paged":true},"metadata":{"size":0},"items":[]}
-=== Environment: dah-flink-dev (upsert) ===
-{"errors":[{"message":"Unable to create or update Environment 'dah-flink-dev': Error setting up ServiceAccount 'cmf-env-sa-dah-flink-dev' and its associated Role or RoleBinding in namespace 'dah-flink-dev'. underlyingCause: Failure executing: GET at: https://10.245.0.1:443/api/v1/namespaces/dah-flink-dev/serviceaccounts/cmf-env-sa-dah-flink-dev. Message: serviceaccounts \"cmf-env-sa-dah-flink-dev\" is forbidden: User \"system:serviceaccount:dah-flink-dev:flink-operator\" cannot get resource \"serviceaccounts\" in API group \"\" in the namespace \"dah-flink-dev\". Received status: Status(apiVersion=v1, code=403, details=StatusDetails(causes=[], group=null, kind=serviceaccounts, name=cmf-env-sa-dah-flink-dev, retryAfterSeconds=null, uid=null, additionalProperties={}), kind=Status, message=serviceaccounts \"cmf-env-sa-dah-flink-dev\" is forbidden: User \"system:serviceaccount:dah-flink-dev:flink-operator\" cannot get resource \"serviceaccounts\" in API group \"\" in the namespace \"dah-flink-dev\", metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={})."}]}
+** server can't find $(dev-cmf-sql-server-jdbc-url).cluster.local: NXDOMAIN
 
-=== Kafka Catalog: fcb-catalog ===
-Kafka Catalog 'fcb-catalog' already exists, skipping.
+** server can't find $(dev-cmf-sql-server-jdbc-url).svc.cluster.local: NXDOMAIN
 
-=== Kafka Database: dah-kafka-dev ===
-Creating Kafka Database 'dah-kafka-dev' with POST to /cmf/api/v1/catalogs/kafka/fcb-catalog/databases...
-{"apiVersion":"cmf.confluent.io/v1","kind":"KafkaDatabase","metadata":{"name":"dah-kafka-dev","creationTimestamp":"2026-04-21T18:11:36.180Z","updateTimestamp":"2026-04-21T18:11:36.180Z","uid":"5701b994-29a0-4885-9917-e24a8c2dd907","labels":{"environment":"dev","managedBy":"CMF"},"annotations":{}},"spec":{"kafkaCluster":{"connectionConfig":{"bootstrap.servers":"d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094","security.protocol":"PLAINTEXT"},"connectionSecretId":null},"ddlEnvironments":["dah-flink-dev"]},"status":{"environmentsWithAccess":[]}}
+** server can't find $(dev-cmf-sql-server-jdbc-url).cluster.local: NXDOMAIN
 
-=== Current environments ===
-{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"unpaged":false,"paged":true},"metadata":{"size":0},"items":[]}
-=== Current Kafka catalogs ===
-{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"unpaged":false,"paged":true},"metadata":{"size":1},"items":[{"apiVersion":"cmf.confluent.io/v1","kind":"KafkaCatalog","metadata":{"name":"fcb-catalog","creationTimestamp":"2026-04-21T17:54:15.982Z","updateTimestamp":"2026-04-21T17:54:15.982Z","uid":"5072f7d0-54a4-49dc-bd04-6aa11c48bb59","labels":{"environment":"dev","managedBy":"CMF"},"annotations":{}},"spec":{"srInstance":{"connectionConfig":{"schema.registry.url":"http://d11547varc-4559.fcpd.fcbint.net:8081"},"connectionSecretId":null},"kafkaClusters":[]},"status":{"environmentsWithAccess":[]}}]}
-=== Current databases in fcb-catalog ===
-{"pageable":{"pageNumber":0,"pageSize":20,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"unpaged":false,"paged":true},"metadata":{"size":1},"items":[{"apiVersion":"cmf.confluent.io/v1","kind":"KafkaDatabase","metadata":{"name":"dah-kafka-dev","creationTimestamp":"2026-04-21T18:11:36.180Z","updateTimestamp":"2026-04-21T18:11:36.180Z","uid":"5701b994-29a0-4885-9917-e24a8c2dd907","labels":{"environment":"dev","managedBy":"CMF"},"annotations":{}},"spec":{"kafkaCluster":{"connectionConfig":{"bootstrap.servers":"d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094","security.protocol":"PLAINTEXT"},"connectionSecretId":null},"ddlEnvironments":["dah-flink-dev"]},"status":{"environmentsWithAccess":[]}}]}
-=== Done ===
+** server can't find $(dev-cmf-sql-server-jdbc-url).dah-flink-qa.svc.cluster.local: NXDOMAIN
+
+** server can't find $(dev-cmf-sql-server-jdbc-url).svc.cluster.local: NXDOMAIN
+
+** server can't find $(dev-cmf-sql-server-jdbc-url).dah-flink-qa.svc.cluster.local: NXDOMAIN
+
+** server can't find $(dev-cmf-sql-server-jdbc-url).qa-p.ocp.fcbint.net: NXDOMAIN
+
+** server can't find $(dev-cmf-sql-server-jdbc-url).qa-p.ocp.fcbint.net: NXDOMAIN
+
+** server can't find $(dev-cmf-sql-server-jdbc-url).fcpd.fcbint.net: NXDOMAIN
+
+** server can't find $(dev-cmf-sql-server-jdbc-url).fcpd.fcbint.net: NXDOMAIN
+
+command terminated with exit code 1
+FAIL: DNS lookup failed for $(dev-cmf-sql-server-jdbc-url)
+
+=== Kafka Brokers ===
+
+--- Kafka broker: $(dev-kafka-broker-hosts) ---
+Server:		10.245.0.10
+Address:	10.245.0.10:53
+
+** server can't find $(dev-kafka-broker-hosts).dah-flink-qa.svc.cluster.local: NXDOMAIN
+
+** server can't find $(dev-kafka-broker-hosts).svc.cluster.local: NXDOMAIN
+
+** server can't find $(dev-kafka-broker-hosts).cluster.local: NXDOMAIN
