@@ -1,28 +1,22 @@
 ---
-# ServiceAccount for CMF pod in dah-flink-qa
-# CMF uses this SA at runtime to manage FlinkDeployments, pods, configmaps, etc.
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: flink
-  namespace: dah-flink-qa
-  labels:
-    app.kubernetes.io/name: confluent-manager-for-apache-flink
-    app.kubernetes.io/instance: flink
-    app.kubernetes.io/component: cmf
-    fcbint.net/app-id: "11547"
----
-# Namespace-scoped Role granting CMF + Flink Operator + Flink Jobs the permissions they need
-# Covers: CMF (manage apps, environments, catalogs), Flink Operator (manage deployments),
-#         and Flink Jobs (pods, configmaps)
+# Supplemental namespace-scoped Role for CMF in dah-flink-qa.
+#
+# CMF runs as the existing `flink-operator` ServiceAccount (created by the
+# Flink Operator helm install, see apps/confluent-flink-operator/qa/values.yaml).
+# The Flink Operator chart's default RoleBinding may not grant CMF every
+# permission it needs at startup — notably listing Deployments and managing
+# CMF-specific objects (configmaps, secrets, RBAC for Flink jobs).
+#
+# This file does NOT create the ServiceAccount; it binds an additional Role
+# to the SA that already exists in dah-flink-qa.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: flink
+  name: cmf-supplemental
   namespace: dah-flink-qa
   labels:
     app.kubernetes.io/name: confluent-manager-for-apache-flink
-    app.kubernetes.io/instance: flink
+    app.kubernetes.io/instance: cmf-supplemental
     app.kubernetes.io/component: cmf
     fcbint.net/app-id: "11547"
 rules:
@@ -43,9 +37,6 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["extensions"]
-    resources: ["deployments", "ingresses"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -53,22 +44,21 @@ rules:
     resources: ["roles", "rolebindings"]
     verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
 ---
-# RoleBinding connecting the SA to the Role
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: flink
+  name: cmf-supplemental
   namespace: dah-flink-qa
   labels:
     app.kubernetes.io/name: confluent-manager-for-apache-flink
-    app.kubernetes.io/instance: flink
+    app.kubernetes.io/instance: cmf-supplemental
     app.kubernetes.io/component: cmf
     fcbint.net/app-id: "11547"
 subjects:
   - kind: ServiceAccount
-    name: flink
+    name: flink-operator
     namespace: dah-flink-qa
 roleRef:
   kind: Role
-  name: flink
+  name: cmf-supplemental
   apiGroup: rbac.authorization.k8s.io
