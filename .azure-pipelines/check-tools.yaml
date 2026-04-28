@@ -140,6 +140,7 @@ stages:
                 echo "=== Confluent-related CRDs ==="
                 oc get crds | grep -i confluent || echo "No Confluent CRDs found"
 
+
           - task: Bash@3
             displayName: "List Secrets"
             inputs:
@@ -151,6 +152,15 @@ stages:
             env:
               OC_NS: $(openshift-dev-namespace)
 
+          - task: Bash@3
+            displayName: "List Secrets"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "=== Secrets in $OC_NS ==="
+                oc get secrets -n "$OC_NS"
+                
           - task: Bash@3
             displayName: "List Pods"
             inputs:
