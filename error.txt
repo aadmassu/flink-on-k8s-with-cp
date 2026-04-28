@@ -1,10 +1,1 @@
-=== Resources CMF will create ===
-kind: ConfigMap
-  name: confluent-manager-for-apache-flink
-  namespace: dah-flink-qa
-kind: Service
-  name: cmf-service
-  namespace: dah-flink-qa
-kind: Deployment
-  name: confluent-manager-for-apache-flink
-  namespace: dah-flink-qa
+{"name":"dah-flink-dev","created_time":"2026-04-28T17:33:52.004047056Z","updated_time":"2026-04-28T17:33:52.004047375Z","flinkApplicationDefaults":{"spec":{"flinkConfiguration":{"taskmanager.numberOfTaskSlots":"2"},"jobManager":{"resource":{"memory":"1024m","cpu":0.5}},"taskManager":{"resource":{"memory":"1024m","cpu":0.5}}}},"kubernetesNamespace":"dah-flink-dev","kubernetesClusterName":"default-k8s-cluster","computePoolDefaults":{"clusterSpec":{"flinkVersion":"v2_1","image":"artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-flink:2.1.1-cp1-java21","flinkConfiguration":{"taskmanager.numberOfTaskSlots":"2"}}},"statementDefaults":{"detached":null,"interactive":null},"metadata":{"name":"dah-flink-dev","creationTimestamp":"2026-04-28T17:33:52.004047056Z","updateTimestamp":"2026-04-28T17:33:52.004047375Z","labels":{},"annotations":{}},"secrets":{},"status":{"resources":null,"resourceSummary":null,"kubernetesCluster":{"state":"CONNECTED","message":null,"lastHeartbeatTimestamp":"2026-04-28T17:33:29.878363400Z","kubernetesVersion":"v1.31.14"}}}
