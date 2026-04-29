@@ -5,7 +5,7 @@ metadata:
   name: schemaregistry
   namespace: dah-kafka-dev
 spec:
-  # Single replica for dev; increase to 2+ for HA in stg/prd
+  # Single replica for dev; increase to 2+ for HA in uat/prd
   replicas: 1
   # Confluent Platform license; secret must contain license.txt
   license:

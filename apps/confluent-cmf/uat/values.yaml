@@ -1,5 +1,5 @@
 ---
-# Confluent Manager for Apache Flink (CMF) values - stg
+# Confluent Manager for Apache Flink (CMF) values - uat
 
 cmf:
   # Disable production SQL guardrails in dev (allows DDL without confirmation)

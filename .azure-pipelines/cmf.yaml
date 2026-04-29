@@ -16,14 +16,14 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, stg, prd]
+    values: [dev, qa, uat, prd]
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: dev-openshift-credentials
   - ${{ if eq(parameters.environment, 'qa') }}:
     - group: qa-openshift-credentials
-  - ${{ if eq(parameters.environment, 'stg') }}:
-    - group: stg-openshift-credentials
+  - ${{ if eq(parameters.environment, 'uat') }}:
+    - group: uat-openshift-credentials
   - ${{ if eq(parameters.environment, 'prd') }}:
     - group: prd-openshift-credentials
 

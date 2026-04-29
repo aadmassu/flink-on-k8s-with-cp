@@ -11,7 +11,7 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, stg, prd]
+    values: [dev, qa, uat, prd]
 
 variables:
   - group: Openshift-ROSA-VAR-Groups

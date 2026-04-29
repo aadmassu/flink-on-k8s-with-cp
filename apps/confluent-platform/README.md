@@ -32,7 +32,7 @@ apps/confluent-platform/
 │   └── kafka-rest-class.yaml
 ├── dev/kustomization.yaml      # namespace: confluent-dev, patches endpoints
 ├── qa/kustomization.yaml
-├── stg/kustomization.yaml
+├── uat/kustomization.yaml
 └── prd/kustomization.yaml
 ```
 

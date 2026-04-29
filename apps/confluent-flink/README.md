@@ -20,7 +20,7 @@ base/
   kustomization.yaml            # Base kustomization
 dev/                            # Kustomize overlay — namespace: confluent-dev
 qa/                             # Kustomize overlay — namespace: confluent-qa
-stg/                            # Kustomize overlay — namespace: confluent-stg
+uat/                            # Kustomize overlay — namespace: confluent-uat
 prd/                            # Kustomize overlay — namespace: confluent-prd
 ```
 

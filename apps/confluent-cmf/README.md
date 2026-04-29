@@ -22,7 +22,7 @@ apps/confluent-cmf/
 ├── openshift-overlay.yaml    # OpenShift: null podSecurityContext (SCC assigns UIDs)
 ├── dev/values.yaml           # Dev: sql.production=false, low resources
 ├── qa/values.yaml
-├── stg/values.yaml
+├── uat/values.yaml
 └── prd/values.yaml
 ```
 

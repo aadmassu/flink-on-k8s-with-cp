@@ -14,7 +14,7 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, stg, prd]
+    values: [dev, qa, uat, prd]
   - name: sourceTar
     displayName: "Source tar filename in repo root"
     type: string
@@ -29,8 +29,8 @@ variables:
     - group: dev-openshift-credentials
   - ${{ if eq(parameters.environment, 'qa') }}:
     - group: qa-openshift-credentials
-  - ${{ if eq(parameters.environment, 'stg') }}:
-    - group: stg-openshift-credentials
+  - ${{ if eq(parameters.environment, 'uat') }}:
+    - group: uat-openshift-credentials
   - ${{ if eq(parameters.environment, 'prd') }}:
     - group: prd-openshift-credentials
 

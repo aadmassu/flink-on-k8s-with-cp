@@ -25,7 +25,7 @@ This directory contains all Helm values and Kubernetes manifests for deploying C
 apps/<component>/
 ├── dev/values.yaml            # Per-environment Helm overrides
 ├── qa/values.yaml
-├── stg/values.yaml
+├── uat/values.yaml
 ├── prd/values.yaml
 └── openshift-overlay.yaml     # Nullifies security contexts for OpenShift SCC
 ```
@@ -44,7 +44,7 @@ helm upgrade --install <release> <chart> \
 apps/<component>/
 ├── dev/*.yaml     # Flat manifests with namespace baked in
 ├── qa/*.yaml
-├── stg/*.yaml
+├── uat/*.yaml
 └── prd/*.yaml
 ```
 
@@ -62,5 +62,5 @@ oc apply -f apps/<component>/<env>/
 |---|---|
 | dev | `dah-kafka-dev` |
 | qa | `dah-kafka-qa` |
-| stg | `dah-kafka-stg` |
+| uat | `dah-kafka-uat` |
 | prd | `dah-kafka-prd` |

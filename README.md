@@ -32,7 +32,7 @@ Each app has per-environment values with namespace baked in:
 |---|---|
 | dev | `dah-kafka-dev` |
 | qa | `dah-kafka-qa` |
-| stg | `dah-kafka-stg` |
+| uat | `dah-kafka-uat` |
 | prd | `dah-kafka-prd` |
 
 ## Deployment
