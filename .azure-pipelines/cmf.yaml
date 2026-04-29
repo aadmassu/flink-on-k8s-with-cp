@@ -76,7 +76,7 @@ stages:
                 git rev-parse HEAD
 
                 echo ""
-                echo "=== Resources the chart will apply (some may be pre-created in FCB, e.g. ServiceAccount, Service) ==="
+                echo "=== Resources CMF will create ==="
                 helm template confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
                   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \

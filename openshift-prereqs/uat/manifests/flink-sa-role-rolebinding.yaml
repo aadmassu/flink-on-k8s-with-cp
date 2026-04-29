@@ -1,0 +1,279 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cmf-env-sa-dah-flink-uat
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/instance: cmf-env-sa-dah-flink-uat
+    app.kubernetes.io/component: cmf-environment
+    app.kubernetes.io/version: "1.0.1"
+    confluent.io/managedBy: cmf
+    fcbint.net/app-id: "11547"
+---
+# Role granting the per-env SA permissions to manage Flink app workloads
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cmf-env-role-dah-flink-uat
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/instance: cmf-env-role-dah-flink-uat
+    app.kubernetes.io/component: cmf-environment
+    app.kubernetes.io/version: "1.0.1"
+    confluent.io/managedBy: cmf
+    fcbint.net/app-id: "11547"
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "configmaps"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/finalizers"]
+    verbs: ["*"]
+---
+# RoleBinding for the main role → per-env SA
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cmf-env-rolebinding-dah-flink-uat
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/instance: cmf-env-rolebinding-dah-flink-uat
+    app.kubernetes.io/component: cmf-environment
+    app.kubernetes.io/version: "1.0.1"
+    confluent.io/managedBy: cmf
+    fcbint.net/app-id: "11547"
+subjects:
+  - kind: ServiceAccount
+    name: cmf-env-sa-dah-flink-uat
+    namespace: dah-flink-uat
+roleRef:
+  kind: Role
+  name: cmf-env-role-dah-flink-uat
+  apiGroup: rbac.authorization.k8s.io
+---
+# Role scoped to the per-env encryption key secret (read-only by name)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cmf-env-secret-role-dah-flink-uat
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/instance: cmf-env-secret-role-dah-flink-uat
+    app.kubernetes.io/component: cmf-environment
+    app.kubernetes.io/version: "1.0.1"
+    confluent.io/managedBy: cmf
+    fcbint.net/app-id: "11547"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cmf-env-key-dah-flink-uat"]
+    verbs: ["get"]
+---
+# RoleBinding for the secret role → per-env SA
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cmf-env-secret-rolebinding-dah-flink-uat
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/instance: cmf-env-secret-rolebinding-dah-flink-uat
+    app.kubernetes.io/component: cmf-environment
+    app.kubernetes.io/version: "1.0.1"
+    confluent.io/managedBy: cmf
+    fcbint.net/app-id: "11547"
+subjects:
+  - kind: ServiceAccount
+    name: cmf-env-sa-dah-flink-uat
+    namespace: dah-flink-uat
+roleRef:
+  kind: Role
+  name: cmf-env-secret-role-dah-flink-uat
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: flink-operator
+  namespace: dah-flink-uat
+  uid: 83b7b895-fe46-45f3-97f8-7d0cf9ac7589
+  resourceVersion: '586873014'
+  creationTimestamp: '2026-04-16T20:40:12Z'
+  labels:
+    fcbint.net/argo-app: security
+    app.kubernetes.io/instance: fcb-security
+    fcbint.net/app-tier: '0'
+    fcbint.net/ritm: ''
+    app.kubernetes.io/version: 2.0.16
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: fcb-security-2.0.16
+    fcbint.net/network: ''
+    app.kubernetes.io/name: fcb-security
+    fcbint.net/app-id: '12055'
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flink-operator
+  namespace: dah-flink-uat
+  uid: fc9bcef0-7089-4b7f-81ee-aa3f8b8f876e
+  resourceVersion: '640898667'
+  creationTimestamp: '2026-03-31T23:55:32Z'
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/version: 1.13.0-cp2
+    fcbint.net/argo-app: security
+    helm.sh/chart: flink-kubernetes-operator-1.130.2
+rules:
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+    apiGroups:
+      - ''
+    resources:
+      - pods
+      - services
+      - events
+      - configmaps
+      - secrets
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - apps
+    resources:
+      - deployments
+      - deployments/finalizers
+      - replicasets
+  - verbs:
+      - get
+      - update
+      - patch
+    apiGroups:
+      - apps
+    resources:
+      - deployments/scale
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - extensions
+    resources:
+      - deployments
+      - ingresses
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - flink.apache.org
+    resources:
+      - flinkdeployments
+      - flinkdeployments/finalizers
+      - flinksessionjobs
+      - flinksessionjobs/finalizers
+      - flinkstatesnapshots
+      - flinkstatesnapshots/finalizers
+  - verbs:
+      - get
+      - update
+      - patch
+    apiGroups:
+      - flink.apache.org
+    resources:
+      - flinkdeployments/status
+      - flinksessionjobs/status
+      - flinkstatesnapshots/status
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+  - verbs:
+      - get
+    apiGroups:
+      - ''
+    resources:
+      - serviceaccounts
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flink-operator-dah-flink
+  namespace: dah-flink-uat
+  uid: f6259305-3390-4c7b-8fc6-ba66a4666fb6
+  resourceVersion: '591123652'
+  creationTimestamp: '2026-04-17T18:15:56Z'
+  labels:
+    fcbint.net/argo-app: security
+    app.kubernetes.io/instance: fcb-security
+    fcbint.net/app-tier: '0'
+    fcbint.net/ritm: ''
+    app.kubernetes.io/version: 2.0.16
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: fcb-security-2.0.16
+    fcbint.net/network: ''
+    app.kubernetes.io/name: fcb-security
+    fcbint.net/app-id: '12055'
+subjects:
+  - kind: ServiceAccount
+    name: flink-operator
+    namespace: dah-flink-uat
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flink-operator

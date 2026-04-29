@@ -8,14 +8,14 @@
       },
       "jobManager": {
         "resource": {
-          "memory": "1024m",
-          "cpu": 0.5
+          "memory": "4000m",
+          "cpu": 1
         }
       },
       "taskManager": {
         "resource": {
-          "memory": "1024m",
-          "cpu": 0.5
+          "memory": "4000m",
+          "cpu": 1
         }
       }
     }
