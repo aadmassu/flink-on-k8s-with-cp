@@ -1,0 +1,157 @@
+# Pipeline:  kafka-database
+# Purpose:   Apply a single Kafka Database under its parent Kafka Catalog
+#            via CMF REST (create-if-missing).
+# Author:    Ayele Admassu
+# Created:   2026-04-29
+#
+# Variable Group: <env>-openshift-credentials
+#   openshift-service-account-name  — service account username
+#   openshift-service-account-pwd   — service account password (secret)
+#   openshift-dev-api               — OpenShift API server URL
+#   openshift-dev-namespace         — target namespace (dah-flink-<env>)
+#
+# Manifests read:
+#   apps/confluent-flink/<env>/kafka-catalog.yaml   (for parent catalog name)
+#   apps/confluent-flink/<env>/kafka-database.yaml  (the database to apply)
+#
+# PRE-REQ: the parent Kafka Catalog must already exist in CMF. Run the
+# kafka-catalog pipeline first if it doesn't.
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, uat, prd]
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: dev-openshift-credentials
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: qa-openshift-credentials
+  - ${{ if eq(parameters.environment, 'uat') }}:
+    - group: uat-openshift-credentials
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: prd-openshift-credentials
+
+stages:
+  - stage: KafkaDatabase
+    displayName: "Kafka Database (${{ parameters.environment }})"
+    jobs:
+      - job: ApplyKafkaDatabase
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - template: templates/install-tools.yaml
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+                oc whoami
+                oc project "$OC_NS"
+            env:
+              OC_API: $(openshift-dev-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: $(openshift-dev-namespace)
+
+          - task: Bash@3
+            displayName: "Apply Kafka Database"
+            inputs:
+              targetType: inline
+              script: |
+                set -uo pipefail
+
+                ENV_NAME="${{ parameters.environment }}"
+                CATALOG_MANIFEST="apps/confluent-flink/$ENV_NAME/kafka-catalog.yaml"
+                DB_MANIFEST="apps/confluent-flink/$ENV_NAME/kafka-database.yaml"
+
+                if [ ! -f "$CATALOG_MANIFEST" ]; then
+                  echo "ERROR: $CATALOG_MANIFEST not found (needed to discover parent catalog name)"
+                  exit 1
+                fi
+                if [ ! -f "$DB_MANIFEST" ]; then
+                  echo "ERROR: $DB_MANIFEST not found"
+                  exit 1
+                fi
+
+                python3 -c 'import yaml' 2>/dev/null \
+                  || pip3 install --quiet --user pyyaml \
+                  || python3 -m pip install --quiet --user pyyaml
+
+                API_SERVER=$(oc whoami --show-server)
+                OC_TOKEN=$(oc whoami -t)
+                PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/cmf-service:80/proxy"
+
+                yaml_to_json() {
+                  python3 -c "import yaml,json,sys; print(json.dumps(yaml.safe_load(open('$1'))))"
+                }
+                yaml_name() {
+                  python3 -c "import yaml,sys; d=yaml.safe_load(open('$1')); print(d.get('name') or (d.get('metadata') or {}).get('name',''))"
+                }
+                call_cmf() {
+                  local method=$1
+                  local path=$2
+                  local file=${3:-}
+                  if [ -n "$file" ]; then
+                    yaml_to_json "$file" | curl -sS -k -X "$method" \
+                      -H "Authorization: Bearer $OC_TOKEN" \
+                      -H "Content-Type: application/json" \
+                      --data-binary @- \
+                      "$PROXY_BASE$path"
+                  else
+                    curl -sS -k -X "$method" \
+                      -H "Authorization: Bearer $OC_TOKEN" \
+                      "$PROXY_BASE$path"
+                  fi
+                }
+
+                echo "=== Waiting for CMF pod to be Ready ==="
+                oc wait --for=condition=Ready pod \
+                  -l app.kubernetes.io/name=confluent-manager-for-apache-flink \
+                  -n "$OC_NS" --timeout=180s
+
+                CAT_NAME=$(yaml_name "$CATALOG_MANIFEST")
+                DB_NAME=$(yaml_name "$DB_MANIFEST")
+
+                # Pre-flight: catalog must exist (this pipeline doesn't create it).
+                cat_http=$(curl -sS -k -o /dev/null -w "%{http_code}" \
+                  -H "Authorization: Bearer $OC_TOKEN" \
+                  "$PROXY_BASE/cmf/api/v1/catalogs/kafka/$CAT_NAME")
+                if [ "$cat_http" != "200" ]; then
+                  echo "ERROR: parent Kafka Catalog '$CAT_NAME' not found in CMF (HTTP $cat_http)."
+                  echo "Run the kafka-catalog pipeline first."
+                  exit 1
+                fi
+
+                echo ""
+                echo "=== Kafka Database: $DB_NAME (under catalog $CAT_NAME) ==="
+                http_code=$(curl -sS -k -o /dev/null -w "%{http_code}" \
+                  -H "Authorization: Bearer $OC_TOKEN" \
+                  "$PROXY_BASE/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases/$DB_NAME")
+                if [ "$http_code" = "200" ]; then
+                  echo "Kafka Database '$DB_NAME' already exists, skipping create."
+                else
+                  echo "Creating Kafka Database '$DB_NAME'..."
+                  call_cmf POST "/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases" "$DB_MANIFEST"
+                  echo ""
+                fi
+
+                echo ""
+                echo "=== Current databases in $CAT_NAME ==="
+                call_cmf GET "/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases" | head -100
+                echo ""
+                echo "=== Done ==="
+            env:
+              OC_NS: $(openshift-dev-namespace)
