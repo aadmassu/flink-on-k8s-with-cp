@@ -9,11 +9,9 @@ Installed by [`.azure-pipelines/cmf.yaml`](../../.azure-pipelines/cmf.yaml).
 ```
 apps/confluent-cmf/
 ├── README.md
-├── openshift-overlay.yaml   # OpenShift-specific overrides applied on top of every env
-├── dev/values.yaml
-├── qa/values.yaml
-├── uat/values.yaml
-└── prd/values.yaml
+└── <env>/
+    ├── values.yaml                # Helm values for CMF
+    └── cmf-tls-certificate.yaml   # cert-manager Certificate for CMF REST endpoint TLS
 ```
 
 ## Per-env values — what you'll actually find
@@ -41,7 +39,6 @@ The pipeline runs effectively:
 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
   --namespace dah-flink-<env> \
   -f apps/confluent-cmf/<env>/values.yaml \
-  -f apps/confluent-cmf/openshift-overlay.yaml \
   --set namespaced=true \
   --set cmf.database.jdbc.url="<env>-cmf-sql-server-jdbc-url" \
   --set cmf.database.jdbc.user="<env>-cmf-sql-server-user" \
@@ -50,16 +47,46 @@ helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
 
 `url` and `user` come from the env's variable group; the corresponding **password**, **encryption key**, and **license** are created by the pipeline as Kubernetes Secrets (`cmf-db-credentials`, `cmf-encryption-key`, `confluent-license`) before the Helm install runs.
 
-## openshift-overlay.yaml
+## TLS for the CMF REST endpoint
 
-Nullifies fields that conflict with OpenShift SCCs (which assign UIDs/GIDs at runtime):
+CMF terminates TLS at the pod. The cert is issued by FCB's Keyfactor `ClusterIssuer` via cert-manager, and consumed by Spring Boot via the chart's `cmf.ssl` block.
 
-```yaml
-podSecurityContext:
-  runAsUser: null
-  runAsGroup: null
-  fsGroup: null
 ```
+apps/confluent-cmf/<env>/cmf-tls-certificate.yaml   # cert-manager Certificate
+                                                    #   commonName + dnsNames cover cmf-service.<ns>.svc.cluster.local
+                                                    #   issuerRef: ClusterIssuer/keyfactor (group: command-issuer.keyfactor.com)
+                                                    #   duration 8760h, RSA 4096, rotationPolicy Always
+
+apps/confluent-cmf/<env>/values.yaml                # ssl block + mountedVolumes
+  cmf.ssl.enabled: true
+  cmf.ssl.certificate:               file:/etc/cmf/tls/tls.crt
+  cmf.ssl.certificate-private-key:   file:/etc/cmf/tls/tls.key
+  mountedVolumes.volumes:            cmf-tls (Secret) at /etc/cmf/tls
+```
+
+The Service exposes **port 443 → targetPort 8080** (the CMF Spring Boot server is HTTPS on 8080 inside the pod). Pipelines that call CMF go through the apiserver proxy as `services/https:cmf-service:443/proxy`.
+
+### Required Keyfactor metadata (already on every cert manifest)
+
+Per FCB's approver-policy, all six annotations must be present or Keyfactor rejects the request:
+
+| Annotation | Value |
+|---|---|
+| `Certificate-Support-Group-Contact` | `dahkfkaksupportnotification@firstcitizens.com` |
+| `Environment` | `Non-Prod-DEV` / `Non-Prod-QA` / `Non-Prod-UAT` / `Prod-Corp` |
+| `Description` | `Confluent Manager for Apache Flink — REST endpoint TLS` |
+| `Organization` | `FCB` |
+| `Application-ID` | `11547` |
+| `Platform` | `OPENSHIFT` |
+
+### Run order per env
+
+1. [`.azure-pipelines/cmf-tls.yaml`](../../.azure-pipelines/cmf-tls.yaml) — applies the Certificate, waits for Keyfactor approval, verifies the `cmf-tls` Secret has `tls.crt`, `tls.key`, `ca.crt`.
+2. [`.azure-pipelines/cmf.yaml`](../../.azure-pipelines/cmf.yaml) — Helm-installs CMF; pre-flight checks `cmf-tls` exists and aborts with a clear message if not.
+
+### Renewal
+
+cert-manager rotates the cert before expiry (`renewBefore: 360h`). The Secret is updated in place. CMF reads the cert files only on startup, so the new cert takes effect at the next pod restart — schedule a planned restart per renewal window (~yearly).
 
 ## Resources the chart will apply
 

@@ -40,7 +40,6 @@ Each env folder holds either Helm values (CMF), CMF REST API payloads (Flink dev
 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
   --namespace dah-flink-<env> \
   -f apps/confluent-cmf/<env>/values.yaml \
-  -f apps/confluent-cmf/openshift-overlay.yaml \
   --set namespaced=true
 ```
 

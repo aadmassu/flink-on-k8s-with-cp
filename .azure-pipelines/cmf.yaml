@@ -80,7 +80,6 @@ stages:
                 helm template confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
                   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
-                  -f apps/confluent-cmf/openshift-overlay.yaml \
                   --set namespaced=true \
                   | grep -E "^kind:|^  name:|^  namespace:" || true
 
@@ -116,11 +115,22 @@ stages:
                 create_labeled_secret confluent-license license.txt "$CMF_LICENSE"
 
                 echo ""
+                echo "=== Verifying cmf-tls Secret exists ==="
+                # CMF reads the TLS cert/key from this Secret on startup. If it's
+                # missing, the pod will crashloop with an opaque Spring error —
+                # fail fast here instead.
+                if ! oc get secret cmf-tls -n "$OC_NS" >/dev/null 2>&1; then
+                  echo "ERROR: secret/cmf-tls not found in $OC_NS."
+                  echo "Run the cmf-tls pipeline first to provision the cert-manager Certificate."
+                  exit 1
+                fi
+                echo "secret/cmf-tls found."
+
+                echo ""
                 echo "=== Installing CMF ==="
                 helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
                   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
-                  -f apps/confluent-cmf/openshift-overlay.yaml \
                   --set namespaced=true \
                   --set cmf.database.jdbc.url="$CMF_DB_URL" \
                   --set cmf.database.jdbc.user="$CMF_DB_USER" \

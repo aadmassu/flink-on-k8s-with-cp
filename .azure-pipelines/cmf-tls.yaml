@@ -1,0 +1,112 @@
+# Pipeline:  cmf-tls
+# Purpose:   Apply the cert-manager Certificate that issues the TLS material
+#            (cmf-tls Secret) used by the CMF REST endpoint.
+# Author:    Ayele Admassu
+# Created:   2026-04-29
+#
+# Variable Group: <env>-openshift-credentials
+#   openshift-service-account-name  — service account username
+#   openshift-service-account-pwd   — service account password (secret)
+#   openshift-dev-api               — OpenShift API server URL
+#   openshift-dev-namespace         — target namespace (dah-flink-<env>)
+#
+# Manifest applied: apps/confluent-cmf/<env>/cmf-tls-certificate.yaml
+#
+# Run this pipeline BEFORE cmf.yaml so the cmf-tls Secret exists when CMF
+# starts. The Helm install in cmf.yaml fails fast if cmf-tls is missing.
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, uat, prd]
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: dev-openshift-credentials
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: qa-openshift-credentials
+  - ${{ if eq(parameters.environment, 'uat') }}:
+    - group: uat-openshift-credentials
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: prd-openshift-credentials
+
+stages:
+  - stage: CmfTls
+    displayName: "CMF TLS Certificate (${{ parameters.environment }})"
+    jobs:
+      - job: CmfTls
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - template: templates/install-tools.yaml
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+                oc whoami
+                oc project "$OC_NS"
+            env:
+              OC_API: $(openshift-dev-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: dah-flink-${{ parameters.environment }}
+
+          - task: Bash@3
+            displayName: "Apply cert-manager Certificate"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                MANIFEST="apps/confluent-cmf/$TARGET_ENV/cmf-tls-certificate.yaml"
+
+                if [ ! -f "$MANIFEST" ]; then
+                  echo "ERROR: $MANIFEST not found"
+                  exit 1
+                fi
+
+                echo "=== Manifest ==="
+                cat "$MANIFEST"
+
+                echo ""
+                echo "=== Server-side dry run ==="
+                oc apply --dry-run=server -f "$MANIFEST"
+
+                echo ""
+                echo "=== Applying ==="
+                oc apply -f "$MANIFEST"
+
+                echo ""
+                echo "=== Waiting for Certificate to be Ready (Keyfactor must approve) ==="
+                # Up to 10 minutes — Keyfactor approval can take a moment.
+                oc wait --for=condition=Ready=True \
+                  certificate/cmf-tls -n "$OC_NS" --timeout=10m
+
+                echo ""
+                echo "=== Verifying Secret cmf-tls is populated ==="
+                KEYS=$(oc get secret cmf-tls -n "$OC_NS" -o jsonpath='{.data}' \
+                  | python3 -c "import json,sys; print(' '.join(sorted(json.load(sys.stdin).keys())))")
+                echo "Secret keys: $KEYS"
+                for k in tls.crt tls.key ca.crt; do
+                  if ! echo " $KEYS " | grep -q " $k "; then
+                    echo "ERROR: secret/cmf-tls is missing key '$k'"
+                    exit 1
+                  fi
+                done
+                echo "All expected keys present (tls.crt, tls.key, ca.crt)."
+            env:
+              OC_NS: dah-flink-${{ parameters.environment }}
+              TARGET_ENV: ${{ parameters.environment }}

@@ -57,6 +57,28 @@ cmf:
         kubernetesSecretName: "cmf-db-password"
         kubernetesSecretProperty: "password"
 
+  # TLS for the CMF REST endpoint. The cmf-tls Secret is populated by the
+  # cert-manager Certificate at apps/confluent-cmf/prd/cmf-tls-certificate.yaml
+  # (Keyfactor-issued). Spring Boot 3.1+ reads PEM cert + key directly; if
+  # the runtime ever rejects PEM, switch to a PKCS12 keystore via an
+  # init-container that converts tls.crt + tls.key -> keystore.p12.
+  ssl:
+    enabled: true
+    certificate: file:/etc/cmf/tls/tls.crt
+    certificate-private-key: file:/etc/cmf/tls/tls.key
+
+# Mount the cmf-tls Secret for Spring Boot to read.
+mountedVolumes:
+  volumes:
+    - name: cmf-tls
+      secret:
+        secretName: cmf-tls
+        defaultMode: 0440
+  volumeMounts:
+    - name: cmf-tls
+      mountPath: /etc/cmf/tls
+      readOnly: true
+
 # CPU and memory for the CMF pod
 resources:
   requests:

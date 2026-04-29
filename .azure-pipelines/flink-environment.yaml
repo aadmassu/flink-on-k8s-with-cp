@@ -82,7 +82,9 @@ stages:
 
                 API_SERVER=$(oc whoami --show-server)
                 OC_TOKEN=$(oc whoami -t)
-                PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/cmf-service:80/proxy"
+                # CMF REST endpoint is TLS-terminated at the pod. The "https:" prefix
+                # tells the apiserver service-proxy to dial the backend over HTTPS.
+                PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/https:cmf-service:443/proxy"
 
                 yaml_to_json() {
                   python3 -c "import yaml,json,sys; print(json.dumps(yaml.safe_load(open('$1'))))"

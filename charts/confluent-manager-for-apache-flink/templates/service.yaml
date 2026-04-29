@@ -8,8 +8,9 @@ spec:
   selector:
     {{- include "cmf.selectorLabels" . | nindent 4 }}
   ports:
-    # Port for CMF service
-    - name: cmf-service-https
+    # CMF serves HTTPS on container port 8080 (TLS terminated by Spring Boot
+    # using the cmf-tls Secret produced by cert-manager). Service exposes 443.
+    - name: cmf-https
       protocol: TCP
-      port: 80
+      port: 443
       targetPort: 8080

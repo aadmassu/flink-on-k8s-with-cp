@@ -1,0 +1,45 @@
+---
+# cert-manager Certificate for the CMF REST endpoint TLS — dev.
+# Issued by FCB's Keyfactor ClusterIssuer; resulting Secret (cmf-tls) is
+# mounted into the CMF pod and consumed by Spring Boot via cmf.ssl.* values.
+# Required Keyfactor metadata is enforced by FCB's approver-policy — missing
+# any annotation will cause the certificate request to be rejected.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cmf-tls
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/instance: cmf-tls
+    app.kubernetes.io/component: cmf
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Description: "Confluent Manager for Apache Flink — REST endpoint TLS"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: cmf-service.dah-flink-dev.svc.cluster.local
+  dnsNames:
+    - cmf-service.dah-flink-dev.svc
+    - cmf-service.dah-flink-dev.svc.cluster.local
+  duration: 8760h0m0s   # 1 year (max allowed by FCB approver-policy)
+  renewBefore: 360h     # request renewal 15 days before expiry
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: cmf-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: confluent-manager-for-apache-flink
+      app.kubernetes.io/instance: cmf-tls
+      app.kubernetes.io/component: cmf
+      fcbint.net/app-id: "11547"
