@@ -1,0 +1,61 @@
+
+PS C:\WINDOWS\system32> C:\git-repos\flink-on-k8s-with-cp\tools\sync-to-fcb.ps1
+
+Source:      C:\git-repos\flink-on-k8s-with-cp
+Destination: C:\git-repos\DAH.Kafka.OS
+Mode:        DRY-RUN  (set $DryRun = $false to actually copy)
+
+
+	    Newer     		    1677	C:\git-repos\flink-on-k8s-with-cp\README.md
+	    Newer     		    5740	C:\git-repos\flink-on-k8s-with-cp\.azure-pipelines\check-tools.yaml
+	    Newer     		    5932	C:\git-repos\flink-on-k8s-with-cp\.azure-pipelines\cmf.yaml
+	    Newer     		   11688	C:\git-repos\flink-on-k8s-with-cp\.azure-pipelines\connectivity-test.yaml
+	    Newer     		    2429	C:\git-repos\flink-on-k8s-with-cp\.azure-pipelines\flink-crs.yaml
+	    Newer     		    7344	C:\git-repos\flink-on-k8s-with-cp\.azure-pipelines\flink-environments.yaml
+	    Newer     		    3517	C:\git-repos\flink-on-k8s-with-cp\.azure-pipelines\push-image.yaml
+	    Newer     		    2138	C:\git-repos\flink-on-k8s-with-cp\apps\README.md
+	*EXTRA Dir        -1	C:\git-repos\DAH.Kafka.OS\apps\confluent-cmf\stg\
+	  *EXTRA File 		    3099	C:\git-repos\DAH.Kafka.OS\apps\confluent-cmf\stg\values.yaml
+	    Newer     		    2006	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-cmf\README.md
+	    New File  		    3099	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-cmf\uat\values.yaml
+	*EXTRA Dir        -1	C:\git-repos\DAH.Kafka.OS\apps\confluent-flink\stg\
+	  *EXTRA File 		     212	C:\git-repos\DAH.Kafka.OS\apps\confluent-flink\stg\cmf-rest-class.yaml
+	  *EXTRA File 		     356	C:\git-repos\DAH.Kafka.OS\apps\confluent-flink\stg\flink-environment.yaml
+	  *EXTRA File 		     202	C:\git-repos\DAH.Kafka.OS\apps\confluent-flink\stg\flink-pvc.yaml
+	  *EXTRA File 		     433	C:\git-repos\DAH.Kafka.OS\apps\confluent-flink\stg\flink-session-cluster.yaml
+	    Newer     		    1677	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-flink\README.md
+	    New File  		     212	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-flink\uat\cmf-rest-class.yaml
+	    New File  		     356	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-flink\uat\flink-environment.yaml
+	    New File  		     202	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-flink\uat\flink-pvc.yaml
+	    New File  		     433	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-flink\uat\flink-session-cluster.yaml
+	*EXTRA Dir        -1	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\
+	  *EXTRA File 		    6041	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\connect.yaml
+	  *EXTRA File 		    6677	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\control-center.yaml
+	  *EXTRA File 		    1426	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\kafka-rest-class.yaml
+	  *EXTRA File 		   14036	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\kafka.yaml
+	  *EXTRA File 		    4385	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\kraft-controller.yaml
+	  *EXTRA File 		    1039	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\rbac-rolebindings.yaml
+	  *EXTRA File 		    4362	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\schema-registry.yaml
+	  *EXTRA File 		    3785	C:\git-repos\DAH.Kafka.OS\apps\confluent-platform\stg\secrets.yaml
+	    Newer     		    2907	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\README.md
+	    Newer     		    4362	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\dev\schema-registry.yaml
+	    Newer     		    4362	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\prd\schema-registry.yaml
+	    Newer     		    4359	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\qa\schema-registry.yaml
+	    New File  		    6041	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\uat\connect.yaml
+	    New File  		    6677	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\uat\control-center.yaml
+	    New File  		    1426	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\uat\kafka-rest-class.yaml
+	    New File  		   14036	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\uat\kafka.yaml
+	    New File  		    4385	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\uat\kraft-controller.yaml
+	    New File  		    1039	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\uat\rbac-rolebindings.yaml
+	    New File  		    4362	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\uat\schema-registry.yaml
+	    New File  		    3785	C:\git-repos\flink-on-k8s-with-cp\apps\confluent-platform\uat\secrets.yaml
+Sync complete (robocopy exit code 3).
+
+Next steps in C:\git-repos\DAH.Kafka.OS :
+    git status
+    git diff --stat
+    git diff
+    # if everything looks right:
+    git add .
+    git commit -m "..."
+    git push
