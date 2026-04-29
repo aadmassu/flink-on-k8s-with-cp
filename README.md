@@ -38,9 +38,6 @@ openshift-prereqs/<env>/manifests/
 ├── kafka-catalog.yaml            # Apply Kafka Catalog to CMF (REST)
 ├── kafka-database.yaml           # Apply Kafka Database to CMF (REST)
 └── flink-crs.yaml                # CFK-style Flink CRs (template; not used until CFK lands)
-
-tools/
-└── sync-to-fcb.ps1               # Windows/Robocopy script to mirror this repo into DAH.Kafka.OS
 ```
 
 ## Environments
@@ -70,7 +67,3 @@ For a new environment:
 - CMF state lives in an external SQL Server (FCB DBA team provisions the database per env); for envs where the DB isn't ready yet, CMF runs with `database.type: local` (SQLite on ephemeral pod storage) for short-term validation only.
 - Flink checkpoints/savepoints target the on-prem NetApp S3 bucket per env.
 - Secrets pulled from the `<env>-openshift-credentials` Azure DevOps variable group today; **target state is ESO + CyberArk** (FCB's standard).
-
-## Two-laptop dev workflow
-
-This GitHub repo (`flink-on-k8s-with-cp`, branch `fcb-flink-cp`) is the source of truth. The FCB-issued Windows laptop holds clones of both this repo and FCB Azure DevOps `DAH.Kafka.OS`, and uses [`tools/sync-to-fcb.ps1`](tools/sync-to-fcb.ps1) to mirror changes one direction (GitHub → DAH.Kafka.OS). See the script header and `tools/`-folder commentary for the full flow.
