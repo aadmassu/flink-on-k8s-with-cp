@@ -66,22 +66,34 @@ stages:
                 set -uo pipefail
 
                 ENV_NAME="${{ parameters.environment }}"
-                ENV_FILE="apps/confluent-flink/$ENV_NAME/environment.json"
-                CATALOG_FILE="apps/confluent-flink/$ENV_NAME/kafka-catalog.json"
-                DB_FILE="apps/confluent-flink/$ENV_NAME/kafka-database.json"
+                ENV_FILE="apps/confluent-flink/$ENV_NAME/environment.yaml"
+                CATALOG_FILE="apps/confluent-flink/$ENV_NAME/kafka-catalog.yaml"
+                DB_FILE="apps/confluent-flink/$ENV_NAME/kafka-database.yaml"
 
                 if [ ! -f "$ENV_FILE" ]; then
                   echo "ERROR: $ENV_FILE not found"
                   exit 1
                 fi
 
+                # CMF accepts JSON over its REST API; we author the resources as YAML
+                # in Git for readability, then convert in-flight before posting.
+                # Ensure PyYAML is available (no-op if already installed).
+                python3 -c 'import yaml' 2>/dev/null \
+                  || pip3 install --quiet --user pyyaml \
+                  || python3 -m pip install --quiet --user pyyaml
+
                 API_SERVER=$(oc whoami --show-server)
                 OC_TOKEN=$(oc whoami -t)
                 PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/cmf-service:80/proxy"
 
+                # Convert a YAML file to a single-line JSON document on stdout.
+                yaml_to_json() {
+                  python3 -c "import yaml,json,sys; print(json.dumps(yaml.safe_load(open('$1'))))"
+                }
+
                 # Extract top-level "name" (environment) or "metadata.name" (catalog/database)
-                json_name() {
-                  python3 -c "import json,sys; d=json.load(open('$1')); print(d.get('name') or d.get('metadata',{}).get('name',''))"
+                yaml_name() {
+                  python3 -c "import yaml,sys; d=yaml.safe_load(open('$1')); print(d.get('name') or (d.get('metadata') or {}).get('name',''))"
                 }
 
                 call_cmf() {
@@ -89,10 +101,10 @@ stages:
                   local path=$2
                   local file=${3:-}
                   if [ -n "$file" ]; then
-                    curl -sS -k -X "$method" \
+                    yaml_to_json "$file" | curl -sS -k -X "$method" \
                       -H "Authorization: Bearer $OC_TOKEN" \
                       -H "Content-Type: application/json" \
-                      --data-binary "@$file" \
+                      --data-binary @- \
                       "$PROXY_BASE$path"
                   else
                     curl -sS -k -X "$method" \
@@ -141,7 +153,7 @@ stages:
                 }
 
                 # 1) Environment (POST = create-or-update per spec)
-                ENV_FILE_NAME=$(json_name "$ENV_FILE")
+                ENV_FILE_NAME=$(yaml_name "$ENV_FILE")
                 echo ""
                 echo "=== Environment: $ENV_FILE_NAME (upsert) ==="
                 call_cmf POST "/cmf/api/v1/environments" "$ENV_FILE"
@@ -149,7 +161,7 @@ stages:
 
                 # 2) Kafka Catalog (top-level)
                 if [ -f "$CATALOG_FILE" ]; then
-                  CAT_NAME=$(json_name "$CATALOG_FILE")
+                  CAT_NAME=$(yaml_name "$CATALOG_FILE")
                   create_if_missing \
                     "/cmf/api/v1/catalogs/kafka" \
                     "/cmf/api/v1/catalogs/kafka/$CAT_NAME" \
@@ -159,7 +171,7 @@ stages:
 
                 # 3) Kafka Database (nested under catalog)
                 if [ -f "$DB_FILE" ] && [ -n "${CAT_NAME:-}" ]; then
-                  DB_NAME=$(json_name "$DB_FILE")
+                  DB_NAME=$(yaml_name "$DB_FILE")
                   create_if_missing \
                     "/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases" \
                     "/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases/$DB_NAME" \
