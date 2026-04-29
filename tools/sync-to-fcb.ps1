@@ -47,8 +47,8 @@
 # CONFIG — edit these three for your environment, then press F5
 # =============================================================================
 
-$Source      = "C:\path\to\flink-on-k8s-with-cp"   # GitHub clone (on fcb-flink-cp branch)
-$Destination = "C:\path\to\DAH.Kafka.OS"           # FCB Azure DevOps clone
+$Source      = "C:\git-repos\flink-on-k8s-with-cp"   # GitHub clone (on fcb-flink-cp branch)
+$Destination = "C:\git-repos\DAH.Kafka.OS"           # FCB Azure DevOps clone
 $DryRun      = $true                                # $true = preview only; $false = actually copy
 
 # =============================================================================
