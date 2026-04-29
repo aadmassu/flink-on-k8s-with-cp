@@ -30,7 +30,7 @@ openshift-prereqs/<env>/manifests/
 └── flink-sa-role-rolebinding.yaml        # Pre-created by FCB Container Platforms team
 
 .azure-pipelines/
-├── check-tools.yaml              # Reference pipeline — verifies oc, helm, kubectl available
+├── verify-flink-setup.yaml       # End-to-end health check (RBAC, TLS, CMF, environment/catalog/database)
 ├── connectivity-test.yaml        # Busybox-based DNS + TCP probe to VM Kafka, SR, S3, SQL Server
 ├── push-image.yaml               # Push CMF / utility images to FCB Artifactory
 ├── cmf.yaml                      # Install CMF via Helm

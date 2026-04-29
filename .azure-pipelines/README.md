@@ -6,7 +6,7 @@ The pipelines in this folder operate against FCB's on-prem OpenShift, deploying 
 
 | File | Purpose | What it does |
 |------|---------|--------------|
-| [`check-tools.yaml`](check-tools.yaml) | Reference pipeline | Sanity-check that `oc`, `helm`, `kubectl` install correctly via `templates/install-tools.yaml`. Use as a starting template. |
+| [`verify-flink-setup.yaml`](verify-flink-setup.yaml) | End-to-end health check | Single read-only pipeline that verifies every layer of the stack in `dah-flink-<env>`: CLI tools, OpenShift login, namespace + `flink-operator` SA + RBAC, `keyfactor` ClusterIssuer, `cmf-tls` Certificate + Secret, CMF pod Ready, `cmf-service` on port 443, CMF REST endpoint reachable over HTTPS, Environment / Kafka Catalog / Kafka Database registered. Always finishes with a diagnostic dump (pods / events / secrets / CRDs). Does not deploy anything; for external connectivity tests use `connectivity-test.yaml`. |
 | [`connectivity-test.yaml`](connectivity-test.yaml) | Network diagnostics | Pushes busybox to Artifactory, deploys a pod inside `dah-flink-<env>`, and runs DNS + TCP probes against VM Kafka brokers, Schema Registry, REST Proxy, SQL Server, and NetApp S3. |
 | [`push-image.yaml`](push-image.yaml) | Image promotion | Push CMF or utility container images from a tarball into FCB Artifactory. |
 | [`cmf.yaml`](cmf.yaml) | Install CMF | Helm install of `confluent-manager-for-apache-flink` from the local `charts/` copy. Creates `cmf-db-credentials`, `cmf-encryption-key`, `confluent-license` Secrets from variable-group values, then runs `helm upgrade --install`. |

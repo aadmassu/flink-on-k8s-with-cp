@@ -1,0 +1,345 @@
+# Pipeline:  verify-flink-setup
+# Purpose:   End-to-end health check for the FCB Flink/CMF stack in
+#            dah-flink-<env>. Lightweight in-cluster checks only — does not
+#            deploy anything and does not contact external systems.
+#
+#            For external connectivity tests (VM Kafka, Schema Registry, REST
+#            Proxy, NetApp S3, SQL Server) use connectivity-test.yaml — that
+#            pipeline deploys a busybox pod inside the namespace.
+#
+# Author:    Ayele Admassu
+# Created:   2026-04-29
+#
+# Variable Group: <env>-openshift-credentials
+#   openshift-service-account-name  — service account username
+#   openshift-service-account-pwd   — service account password (secret)
+#   openshift-dev-api               — OpenShift API server URL
+#   openshift-dev-namespace         — target namespace (dah-flink-<env>)
+#
+# Failure model: tasks run sequentially with default `succeeded()` condition.
+# First failed task stops the pipeline so you fix the lowest layer first
+# (RBAC missing -> fix RBAC; cert not Ready -> fix cert; etc.) before
+# higher-layer checks become meaningful.
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, uat, prd]
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: dev-openshift-credentials
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: qa-openshift-credentials
+  - ${{ if eq(parameters.environment, 'uat') }}:
+    - group: uat-openshift-credentials
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: prd-openshift-credentials
+
+stages:
+  - stage: VerifyFlinkSetup
+    displayName: "Verify Flink Setup (${{ parameters.environment }})"
+    jobs:
+      - job: Verify
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - template: templates/install-tools.yaml
+
+          # --------------------------------------------------------------
+          # Layer 1: build agent — CLI tools the rest of the pipeline needs
+          # --------------------------------------------------------------
+          - task: Bash@3
+            displayName: "1. CLI tools sanity"
+            inputs:
+              targetType: inline
+              script: |
+                set -uo pipefail
+                FAIL=0
+                check_tool() {
+                  local name=$1; shift
+                  echo ""
+                  echo "--- $name ---"
+                  if ! "$@"; then
+                    echo "FAIL: $name not available"
+                    FAIL=1
+                  fi
+                }
+                check_tool oc      oc version --client
+                check_tool helm    helm version
+                check_tool kubectl kubectl version --client
+                check_tool curl    curl --version
+                check_tool python3 python3 --version
+                # PyYAML is lazy-installed by the CMF REST pipelines; informational only.
+                python3 -c 'import yaml; print("PyYAML", yaml.__version__)' 2>/dev/null \
+                  || echo "INFO: PyYAML not installed yet (lazy-installed by REST pipelines)"
+                exit $FAIL
+
+          - task: Bash@3
+            displayName: "2. Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+                echo ""
+                echo "Logged in as: $(oc whoami)"
+                echo "Cluster:      $(oc whoami --show-server)"
+                oc project "$OC_NS"
+            env:
+              OC_API: $(openshift-dev-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: dah-flink-${{ parameters.environment }}
+
+          # --------------------------------------------------------------
+          # Layer 2: cluster pre-reqs — namespace + RBAC owned by FCB
+          # --------------------------------------------------------------
+          - task: Bash@3
+            displayName: "3. Namespace + flink-operator SA + RBAC"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "=== Namespace $OC_NS ==="
+                oc get namespace "$OC_NS"
+
+                echo ""
+                echo "=== ServiceAccount flink-operator ==="
+                oc get sa flink-operator -n "$OC_NS"
+
+                echo ""
+                echo "=== Roles + RoleBindings in $OC_NS ==="
+                oc get role,rolebinding -n "$OC_NS"
+
+                echo ""
+                echo "=== Auth check: can flink-operator list deployments? ==="
+                # `oc auth can-i` returns yes/no on stdout but exits 0 either
+                # way — have to inspect the answer string. A "no" here means
+                # FCB's fcb-security chart didn't bind the Role correctly to
+                # the SA in this namespace.
+                ANS=$(oc auth can-i list deployments \
+                  --as=system:serviceaccount:$OC_NS:flink-operator \
+                  -n "$OC_NS")
+                echo "Answer: $ANS"
+                if [ "$ANS" != "yes" ]; then
+                  echo "FAIL: flink-operator SA cannot list deployments in $OC_NS"
+                  echo "      Ask Container Platforms to verify the fcb-security RoleBinding."
+                  exit 1
+                fi
+            env:
+              OC_NS: dah-flink-${{ parameters.environment }}
+
+          # --------------------------------------------------------------
+          # Layer 3: TLS — cert-manager + Keyfactor + resulting Secret
+          # --------------------------------------------------------------
+          - task: Bash@3
+            displayName: "4. ClusterIssuer keyfactor + ClusterSecretStore"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "=== ClusterIssuer keyfactor ==="
+                oc get clusterissuer keyfactor
+
+                echo ""
+                echo "=== ClusterSecretStore (ESO) ==="
+                # Informational — ESO not on the critical path for CMF today,
+                # but useful to confirm onboarding before flipping the secret
+                # provisioning to ESO.
+                oc get clustersecretstore || echo "INFO: no ClusterSecretStore (CyberArk onboarding pending)"
+
+          - task: Bash@3
+            displayName: "5. CMF TLS Certificate + Secret"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "=== Certificate cmf-tls ==="
+                oc get certificate cmf-tls -n "$OC_NS"
+
+                READY=$(oc get certificate cmf-tls -n "$OC_NS" \
+                  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+                if [ "$READY" != "True" ]; then
+                  echo ""
+                  echo "FAIL: Certificate cmf-tls not Ready"
+                  echo ""
+                  echo "=== Diagnostics ==="
+                  oc describe certificate cmf-tls -n "$OC_NS" | tail -40
+                  echo ""
+                  echo "=== Latest CertificateRequest ==="
+                  oc describe certificaterequest -n "$OC_NS" \
+                    -l cert-manager.io/certificate-name=cmf-tls 2>/dev/null | tail -40 \
+                    || echo "(no CertificateRequest found)"
+                  exit 1
+                fi
+                echo "PASS: Certificate Ready=True"
+
+                echo ""
+                echo "=== Secret cmf-tls — required keys ==="
+                KEYS=$(oc get secret cmf-tls -n "$OC_NS" -o jsonpath='{.data}' \
+                  | python3 -c "import json,sys; print(' '.join(sorted(json.load(sys.stdin).keys())))")
+                echo "Keys: $KEYS"
+                FAIL=0
+                for k in tls.crt tls.key ca.crt; do
+                  if ! echo " $KEYS " | grep -q " $k "; then
+                    echo "FAIL: missing $k"
+                    FAIL=1
+                  fi
+                done
+                exit $FAIL
+            env:
+              OC_NS: dah-flink-${{ parameters.environment }}
+
+          # --------------------------------------------------------------
+          # Layer 4: CMF deployment — pod + service shape
+          # --------------------------------------------------------------
+          - task: Bash@3
+            displayName: "6. CMF pod Ready + Service on 443"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "=== CMF pod ==="
+                oc get pods -n "$OC_NS" \
+                  -l app.kubernetes.io/name=confluent-manager-for-apache-flink -o wide
+
+                READY=$(oc get pods -n "$OC_NS" \
+                  -l app.kubernetes.io/name=confluent-manager-for-apache-flink \
+                  -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "")
+                if [ "$READY" != "true" ]; then
+                  echo ""
+                  echo "FAIL: CMF pod not Ready"
+                  oc describe pod -n "$OC_NS" \
+                    -l app.kubernetes.io/name=confluent-manager-for-apache-flink | tail -30
+                  exit 1
+                fi
+                echo "PASS: CMF pod Ready"
+
+                echo ""
+                echo "=== Service cmf-service ==="
+                oc get svc cmf-service -n "$OC_NS"
+                PORT=$(oc get svc cmf-service -n "$OC_NS" \
+                  -o jsonpath='{.spec.ports[0].port}')
+                if [ "$PORT" != "443" ]; then
+                  echo "FAIL: cmf-service expected port 443, got $PORT"
+                  exit 1
+                fi
+                echo "PASS: cmf-service on port 443"
+            env:
+              OC_NS: dah-flink-${{ parameters.environment }}
+
+          # --------------------------------------------------------------
+          # Layer 5: CMF REST endpoint actually responds over HTTPS
+          # --------------------------------------------------------------
+          - task: Bash@3
+            displayName: "7. CMF REST endpoint reachable (HTTPS via apiserver proxy)"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                API_SERVER=$(oc whoami --show-server)
+                OC_TOKEN=$(oc whoami -t)
+                # https: prefix tells the apiserver service-proxy to dial the
+                # backend over TLS. Matches what the CMF REST pipelines do.
+                PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/https:cmf-service:443/proxy"
+
+                echo "=== GET /cmf/api/v1/environments ==="
+                HTTP=$(curl -sS -k -o /tmp/resp -w "%{http_code}" \
+                  -H "Authorization: Bearer $OC_TOKEN" \
+                  "$PROXY_BASE/cmf/api/v1/environments")
+                echo "HTTP $HTTP"
+                head -c 500 /tmp/resp
+                echo ""
+                if [ "$HTTP" != "200" ]; then
+                  echo "FAIL: CMF REST endpoint returned HTTP $HTTP"
+                  exit 1
+                fi
+                echo "PASS: CMF REST reachable over HTTPS"
+            env:
+              OC_NS: dah-flink-${{ parameters.environment }}
+
+          # --------------------------------------------------------------
+          # Layer 6: CMF state — Environment, KafkaCatalog, KafkaDatabase
+          # are registered (the three resources we POST via the REST pipelines)
+          # --------------------------------------------------------------
+          - task: Bash@3
+            displayName: "8. Environment / Catalog / Database registered in CMF"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                ENV_NAME="${{ parameters.environment }}"
+
+                python3 -c 'import yaml' 2>/dev/null \
+                  || pip3 install --quiet --user pyyaml \
+                  || python3 -m pip install --quiet --user pyyaml
+
+                yaml_name() {
+                  python3 -c "import yaml,sys; d=yaml.safe_load(open('$1')); print(d.get('name') or (d.get('metadata') or {}).get('name',''))"
+                }
+
+                ENV_RES=$(yaml_name "apps/confluent-flink/$ENV_NAME/environment.yaml")
+                CAT_NAME=$(yaml_name "apps/confluent-flink/$ENV_NAME/kafka-catalog.yaml")
+                DB_NAME=$(yaml_name "apps/confluent-flink/$ENV_NAME/kafka-database.yaml")
+
+                API_SERVER=$(oc whoami --show-server)
+                OC_TOKEN=$(oc whoami -t)
+                PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/https:cmf-service:443/proxy"
+
+                check() {
+                  local label=$1; local path=$2; local name=$3
+                  echo ""
+                  echo "--- $label '$name' ---"
+                  HTTP=$(curl -sS -k -o /dev/null -w "%{http_code}" \
+                    -H "Authorization: Bearer $OC_TOKEN" \
+                    "$PROXY_BASE$path")
+                  if [ "$HTTP" = "200" ]; then
+                    echo "PASS"; return 0
+                  else
+                    echo "FAIL: HTTP $HTTP — re-run the corresponding pipeline (flink-environment / kafka-catalog / kafka-database)"
+                    return 1
+                  fi
+                }
+
+                FAIL=0
+                check "Environment"    "/cmf/api/v1/environments/$ENV_RES"                        "$ENV_RES"  || FAIL=1
+                check "Kafka Catalog"  "/cmf/api/v1/catalogs/kafka/$CAT_NAME"                     "$CAT_NAME" || FAIL=1
+                check "Kafka Database" "/cmf/api/v1/catalogs/kafka/$CAT_NAME/databases/$DB_NAME"  "$DB_NAME"  || FAIL=1
+                exit $FAIL
+            env:
+              OC_NS: dah-flink-${{ parameters.environment }}
+
+          # --------------------------------------------------------------
+          # Diagnostic dump — runs even on prior failure so the developer has
+          # context without having to re-run the pipeline.
+          # --------------------------------------------------------------
+          - task: Bash@3
+            displayName: "Diagnostic dump (always)"
+            condition: always()
+            inputs:
+              targetType: inline
+              script: |
+                set -uo pipefail
+                echo "=== Pods in $OC_NS ==="
+                oc get pods -n "$OC_NS" -o wide || true
+                echo ""
+                echo "=== Events (last 20) ==="
+                oc get events -n "$OC_NS" --sort-by=.lastTimestamp | tail -20 || true
+                echo ""
+                echo "=== Secrets in $OC_NS ==="
+                oc get secrets -n "$OC_NS" || true
+                echo ""
+                echo "=== CRDs (Flink / Confluent / cert-manager / ESO) ==="
+                oc get crds | grep -iE "flink|confluent|cert-manager|external-secrets" || echo "(none)"
+            env:
+              OC_NS: dah-flink-${{ parameters.environment }}
