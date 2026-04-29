@@ -1,88 +1,55 @@
-# Confluent Platform — Local Kafka CRDs (Phase-II)
+# Confluent Platform — CFK CRs (Template Only — NOT Deployed at FCB)
 
-Kustomize manifests for deploying a **local Kafka cluster on K8s** using CFK (Confluent for Kubernetes) custom resources. This provides a PoC Kafka environment for Flink SQL development.
+⚠️ **Status: template / not deployed at FCB.**
 
----
+The manifests in this directory are CFK (Confluent for Kubernetes) custom resources for an **in-cluster Kafka stack** (KRaft, Kafka, Schema Registry, Connect, Control Center). FCB **does not run CFK**. FCB's Kafka cluster runs on VMs, outside OpenShift; Flink/CMF connect out to those VM brokers via standard bootstrap servers.
 
-## Components
+These files are kept in the repo as:
+- **Reference** for a future world where CFK is adopted at FCB
+- **Reusable patterns** for non-FCB consumers of this repo
 
-| CR | File | Description |
-|----|------|-------------|
-| **KRaftController** | `kraft-controller.yaml` | KRaft consensus controller (replaces ZooKeeper) |
-| **Kafka** | `kafka.yaml` | Kafka broker with KRaft dependency |
-| **SchemaRegistry** | `schema-registry.yaml` | Schema Registry for Flink SQL schema discovery |
-| **Connect** | `connect.yaml` | Kafka Connect for connectors |
-| **ControlCenter** | `control-center.yaml` | Confluent Control Center UI |
-| **KafkaRestClass** | `kafka-rest-class.yaml` | REST proxy endpoint for CFK internal use |
+If you're deploying CMF + Flink at FCB today, you can ignore this whole directory.
 
----
+## Components (when this stack is actually deployed)
 
-## Directory Structure
+| CR | File | Purpose |
+|----|------|---------|
+| `KRaftController` | `kraft-controller.yaml` | KRaft consensus controller (replaces ZooKeeper) |
+| `Kafka` | `kafka.yaml` | Kafka brokers (depends on KRaft) |
+| `SchemaRegistry` | `schema-registry.yaml` | Schema Registry |
+| `Connect` | `connect.yaml` | Kafka Connect |
+| `ControlCenter` | `control-center.yaml` | Confluent Control Center UI |
+| `KafkaRestClass` | `kafka-rest-class.yaml` | Internal CFK REST proxy reference |
+| `RoleBinding` | `rbac-rolebindings.yaml` | RBAC bindings for the components above |
+| `Secret` | `secrets.yaml` | Component-level secrets (in CFK-managed format) |
+
+## Layout
 
 ```
 apps/confluent-platform/
-├── README.md
-├── base/
-│   ├── kustomization.yaml
-│   ├── kraft-controller.yaml
-│   ├── kafka.yaml
-│   ├── schema-registry.yaml
-│   ├── connect.yaml
-│   ├── control-center.yaml
-│   └── kafka-rest-class.yaml
-├── dev/kustomization.yaml      # namespace: confluent-dev, patches endpoints
-├── qa/kustomization.yaml
-├── uat/kustomization.yaml
-└── prd/kustomization.yaml
+├── README.md  (this file)
+└── <env>/
+    ├── kraft-controller.yaml
+    ├── kafka.yaml
+    ├── schema-registry.yaml
+    ├── connect.yaml
+    ├── control-center.yaml
+    ├── kafka-rest-class.yaml
+    ├── rbac-rolebindings.yaml
+    └── secrets.yaml
 ```
 
----
+Each env (`dev`, `qa`, `uat`, `prd`) has its own directory; namespace is hard-coded in each manifest as `dah-kafka-<env>` (separate from the `dah-flink-<env>` namespace where CMF runs).
 
-## Image Versions
+## Pre-requisites if you ever do deploy this
 
-| Image | Version |
-|-------|---------|
-| `confluentinc/cp-server` | 8.1.1 |
-| `confluentinc/cp-schema-registry` | 8.1.1 |
-| `confluentinc/cp-server-connect` | 8.1.1 |
-| `confluentinc/cp-enterprise-control-center-next-gen` | 2.3.2 |
-| `confluentinc/confluent-init-container` | 3.1.1 |
+- **CFK operator** running and reconciling these CRDs
+- **cert-manager** running (CFK webhooks need TLS)
+- The `dah-kafka-<env>` namespace pre-created with the right SCC bindings
 
-The init-container handles CFK-specific initialization.
+None of this exists at FCB today.
 
----
+## At FCB, the equivalents are
 
-## Storage
-
-Base manifests do not specify a `storageClassName` — the OpenShift cluster default storage class is used.
-
-| Component | Volume | Default Size |
-|-----------|--------|-------------|
-| KRaftController | data | 10G |
-| Kafka | data | 10G |
-
----
-
-## Per-Environment Overlays
-
-Each overlay sets `namespace` and patches service endpoints to use the correct namespace:
-
-- **ControlCenter** — `schemaRegistry.url` and `connect.url` patched to `confluent-<env>` namespace
-- **KafkaRestClass** — `kafkaRest.endpoint` patched to `confluent-<env>` namespace
-
----
-
-## Dependencies
-
-- **CFK operator** must be running (reconciles all CRs in this directory)
-- **cert-manager** must be running (CFK webhooks require TLS certificates)
-
----
-
-## Cross-References
-
-| Resource | Path |
-|----------|------|
-| ApplicationSet | [`gitops-config/openshift/dev/confluent-platform-application-set.yaml`](../../gitops-config/openshift/dev/confluent-platform-application-set.yaml) |
-| CFK operator values | [`apps/confluent-operator/`](../confluent-operator/) |
-| Phase-II guide | [`PHASE-II.md`](../../docs/PHASE-II.md) |
+- Kafka brokers, Schema Registry, REST Proxy → on VMs at `d11547varc-*.fcpd.fcbint.net` ports 9094 / 8081 / 8082
+- The `<env>-kafka-broker-hosts`, `<env>-schema-registry-hosts`, `<env>-kafka-rest-proxy-hosts` variables in the `<env>-openshift-credentials` ADO variable group hold the actual hostnames.

@@ -1,38 +1,76 @@
 # Azure DevOps Pipelines
 
-Deployment pipelines for Confluent Platform and Flink on OpenShift. Run in order 1-6.
+The pipelines in this folder operate against FCB's on-prem OpenShift, deploying CMF and registering Flink resources against the existing VM Kafka cluster. Each pipeline takes an `environment` parameter (`dev`, `qa`, `uat`, `prd`) and loads the corresponding `<env>-openshift-credentials` variable group.
 
 ## Pipelines
 
-| # | Pipeline | What it deploys |
-|---|----------|-----------------|
-| 1 | `1-prereqs.yaml` | Namespaces, SCC, ClusterRoleBindings, license secret |
-| 2 | `2-cert-manager.yaml` | cert-manager via Helm |
-| 3 | `3-cfk-operator.yaml` | CFK Operator via Helm + webhook TLS certs |
-| 4 | `4-flink-operator.yaml` | Flink Kubernetes Operator via Helm |
-| 5 | `5-cmf.yaml` | Confluent Manager for Apache Flink via Helm (local chart) |
-| 6 | `6-flink-crs.yaml` | Flink CRs via `oc apply` (CMFRestClass, FlinkEnvironment, session cluster) |
+| File | Purpose | What it does |
+|------|---------|--------------|
+| [`check-tools.yaml`](check-tools.yaml) | Reference pipeline | Sanity-check that `oc`, `helm`, `kubectl` install correctly via `templates/install-tools.yaml`. Use as a starting template. |
+| [`connectivity-test.yaml`](connectivity-test.yaml) | Network diagnostics | Pushes busybox to Artifactory, deploys a pod inside `dah-flink-<env>`, and runs DNS + TCP probes against VM Kafka brokers, Schema Registry, REST Proxy, SQL Server, and NetApp S3. |
+| [`push-image.yaml`](push-image.yaml) | Image promotion | Push CMF or utility container images from a tarball into FCB Artifactory. |
+| [`cmf.yaml`](cmf.yaml) | Install CMF | Helm install of `confluent-manager-for-apache-flink` from the local `charts/` copy. Creates `cmf-db-credentials`, `cmf-encryption-key`, `confluent-license` Secrets from variable-group values, then runs `helm upgrade --install`. |
+| [`flink-environment.yaml`](flink-environment.yaml) | CMF REST | POSTs `apps/confluent-flink/<env>/environment.yaml` to CMF's `/cmf/api/v1/environments` (upsert). |
+| [`kafka-catalog.yaml`](kafka-catalog.yaml) | CMF REST | POSTs `apps/confluent-flink/<env>/kafka-catalog.yaml` to CMF's `/cmf/api/v1/catalogs/kafka` (create-if-missing). |
+| [`kafka-database.yaml`](kafka-database.yaml) | CMF REST | POSTs `apps/confluent-flink/<env>/kafka-database.yaml` to `/cmf/api/v1/catalogs/kafka/<catalog>/databases` (create-if-missing). Reads parent catalog name from `kafka-catalog.yaml`. **Pre-flight check fails fast if the parent catalog doesn't exist** — run `kafka-catalog.yaml` first. |
+| [`flink-crs.yaml`](flink-crs.yaml) | CFK-style CRs | Applies CFK-based Flink CRs (`CMFRestClass`, `FlinkEnvironment`, etc.). **Template only** — FCB doesn't run CFK today; not used until/unless that changes. |
 
-## Prerequisites
+The three CMF REST pipelines (`flink-environment`, `kafka-catalog`, `kafka-database`) author resources as YAML in Git for readability, then convert YAML → JSON in-flight (PyYAML) before posting because CMF's REST endpoints expect `Content-Type: application/json`.
 
-### Variable Group
+## Variable group: `<env>-openshift-credentials`
 
-All pipelines use the `Openshift-ROSA-VAR-Groups` variable group. Create it in **Pipelines > Library**:
+Each environment has a variable group with this naming pattern. All pipelines reference variables generically (`$(openshift-dev-api)`, `$(openshift-service-account-name)`, `$(<env>-cmf-sql-server-jdbc-url)`, etc.) so changing the `environment` parameter swaps the entire backing variable set.
 
-| Variable | Secret | Description |
-|---|---|---|
-| `OPENSHIFT_SERVER` | No | OpenShift API URL (e.g. `https://api.cluster.example.com:6443`) |
-| `OPENSHIFT_TOKEN` | Yes | `oc login` token or service account token |
-| `CONFLUENT_LICENSE` | Yes | Confluent license JWT |
+### Cluster + namespace
 
-### Cluster Requirements
+| Name | Type | Example |
+|------|------|---------|
+| `openshift-dev-api` | string | `https://api.dv-p.ocp.fcbint.net:6443` (per-env value) |
+| `openshift-dev-namespace` | string | `dah-flink-dev` (per-env value) |
+| `openshift-service-account-name` | string | per-env service account |
+| `openshift-service-account-pwd` | secret | service account password |
 
-- OpenShift 4.x cluster with `cluster-admin` access
-- Helm chart repositories accessible (`charts.jetstack.io`, `packages.confluent.io`)
+### Artifactory
 
-## Cross-References
+| Name | Type |
+|------|------|
+| `artifactory-svc-user` | string |
+| `artifactory-svc-user-password` | secret |
+
+### CMF + downstream (env-prefixed)
+
+| Name | Type |
+|------|------|
+| `<env>-cmf-sql-server-jdbc-url` | string |
+| `<env>-cmf-sql-server-user` | string |
+| `<env>-cmf-sql-server-user-password` | secret |
+| `<env>-cmf-encryption-key` | secret — AES-GCM, **never rotate** |
+| `<env>-confluent-license` | secret (locked) |
+| `<env>-kafka-broker-hosts` | string — comma-separated |
+| `<env>-kafka-rest-proxy-hosts` | string — comma-separated |
+| `<env>-schema-registry-hosts` | string — comma-separated |
+| `<env>-net-app-s3-url` | string |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| [`templates/install-tools.yaml`](templates/install-tools.yaml) | Downloads `oc`, `helm`, `kubectl` from Artifactory and prepends them to `PATH`. Imported by every pipeline. |
+
+## Typical first-time-per-env order
+
+1. `connectivity-test` — confirm cluster can reach Kafka / SR / SQL Server / NetApp S3.
+2. `cmf` — install CMF via Helm.
+3. `flink-environment` — register the env with CMF.
+4. `kafka-catalog` — create the catalog.
+5. `kafka-database` — attach the database under the catalog.
+
+`flink-environment`, `kafka-catalog`, and `kafka-database` are independent runs; you can re-run any one without disturbing the others (environment is upsert; catalog/database are create-if-missing).
+
+## Cross-references
 
 | Resource | Path |
 |---|---|
-| Helm values and overlays | [`apps/`](../apps/) |
-| Local Helm charts | [`charts/`](../charts/) |
+| Helm values, manifests | [`apps/`](../apps/) |
+| Vendored CMF chart | [`charts/confluent-manager-for-apache-flink/`](../charts/confluent-manager-for-apache-flink/) |
+| FCB pre-created RBAC | [`openshift-prereqs/`](../openshift-prereqs/) |
