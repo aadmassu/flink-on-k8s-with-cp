@@ -4,6 +4,8 @@ Helm values for installing CMF into `dah-flink-<env>` on FCB OpenShift, against 
 
 Installed by [`.azure-pipelines/cmf.yaml`](../../.azure-pipelines/cmf.yaml).
 
+> ⚠️ **Run `cmf-tls.yaml` before `cmf.yaml`.** The `cmf` pipeline has a pre-flight that aborts if `secret/cmf-tls` is missing in the namespace, because CMF mounts it on startup for HTTPS. Running `cmf` first is harmless (Helm install never executes), but the cutover doesn't progress until you've completed `cmf-tls` successfully.
+
 ## Layout
 
 ```

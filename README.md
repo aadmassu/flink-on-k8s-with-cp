@@ -53,12 +53,16 @@ Each environment has its own `<env>-openshift-credentials` variable group in Azu
 
 ## Deployment order
 
+> **Strict order.** `cmf-tls` MUST run before `cmf` — the `cmf` pipeline has a pre-flight check for `secret/cmf-tls` and aborts if it's missing. Likewise `kafka-catalog` MUST run before `kafka-database`.
+
 For a new environment:
 
 1. **FCB Container Platforms team** creates the namespace `dah-flink-<env>`, applies `openshift-prereqs/<env>/manifests/flink-sa-role-rolebinding.yaml`, and ensures the Flink Kubernetes Operator's RBAC binds the `flink-operator` SA in that namespace (handled by the `fcb-security` ArgoCD chart).
 2. Run `connectivity-test.yaml` from inside the namespace — verifies the pod can reach VM Kafka brokers, Schema Registry, REST Proxy, NetApp S3, and SQL Server.
-3. Run `cmf.yaml` — installs CMF via Helm. Pulls secrets from the ADO variable group today; ESO+CyberArk integration is the target state (separate branch).
-4. Run `flink-environment.yaml` → `kafka-catalog.yaml` → `kafka-database.yaml` in order — registers the Flink environment, catalog, and database via CMF's REST API.
+3. Run `cmf-tls.yaml` — applies the cert-manager `Certificate`, waits for Keyfactor approval, produces `secret/cmf-tls` (`tls.crt`, `tls.key`, `ca.crt`).
+4. Run `cmf.yaml` — installs CMF via Helm. Pre-flights `secret/cmf-tls`, then mounts it into the pod for HTTPS on the REST endpoint. Other secrets (DB password, encryption key, license) come from the ADO variable group today; ESO+CyberArk integration is the target state (separate branch).
+5. Run `flink-environment.yaml` → `kafka-catalog.yaml` → `kafka-database.yaml` in order — registers the Flink environment, catalog, and database via CMF's REST API.
+6. Run `verify-flink-setup.yaml` — end-to-end read-only health check; the summary table confirms each layer is green.
 
 ## FCB-specific operational notes
 

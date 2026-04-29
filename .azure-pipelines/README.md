@@ -57,15 +57,23 @@ Each environment has a variable group with this naming pattern. All pipelines re
 |------|---------|
 | [`templates/install-tools.yaml`](templates/install-tools.yaml) | Downloads `oc`, `helm`, `kubectl` from Artifactory and prepends them to `PATH`. Imported by every pipeline. |
 
-## Typical first-time-per-env order
+## Run order
+
+> **`cmf-tls` MUST run before `cmf`.** The `cmf` pipeline has a pre-flight check for `secret/cmf-tls` and aborts if it's missing. The Helm install never runs in that case — no harm done, but the cutover doesn't progress until `cmf-tls` completes successfully.
+>
+> **`kafka-catalog` MUST run before `kafka-database`.** The `kafka-database` pipeline reads the parent catalog name from `kafka-catalog.yaml` and aborts if the catalog isn't already registered in CMF.
+
+First-time-per-env order:
 
 1. `connectivity-test` — confirm cluster can reach Kafka / SR / SQL Server / NetApp S3.
-2. `cmf` — install CMF via Helm.
-3. `flink-environment` — register the env with CMF.
-4. `kafka-catalog` — create the catalog.
-5. `kafka-database` — attach the database under the catalog.
+2. **`cmf-tls`** — applies the cert-manager `Certificate`, waits up to 10 minutes for Keyfactor approval, produces `secret/cmf-tls` with `tls.crt` + `tls.key` + `ca.crt`.
+3. `cmf` — Helm-installs CMF (mounts `cmf-tls`, serves HTTPS on `cmf-service:443`).
+4. `flink-environment` — register the env with CMF.
+5. `kafka-catalog` — create the catalog.
+6. `kafka-database` — attach the database under the catalog.
+7. `verify-flink-setup` — end-to-end read-only health check; summary table confirms every layer is green.
 
-`flink-environment`, `kafka-catalog`, and `kafka-database` are independent runs; you can re-run any one without disturbing the others (environment is upsert; catalog/database are create-if-missing).
+`flink-environment`, `kafka-catalog`, `kafka-database` are independent runs once their prerequisite has completed once — you can re-run any one without disturbing the others (environment is upsert; catalog/database are create-if-missing). `cmf-tls` is bootstrap-once per env; cert-manager handles renewal silently after that.
 
 ## Cross-references
 
