@@ -1,93 +1,84 @@
 <#
-.SYNOPSIS
-  Sync the fcb-flink-cp branch of flink-on-k8s-with-cp into the FCB Azure
-  DevOps DAH.Kafka.OS clone on a Windows / FCB-issued laptop.
+================================================================================
+ sync-to-fcb.ps1
+ Mirrors this clone of flink-on-k8s-with-cp (on the fcb-flink-cp branch)
+ into the FCB Azure DevOps DAH.Kafka.OS clone, using Windows Robocopy.
 
-.DESCRIPTION
-  Wraps Robocopy /MIR with the right excludes so .git, GitHub-only metadata,
-  and shared error/log artifacts under docs/ don't bleed across the two
-  repositories. Each repo has its own git history; this script syncs only
-  working-tree content.
+ HOW TO USE (PowerShell ISE)
+   1. Open this file in PowerShell ISE on the FCB-issued Windows laptop.
+   2. In the CONFIG block below, edit:
+        - $Source        path to your flink-on-k8s-with-cp clone
+        - $Destination   path to your DAH.Kafka.OS clone
+        - $DryRun        leave $true on the first run; flip to $false to apply
+   3. Press F5 with $DryRun = $true. Read the output. Look for any
+      '*EXTRA File' / '*EXTRA Dir' lines — those are files that /MIR will
+      DELETE in the destination on a real run. If anything FCB-only is listed
+      that should NOT be deleted, add it to $excludeDirs or $excludeFiles
+      below before applying.
+   4. Set $DryRun = $false and press F5 again to actually mirror.
+   5. Then on the FCB side:
+        cd $Destination
+        git status
+        git diff --stat
+        git diff
+        # if it all looks right:
+        git add .
+        git commit -m "..."
+        git push
 
-  Default behavior is a dry-run. Pass -Apply to actually copy.
+ WHY ROBOCOPY (not rsync)
+   The FCB-issued laptop is Windows. Git Bash on Windows doesn't ship rsync,
+   and installing tools on a corporate machine is friction. Robocopy is
+   built into Windows since Vista and /MIR is a clean equivalent to
+   `rsync -a --delete`. Robocopy exit codes 0-7 are all success states
+   (0 = nothing changed, 1 = files copied, 2 = extras, etc.); only >= 8
+   indicates a real failure.
 
-  Configure paths once via environment variables:
-      [Environment]::SetEnvironmentVariable('SYNC_FCB_SOURCE', 'C:\repos\flink-on-k8s-with-cp', 'User')
-      [Environment]::SetEnvironmentVariable('SYNC_FCB_DEST',   'C:\repos\DAH.Kafka.OS',         'User')
-  ...or pass them inline with -Source / -Destination on every run.
-
-.PARAMETER Source
-  Path to the local flink-on-k8s-with-cp clone (must be on fcb-flink-cp branch
-  before running). Defaults to $env:SYNC_FCB_SOURCE.
-
-.PARAMETER Destination
-  Path to the local DAH.Kafka.OS clone. Defaults to $env:SYNC_FCB_DEST.
-
-.PARAMETER Apply
-  Without this switch, the script does a dry-run and prints what would change.
-  Pass -Apply to actually copy.
-
-.EXAMPLE
-  .\tools\sync-to-fcb.ps1
-  Dry-run using paths from environment variables.
-
-.EXAMPLE
-  .\tools\sync-to-fcb.ps1 -Apply
-  Actually sync.
-
-.EXAMPLE
-  .\tools\sync-to-fcb.ps1 -Source C:\repos\flink-on-k8s-with-cp -Destination C:\repos\DAH.Kafka.OS -Apply
-  Override paths inline.
-
-.NOTES
-  /MIR will delete files in the destination that don't exist in the source.
-  ALWAYS review the dry-run output for *EXTRA File / *EXTRA Dir lines before
-  running with -Apply. If anything FCB-only is listed for deletion, add it to
-  the exclude lists below.
+ FCB-ONLY FILES
+   If DAH.Kafka.OS contains files that are NOT in flink-on-k8s-with-cp
+   (e.g. an .azuredevops/ pipeline definition managed by the FCB platform
+   team), they will appear in the dry-run as '*EXTRA File / *EXTRA Dir' and
+   /MIR will delete them on -Apply. Add their names to $excludeDirs or
+   $excludeFiles below BEFORE running with $DryRun = $false.
+================================================================================
 #>
-[CmdletBinding()]
-param(
-    [string]$Source      = $env:SYNC_FCB_SOURCE,
-    [string]$Destination = $env:SYNC_FCB_DEST,
-    [switch]$Apply
-)
+
+# =============================================================================
+# CONFIG — edit these three for your environment, then press F5
+# =============================================================================
+
+$Source      = "C:\path\to\flink-on-k8s-with-cp"   # GitHub clone (on fcb-flink-cp branch)
+$Destination = "C:\path\to\DAH.Kafka.OS"           # FCB Azure DevOps clone
+$DryRun      = $true                                # $true = preview only; $false = actually copy
+
+# =============================================================================
+# Excludes — adjust if FCB-only files exist in the destination
+# =============================================================================
+# .git/         each repo has its own history; never copy across
+# .github/      GitHub-only CI / templates; not relevant to Azure DevOps
+# docs/         upward channel for FCB-side errors/screenshots; don't echo back
+# node_modules/ defensive; nothing tracked uses it but skip if it appears
+# error.txt     same intent as docs/ — FCB pipeline output shared up to GitHub
+
+$excludeDirs  = @('.git', '.github', 'docs', 'node_modules')
+$excludeFiles = @('error.txt')
+
+# =============================================================================
+# Logic — usually no need to edit below this line
+# =============================================================================
 
 $ErrorActionPreference = 'Stop'
 
-if (-not $Source -or -not $Destination) {
-    Write-Host @"
-
-Set both source and destination paths.
-
-Inline (one-off):
-    .\tools\sync-to-fcb.ps1 -Source C:\repos\flink-on-k8s-with-cp -Destination C:\repos\DAH.Kafka.OS
-
-Or set persistent environment variables once:
-    [Environment]::SetEnvironmentVariable('SYNC_FCB_SOURCE', 'C:\repos\flink-on-k8s-with-cp', 'User')
-    [Environment]::SetEnvironmentVariable('SYNC_FCB_DEST',   'C:\repos\DAH.Kafka.OS',         'User')
-
-"@ -ForegroundColor Yellow
-    exit 2
-}
-
 if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
-    Write-Error "Source directory not found: $Source"
-    exit 2
+    Write-Host "Source directory not found: $Source" -ForegroundColor Red
+    Write-Host 'Edit $Source in the CONFIG block at the top of this script.' -ForegroundColor Yellow
+    return
 }
 if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
-    Write-Error "Destination directory not found: $Destination"
-    exit 2
+    Write-Host "Destination directory not found: $Destination" -ForegroundColor Red
+    Write-Host 'Edit $Destination in the CONFIG block at the top of this script.' -ForegroundColor Yellow
+    return
 }
-
-# Excludes:
-#   .git/        each repo has its own history; never copy across.
-#   .github/     GitHub-only CI; not relevant to Azure DevOps.
-#   docs/        upward channel for FCB-side errors/screenshots flowing INTO
-#                GitHub; don't echo it back down to DAH.Kafka.OS.
-#   node_modules/  defensive; nothing tracked uses it but skip if it appears.
-#   error.txt    same intent as docs/ — pipeline output shared up to GitHub.
-$excludeDirs  = @('.git', '.github', 'docs', 'node_modules')
-$excludeFiles = @('error.txt')
 
 $rcArgs = @(
     $Source,
@@ -100,33 +91,40 @@ $rcArgs = @(
 )
 $rcArgs += '/XD'; $rcArgs += $excludeDirs
 $rcArgs += '/XF'; $rcArgs += $excludeFiles
-if (-not $Apply) { $rcArgs += '/L' }   # list-only = dry-run
+if ($DryRun) { $rcArgs += '/L' }   # /L = list only (dry-run)
 
-Write-Host ""
+$mode = if ($DryRun) { 'DRY-RUN  (set $DryRun = $false to actually copy)' } else { 'APPLY' }
+
+Write-Host ''
 Write-Host "Source:      $Source"
 Write-Host "Destination: $Destination"
-$mode = if ($Apply) { 'APPLY' } else { 'DRY-RUN (pass -Apply to copy)' }
 Write-Host "Mode:        $mode"
-Write-Host ""
+Write-Host ''
 
 & robocopy @rcArgs
 $rc = $LASTEXITCODE
 
-# Robocopy exit codes: 0-7 are all success states (0 = no change, 1 = files
-# copied, 2 = extras, etc.). Anything >= 8 is a real failure.
+# Robocopy exit codes: 0-7 are success states; >= 8 is a real failure.
 if ($rc -ge 8) {
-    Write-Host "Robocopy returned $rc -- see https://learn.microsoft.com/troubleshoot/windows-server/backup-and-storage/return-codes-used-robocopy-utility" -ForegroundColor Red
-    exit $rc
+    Write-Host ''
+    Write-Host "Robocopy returned $rc — see https://learn.microsoft.com/troubleshoot/windows-server/backup-and-storage/return-codes-used-robocopy-utility" -ForegroundColor Red
+    return
 }
 
-Write-Host ""
-if (-not $Apply) {
-    Write-Host "Dry-run complete." -ForegroundColor Yellow
-    Write-Host "Inspect any '*EXTRA File' / '*EXTRA Dir' lines above -- those are files /MIR will DELETE in the destination on a real run." -ForegroundColor Yellow
-    Write-Host "If anything FCB-only appears, add it to the exclude lists in this script before running with -Apply." -ForegroundColor Yellow
+Write-Host ''
+if ($DryRun) {
+    Write-Host 'Dry-run complete.' -ForegroundColor Yellow
+    Write-Host "Inspect any '*EXTRA File' / '*EXTRA Dir' lines above — those are files /MIR will DELETE in the destination on a real run." -ForegroundColor Yellow
+    Write-Host 'If anything FCB-only appears, add it to $excludeDirs or $excludeFiles in this script before flipping $DryRun = $false.' -ForegroundColor Yellow
 } else {
     Write-Host "Sync complete (robocopy exit code $rc)." -ForegroundColor Green
-    Write-Host "Next: cd '$Destination'; git status; git diff --stat; review; commit; push to FCB Azure DevOps." -ForegroundColor Green
+    Write-Host ''
+    Write-Host "Next steps in $Destination :" -ForegroundColor Green
+    Write-Host '    git status' -ForegroundColor Green
+    Write-Host '    git diff --stat' -ForegroundColor Green
+    Write-Host '    git diff' -ForegroundColor Green
+    Write-Host '    # if everything looks right:' -ForegroundColor Green
+    Write-Host '    git add .' -ForegroundColor Green
+    Write-Host '    git commit -m "..."' -ForegroundColor Green
+    Write-Host '    git push' -ForegroundColor Green
 }
-
-exit 0
