@@ -1,19 +1,37 @@
-C:\git-repos\flink-on-k8s-with-cp\tools\sync-to-fcb.ps1
+Starting: Install CMF
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/9142fa67-aef0-4b93-a690-2ee647c51279.sh
+=== Git commit ===
+0a2d8ae02c410c55bf28b2aaf4beaddbb32501eb
 
-Source:      C:\git-repos\flink-on-k8s-with-cp
-Destination: C:\git-repos\DAH.Kafka.OS
-Mode:        DRY-RUN (preview only â€” nothing copied yet)
+=== Resources CMF will create ===
+kind: ConfigMap
+  name: confluent-manager-for-apache-flink
+  namespace: dah-flink-dev
+kind: Service
+  name: cmf-service
+  namespace: dah-flink-dev
+kind: Deployment
+  name: confluent-manager-for-apache-flink
+  namespace: dah-flink-dev
 
+=== Checking for stuck Helm release ===
 
-Robocopy returned 16 -- see https://learn.microsoft.com/troubleshoot/windows-server/backup-and-storage/return-codes-used-robo
-copy-utility
+=== Creating CMF secrets ===
+secret/cmf-db-credentials configured
+secret/cmf-encryption-key configured
+secret/confluent-license configured
 
-Dry-run complete (robocopy exit code  -------------------------------------------------------------------------------    ROBO
-COPY     ::     Robust File Copy for Windows                               --------------------------------------------------
------------------------------    Started : Wednesday, April 29, 2026 1:14:26 PM        Simple Usage :: ROBOCOPY source destin
-ation /MIR               source :: Source Directory (drive:\path or \\server\share\path).         destination :: Destination 
-Dir  (drive:\path or \\server\share\path).                /MIR :: Mirror a complete directory tree.      For more usage infor
-mation run ROBOCOPY /?                                                             ****  /MIR can DELETE files as well as cop
-y them ! ).
-Inspect any '*EXTRA File' / '*EXTRA Dir' lines above -- those are files /MIR will DELETE on apply.
-If anything FCB-only is listed for deletion, abort and add it to $excludeDirs / $excludeFiles before re-running.
+=== Verifying cmf-tls Secret exists ===
+ERROR: secret/cmf-tls not found in dah-flink-dev.
+Run the cmf-tls pipeline first to provision the cert-manager Certificate.
+##[error]Bash exited with code '1'.
+Finishing: Install CMF
