@@ -1,7 +1,20 @@
 ---
+# CMF REST API payload — Kafka Catalog for dev.
+#
+# A Kafka Catalog tells Flink SQL how to discover topics + schemas across one
+# or more Kafka clusters. This top-level resource holds the Schema Registry
+# binding; the actual Kafka cluster connection lives on a child KafkaDatabase
+# (see kafka-database.yaml).
+#
+# The kafka-catalog pipeline POSTs this to /cmf/api/v1/catalogs/kafka with
+# create-if-missing semantics — re-runs are safe and skip if the catalog
+# already exists.
+
 apiVersion: cmf.confluent.io/v1
 kind: KafkaCatalog
 metadata:
+  # Single shared catalog name across all envs; per-env distinction comes from
+  # the KafkaDatabase children (each env has its own dah-kafka-<env> database).
   name: fcb-catalog
   labels:
     environment: dev
@@ -9,4 +22,7 @@ metadata:
 spec:
   srInstance:
     connectionConfig:
+      # Schema Registry on the existing FCB VM Confluent Platform cluster.
+      # HTTP today; switch to HTTPS once the SR cert is rotated and FCB
+      # confirms a reachable TLS listener.
       schema.registry.url: http://d11547varc-4559.fcpd.fcbint.net:8081

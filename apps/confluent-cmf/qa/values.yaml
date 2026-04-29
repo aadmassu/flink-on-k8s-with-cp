@@ -3,10 +3,15 @@
 # Flink-only validation environment (no local Kafka)
 
 cmf:
+  # Single-tenant CMF per env — only watch its own namespace. Pairs with
+  # `namespaced: true` below so the chart emits Role/RoleBinding instead of
+  # ClusterRole/ClusterRoleBinding (FCB's pipeline SA isn't cluster-scoped).
   k8s:
     watchNamespaces:
       - dah-flink-qa
 
+  # `production: false` disables CMF's SQL guardrails (DDL without
+  # confirmation prompts). Flip to `true` once the QA DB is in place.
   sql:
     production: false
 
@@ -60,20 +65,34 @@ license:
   secretRef: confluent-license
 
 image:
+  # Pulled from FCB Artifactory mirror (cluster has no Docker Hub egress).
   repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc
   name: cp-cmf
+  # Custom Confluent build with namespace-scoped RBAC support (the upstream
+  # 2.3.0 chart hard-codes ClusterRole/ClusterRoleBinding which our SA can't
+  # create). Bump only after Confluent ships namespace-scoped support upstream.
   tag: 2.3.0-fcb-preview-2
 
+# FCB CMDB Application ID — required on every object by the cluster's
+# Common Metadata admission policy.
 additionalLabels:
   fcbint.net/app-id: "11547"
 
+# Pairs with cmf.k8s.watchNamespaces above — emit Role/RoleBinding scoped
+# to dah-flink-qa instead of ClusterRole/ClusterRoleBinding.
 namespaced: true
 
+# RBAC and ServiceAccount are pre-created in dah-flink-qa by FCB's
+# fcb-security ArgoCD chart. The chart consumes the existing `flink-operator`
+# SA; do not let Helm try to create either.
 rbac: false
 serviceAccount:
   create: false
   name: flink-operator
 
+# `false` because either CMF state lives in external SQL Server (target) or
+# we're running with database.type=local (current QA stopgap, ephemeral pod
+# storage). Either way, no persistent volume is needed from the chart.
 persistence:
   create: false
 

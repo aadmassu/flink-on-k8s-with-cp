@@ -3,24 +3,36 @@
 # Flink-only validation environment (no local Kafka)
 
 cmf:
+  # Single-tenant CMF per env — only watch its own namespace. Pairs with
+  # `namespaced: true` below so the chart emits Role/RoleBinding instead of
+  # ClusterRole/ClusterRoleBinding (FCB's pipeline SA isn't cluster-scoped).
   k8s:
     watchNamespaces:
       - dah-flink-dev
 
+  # `production: false` disables CMF's SQL guardrails (DDL without
+  # confirmation prompts). dev only — flip to `true` for uat/prd.
   sql:
     production: false
 
   # Authentication disabled for dev — will switch to OAuth later
   # Valid types: BASIC, MTLS, OAUTH (omit block entirely to disable)
 
+  # External SQL Server for the CMF catalog. url + user are injected at
+  # install time via `helm --set` from the dev-cmf-sql-server-* variable
+  # group entries; only the password reference lives in this file (it's
+  # consumed via the cmf-db-credentials Secret created by the cmf pipeline).
   database:
     type: jdbc
     jdbc:
       engine: sqlserver
-      url: ""
+      url: ""        # set at install time from dev-cmf-sql-server-jdbc-url
       port: 3085
       database: DAHFLINK
-      user: ""
+      user: ""       # set at install time from dev-cmf-sql-server-user
+      # trustServerCertificate=true because dev SQL Server uses a self-signed
+      # cert today. Flip to false in uat/prd (production SQL has a CA-signed
+      # cert).
       options: "encrypt=true;trustServerCertificate=true;"
       password:
         kubernetesSecretName: cmf-db-credentials
@@ -57,20 +69,33 @@ license:
   secretRef: confluent-license
 
 image:
+  # Pulled from FCB Artifactory mirror (cluster has no Docker Hub egress).
   repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc
   name: cp-cmf
+  # Custom Confluent build with namespace-scoped RBAC support (the upstream
+  # 2.3.0 chart hard-codes ClusterRole/ClusterRoleBinding which our SA can't
+  # create). Bump only after Confluent ships namespace-scoped support upstream.
   tag: 2.3.0-fcb-preview-2
 
+# FCB CMDB Application ID — required on every object by the cluster's
+# Common Metadata admission policy.
 additionalLabels:
   fcbint.net/app-id: "11547"
 
+# Pairs with cmf.k8s.watchNamespaces above — emit Role/RoleBinding scoped
+# to dah-flink-dev instead of ClusterRole/ClusterRoleBinding.
 namespaced: true
 
+# RBAC and ServiceAccount are pre-created in dah-flink-dev by FCB's
+# fcb-security ArgoCD chart (see openshift-prereqs/dev/manifests/ for our
+# parallel template). The chart consumes the existing `flink-operator` SA;
+# do not let Helm try to create either.
 rbac: false
 serviceAccount:
   create: false
   name: flink-operator
 
+# CMF state lives in the external SQL Server above, not on a local PVC.
 persistence:
   create: false
 

@@ -1,9 +1,26 @@
 ---
+# CMF REST API payload — Flink Environment for dev.
+#
+# This is NOT a Kubernetes resource (no apiVersion/kind/metadata) — the
+# flink-environment pipeline POSTs this to /cmf/api/v1/environments. By
+# convention we use the same string for `name` and `kubernetesNamespace` so
+# CMF Environments are 1:1 with the namespace they manage.
+
 name: dah-flink-dev
+
+# CMF reconciles FlinkDeployment CRs into this namespace; must already exist
+# (created by FCB Container Platforms) and have the flink-operator SA + RBAC
+# in place from FCB's fcb-security ArgoCD chart.
 kubernetesNamespace: dah-flink-dev
+
+# Default spec applied to every FlinkApplication submitted into this env
+# unless the application overrides it. Sized for dev workloads; uat/prd will
+# raise jobManager + taskManager resources.
 flinkApplicationDefaults:
   spec:
     flinkConfiguration:
+      # Quoted because Flink configs are string-typed even when the value is
+      # numeric — yaml.safe_load preserves the quoting through to the JSON wire.
       taskmanager.numberOfTaskSlots: "2"
     jobManager:
       resource:
@@ -13,6 +30,11 @@ flinkApplicationDefaults:
       resource:
         memory: 4000m
         cpu: 1
+
+# Defaults for compute pools created under this Environment. The image must
+# match the Flink Operator's compatibility matrix (cp-flink 2.1.1 -> Operator
+# 1.13.0-cp2). Pulled from the FCB Artifactory mirror; cluster has no Docker
+# Hub egress.
 computePoolDefaults:
   clusterSpec:
     flinkVersion: v2_1

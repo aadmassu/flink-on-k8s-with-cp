@@ -1,4 +1,13 @@
 ---
+# CMF REST API payload — Kafka Database for dev.
+#
+# A Kafka Database is the per-cluster connection registered under a parent
+# Kafka Catalog (see kafka-catalog.yaml). The kafka-database pipeline reads
+# the parent catalog name from kafka-catalog.yaml and POSTs this to
+# /cmf/api/v1/catalogs/kafka/<catalog>/databases with create-if-missing
+# semantics. The pipeline pre-flight aborts with a clear error if the parent
+# catalog isn't already registered.
+
 apiVersion: cmf.confluent.io/v1
 kind: KafkaDatabase
 metadata:
@@ -9,7 +18,15 @@ metadata:
 spec:
   kafkaCluster:
     connectionConfig:
+      # Three brokers from the existing FCB VM Confluent Platform cluster.
       bootstrap.servers: d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094
+      # FCB's VM Kafka exposes a dedicated PLAINTEXT listener on 9094 (despite
+      # 9094 being the conventional TLS port elsewhere in the Confluent
+      # ecosystem). Cross-checked with Tushar / VM Kafka admins. When/if FCB
+      # turns up SASL_SSL on this cluster we'll switch protocol here and add
+      # connectionSecretId pointing at the SASL JAAS config Secret.
       security.protocol: PLAINTEXT
+  # Environments allowed to issue DDL (CREATE TABLE, etc.) against this
+  # database. Today only dev; mirror to qa/uat/prd databases later.
   ddlEnvironments:
     - dah-flink-dev
