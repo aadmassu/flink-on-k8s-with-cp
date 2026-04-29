@@ -9,13 +9,14 @@
    2. In the CONFIG block below, edit:
         - $Source        path to your flink-on-k8s-with-cp clone
         - $Destination   path to your DAH.Kafka.OS clone
-   3. Press F5. The script ALWAYS runs a dry-run first and prints the deltas.
+   3. Press F5. The script ALWAYS runs a dry-run first, prints the deltas
+      and the robocopy summary table (file/byte counts).
       Look for any '*EXTRA File' / '*EXTRA Dir' lines — those are files that
       /MIR would DELETE in the destination. If anything FCB-only is listed
-      that should NOT be deleted, add it to $excludeDirs / $excludeFiles
-      below and answer N at the prompt.
+      that should NOT be deleted, answer N at the prompt and add it to
+      $excludeDirs / $excludeFiles below before re-running.
    4. When prompted "Apply these changes? [Y/N]", press Y to actually copy,
-      or N to abort.
+      or N (or Enter) to abort.
    5. Then on the FCB side:
         cd $Destination
         git status
@@ -26,20 +27,13 @@
         git commit -m "..."
         git push
 
- WHY ROBOCOPY (not rsync)
-   The FCB-issued laptop is Windows. Git Bash on Windows doesn't ship rsync,
-   and installing tools on a corporate machine is friction. Robocopy is
-   built into Windows since Vista and /MIR is a clean equivalent to
-   `rsync -a --delete`. Robocopy exit codes 0-7 are all success states
-   (0 = nothing changed, 1 = files copied, 2 = extras, etc.); only >= 8
-   indicates a real failure.
-
- FCB-ONLY FILES
-   If DAH.Kafka.OS contains files that are NOT in flink-on-k8s-with-cp
-   (e.g. an .azuredevops/ pipeline definition managed by the FCB platform
-   team), they will appear in the dry-run as '*EXTRA File / *EXTRA Dir' and
-   /MIR will delete them on apply. Add their names to $excludeDirs or
-   $excludeFiles below BEFORE answering Y at the prompt.
+ ROBOCOPY EXIT CODES
+   0    nothing copied; source and destination already in sync
+   1    files copied successfully
+   2    extra files / dirs detected (and removed by /MIR)
+   3    1 + 2 (typical for a successful mirror with deletions)
+   4-7  some skipped or mismatched files (still success)
+   >=8  real failure (access denied, bad path, syntax, etc.)
 ================================================================================
 #>
 
@@ -80,56 +74,51 @@ if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
     return
 }
 
-# Build the base robocopy argument list (used by both phases).
+# Build robocopy args.
+#   /MIR  mirror source -> dest (purges files in dest not in source)
+#   /NDL  no per-directory listing (less noise)
+#   /NP   no per-file progress %
+#   (We INTENTIONALLY do NOT use /NJH or /NJS — we want the start banner and
+#    end-of-job summary table with file and byte counts.)
 $baseArgs = @(
     $Source,
     $Destination,
-    '/MIR',     # mirror — purges files in dest not in source
-    '/NJH',     # no job header
-    '/NJS',     # no job summary
-    '/NDL',     # no directory list (less noise)
-    '/NP'       # no per-file progress %
+    '/MIR',
+    '/NDL',
+    '/NP'
 )
 $baseArgs += '/XD'; $baseArgs += $excludeDirs
 $baseArgs += '/XF'; $baseArgs += $excludeFiles
 
-function Invoke-Robocopy {
-    param([string[]]$Args, [string]$Phase)
+# ---- Phase 1: ALWAYS dry-run first --------------------------------------------
+Write-Host ''
+Write-Host '================================================================================'
+Write-Host "PHASE 1 -- DRY-RUN  (nothing will be copied)"
+Write-Host "Source:      $Source"
+Write-Host "Destination: $Destination"
+Write-Host '================================================================================'
+Write-Host ''
 
+& robocopy @baseArgs '/L'   # /L = list only
+$dryRc = $LASTEXITCODE
+
+if ($dryRc -ge 8) {
     Write-Host ''
-    Write-Host "Source:      $Source"
-    Write-Host "Destination: $Destination"
-    Write-Host "Mode:        $Phase"
-    Write-Host ''
-
-    & robocopy @Args
-    $rc = $LASTEXITCODE
-
-    # Robocopy exit codes: 0-7 are success states; >= 8 is a real failure.
-    if ($rc -ge 8) {
-        Write-Host ''
-        Write-Host "Robocopy returned $rc -- see https://learn.microsoft.com/troubleshoot/windows-server/backup-and-storage/return-codes-used-robocopy-utility" -ForegroundColor Red
-        return $null
-    }
-    return $rc
+    Write-Host "Robocopy dry-run failed with exit code $dryRc." -ForegroundColor Red
+    Write-Host 'See https://learn.microsoft.com/troubleshoot/windows-server/backup-and-storage/return-codes-used-robocopy-utility' -ForegroundColor Red
+    return
 }
 
-# ---- Phase 1: ALWAYS dry-run first --------------------------------------------
-$dryArgs = $baseArgs + '/L'   # /L = list only
-$rc = Invoke-Robocopy -Args $dryArgs -Phase 'DRY-RUN (preview only — nothing copied yet)'
-if ($null -eq $rc) { return }
-
-# Robocopy /L: rc=0 means source already matches destination; nothing to do.
-if ($rc -eq 0) {
+if ($dryRc -eq 0) {
     Write-Host ''
     Write-Host 'Source and destination are already in sync. Nothing to do.' -ForegroundColor Green
     return
 }
 
 Write-Host ''
-Write-Host "Dry-run complete (robocopy exit code $rc)." -ForegroundColor Yellow
-Write-Host "Inspect any '*EXTRA File' / '*EXTRA Dir' lines above -- those are files /MIR will DELETE on apply." -ForegroundColor Yellow
-Write-Host 'If anything FCB-only is listed for deletion, abort and add it to $excludeDirs / $excludeFiles before re-running.' -ForegroundColor Yellow
+Write-Host "Dry-run complete (robocopy exit code $dryRc; review the summary table above)." -ForegroundColor Yellow
+Write-Host "Inspect any '*EXTRA File' / '*EXTRA Dir' lines -- those are files /MIR will DELETE on apply." -ForegroundColor Yellow
+Write-Host 'If anything FCB-only is listed for deletion, answer N and add it to $excludeDirs / $excludeFiles before re-running.' -ForegroundColor Yellow
 Write-Host ''
 
 # ---- Phase 2: prompt before applying ------------------------------------------
@@ -140,11 +129,26 @@ if ($response -notmatch '^[Yy]$') {
     return
 }
 
-$applyRc = Invoke-Robocopy -Args $baseArgs -Phase 'APPLY (mirroring source -> destination)'
-if ($null -eq $applyRc) { return }
+Write-Host ''
+Write-Host '================================================================================'
+Write-Host "PHASE 2 -- APPLY  (mirroring source -> destination)"
+Write-Host "Source:      $Source"
+Write-Host "Destination: $Destination"
+Write-Host '================================================================================'
+Write-Host ''
+
+& robocopy @baseArgs   # no /L this time -> actually copies
+$applyRc = $LASTEXITCODE
+
+if ($applyRc -ge 8) {
+    Write-Host ''
+    Write-Host "Robocopy apply failed with exit code $applyRc." -ForegroundColor Red
+    Write-Host 'See https://learn.microsoft.com/troubleshoot/windows-server/backup-and-storage/return-codes-used-robocopy-utility' -ForegroundColor Red
+    return
+}
 
 Write-Host ''
-Write-Host "Sync complete (robocopy exit code $applyRc)." -ForegroundColor Green
+Write-Host "Sync complete (robocopy exit code $applyRc; review the summary table above)." -ForegroundColor Green
 Write-Host ''
 Write-Host "Next steps in $Destination :" -ForegroundColor Green
 Write-Host '    git status' -ForegroundColor Green
