@@ -57,10 +57,11 @@ $DryRun      = $true                                # $true = preview only; $fal
 # .git/         each repo has its own history; never copy across
 # .github/      GitHub-only CI / templates; not relevant to Azure DevOps
 # docs/         upward channel for FCB-side errors/screenshots; don't echo back
+# tools/        local sync helpers (this script); not needed in DAH.Kafka.OS
 # node_modules/ defensive; nothing tracked uses it but skip if it appears
 # error.txt     same intent as docs/ — FCB pipeline output shared up to GitHub
 
-$excludeDirs  = @('.git', '.github', 'docs', 'node_modules')
+$excludeDirs  = @('.git', '.github', 'docs', 'tools', 'node_modules')
 $excludeFiles = @('error.txt')
 
 # =============================================================================
