@@ -1,3 +1,6 @@
+Error creating: pods "confluent-manager-for-apache-flink-56dd985b7-" is forbidden: unable to validate against any security context constraint: [provider "anyuid": Forbidden: not usable by user or serviceaccount, provider "arc-pa-redis-dev-scc": Forbidden: not usable by user or serviceaccount, provider restricted-v2: .spec.securityContext.fsGroup: Invalid value: []int64{1001}: 1001 is not an allowed group, provider restricted-v2: .containers[0].runAsUser: Invalid value: 1001: must be in the ranges: [1001320000, 1001329999], provider "restricted": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider "selinux-skip-relabeling": Forbidden: not usable by user or serviceaccount, provider "noobaa": Forbidden: not usable by user or serviceaccount, provider "hostmount-anyuid": Forbidden: not usable by user or serviceaccount, provider "aqua-enforcer-agent-scc": Forbidden: not usable by user or serviceaccount, provider "hostmount-anyuid-v2": Forbidden: not usable by user or serviceaccount, provider "machine-api-termination-handler": Forbidden: not usable by user or serviceaccount, provider "ingress-nginx": Forbidden: not usable by user or serviceaccount, provider "hostnetwork-v2": Forbidden: not usable by user or serviceaccount, provider "hostnetwork": Forbidden: not usable by user or serviceaccount, provider "hostaccess": Forbidden: not usable by user or serviceaccount, provider "egress-proxy-fcb-egress-proxy-scc": Forbidden: not usable by user or serviceaccount, provider "rook-ceph": Forbidden: not usable by user or serviceaccount, provider "rook-ceph-csi": Forbidden: not usable by user or serviceaccount, provider "node-exporter": Forbidden: not usable by user or serviceaccount, provider "collectord-fcb-collectord-scc": Forbidden: not usable by user or serviceaccount, provider "privileged": Forbidden: not usable by user or serviceaccount]
+
+
 Starting: Install CMF
 ==============================================================================
 Task         : Bash
@@ -8,9 +11,9 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/94dc474f-7ee8-4632-85d2-66c205d9a3dc.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/cdcac277-785d-4512-af95-2cf19750242d.sh
 === Git commit ===
-b5c76ce79248e1c87fdbe7be411bd0a15006b988
+926b4bfe5006a4d5dff5180d72c1f5e0046a84ad
 
 === Resources CMF will create ===
 kind: ConfigMap
@@ -34,7 +37,6 @@ secret/confluent-license configured
 secret/cmf-tls found.
 
 === Installing CMF ===
-I0430 06:55:40.373133 1571747 warnings.go:110] "Warning: would violate PodSecurity \"restricted:latest\": allowPrivilegeEscalation != false (container \"cmf\" must set securityContext.allowPrivilegeEscalation=false), unrestricted capabilities (container \"cmf\" must set securityContext.capabilities.drop=[\"ALL\"]), seccompProfile (pod or container \"cmf\" must set securityContext.seccompProfile.type to \"RuntimeDefault\" or \"Localhost\")"
 Error: UPGRADE FAILED: context deadline exceeded
 ##[error]Bash exited with code '1'.
 Finishing: Install CMF
