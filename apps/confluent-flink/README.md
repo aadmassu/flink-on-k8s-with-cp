@@ -16,18 +16,18 @@ These are **not Kubernetes resources**. They're CMF REST API payloads, authored 
 
 Currently only **`dev/`** has these three files populated. `qa/`, `uat/`, `prd/` will get them when those envs come online.
 
-## What's a template (not deployed)
+## What's reference-only (not deployed; no pipeline)
 
 Per environment under `apps/confluent-flink/<env>/`:
 
 | File | Kind | Status |
 |------|------|--------|
-| `cmf-rest-class.yaml` | CFK CR — `CMFRestClass` | **Template only** |
-| `flink-environment.yaml` | CFK CR — `FlinkEnvironment` (apiVersion `platform.confluent.io/v1beta1`) | **Template only** |
-| `flink-pvc.yaml` | `PersistentVolumeClaim` for checkpoints | **Template only** (state goes to NetApp S3, not PVC) |
-| `flink-session-cluster.yaml` | CFK CR — `FlinkDeployment` (session cluster) | **Template only** |
+| `cmf-rest-class.yaml` | CFK CR — `CMFRestClass` | **Reference only** |
+| `flink-environment.yaml` | CFK CR — `FlinkEnvironment` (apiVersion `platform.confluent.io/v1beta1`) | **Reference only** |
+| `flink-pvc.yaml` | `PersistentVolumeClaim` for checkpoints | **Reference only** (state goes to NetApp S3, not PVC) |
+| `flink-session-cluster.yaml` | CFK CR — `FlinkDeployment` (session cluster) | **Reference only** |
 
-These all require **CFK (Confluent for Kubernetes)**, which **FCB does not run**. They're left in the tree as reference for a future world where CFK is adopted, or for non-FCB consumers of this repo.
+These all require **CFK (Confluent for Kubernetes)**, which **FCB does not run**. There's no pipeline that applies them — they're documented reference material for a future CFK-enabled environment.
 
 ⚠️ **Naming collision warning:** `flink-environment.yaml` (CFK CR) and `environment.yaml` (CMF REST payload) **both produce a Flink "Environment"**, but in different controllers. Don't mix them up — the CMF REST payload has no `apiVersion`/`kind`/`metadata` block; the CFK CR does.
 
@@ -90,4 +90,3 @@ The pipeline is idempotent — re-running is safe.
 |---|---|
 | CMF Helm install | [`apps/confluent-cmf/`](../confluent-cmf/) |
 | CMF REST pipeline (single, applies all three) | [`.azure-pipelines/flink-environments.yaml`](../../.azure-pipelines/flink-environments.yaml) |
-| CFK-style CR pipeline (template, not active) | [`.azure-pipelines/flink-crs.yaml`](../../.azure-pipelines/flink-crs.yaml) |

@@ -19,9 +19,8 @@ CFK (Confluent for Kubernetes) is **not** used at FCB. Kafka, Schema Registry, a
 ```
 apps/
 ├── confluent-cmf/          # Helm values for CMF — deployed by .azure-pipelines/cmf.yaml
-├── confluent-flink/        # CMF REST API manifests (Environment, KafkaCatalog, KafkaDatabase)
-│                           # plus CFK-style CR templates (kept for future use; not deployed today)
-└── confluent-platform/     # CFK-based Kafka/SR/Connect/C3 templates (NOT deployed at FCB)
+└── confluent-flink/        # CMF REST API manifests (Environment, KafkaCatalog, KafkaDatabase)
+                            # plus CFK-style CR templates (reference; no active pipeline)
 
 charts/
 └── confluent-manager-for-apache-flink/   # Vendored CMF Helm chart (with FCB modifications)
@@ -34,8 +33,7 @@ openshift-prereqs/<env>/manifests/
 ├── connectivity-test.yaml        # Busybox-based DNS + TCP probe to VM Kafka, SR, S3, SQL Server
 ├── push-image.yaml               # Push CMF / utility images to FCB Artifactory
 ├── cmf.yaml                      # Install CMF via Helm
-├── flink-environments.yaml       # Apply Flink Environment + Kafka Catalog + Kafka Database to CMF (REST)
-└── flink-crs.yaml                # CFK-style Flink CRs (template; not used until CFK lands)
+└── flink-environments.yaml       # Apply Flink Environment + Kafka Catalog + Kafka Database to CMF (REST)
 ```
 
 ## Environments

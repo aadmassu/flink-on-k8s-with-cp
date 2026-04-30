@@ -8,10 +8,9 @@ Helm values and Kubernetes/CMF manifests for the FCB stack, deployed via the pip
 |-----------|------|-----------------|----------|
 | [`confluent-cmf/`](confluent-cmf/) | Helm values for the local CMF chart | **Yes** | [`cmf.yaml`](../.azure-pipelines/cmf.yaml) |
 | [`confluent-flink/<env>/`](confluent-flink/) (`environment.yaml`, `kafka-catalog.yaml`, `kafka-database.yaml`) | CMF REST API payloads, expressed as YAML | **Yes (dev populated; qa/uat/prd to follow)** | [`flink-environments`](../.azure-pipelines/flink-environments.yaml) (single pipeline applies all three) |
-| [`confluent-flink/<env>/`](confluent-flink/) (`cmf-rest-class.yaml`, `flink-environment.yaml`, `flink-pvc.yaml`, `flink-session-cluster.yaml`) | CFK-based Flink CRs | **No** — kept as template; FCB doesn't run CFK today | [`flink-crs.yaml`](../.azure-pipelines/flink-crs.yaml) (not active) |
-| [`confluent-platform/`](confluent-platform/) | CFK-based Kafka / SR / Connect / C3 CRs | **No** — FCB uses VM Kafka, not in-cluster | (none) |
+| [`confluent-flink/<env>/`](confluent-flink/) (`cmf-rest-class.yaml`, `flink-environment.yaml`, `flink-pvc.yaml`, `flink-session-cluster.yaml`) | CFK-based Flink CRs (reference only) | **No** — FCB doesn't run CFK; kept as documented reference | None |
 
-The CMF REST API YAMLs and the CFK-based CRs share similar names (`flink-environment.yaml`!), so be careful: they target completely different controllers.
+The CMF REST API YAMLs and the CFK-based CR templates share similar names (`flink-environment.yaml`!), so be careful: they target completely different controllers.
 
 ## Per-environment layout
 
@@ -23,7 +22,7 @@ apps/<component>/
 └── prd/...
 ```
 
-Each env folder holds either Helm values (CMF), CMF REST API payloads (Flink dev), or CFK-style CRs (other Flink files + confluent-platform).
+Each env folder holds either Helm values (CMF), CMF REST API payloads (Flink dev), or CFK-style CR reference templates (other Flink files).
 
 | Environment | Namespace |
 |---|---|
@@ -54,6 +53,6 @@ Driven by [`.azure-pipelines/cmf.yaml`](../.azure-pipelines/cmf.yaml).
 
 Driven by [`.azure-pipelines/flink-environments.yaml`](../.azure-pipelines/flink-environments.yaml).
 
-### CFK-based CRs (template only)
+### CFK-based CRs (reference templates)
 
-`oc apply -f` of CFK CRDs (`CMFRestClass`, `FlinkEnvironment`, `FlinkDeployment`, `Kafka`, `SchemaRegistry`, `Connect`, `ControlCenter`). Not used at FCB today; left in the tree as reference for a future world where CFK is adopted or for non-FCB environments.
+The `cmf-rest-class.yaml`, `flink-environment.yaml`, `flink-pvc.yaml`, and `flink-session-cluster.yaml` files under `apps/confluent-flink/<env>/` use the CFK CRD shapes (`apiVersion: platform.confluent.io/v1beta1`). FCB does not run CFK, so there's **no pipeline** that applies them. They're reference material — kept as a documented starting point for a future CFK-enabled environment or for non-FCB consumers of this stack pattern.
