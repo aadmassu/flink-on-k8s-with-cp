@@ -272,8 +272,8 @@ stages:
                 echo "================================================================="
 
                 echo ""
-                echo "--- ClusterIssuer keyfactor ---"
-                if ! oc get clusterissuer keyfactor -o yaml 2>&1 | head -40; then
+                echo "--- ClusterIssuer keyfactor (full YAML — Keyfactor template name is in spec) ---"
+                if ! oc get clusterissuer keyfactor -o yaml 2>&1; then
                   echo "[!!] ClusterIssuer keyfactor not found — cert-manager + Keyfactor onboarding may be incomplete."
                   FAIL="$FAIL clusterissuer"
                 fi
@@ -338,14 +338,39 @@ stages:
                 fi
 
                 echo ""
-                echo "--- Certificate detail (status / conditions / events) ---"
-                oc describe certificate cmf-tls -n "$OC_NS" 2>&1 | tail -60 || true
+                echo "================================================================="
+                echo " DIAGNOSTIC A — full describe certificate cmf-tls (no truncation)"
+                echo "================================================================="
+                oc describe certificate cmf-tls -n "$OC_NS" 2>&1 || true
 
                 echo ""
-                echo "--- Latest CertificateRequest for cmf-tls ---"
+                echo "================================================================="
+                echo " DIAGNOSTIC B — full describe of every CertificateRequest for cmf-tls"
+                echo "================================================================="
+                # cert-manager creates a new CertificateRequest per issuance attempt;
+                # show ALL of them, not just the latest, since rejection reasons may
+                # live on earlier attempts that the controller has retried past.
                 oc describe certificaterequest -n "$OC_NS" \
-                  -l cert-manager.io/certificate-name=cmf-tls 2>&1 | tail -50 \
+                  -l cert-manager.io/certificate-name=cmf-tls 2>&1 \
                   || echo "[i ] no CertificateRequest found"
+
+                echo ""
+                echo "================================================================="
+                echo " DIAGNOSTIC C — latest CertificateRequest as YAML (conditions in full)"
+                echo "================================================================="
+                # YAML form makes the .status.conditions block easier to read than
+                # describe output, especially when Keyfactor's rejection text is long.
+                oc get certificaterequest -n "$OC_NS" \
+                  -l cert-manager.io/certificate-name=cmf-tls \
+                  -o yaml 2>&1 || echo "[i ] no CertificateRequest found"
+
+                echo ""
+                echo "================================================================="
+                echo " DIAGNOSTIC D — recent cert-manager events scoped to cmf-tls"
+                echo "================================================================="
+                oc get events -n "$OC_NS" --sort-by=.lastTimestamp 2>&1 \
+                  | grep -iE "cmf-tls|certificate|keyfactor" \
+                  | tail -30 || echo "(none)"
 
                 echo ""
                 echo "--- Certificate Ready condition ---"
