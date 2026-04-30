@@ -1,37 +1,107 @@
-Starting: Install CMF
-==============================================================================
-Task         : Bash
-Description  : Run a Bash script on macOS, Linux, or Windows
-Version      : 3.231.4
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/9142fa67-aef0-4b93-a690-2ee647c51279.sh
-=== Git commit ===
-0a2d8ae02c410c55bf28b2aaf4beaddbb32501eb
 
-=== Resources CMF will create ===
-kind: ConfigMap
-  name: confluent-manager-for-apache-flink
+  name: cmf-tls
   namespace: dah-flink-dev
-kind: Service
-  name: cmf-service
-  namespace: dah-flink-dev
-kind: Deployment
-  name: confluent-manager-for-apache-flink
-  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/instance: cmf-tls
+    app.kubernetes.io/component: cmf
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Description: "Confluent Manager for Apache Flink — REST endpoint TLS"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  # Wildcard CN + SANs covering every service exposure path the FCB
+  # cluster-policy allows. Standardized across all four envs so a single
+  # cert template can be reused; per-env distinction is the namespace +
+  # the Keyfactor `Environment` annotation above.
+  commonName: "*.ocp.fcbint.net"
+  dnsNames:
+    - "*.ocp.fcbint.net"
+    - "*.svc"
+    - "*.svc.cluster.local"
+  duration: 8760h0m0s   # 1 year (max allowed by FCB approver-policy)
+  renewBefore: 360h     # request renewal 15 days before expiry
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: cmf-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: confluent-manager-for-apache-flink
+      app.kubernetes.io/instance: cmf-tls
+      app.kubernetes.io/component: cmf
+      fcbint.net/app-id: "11547"
 
-=== Checking for stuck Helm release ===
+=== Server-side dry run ===
+certificate.cert-manager.io/cmf-tls unchanged (server dry run)
 
-=== Creating CMF secrets ===
-secret/cmf-db-credentials configured
-secret/cmf-encryption-key configured
-secret/confluent-license configured
+=== Applying ===
+certificate.cert-manager.io/cmf-tls unchanged
 
-=== Verifying cmf-tls Secret exists ===
-ERROR: secret/cmf-tls not found in dah-flink-dev.
-Run the cmf-tls pipeline first to provision the cert-manager Certificate.
+=== Waiting for Certificate to be Ready (Keyfactor must approve) ===
+
+
+-------------------------------------------------------------
+
+RUN 1
+
+
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/instance: cmf-tls
+    app.kubernetes.io/component: cmf
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Description: "Confluent Manager for Apache Flink — REST endpoint TLS"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  # Wildcard CN + SANs covering every service exposure path the FCB
+  # cluster-policy allows. Standardized across all four envs so a single
+  # cert template can be reused; per-env distinction is the namespace +
+  # the Keyfactor `Environment` annotation above.
+  commonName: "*.ocp.fcbint.net"
+  dnsNames:
+    - "*.ocp.fcbint.net"
+    - "*.svc"
+    - "*.svc.cluster.local"
+  duration: 8760h0m0s   # 1 year (max allowed by FCB approver-policy)
+  renewBefore: 360h     # request renewal 15 days before expiry
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: cmf-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: confluent-manager-for-apache-flink
+      app.kubernetes.io/instance: cmf-tls
+      app.kubernetes.io/component: cmf
+      fcbint.net/app-id: "11547"
+
+=== Server-side dry run ===
+certificate.cert-manager.io/cmf-tls created (server dry run)
+
+=== Applying ===
+certificate.cert-manager.io/cmf-tls created
+
+=== Waiting for Certificate to be Ready (Keyfactor must approve) ===
+error: timed out waiting for the condition on certificates/cmf-tls
 ##[error]Bash exited with code '1'.
-Finishing: Install CMF
+Finishing: Apply cert-manager Certificate
