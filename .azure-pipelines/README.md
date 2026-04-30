@@ -19,33 +19,35 @@ Each environment has a variable group with this naming pattern. All pipelines re
 
 ### Cluster + namespace
 
-| Name | Type | Example |
-|------|------|---------|
-| `openshift-dev-api` | string | `https://api.dv-p.ocp.fcbint.net:6443` (per-env value) |
-| `openshift-dev-namespace` | string | `dah-flink-dev` (per-env value) |
-| `openshift-service-account-name` | string | per-env service account |
-| `openshift-service-account-pwd` | secret | service account password |
+> **Note on secret-type variables:** every entry marked `secret` below is **temporary, pipeline-managed**. These values will move out of Azure DevOps variable groups and into the **CyberArk** vault, sourced into the cluster as Kubernetes Secrets via the External Secrets Operator (ESO). The corresponding ADO secret variables get removed once that integration lands.
+
+| Name | Type | Example | Lifecycle |
+|------|------|---------|-----------|
+| `openshift-dev-api` | string | `https://api.dv-p.ocp.fcbint.net:6443` (per-env value) | permanent |
+| `openshift-dev-namespace` | string | `dah-flink-dev` (per-env value) | permanent |
+| `openshift-service-account-name` | string | per-env service account | permanent |
+| `openshift-service-account-pwd` | secret | service account password | **temp — pipeline-managed; moves to CyberArk via ESO** |
 
 ### Artifactory
 
-| Name | Type |
-|------|------|
-| `artifactory-svc-user` | string |
-| `artifactory-svc-user-password` | secret |
+| Name | Type | Lifecycle |
+|------|------|-----------|
+| `artifactory-svc-user` | string | permanent |
+| `artifactory-svc-user-password` | secret | **temp — pipeline-managed; moves to CyberArk via ESO** |
 
 ### CMF + downstream (env-prefixed)
 
-| Name | Type |
-|------|------|
-| `<env>-cmf-sql-server-jdbc-url` | string |
-| `<env>-cmf-sql-server-user` | string |
-| `<env>-cmf-sql-server-user-password` | secret |
-| `<env>-cmf-encryption-key` | secret — AES-GCM, **never rotate** |
-| `<env>-confluent-license` | secret (locked) |
-| `<env>-kafka-broker-hosts` | string — comma-separated |
-| `<env>-kafka-rest-proxy-hosts` | string — comma-separated |
-| `<env>-schema-registry-hosts` | string — comma-separated |
-| `<env>-net-app-s3-url` | string |
+| Name | Type | Lifecycle |
+|------|------|-----------|
+| `<env>-cmf-sql-server-jdbc-url` | string | permanent |
+| `<env>-cmf-sql-server-user` | string | permanent |
+| `<env>-cmf-sql-server-user-password` | secret | **temp — pipeline-managed; moves to CyberArk via ESO** |
+| `<env>-cmf-encryption-key` | secret — AES-GCM, **never rotate** | **temp — pipeline-managed; moves to CyberArk via ESO** |
+| `<env>-confluent-license` | secret (locked) | **temp — pipeline-managed; moves to CyberArk via ESO** |
+| `<env>-kafka-broker-hosts` | string — comma-separated | permanent |
+| `<env>-kafka-rest-proxy-hosts` | string — comma-separated | permanent |
+| `<env>-schema-registry-hosts` | string — comma-separated | permanent |
+| `<env>-net-app-s3-url` | string | permanent |
 
 ## Templates
 
