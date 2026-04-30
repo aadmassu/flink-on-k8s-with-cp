@@ -90,6 +90,12 @@ serviceAccount:
   create: false
   name: flink-operator
 
+# Suppress the chart's hardcoded podSecurityContext (fsGroup: 1001,
+# runAsUser: 1001). On OpenShift, SCC assigns UIDs from the namespace's
+# allowed range at admission — fixed UIDs trip restricted-v2 SCC validation.
+podSecurity:
+  enabled: false
+
 # `false` because either CMF state lives in external SQL Server (target) or
 # we're running with database.type=local (current QA stopgap, ephemeral pod
 # storage). Either way, no persistent volume is needed from the chart.

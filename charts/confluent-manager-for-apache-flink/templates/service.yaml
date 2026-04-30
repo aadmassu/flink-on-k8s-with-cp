@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: cmf-service
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cmf.labels" . | nindent 4 }}
 spec:
   # Service selects the pods to attach to using the selectors. The selector is a key-value pair, which must match the labels on the pods.
   selector:

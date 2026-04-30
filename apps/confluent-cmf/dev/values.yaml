@@ -95,6 +95,12 @@ serviceAccount:
   create: false
   name: flink-operator
 
+# Suppress the chart's hardcoded podSecurityContext (fsGroup: 1001,
+# runAsUser: 1001). On OpenShift, SCC assigns UIDs from the namespace's
+# allowed range at admission — fixed UIDs trip restricted-v2 SCC validation.
+podSecurity:
+  enabled: false
+
 # CMF state lives in the external SQL Server above, not on a local PVC.
 persistence:
   create: false

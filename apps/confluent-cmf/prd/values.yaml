@@ -79,6 +79,12 @@ mountedVolumes:
       mountPath: /etc/cmf/tls
       readOnly: true
 
+# Suppress the chart's hardcoded podSecurityContext (fsGroup: 1001,
+# runAsUser: 1001). On OpenShift, SCC assigns UIDs from the namespace's
+# allowed range at admission — fixed UIDs trip restricted-v2 SCC validation.
+podSecurity:
+  enabled: false
+
 # CPU and memory for the CMF pod
 resources:
   requests:
