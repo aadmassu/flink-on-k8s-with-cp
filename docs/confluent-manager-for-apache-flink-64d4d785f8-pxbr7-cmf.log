@@ -1,0 +1,108 @@
+Starting CMF with external configurations from /opt/config/cmf-config.yaml
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+2026-04-30T11:47:56.995444239Z main WARN Converter key 'rEx' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.RootThrowablePatternConverter].
+2026-04-30T11:47:56.996871865Z main WARN Converter key 'ex' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.ThrowablePatternConverter].
+2026-04-30T11:47:56.997030700Z main WARN Converter key 'throwable' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.ThrowablePatternConverter].
+[33m2026-04-30 11:47:57,081[m [36mi.c.c.l.ConditionalStackTracePatternConverter[m [32m[INFO ] [.] Stack trace logging enabled: false
+[m[2026-04-30 11:47:57.580] [main] INFO  - i.c.c.CmfApplication - Starting CmfApplication v2.4-SNAPSHOT using Java 21.0.10 with PID 2 (/app/cmf.jar started by 1001320000 in /app)
+[2026-04-30 11:47:57.586] [main] INFO  - i.c.c.CmfApplication - No active profile set, falling back to 1 default profile: "default"
+[2026-04-30 11:47:57.796] [main] INFO  - i.c.c.LogBootstrapInformation - --------------------------------------
+[2026-04-30 11:47:57.803] [main] INFO  - i.c.c.LogBootstrapInformation -  Starting Confluent Manager for Apache Flink® (Version: <unknown>, Rev:<unknown>, Date:1970-01-01T01:00:00+01:00)
+[2026-04-30 11:47:57.803] [main] INFO  - i.c.c.LogBootstrapInformation -  OS current user: 1001320000
+[2026-04-30 11:47:57.878] [main] INFO  - i.c.c.LogBootstrapInformation -  JVM: OpenJDK 64-Bit Server VM - Azul Systems, Inc. - 21/21.0.10+7-LTS
+[2026-04-30 11:47:57.878] [main] INFO  - i.c.c.LogBootstrapInformation -  Arch: amd64
+[2026-04-30 11:47:57.880] [main] INFO  - i.c.c.LogBootstrapInformation -  Maximum heap size: 247 MiBytes
+[2026-04-30 11:47:57.880] [main] INFO  - i.c.c.LogBootstrapInformation -  JAVA_HOME: /usr/lib/jvm/jre-21
+[2026-04-30 11:47:57.880] [main] INFO  - i.c.c.LogBootstrapInformation -  JVM Options: (none)
+[2026-04-30 11:47:57.880] [main] INFO  - i.c.c.LogBootstrapInformation -  Program Arguments:
+[2026-04-30 11:47:57.882] [main] INFO  - i.c.c.LogBootstrapInformation -     --spring.config.location=classpath:/,/opt/config/cmf-config.yaml
+[2026-04-30 11:47:57.883] [main] INFO  - i.c.c.LogBootstrapInformation - --------------------------------------
+[2026-04-30 11:48:03.094] [main] INFO  - o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+[2026-04-30 11:48:03.784] [main] INFO  - o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 603 ms. Found 16 JPA repository interfaces.
+[2026-04-30 11:48:09.097] [main] INFO  - o.s.b.w.e.t.TomcatWebServer - Tomcat initialized with port 8080 (https)
+[2026-04-30 11:48:09.189] [main] INFO  - o.a.c.h.Http11NioProtocol - Initializing ProtocolHandler ["https-jsse-nio-8080"]
+[2026-04-30 11:48:09.191] [main] INFO  - o.a.c.c.StandardService - Starting service [Tomcat]
+[2026-04-30 11:48:09.192] [main] INFO  - o.a.c.c.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.54]
+[2026-04-30 11:48:09.479] [main] INFO  - o.a.c.c.C.[.[.[/] - Initializing Spring embedded WebApplicationContext
+[2026-04-30 11:48:09.479] [main] INFO  - o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 11595 ms
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+[2026-04-30 11:48:10.091] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Configuring the CMF database with type: jdbc
+[2026-04-30 11:48:10.091] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Creating sqlserver datasource for host: db-dahbronze-d.fcpd.fcbint.net, port: 3085, database: DAHFLINK
+[2026-04-30 11:48:10.186] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Using database password from CMF_JDBC_PASSWORD environment variable.
+[2026-04-30 11:48:12.900] [main] INFO  - o.f.c.FlywayExecutor - Database: jdbc:sqlserver://db-dahbronze-d.fcpd.fcbint.net:3085;connectRetryInterval=10;connectRetryCount=1;maxResultBuffer=-1;sendTemporalDataTypesAsStringForBulkCopy=true;delayLoadingLobs=true;useFmtOnly=false;cacheBulkCopyMetadata=false;bulkCopyForBatchInsertAllowEncryptedValueModifications=false;bulkCopyForBatchInsertTableLock=false;bulkCopyForBatchInsertKeepNulls=false;bulkCopyForBatchInsertKeepIdentity=false;bulkCopyForBatchInsertFireTriggers=false;bulkCopyForBatchInsertCheckConstraints=false;bulkCopyForBatchInsertBatchSize=0;useBulkCopyForBatchInsert=false;cancelQueryTimeout=-1;sslProtocol=TLS;calcBigDecimalPrecision=false;useDefaultJaasConfig=false;jaasConfigurationName=SQLJDBCDriver;statementPoolingCacheSize=0;serverPreparedStatementDiscardThreshold=10;enablePrepareOnFirstPreparedStatementCall=false;fips=false;socketTimeout=0;authentication=NotSpecified;authenticationScheme=nativeAuthentication;xopenStates=false;datetimeParameterType=datetime2;sendTimeAsDatetime=true;replication=false;trustStoreType=JKS;trustServerCertificate=true;TransparentNetworkIPResolution=true;iPAddressPreference=IPv4First;serverNameAsACE=false;sendStringParametersAsUnicode=true;selectMethod=direct;responseBuffering=adaptive;queryTimeout=-1;packetSize=8000;multiSubnetFailover=false;loginTimeout=30;lockTimeout=-1;lastUpdateCount=true;useDefaultGSSCredential=false;prepareMethod=prepexec;encrypt=true;disableStatementPooling=true;databaseName=DAHFLINK;columnEncryptionSetting=Disabled;applicationName=Microsoft JDBC Driver for SQL Server;applicationIntent=readwrite; (Microsoft SQL Server 16.0)
+[2026-04-30 11:48:13.196] [main] INFO  - o.f.c.i.c.DbValidate - Successfully validated 10 migrations (execution time 00:00.179s)
+[2026-04-30 11:48:13.300] [main] INFO  - o.f.c.i.c.DbMigrate - Current version of schema [dbo]: 30.1.0
+[2026-04-30 11:48:13.305] [main] INFO  - o.f.c.i.c.DbMigrate - Schema [dbo] is up to date. No migration necessary.
+[2026-04-30 11:48:13.394] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Initialized SpecificationUtils with dialect: SQLSERVER
+[2026-04-30 11:48:13.679] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Setting Hibernate dialect to: org.hibernate.dialect.SQLServerDialect
+[2026-04-30 11:48:13.782] [main] INFO  - o.h.j.i.u.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+[2026-04-30 11:48:13.996] [main] INFO  - o.h.Version - HHH000412: Hibernate ORM core version 6.6.45.Final
+[2026-04-30 11:48:14.184] [main] INFO  - o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+[2026-04-30 11:48:14.999] [main] INFO  - o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+[2026-04-30 11:48:15.305] [main] WARN  - o.h.o.deprecation - HHH90000025: SQLServerDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+[2026-04-30 11:48:15.392] [main] INFO  - o.h.o.c.pooling - HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.DriverManagerDataSource@37d81587']
+	Database driver: undefined/unknown
+	Database version: 16.0
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+[2026-04-30 11:48:16.988] [main] INFO  - o.h.v.i.u.Version - HV000001: Hibernate Validator 8.0.3.Final
+[2026-04-30 11:48:20.385] [main] INFO  - o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+[2026-04-30 11:48:20.482] [main] INFO  - o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+[2026-04-30 11:48:21.487] [main] INFO  - o.s.d.j.r.q.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+[2026-04-30 11:48:24.382] [main] INFO  - o.a.f.k.o.c.FlinkConfigManager - Setting default configuration to {parallelism.default=1, kubernetes.operator.dynamic.config.enabled=false, taskmanager.numberOfTaskSlots=1, kubernetes.operator.reconcile.interval=15 s, kubernetes.operator.metrics.reporter.slf4j.interval=5 MINUTE, kubernetes.operator.observer.progress-check.interval=5 s, kubernetes.operator.metrics.reporter.slf4j.factory.class=org.apache.flink.metrics.slf4j.Slf4jReporterFactory}
+[2026-04-30 11:48:24.895] [main] INFO  - i.c.c.k.r.K8sClientFactory - Creating KubernetesClient for default cluster using in-cluster config
+[2026-04-30 11:48:25.684] [main] INFO  - i.c.c.k.FkoVersionValidator - Flink Kubernetes Operator version check: Skipping CRD registration check in namespace-scoped mode (cluster-scoped resource, not accessible with Role-only RBAC).
+[2026-04-30 11:48:27.507] [main] WARN  - i.c.c.k.FkoVersionValidator - cluster='default-k8s-cluster': Flink Kubernetes Operator version check: FlinkDeployment CRD is registered but no operator deployment was found.
+[2026-04-30 11:48:27.581] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Initializing Kubernetes cluster manager
+[2026-04-30 11:48:27.582] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Initializing default cluster 'default-k8s-cluster'
+[2026-04-30 11:48:27.592] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Connected to default cluster, K8s version: v1.31.14
+[2026-04-30 11:48:27.592] [main] INFO  - i.c.c.k.r.ManagedK8sClientRegistry - Registered cluster 'default-k8s-cluster' with pre-created client
+[2026-04-30 11:48:28.096] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Default cluster 'default-k8s-cluster' initialized successfully
+[2026-04-30 11:48:28.096] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Skipping remote cluster discovery and file watcher: multi-cluster is not supported in namespace-scoped mode
+[2026-04-30 11:48:28.489] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Kubernetes cluster manager initialization complete
+[2026-04-30 11:48:29.181] [main] INFO  - i.c.l.LicenseManager - License for control-center expires in 730 days on 2028-04-30.
+[2026-04-30 11:48:29.302] [main] INFO  - i.c.l.LicenseManager - License for control-center expires in 730 days on 2028-04-30.
+[2026-04-30 11:48:29.303] [main] INFO  - i.c.c.l.LicenseInitiator - License initialized with deployment scope: CP
+[2026-04-30 11:48:29.483] [main] INFO  - i.c.c.l.CMFLicenseStore - CMF License Store started
+[2026-04-30 11:48:29.586] [main] INFO  - i.c.c.s.CmfMetadataSync - Starting metadata sync.
+[2026-04-30 11:48:29.587] [main] INFO  - i.c.c.s.CmfMetadataSync - Syncing all applications on K8s, max rate (req/sec): 200, waitTimePerAppRestore: 5
+[2026-04-30 11:48:29.693] [main] INFO  - i.c.c.s.CmfMetadataSync - Finished syncing all FlinkApplications, numSynced:0
+[2026-04-30 11:48:29.693] [main] INFO  - i.c.c.s.CmfMetadataSync - Syncing all statements which have a corresponding FlinkDeployment on K8s, max rate (req/sec): 200, waitTimePerAppRestore: 5
+[2026-04-30 11:48:29.798] [main] INFO  - i.c.c.s.CmfMetadataSync - Finished syncing all Statements, numSynced:0
+[2026-04-30 11:48:29.896] [main] INFO  - i.c.c.s.CmfMetadataSync - Finished syncing all Savepoints, numSynced:0
+[2026-04-30 11:48:29.896] [main] INFO  - i.c.c.s.CmfMetadataSync - Finished syncing metadata at 0
+[2026-04-30 11:48:30.082] [main] INFO  - i.c.c.s.ApplicationService - Application service initialized at 1018773104471881
+[2026-04-30 11:48:30.894] [main] INFO  - i.c.c.s.SelectStatementCache - Building SELECT statement timeout cache on startup...
+[2026-04-30 11:48:30.995] [main] INFO  - i.c.c.s.SelectStatementCache - SELECT statement timeout cache built successfully. Added 0 SELECT statements to timeout cache.
+[2026-04-30 11:48:31.094] [main] INFO  - i.c.c.s.StatementService - Statement service initialized at 1018774116885130
+[2026-04-30 11:48:31.298] [main] INFO  - i.c.c.c.k.KafkaConfiguration - OAuth bearer allowed URLs 'cmf.kafka.oauthbearerAllowedUrls' not configured, skipping system property setup
+[2026-04-30 11:48:31.381] [main] INFO  - i.c.c.s.SecurityInterceptorConfig - Authorization is disabled.
+[2026-04-30 11:48:31.684] [main] INFO  - i.c.c.s.SecretService - SecretService initialized at epoch: 1777549711684
+[2026-04-30 11:48:31.982] [main] INFO  - i.c.c.s.SystemService - CMF startup with the following system properties: encryption.enabled=false, cmfDbInstanceId=1ea9a81b-2a65-46e4-80b1-30b0ad216019
+[2026-04-30 11:48:32.084] [main] INFO  - i.c.c.s.DeploymentObserverInitializer - Initializing deployment observer
+[2026-04-30 11:48:32.094] [main] INFO  - i.c.c.k.d.AbstractK8sObserver - Starting watch for deployment on cluster 'default-k8s-cluster'
+[2026-04-30 11:48:32.097] [main] WARN  - i.f.k.c.d.i.VersionUsageUtils - The client is using resource type 'flinkdeployments' with unstable version 'v1beta1'
+[2026-04-30 11:48:32.099] [main] INFO  - i.c.c.k.d.AbstractMultiClusterObserverManager - Started deployment observer for cluster 'default-k8s-cluster' (1 total observers)
+[2026-04-30 11:48:32.178] [main] INFO  - i.c.c.s.FKOEventWatcherInitializer - Initializing FKO exception event watcher
+[2026-04-30 11:48:32.689] [main] INFO  - i.c.c.k.e.MultiClusterFKOEventWatcherManager - Started fko-event watcher for cluster 'default-k8s-cluster' (1 total watchers)
+[2026-04-30 11:48:32.691] [main] INFO  - i.c.c.s.SavepointObserverInitializer - Initializing savepoint observer
+[2026-04-30 11:48:32.694] [main] INFO  - i.c.c.k.d.AbstractK8sObserver - Starting watch for savepoint on cluster 'default-k8s-cluster'
+[2026-04-30 11:48:32.697] [main] WARN  - i.f.k.c.d.i.VersionUsageUtils - The client is using resource type 'flinkstatesnapshots' with unstable version 'v1beta1'
+[2026-04-30 11:48:32.698] [main] INFO  - i.c.c.k.d.AbstractMultiClusterObserverManager - Started savepoint observer for cluster 'default-k8s-cluster' (1 total observers)
+[2026-04-30 11:48:32.786] [main] INFO  - i.c.c.s.ScheduledSelectStatementTimeoutTask - Scheduled SELECT statement timeout task with 1 minute interval and 10 minute timeout
+[2026-04-30 11:48:32.789] [SimpleAsyncTaskScheduler-3] INFO  - i.c.c.s.ScheduledStatementCleanupTask - Starting cleanup of statements.
+[2026-04-30 11:48:32.790] [main] INFO  - i.c.c.s.SessionJobObserverInitializer - Initializing session job observer
+[2026-04-30 11:48:32.878] [main] INFO  - i.c.c.k.d.AbstractK8sObserver - Starting watch for session-job on cluster 'default-k8s-cluster'
+[2026-04-30 11:48:32.879] [main] WARN  - i.f.k.c.d.i.VersionUsageUtils - The client is using resource type 'flinksessionjobs' with unstable version 'v1beta1'
+[2026-04-30 11:48:32.879] [main] INFO  - i.c.c.k.d.AbstractMultiClusterObserverManager - Started session-job observer for cluster 'default-k8s-cluster' (1 total observers)
+[2026-04-30 11:48:32.987] [SimpleAsyncTaskScheduler-3] INFO  - i.c.c.s.ScheduledStatementCleanupTask - Cleanup completed. Total statements deleted: 0
+[2026-04-30 11:48:33.595] [main] INFO  - i.c.c.s.SecurityInterceptorConfig - Authentication is disabled.
+[2026-04-30 11:48:43.593] [main] INFO  - o.a.c.h.Http11NioProtocol - Starting ProtocolHandler ["https-jsse-nio-8080"]
+[2026-04-30 11:48:43.885] [main] INFO  - o.a.t.u.n.N.certificate - Connector [https-jsse-nio-8080], TLS virtual host [_default_], certificate type [UNDEFINED] configured from keystore [Set directly - location unknown] using alias [tomcat] with trust store [null]
+[2026-04-30 11:48:43.895] [main] INFO  - o.s.b.w.e.t.TomcatWebServer - Tomcat started on port 8080 (https) with context path '/'
+[2026-04-30 11:48:43.977] [main] INFO  - i.c.c.k.r.KubernetesClusterHeartbeatTask - Started heartbeat task (interval: 60 seconds)
+[2026-04-30 11:48:43.984] [main] INFO  - i.c.c.CmfApplication - Started CmfApplication in 49.103 seconds (process running for 54.383)
+[2026-04-30 11:48:43.987] [main] INFO  - i.c.c.LogEffectiveSqliteConfig - Database type is 'jdbc', skipping SQLite PRAGMA logging.
