@@ -1,50 +1,52 @@
-      not usable by user or serviceaccount, provider "aqua-enforcer-agent-scc": Forbidden:
-      not usable by user or serviceaccount, provider "hostmount-anyuid-v2": Forbidden:
-      not usable by user or serviceaccount, provider "machine-api-termination-handler":
-      Forbidden: not usable by user or serviceaccount, provider "ingress-nginx": Forbidden:
-      not usable by user or serviceaccount, provider "hostnetwork-v2": Forbidden:
+Starting: Install CMF
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/55315c59-b705-452d-bd9b-75359ba5b545.sh
+=== Git commit ===
+32f189960c392a478458d443add4adfbc6ac4e1c
+
+=== Resources CMF will create ===
+kind: ConfigMap
+  name: confluent-manager-for-apache-flink
+  namespace: dah-flink-dev
+kind: Service
+  name: cmf-service
+  namespace: dah-flink-dev
+kind: Deployment
+  name: confluent-manager-for-apache-flink
+  namespace: dah-flink-dev
+
+=== Checking for stuck Helm release ===
+
+=== Creating CMF secrets ===
+secret/cmf-db-credentials configured
+secret/cmf-encryption-key configured
+secret/confluent-license configured
+
+=== Verifying cmf-tls Secret exists ===
+secret/cmf-tls found.
 
 ==================================================================
- DIAGNOSTIC 5 — current ReplicaSets (helps spot rolled-back revisions)
+ DIAGNOSTIC 1 — helm history confluent-cmf (rollbacks visible here)
 ==================================================================
-NAME                                            DESIRED   CURRENT   READY   AGE
-confluent-manager-for-apache-flink-5dd4fc98dc   0         0         0       15d
-confluent-manager-for-apache-flink-754fdc8758   0         0         0       15d
-confluent-manager-for-apache-flink-65cbb66987   0         0         0       13d
-confluent-manager-for-apache-flink-5b5b7646bd   0         0         0       13d
-confluent-manager-for-apache-flink-698bf65b4d   0         0         0       13d
-confluent-manager-for-apache-flink-7bb885d4f    0         0         0       12d
-confluent-manager-for-apache-flink-77f6f9cbc5   0         0         0       12d
-confluent-manager-for-apache-flink-7477496f96   0         0         0       12d
-confluent-manager-for-apache-flink-5b6f95b6b4   0         0         0       9d
-confluent-manager-for-apache-flink-674b565bd    0         0         0       9d
-confluent-manager-for-apache-flink-789cd75665   0         0         0       8d
-confluent-manager-for-apache-flink-75cfd98788   0         0         0       46m
-confluent-manager-for-apache-flink-5f9c75f474   0         0         0       33m
-confluent-manager-for-apache-flink-56dd985b7    1         0         0       17m
+REVISION	UPDATED                 	STATUS    	CHART                                   	APP VERSION	DESCRIPTION                                              
+18      	Fri Apr 17 14:34:20 2026	superseded	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Rollback to 16                                           
+19      	Fri Apr 17 14:34:21 2026	superseded	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade complete                                         
+20      	Fri Apr 17 15:10:29 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
+21      	Fri Apr 17 15:22:37 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
+22      	Mon Apr 20 14:10:26 2026	superseded	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade complete                                         
+23      	Mon Apr 20 15:35:23 2026	superseded	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade complete                                         
+24      	Tue Apr 21 13:50:02 2026	deployed  	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade complete                                         
+25      	Thu Apr 30 06:42:22 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
+26      	Thu Apr 30 06:55:39 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
+27      	Thu Apr 30 07:12:02 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
 
 ==================================================================
- DIAGNOSTIC 6 — what helm WOULD install right now (template only)
-==================================================================
-      containers:
-        - name: cmf
-          # Container-level securityContext compliant with the PodSecurity
-          # `restricted` profile (and OpenShift's restricted-v2 SCC). FCB's
-          # cluster enforces this at admission — without all three of
-          # allowPrivilegeEscalation=false, capabilities.drop=[ALL], and a
-          # seccompProfile, the pod is rejected. runAsUser is intentionally
-          # left unset so OpenShift's SCC assigns a UID from the namespace's
-          # allowed range.
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
-          image: "artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview-2"
-          imagePullPolicy: IfNotPresent
-          args:
-            - "/opt/config/cmf-config.yaml"
-Finishing: Install CMF
+ DIAGNOSTIC 2 — helm get values (current revision)
