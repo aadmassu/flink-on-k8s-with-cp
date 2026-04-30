@@ -1,0 +1,72 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: cmf-service
+  namespace: dah-flink-dev
+  uid: df8fb629-ca09-497d-9e14-289ca43cf844
+  resourceVersion: '649343882'
+  creationTimestamp: '2026-04-30T11:47:48Z'
+  labels:
+    app.kubernetes.io/component: cmf
+    app.kubernetes.io/instance: confluent-cmf
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/version: 2.2.0
+    fcbint.net/app-id: '11547'
+    helm.sh/chart: confluent-manager-for-apache-flink-2.2.0
+  annotations:
+    meta.helm.sh/release-name: confluent-cmf
+    meta.helm.sh/release-namespace: dah-flink-dev
+  managedFields:
+    - manager: helm
+      operation: Update
+      apiVersion: v1
+      time: '2026-04-30T11:47:48Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:meta.helm.sh/release-name': {}
+            'f:meta.helm.sh/release-namespace': {}
+          'f:labels':
+            .: {}
+            'f:app.kubernetes.io/component': {}
+            'f:app.kubernetes.io/instance': {}
+            'f:app.kubernetes.io/managed-by': {}
+            'f:app.kubernetes.io/name': {}
+            'f:app.kubernetes.io/version': {}
+            'f:fcbint.net/app-id': {}
+            'f:helm.sh/chart': {}
+        'f:spec':
+          'f:internalTrafficPolicy': {}
+          'f:ports':
+            .: {}
+            'k:{"port":443,"protocol":"TCP"}':
+              .: {}
+              'f:name': {}
+              'f:port': {}
+              'f:protocol': {}
+              'f:targetPort': {}
+          'f:selector': {}
+          'f:sessionAffinity': {}
+          'f:type': {}
+spec:
+  clusterIP: 10.245.54.136
+  ipFamilies:
+    - IPv4
+  ports:
+    - name: cmf-https
+      protocol: TCP
+      port: 443
+      targetPort: 8080
+  internalTrafficPolicy: Cluster
+  clusterIPs:
+    - 10.245.54.136
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  sessionAffinity: None
+  selector:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+status:
+  loadBalancer: {}
