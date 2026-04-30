@@ -126,79 +126,19 @@ stages:
                 fi
                 echo "secret/cmf-tls found."
 
-                # ----------------------------------------------------------
-                # TEMPORARY UNINSTALL MODE — clears the corrupted helm release
-                # (anchored on a stale revision after multiple failed --wait
-                # timeouts) so the next pipeline run can do a clean install.
-                # Restore the helm upgrade block below after this run completes.
-                # ----------------------------------------------------------
-                # echo ""
-                # echo "=== Installing CMF ==="
-                # helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
-                #   --namespace "$OC_NS" \
-                #   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
-                #   --set namespaced=true \
-                #   --set cmf.database.jdbc.url="$CMF_DB_URL" \
-                #   --set cmf.database.jdbc.user="$CMF_DB_USER" \
-                #   --wait --timeout 10m
-                #
-                # echo ""
-                # helm status confluent-cmf -n "$OC_NS"
-                # oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
+                echo ""
+                echo "=== Installing CMF ==="
+                helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
+                  --namespace "$OC_NS" \
+                  -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
+                  --set namespaced=true \
+                  --set cmf.database.jdbc.url="$CMF_DB_URL" \
+                  --set cmf.database.jdbc.user="$CMF_DB_USER" \
+                  --wait --timeout 10m
 
                 echo ""
-                echo "=================================================================="
-                echo " UNINSTALL MODE — about to delete the helm release confluent-cmf"
-                echo "=================================================================="
-
-                echo ""
-                echo "--- Helm history before uninstall ---"
-                helm history confluent-cmf -n "$OC_NS" 2>&1 || echo "(no helm release found)"
-
-                echo ""
-                echo "--- Resources owned by the release (about to be deleted) ---"
-                oc get all -n "$OC_NS" \
-                  -l app.kubernetes.io/instance=confluent-cmf 2>&1 || true
-
-                echo ""
-                echo "--- Running helm uninstall ---"
-                # Removes Deployment, ReplicaSets, pods, Service, ConfigMap that
-                # helm created. Keep the cmf-tls Secret (cert-manager owns it),
-                # cmf-db-credentials / cmf-encryption-key / confluent-license
-                # (this pipeline owns them and re-applies on each run), and the
-                # flink-operator SA / RBAC (FCB platform team owns those).
-                helm uninstall confluent-cmf -n "$OC_NS" 2>&1 || \
-                  echo "[i ] helm release not found — already uninstalled?"
-
-                echo ""
-                echo "--- Verifying cleanup ---"
-                echo "Pods (should be none):"
-                oc get pods -n "$OC_NS" \
-                  -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>&1 || true
-                echo ""
-                echo "ReplicaSets (should be none):"
-                oc get rs -n "$OC_NS" \
-                  -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>&1 || true
-                echo ""
-                echo "Deployment (should be Not Found):"
-                oc get deployment confluent-manager-for-apache-flink -n "$OC_NS" 2>&1 || true
-                echo ""
-                echo "Service cmf-service (should be Not Found):"
-                oc get svc cmf-service -n "$OC_NS" 2>&1 || true
-                echo ""
-                echo "Secrets that SHOULD survive (cmf-tls + the three pipeline-managed):"
-                for s in cmf-tls cmf-db-credentials cmf-encryption-key confluent-license; do
-                  if oc get secret "$s" -n "$OC_NS" >/dev/null 2>&1; then
-                    echo "  [ok] $s"
-                  else
-                    echo "  [!!] $s missing — will need to re-create on next install"
-                  fi
-                done
-
-                echo ""
-                echo "=================================================================="
-                echo " UNINSTALL DONE — next pipeline run will reinstall CMF from scratch"
-                echo "=================================================================="
+                helm status confluent-cmf -n "$OC_NS"
+                oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
             env:
               OC_NS: dah-flink-${{ parameters.environment }}
               TARGET_ENV: ${{ parameters.environment }}
