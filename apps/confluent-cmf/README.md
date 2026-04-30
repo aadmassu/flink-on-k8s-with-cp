@@ -55,10 +55,16 @@ CMF terminates TLS at the pod. The cert is issued by FCB's Keyfactor `ClusterIss
 
 ```
 apps/confluent-cmf/<env>/cmf-tls-certificate.yaml   # cert-manager Certificate
-                                                    #   commonName: *.ocp.fcbint.net
-                                                    #   dnsNames:   *.ocp.fcbint.net, *.svc, *.svc.cluster.local
+                                                    #   commonName: cmf-service.dah-flink-<env>.svc.cluster.local
+                                                    #   dnsNames:   cmf-service.dah-flink-<env>.svc
+                                                    #               cmf-service.dah-flink-<env>.svc.cluster.local
                                                     #   issuerRef: ClusterIssuer/keyfactor (group: command-issuer.keyfactor.com)
                                                     #   duration 8760h, RSA 4096, rotationPolicy Always
+                                                    #
+                                                    # NOTE: specific (non-wildcard) names. The keyfactor ClusterIssuer is
+                                                    # bound to the Entity Keyfactor template, which requires concrete SANs.
+                                                    # Future services (Schema Registry proxy, Connect proxy, etc.) each get
+                                                    # their own Certificate manifest with their own specific names.
 
 apps/confluent-cmf/<env>/values.yaml                # ssl block + mountedVolumes
   cmf.ssl.enabled: true

@@ -18,15 +18,15 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  # Wildcard CN + SANs covering every service exposure path the FCB
-  # cluster-policy allows. Standardized across all four envs so a single
-  # cert template can be reused; per-env distinction is the namespace +
-  # the Keyfactor `Environment` annotation above.
-  commonName: "*.ocp.fcbint.net"
+  # Specific (non-wildcard) names for the CMF Service in this env.
+  # The `keyfactor` ClusterIssuer is bound to the Entity Keyfactor template,
+  # which requires concrete SANs — wildcards get rejected. Future services
+  # in this namespace get their own Certificate manifest with their own
+  # specific names; do not reuse this cert for other services.
+  commonName: cmf-service.dah-flink-uat.svc.cluster.local
   dnsNames:
-    - "*.ocp.fcbint.net"
-    - "*.svc"
-    - "*.svc.cluster.local"
+    - cmf-service.dah-flink-uat.svc
+    - cmf-service.dah-flink-uat.svc.cluster.local
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:
