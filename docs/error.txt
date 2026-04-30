@@ -1,107 +1,53 @@
+Error creating: pods "confluent-manager-for-apache-flink-75cfd98788-" is forbidden: unable to validate against any security context constraint: [provider "anyuid": Forbidden: not usable by user or serviceaccount, provider "arc-pa-redis-dev-scc": Forbidden: not usable by user or serviceaccount, provider restricted-v2: .spec.securityContext.fsGroup: Invalid value: []int64{1001}: 1001 is not an allowed group, provider restricted-v2: .containers[0].runAsUser: Invalid value: 1001: must be in the ranges: [1001320000, 1001329999], provider "restricted": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider "selinux-skip-relabeling": Forbidden: not usable by user or serviceaccount, provider "noobaa": Forbidden: not usable by user or serviceaccount, provider "hostmount-anyuid": Forbidden: not usable by user or serviceaccount, provider "aqua-enforcer-agent-scc": Forbidden: not usable by user or serviceaccount, provider "hostmount-anyuid-v2": Forbidden: not usable by user or serviceaccount, provider "machine-api-termination-handler": Forbidden: not usable by user or serviceaccount, provider "ingress-nginx": Forbidden: not usable by user or serviceaccount, provider "hostnetwork-v2": Forbidden: not usable by user or serviceaccount, provider "hostnetwork": Forbidden: not usable by user or serviceaccount, provider "hostaccess": Forbidden: not usable by user or serviceaccount, provider "egress-proxy-fcb-egress-proxy-scc": Forbidden: not usable by user or serviceaccount, provider "rook-ceph": Forbidden: not usable by user or serviceaccount, provider "rook-ceph-csi": Forbidden: not usable by user or serviceaccount, provider "node-exporter": Forbidden: not usable by user or serviceaccount, provider "collectord-fcb-collectord-scc": Forbidden: not usable by user or serviceaccount, provider "privileged": Forbidden: not usable by user or serviceaccount]
+DeploymentDconfluent-manager-for-apache-flink
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from deployment-controller
+Scaled up replica set confluent-manager-for-apache-flink-75cfd98788 to 1
+ServiceScmf-service
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from gatekeeper-webhook
+Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-network-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+PodPconfluent-manager-for-apache-flink-789cd75665-bj9mc
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from kubelet on dp12055oxc-wpxl-srrn8
+Stopping container cmf
+ReplicaSetRSconfluent-manager-for-apache-flink-789cd75665
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from replicaset-controller
+Deleted pod: confluent-manager-for-apache-flink-789cd75665-bj9mc
+DeploymentDconfluent-manager-for-apache-flink
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from gatekeeper-webhook
+Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for Deployment: confluent-manager-for-apache-flink. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]} Review Documentation: * https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices * https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
 
-  name: cmf-tls
-  namespace: dah-flink-dev
-  labels:
-    app.kubernetes.io/name: confluent-manager-for-apache-flink
-    app.kubernetes.io/instance: cmf-tls
-    app.kubernetes.io/component: cmf
-    fcbint.net/app-id: "11547"
-  annotations:
-    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
-    metadata.command-issuer.keyfactor.com/Description: "Confluent Manager for Apache Flink — REST endpoint TLS"
-    metadata.command-issuer.keyfactor.com/Organization: FCB
-    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
-    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
-spec:
-  # Wildcard CN + SANs covering every service exposure path the FCB
-  # cluster-policy allows. Standardized across all four envs so a single
-  # cert template can be reused; per-env distinction is the namespace +
-  # the Keyfactor `Environment` annotation above.
-  commonName: "*.ocp.fcbint.net"
-  dnsNames:
-    - "*.ocp.fcbint.net"
-    - "*.svc"
-    - "*.svc.cluster.local"
-  duration: 8760h0m0s   # 1 year (max allowed by FCB approver-policy)
-  renewBefore: 360h     # request renewal 15 days before expiry
-  privateKey:
-    algorithm: RSA
-    size: 4096
-    rotationPolicy: Always
-  issuerRef:
-    group: command-issuer.keyfactor.com
-    kind: ClusterIssuer
-    name: keyfactor
-  secretName: cmf-tls
-  secretTemplate:
-    labels:
-      app.kubernetes.io/name: confluent-manager-for-apache-flink
-      app.kubernetes.io/instance: cmf-tls
-      app.kubernetes.io/component: cmf
-      fcbint.net/app-id: "11547"
-
-=== Server-side dry run ===
-certificate.cert-manager.io/cmf-tls unchanged (server dry run)
-
-=== Applying ===
-certificate.cert-manager.io/cmf-tls unchanged
-
-=== Waiting for Certificate to be Ready (Keyfactor must approve) ===
-
-
--------------------------------------------------------------
-
-RUN 1
-
-
-  labels:
-    app.kubernetes.io/name: confluent-manager-for-apache-flink
-    app.kubernetes.io/instance: cmf-tls
-    app.kubernetes.io/component: cmf
-    fcbint.net/app-id: "11547"
-  annotations:
-    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
-    metadata.command-issuer.keyfactor.com/Description: "Confluent Manager for Apache Flink — REST endpoint TLS"
-    metadata.command-issuer.keyfactor.com/Organization: FCB
-    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
-    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
-spec:
-  # Wildcard CN + SANs covering every service exposure path the FCB
-  # cluster-policy allows. Standardized across all four envs so a single
-  # cert template can be reused; per-env distinction is the namespace +
-  # the Keyfactor `Environment` annotation above.
-  commonName: "*.ocp.fcbint.net"
-  dnsNames:
-    - "*.ocp.fcbint.net"
-    - "*.svc"
-    - "*.svc.cluster.local"
-  duration: 8760h0m0s   # 1 year (max allowed by FCB approver-policy)
-  renewBefore: 360h     # request renewal 15 days before expiry
-  privateKey:
-    algorithm: RSA
-    size: 4096
-    rotationPolicy: Always
-  issuerRef:
-    group: command-issuer.keyfactor.com
-    kind: ClusterIssuer
-    name: keyfactor
-  secretName: cmf-tls
-  secretTemplate:
-    labels:
-      app.kubernetes.io/name: confluent-manager-for-apache-flink
-      app.kubernetes.io/instance: cmf-tls
-      app.kubernetes.io/component: cmf
-      fcbint.net/app-id: "11547"
-
-=== Server-side dry run ===
-certificate.cert-manager.io/cmf-tls created (server dry run)
-
-=== Applying ===
-certificate.cert-manager.io/cmf-tls created
-
-=== Waiting for Certificate to be Ready (Keyfactor must approve) ===
-error: timed out waiting for the condition on certificates/cmf-tls
-##[error]Bash exited with code '1'.
-Finishing: Apply cert-manager Certificate
+Error creating: pods "confluent-manager-for-apache-flink-75cfd98788-" is forbidden: unable to validate against any security context constraint: [provider "anyuid": Forbidden: not usable by user or serviceaccount, provider "arc-pa-redis-dev-scc": Forbidden: not usable by user or serviceaccount, provider restricted-v2: .spec.securityContext.fsGroup: Invalid value: []int64{1001}: 1001 is not an allowed group, provider restricted-v2: .containers[0].runAsUser: Invalid value: 1001: must be in the ranges: [1001320000, 1001329999], provider "restricted": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider "selinux-skip-relabeling": Forbidden: not usable by user or serviceaccount, provider "noobaa": Forbidden: not usable by user or serviceaccount, provider "hostmount-anyuid": Forbidden: not usable by user or serviceaccount, provider "aqua-enforcer-agent-scc": Forbidden: not usable by user or serviceaccount, provider "hostmount-anyuid-v2": Forbidden: not usable by user or serviceaccount, provider "machine-api-termination-handler": Forbidden: not usable by user or serviceaccount, provider "ingress-nginx": Forbidden: not usable by user or serviceaccount, provider "hostnetwork-v2": Forbidden: not usable by user or serviceaccount, provider "hostnetwork": Forbidden: not usable by user or serviceaccount, provider "hostaccess": Forbidden: not usable by user or serviceaccount, provider "egress-proxy-fcb-egress-proxy-scc": Forbidden: not usable by user or serviceaccount, provider "rook-ceph": Forbidden: not usable by user or serviceaccount, provider "rook-ceph-csi": Forbidden: not usable by user or serviceaccount, provider "node-exporter": Forbidden: not usable by user or serviceaccount, provider "collectord-fcb-collectord-scc": Forbidden: not usable by user or serviceaccount, provider "privileged": Forbidden: not usable by user or serviceaccount]
+DeploymentDconfluent-manager-for-apache-flink
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from deployment-controller
+Scaled up replica set confluent-manager-for-apache-flink-75cfd98788 to 1
+ServiceScmf-service
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from gatekeeper-webhook
+Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-network-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+PodPconfluent-manager-for-apache-flink-789cd75665-bj9mc
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from kubelet on dp12055oxc-wpxl-srrn8
+Stopping container cmf
+ReplicaSetRSconfluent-manager-for-apache-flink-789cd75665
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from replicaset-controller
+Deleted pod: confluent-manager-for-apache-flink-789cd75665-bj9mc
+DeploymentDconfluent-manager-for-apache-flink
+NamespaceNSdah-flink-dev
+Apr 30, 2026, 5:42 AM
+Generated from gatekeeper-webhook
+Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for Deployment: confluent-manager-for-apache-flink. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]} Review Documentation: * https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices * https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
