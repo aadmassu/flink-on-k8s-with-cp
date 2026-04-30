@@ -272,8 +272,12 @@ stages:
                 echo "================================================================="
 
                 echo ""
-                echo "--- ClusterIssuer keyfactor (full YAML — Keyfactor template name is in spec) ---"
-                if ! oc get clusterissuer keyfactor -o yaml 2>&1; then
+                echo "--- ClusterIssuer keyfactor ---"
+                # Brief check only — the full ClusterIssuer YAML (which carries
+                # the bound Keyfactor template name) is dumped by the cmf-tls
+                # pipeline's failure-path diagnostics. Run that pipeline if you
+                # need to chase a Keyfactor template / wildcard-vs-Entity issue.
+                if ! oc get clusterissuer keyfactor 2>&1; then
                   echo "[!!] ClusterIssuer keyfactor not found — cert-manager + Keyfactor onboarding may be incomplete."
                   FAIL="$FAIL clusterissuer"
                 fi
@@ -337,40 +341,11 @@ stages:
                   FAIL="$FAIL certificate-missing"
                 fi
 
-                echo ""
-                echo "================================================================="
-                echo " DIAGNOSTIC A — full describe certificate cmf-tls (no truncation)"
-                echo "================================================================="
-                oc describe certificate cmf-tls -n "$OC_NS" 2>&1 || true
-
-                echo ""
-                echo "================================================================="
-                echo " DIAGNOSTIC B — full describe of every CertificateRequest for cmf-tls"
-                echo "================================================================="
-                # cert-manager creates a new CertificateRequest per issuance attempt;
-                # show ALL of them, not just the latest, since rejection reasons may
-                # live on earlier attempts that the controller has retried past.
-                oc describe certificaterequest -n "$OC_NS" \
-                  -l cert-manager.io/certificate-name=cmf-tls 2>&1 \
-                  || echo "[i ] no CertificateRequest found"
-
-                echo ""
-                echo "================================================================="
-                echo " DIAGNOSTIC C — latest CertificateRequest as YAML (conditions in full)"
-                echo "================================================================="
-                # YAML form makes the .status.conditions block easier to read than
-                # describe output, especially when Keyfactor's rejection text is long.
-                oc get certificaterequest -n "$OC_NS" \
-                  -l cert-manager.io/certificate-name=cmf-tls \
-                  -o yaml 2>&1 || echo "[i ] no CertificateRequest found"
-
-                echo ""
-                echo "================================================================="
-                echo " DIAGNOSTIC D — recent cert-manager events scoped to cmf-tls"
-                echo "================================================================="
-                oc get events -n "$OC_NS" --sort-by=.lastTimestamp 2>&1 \
-                  | grep -iE "cmf-tls|certificate|keyfactor" \
-                  | tail -30 || echo "(none)"
+                # Note: deep diagnostics (describe certificate / certificaterequest /
+                # events / clusterissuer YAML) live in the cmf-tls pipeline's
+                # "Diagnostics on failure" task. If this step reports cert-not-Ready,
+                # re-run cmf-tls.yaml — its failure path will dump the rejection
+                # reason from Keyfactor.
 
                 echo ""
                 echo "--- Certificate Ready condition ---"

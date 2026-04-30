@@ -110,3 +110,67 @@ stages:
             env:
               OC_NS: dah-flink-${{ parameters.environment }}
               TARGET_ENV: ${{ parameters.environment }}
+
+          # ------------------------------------------------------------
+          # Diagnostics on failure — runs only when the apply step above
+          # exited non-zero (cert never reached Ready, or Secret missing
+          # required keys). Dumps everything you'd need to figure out why
+          # Keyfactor or cert-manager rejected the request, without having
+          # to run a separate verify pipeline.
+          # ------------------------------------------------------------
+          - task: Bash@3
+            displayName: "Diagnostics on failure"
+            condition: failed()
+            inputs:
+              targetType: inline
+              script: |
+                set -uo pipefail
+
+                echo ""
+                echo "================================================================="
+                echo " DIAGNOSTIC A — describe certificate cmf-tls (full)"
+                echo "================================================================="
+                oc describe certificate cmf-tls -n "$OC_NS" 2>&1 || true
+
+                echo ""
+                echo "================================================================="
+                echo " DIAGNOSTIC B — describe every CertificateRequest for cmf-tls"
+                echo "================================================================="
+                # cert-manager creates a new CertificateRequest per issuance attempt;
+                # show ALL of them, not just the latest, since rejection reasons may
+                # live on earlier attempts that the controller has retried past.
+                oc describe certificaterequest -n "$OC_NS" \
+                  -l cert-manager.io/certificate-name=cmf-tls 2>&1 \
+                  || echo "[i ] no CertificateRequest found"
+
+                echo ""
+                echo "================================================================="
+                echo " DIAGNOSTIC C — latest CertificateRequest as YAML"
+                echo "================================================================="
+                # YAML form makes .status.conditions easier to read than describe
+                # output, especially when Keyfactor's rejection text is long.
+                oc get certificaterequest -n "$OC_NS" \
+                  -l cert-manager.io/certificate-name=cmf-tls \
+                  -o yaml 2>&1 || echo "[i ] no CertificateRequest found"
+
+                echo ""
+                echo "================================================================="
+                echo " DIAGNOSTIC D — recent events scoped to cmf-tls / certificate / keyfactor"
+                echo "================================================================="
+                oc get events -n "$OC_NS" --sort-by=.lastTimestamp 2>&1 \
+                  | grep -iE "cmf-tls|certificate|keyfactor" \
+                  | tail -30 || echo "(none)"
+
+                echo ""
+                echo "================================================================="
+                echo " DIAGNOSTIC E — ClusterIssuer keyfactor (full YAML)"
+                echo "================================================================="
+                # Bound Keyfactor template name lives in spec — useful when chasing
+                # wildcard / Entity template rejections.
+                oc get clusterissuer keyfactor -o yaml 2>&1 || echo "[i ] keyfactor ClusterIssuer not found"
+
+                # Always exit 0 — this step is informational only; the failure
+                # was already recorded by the prior step.
+                exit 0
+            env:
+              OC_NS: dah-flink-${{ parameters.environment }}
