@@ -1,51 +1,51 @@
-Starting: Install CMF
-==============================================================================
-Task         : Bash
-Description  : Run a Bash script on macOS, Linux, or Windows
-Version      : 3.231.4
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/e596c4e2-ea70-4dcd-953c-5bd5b3211f49.sh
-=== Git commit ===
-87ce777ce1bf046b6d0517e3dcf485ee305a52a5
 
-=== Resources CMF will create ===
-kind: ConfigMap
-  name: confluent-manager-for-apache-flink
-  namespace: dah-flink-dev
-kind: Service
-  name: cmf-service
-  namespace: dah-flink-dev
-kind: Deployment
-  name: confluent-manager-for-apache-flink
-  namespace: dah-flink-dev
 
-=== Checking for stuck Helm release ===
+--- Resources owned by the release (about to be deleted) ---
+NAME                  TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+service/cmf-service   ClusterIP   10.245.39.27   <none>        443/TCP   20d
 
-=== Creating CMF secrets ===
-secret/cmf-db-credentials configured
-secret/cmf-encryption-key configured
-secret/confluent-license configured
+NAME                                                 READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/confluent-manager-for-apache-flink   0/1     0            0           19d
 
-=== Verifying cmf-tls Secret exists ===
-secret/cmf-tls found.
+NAME                                                            DESIRED   CURRENT   READY   AGE
+replicaset.apps/confluent-manager-for-apache-flink-56dd985b7    1         0         0       29m
+replicaset.apps/confluent-manager-for-apache-flink-5b5b7646bd   0         0         0       13d
+replicaset.apps/confluent-manager-for-apache-flink-5b6f95b6b4   0         0         0       9d
+replicaset.apps/confluent-manager-for-apache-flink-5dd4fc98dc   0         0         0       15d
+replicaset.apps/confluent-manager-for-apache-flink-5f9c75f474   0         0         0       45m
+replicaset.apps/confluent-manager-for-apache-flink-65cbb66987   0         0         0       13d
+replicaset.apps/confluent-manager-for-apache-flink-674b565bd    0         0         0       9d
+replicaset.apps/confluent-manager-for-apache-flink-698bf65b4d   0         0         0       13d
+replicaset.apps/confluent-manager-for-apache-flink-7477496f96   0         0         0       12d
+replicaset.apps/confluent-manager-for-apache-flink-754fdc8758   0         0         0       15d
+replicaset.apps/confluent-manager-for-apache-flink-75cfd98788   0         0         0       58m
+replicaset.apps/confluent-manager-for-apache-flink-77f6f9cbc5   0         0         0       12d
+replicaset.apps/confluent-manager-for-apache-flink-789cd75665   0         0         0       8d
+replicaset.apps/confluent-manager-for-apache-flink-7bb885d4f    0         0         0       12d
+
+--- Running helm uninstall ---
+release "confluent-cmf" uninstalled
+
+--- Verifying cleanup ---
+Pods (should be none):
+No resources found in dah-flink-dev namespace.
+
+ReplicaSets (should be none):
+No resources found in dah-flink-dev namespace.
+
+Deployment (should be Not Found):
+Error from server (NotFound): deployments.apps "confluent-manager-for-apache-flink" not found
+
+Service cmf-service (should be Not Found):
+Error from server (NotFound): services "cmf-service" not found
+
+Secrets that SHOULD survive (cmf-tls + the three pipeline-managed):
+  [ok] cmf-tls
+  [ok] cmf-db-credentials
+  [ok] cmf-encryption-key
+  [ok] confluent-license
 
 ==================================================================
- UNINSTALL MODE — about to delete the helm release confluent-cmf
+ UNINSTALL DONE — next pipeline run will reinstall CMF from scratch
 ==================================================================
-
---- Helm history before uninstall ---
-REVISION	UPDATED                 	STATUS    	CHART                                   	APP VERSION	DESCRIPTION                                              
-18      	Fri Apr 17 14:34:20 2026	superseded	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Rollback to 16                                           
-19      	Fri Apr 17 14:34:21 2026	superseded	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade complete                                         
-20      	Fri Apr 17 15:10:29 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
-21      	Fri Apr 17 15:22:37 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
-22      	Mon Apr 20 14:10:26 2026	superseded	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade complete                                         
-23      	Mon Apr 20 15:35:23 2026	superseded	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade complete                                         
-24      	Tue Apr 21 13:50:02 2026	deployed  	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade complete                                         
-25      	Thu Apr 30 06:42:22 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
-26      	Thu Apr 30 06:55:39 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
-27      	Thu Apr 30 07:12:02 2026	failed    	confluent-manager-for-apache-flink-2.2.0	2.2.0      	Upgrade "confluent-cmf" failed: context deadline exceeded
+Finishing: Install CMF
