@@ -126,19 +126,72 @@ stages:
                 fi
                 echo "secret/cmf-tls found."
 
+                # ----------------------------------------------------------
+                # TEMPORARY DIAGNOSTIC MODE — helm upgrade commented out so we
+                # don't burn 10 minutes on the --wait while we figure out why
+                # the previous install kept rolling back. Restore the helm
+                # block below once we have a clean install path again.
+                # ----------------------------------------------------------
+                # echo ""
+                # echo "=== Installing CMF ==="
+                # helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
+                #   --namespace "$OC_NS" \
+                #   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
+                #   --set namespaced=true \
+                #   --set cmf.database.jdbc.url="$CMF_DB_URL" \
+                #   --set cmf.database.jdbc.user="$CMF_DB_USER" \
+                #   --wait --timeout 10m
+                #
+                # echo ""
+                # helm status confluent-cmf -n "$OC_NS"
+                # oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
+
                 echo ""
-                echo "=== Installing CMF ==="
-                helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
+                echo "=================================================================="
+                echo " DIAGNOSTIC 1 — helm history confluent-cmf (rollbacks visible here)"
+                echo "=================================================================="
+                helm history confluent-cmf -n "$OC_NS" 2>&1 || true
+
+                echo ""
+                echo "=================================================================="
+                echo " DIAGNOSTIC 2 — helm get values (current revision)"
+                echo "=================================================================="
+                helm get values confluent-cmf -n "$OC_NS" 2>&1 || true
+
+                echo ""
+                echo "=================================================================="
+                echo " DIAGNOSTIC 3 — helm get manifest, container securityContext slice"
+                echo "=================================================================="
+                helm get manifest confluent-cmf -n "$OC_NS" 2>&1 \
+                  | grep -B2 -A10 -E "securityContext|runAsUser|fsGroup|allowPrivilegeEscalation" \
+                  || echo "(no securityContext / runAs / fsGroup matches in rendered manifest)"
+
+                echo ""
+                echo "=================================================================="
+                echo " DIAGNOSTIC 4 — live Deployment pod template (what's actually running)"
+                echo "=================================================================="
+                oc get deployment confluent-manager-for-apache-flink -n "$OC_NS" -o yaml 2>&1 \
+                  | grep -B2 -A10 -E "securityContext|runAsUser|fsGroup|allowPrivilegeEscalation" \
+                  || echo "(no securityContext / runAs / fsGroup matches in live Deployment)"
+
+                echo ""
+                echo "=================================================================="
+                echo " DIAGNOSTIC 5 — current ReplicaSets (helps spot rolled-back revisions)"
+                echo "=================================================================="
+                oc get rs -n "$OC_NS" --sort-by=.metadata.creationTimestamp 2>&1 || true
+
+                echo ""
+                echo "=================================================================="
+                echo " DIAGNOSTIC 6 — what helm WOULD install right now (template only)"
+                echo "=================================================================="
+                helm template confluent-cmf charts/confluent-manager-for-apache-flink \
                   --namespace "$OC_NS" \
                   -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
                   --set namespaced=true \
                   --set cmf.database.jdbc.url="$CMF_DB_URL" \
-                  --set cmf.database.jdbc.user="$CMF_DB_USER" \
-                  --wait --timeout 10m
-
-                echo ""
-                helm status confluent-cmf -n "$OC_NS"
-                oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
+                  --set cmf.database.jdbc.user="$CMF_DB_USER" 2>&1 \
+                  | grep -B2 -A10 -E "securityContext|runAsUser|fsGroup|allowPrivilegeEscalation" \
+                  || echo "(no securityContext / runAs / fsGroup matches in template)"
             env:
               OC_NS: dah-flink-${{ parameters.environment }}
               TARGET_ENV: ${{ parameters.environment }}
