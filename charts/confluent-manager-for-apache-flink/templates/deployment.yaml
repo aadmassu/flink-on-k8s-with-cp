@@ -51,6 +51,21 @@ spec:
       {{- end }}
       containers:
         - name: cmf
+          # Container-level securityContext compliant with the PodSecurity
+          # `restricted` profile (and OpenShift's restricted-v2 SCC). FCB's
+          # cluster enforces this at admission — without all three of
+          # allowPrivilegeEscalation=false, capabilities.drop=[ALL], and a
+          # seccompProfile, the pod is rejected. runAsUser is intentionally
+          # left unset so OpenShift's SCC assigns a UID from the namespace's
+          # allowed range.
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
