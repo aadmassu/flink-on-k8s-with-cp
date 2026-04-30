@@ -7,7 +7,7 @@ Helm values and Kubernetes/CMF manifests for the FCB stack, deployed via the pip
 | Directory | Type | Deployed today? | Pipeline |
 |-----------|------|-----------------|----------|
 | [`confluent-cmf/`](confluent-cmf/) | Helm values for the local CMF chart | **Yes** | [`cmf.yaml`](../.azure-pipelines/cmf.yaml) |
-| [`confluent-flink/<env>/`](confluent-flink/) (`environment.yaml`, `kafka-catalog.yaml`, `kafka-database.yaml`) | CMF REST API payloads, expressed as YAML | **Yes (dev populated; qa/uat/prd to follow)** | [`flink-environment`](../.azure-pipelines/flink-environment.yaml), [`kafka-catalog`](../.azure-pipelines/kafka-catalog.yaml), [`kafka-database`](../.azure-pipelines/kafka-database.yaml) |
+| [`confluent-flink/<env>/`](confluent-flink/) (`environment.yaml`, `kafka-catalog.yaml`, `kafka-database.yaml`) | CMF REST API payloads, expressed as YAML | **Yes (dev populated; qa/uat/prd to follow)** | [`flink-environments`](../.azure-pipelines/flink-environments.yaml) (single pipeline applies all three) |
 | [`confluent-flink/<env>/`](confluent-flink/) (`cmf-rest-class.yaml`, `flink-environment.yaml`, `flink-pvc.yaml`, `flink-session-cluster.yaml`) | CFK-based Flink CRs | **No** — kept as template; FCB doesn't run CFK today | [`flink-crs.yaml`](../.azure-pipelines/flink-crs.yaml) (not active) |
 | [`confluent-platform/`](confluent-platform/) | CFK-based Kafka / SR / Connect / C3 CRs | **No** — FCB uses VM Kafka, not in-cluster | (none) |
 
@@ -49,10 +49,10 @@ Driven by [`.azure-pipelines/cmf.yaml`](../.azure-pipelines/cmf.yaml).
 
 ```bash
 # YAML manifests at apps/confluent-flink/<env>/{environment,kafka-catalog,kafka-database}.yaml
-# Each pipeline reads its own manifest, converts YAML -> JSON via PyYAML, and POSTs to CMF.
+# A single pipeline reads all three, converts YAML -> JSON via PyYAML, and POSTs them to CMF.
 ```
 
-Driven by [`.azure-pipelines/flink-environment.yaml`](../.azure-pipelines/flink-environment.yaml), [`.azure-pipelines/kafka-catalog.yaml`](../.azure-pipelines/kafka-catalog.yaml), [`.azure-pipelines/kafka-database.yaml`](../.azure-pipelines/kafka-database.yaml).
+Driven by [`.azure-pipelines/flink-environments.yaml`](../.azure-pipelines/flink-environments.yaml).
 
 ### CFK-based CRs (template only)
 

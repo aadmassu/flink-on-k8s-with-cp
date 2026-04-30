@@ -8,9 +8,9 @@ Per environment under `apps/confluent-flink/<env>/`:
 
 | File | Kind | Applied via | Active? |
 |------|------|-------------|---------|
-| `environment.yaml` | CMF REST payload — Flink Environment | [`flink-environment.yaml`](../../.azure-pipelines/flink-environment.yaml) → `POST /cmf/api/v1/environments` | **Yes (dev)** |
-| `kafka-catalog.yaml` | CMF REST payload — Kafka Catalog | [`kafka-catalog.yaml`](../../.azure-pipelines/kafka-catalog.yaml) → `POST /cmf/api/v1/catalogs/kafka` | **Yes (dev)** |
-| `kafka-database.yaml` | CMF REST payload — Kafka Database | [`kafka-database.yaml`](../../.azure-pipelines/kafka-database.yaml) → `POST /cmf/api/v1/catalogs/kafka/<catalog>/databases` | **Yes (dev)** |
+| `environment.yaml` | CMF REST payload — Flink Environment | [`flink-environments.yaml`](../../.azure-pipelines/flink-environments.yaml) → `POST /cmf/api/v1/environments` | **Yes (dev)** |
+| `kafka-catalog.yaml` | CMF REST payload — Kafka Catalog | same pipeline → `POST /cmf/api/v1/catalogs/kafka` | **Yes (dev)** |
+| `kafka-database.yaml` | CMF REST payload — Kafka Database | same pipeline → `POST /cmf/api/v1/catalogs/kafka/<catalog>/databases` | **Yes (dev)** |
 
 These are **not Kubernetes resources**. They're CMF REST API payloads, authored as YAML in Git for readability and converted to JSON in-flight by the pipeline (PyYAML) before posting.
 
@@ -72,20 +72,22 @@ computePoolDefaults:
 
 K8s-style shape (with `apiVersion: cmf.confluent.io/v1`, `kind`, `metadata`, `spec`) — but still served via CMF REST, **not** by the K8s API server. The shape is what CMF expects on POST.
 
-The `kafka-database` pipeline reads `kafka-catalog.yaml` first to learn the **parent catalog name** for the URL path; if the catalog isn't already registered in CMF, the database pipeline aborts with a clear error pointing you to run `kafka-catalog` first.
+Within a single `flink-environments` run the pipeline reads `kafka-catalog.yaml` to learn the parent catalog name and uses it when posting `kafka-database.yaml`.
 
 ## Run order
 
-1. [`.azure-pipelines/flink-environment.yaml`](../../.azure-pipelines/flink-environment.yaml) — upserts the environment.
-2. [`.azure-pipelines/kafka-catalog.yaml`](../../.azure-pipelines/kafka-catalog.yaml) — creates the catalog.
-3. [`.azure-pipelines/kafka-database.yaml`](../../.azure-pipelines/kafka-database.yaml) — creates the database under the catalog.
+A single pipeline run applies all three resources in order:
 
-All three are **idempotent** (env is upsert; catalog/database are create-if-missing) — re-running is safe.
+1. POST `environment.yaml` to `/cmf/api/v1/environments` (upsert — always replace).
+2. GET `/cmf/api/v1/catalogs/kafka/<catalog>` and POST `kafka-catalog.yaml` if absent (create-if-missing).
+3. GET `/cmf/api/v1/catalogs/kafka/<catalog>/databases/<database>` and POST `kafka-database.yaml` if absent (create-if-missing).
+
+The pipeline is idempotent — re-running is safe.
 
 ## Cross-references
 
 | Resource | Path |
 |---|---|
 | CMF Helm install | [`apps/confluent-cmf/`](../confluent-cmf/) |
-| Three CMF REST pipelines | [`.azure-pipelines/flink-environment.yaml`](../../.azure-pipelines/flink-environment.yaml), [`.azure-pipelines/kafka-catalog.yaml`](../../.azure-pipelines/kafka-catalog.yaml), [`.azure-pipelines/kafka-database.yaml`](../../.azure-pipelines/kafka-database.yaml) |
+| CMF REST pipeline (single, applies all three) | [`.azure-pipelines/flink-environments.yaml`](../../.azure-pipelines/flink-environments.yaml) |
 | CFK-style CR pipeline (template, not active) | [`.azure-pipelines/flink-crs.yaml`](../../.azure-pipelines/flink-crs.yaml) |

@@ -34,9 +34,7 @@ openshift-prereqs/<env>/manifests/
 ├── connectivity-test.yaml        # Busybox-based DNS + TCP probe to VM Kafka, SR, S3, SQL Server
 ├── push-image.yaml               # Push CMF / utility images to FCB Artifactory
 ├── cmf.yaml                      # Install CMF via Helm
-├── flink-environment.yaml        # Apply Flink Environment to CMF (REST)
-├── kafka-catalog.yaml            # Apply Kafka Catalog to CMF (REST)
-├── kafka-database.yaml           # Apply Kafka Database to CMF (REST)
+├── flink-environments.yaml       # Apply Flink Environment + Kafka Catalog + Kafka Database to CMF (REST)
 └── flink-crs.yaml                # CFK-style Flink CRs (template; not used until CFK lands)
 ```
 
@@ -53,7 +51,7 @@ Each environment has its own `<env>-openshift-credentials` variable group in Azu
 
 ## Deployment order
 
-> **Strict order.** `cmf-tls` MUST run before `cmf` — the `cmf` pipeline has a pre-flight check for `secret/cmf-tls` and aborts if it's missing. Likewise `kafka-catalog` MUST run before `kafka-database`.
+> **Strict order.** `cmf-tls` MUST run before `cmf` — the `cmf` pipeline has a pre-flight check for `secret/cmf-tls` and aborts if it's missing.
 
 For a new environment:
 
@@ -61,7 +59,7 @@ For a new environment:
 2. Run `connectivity-test.yaml` from inside the namespace — verifies the pod can reach VM Kafka brokers, Schema Registry, REST Proxy, NetApp S3, and SQL Server.
 3. Run `cmf-tls.yaml` — applies the cert-manager `Certificate`, waits for Keyfactor approval, produces `secret/cmf-tls` (`tls.crt`, `tls.key`, `ca.crt`).
 4. Run `cmf.yaml` — installs CMF via Helm. Pre-flights `secret/cmf-tls`, then mounts it into the pod for HTTPS on the REST endpoint. Other secrets (DB password, encryption key, license) come from the ADO variable group today; ESO+CyberArk integration is the target state (separate branch).
-5. Run `flink-environment.yaml` → `kafka-catalog.yaml` → `kafka-database.yaml` in order — registers the Flink environment, catalog, and database via CMF's REST API.
+5. Run `flink-environments.yaml` — registers the Flink environment, Kafka catalog, and Kafka database via CMF's REST API in a single run.
 6. Run `verify-flink-setup.yaml` — end-to-end read-only health check; the summary table confirms each layer is green.
 
 ## FCB-specific operational notes

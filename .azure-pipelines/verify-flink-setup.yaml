@@ -632,7 +632,7 @@ stages:
                     echo "[ok] $label '$name' present in CMF"
                     return 0
                   else
-                    echo "[!!] $label '$name' missing or unreachable (HTTP $HTTP) — re-run the corresponding pipeline."
+                    echo "[!!] $label '$name' missing or unreachable (HTTP $HTTP) — re-run the flink-environments pipeline."
                     return 1
                   fi
                 }
