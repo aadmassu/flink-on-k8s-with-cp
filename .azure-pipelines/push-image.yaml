@@ -23,6 +23,10 @@ parameters:
     displayName: "Target Tag in Artifactory"
     type: string
     default: "2.3.0-fcb-preview-2"
+  - name: sourceTag
+    displayName: "Source Tag in -docker-prod (promotion mode only; defaults to targetTag)"
+    type: string
+    default: "5632522f7-amd64"
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -102,7 +106,7 @@ stages:
               script: |
                 set -euo pipefail
 
-                SOURCE_IMAGE="artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:$TARGET_TAG"
+                SOURCE_IMAGE="artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:$SOURCE_TAG"
                 TARGET_IMAGE="artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:$TARGET_TAG"
 
                 CONTAINER_CLI="docker"
@@ -141,5 +145,6 @@ stages:
                 echo "                  to: $TARGET_IMAGE"
             env:
               TARGET_TAG: ${{ parameters.targetTag }}
+              SOURCE_TAG: ${{ parameters.sourceTag }}
               ART_USER: $(artifactory-svc-user)
               ART_PWD: $(artifactory-svc-user-password)
