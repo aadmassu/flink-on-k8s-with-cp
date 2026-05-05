@@ -10,11 +10,13 @@
 trigger: none
 
 parameters:
-  - name: environment
-    displayName: "Target Environment"
+  - name: artifactoryRepo
+    displayName: "Artifactory Repo"
     type: string
-    default: dev
-    values: [dev, qa, uat, prd]
+    default: nonprod
+    # nonprod = camdepositsharedservices-docker-dev (consumed by dev / qa / uat)
+    # prd     = camdepositsharedservices-docker-prod (consumed by prd only)
+    values: [nonprod, prd]
   - name: sourceTar
     displayName: "Source tar filename in repo root"
     type: string
@@ -25,18 +27,19 @@ parameters:
     default: "2.3.0-fcb-preview-2"
 
 variables:
-  - ${{ if eq(parameters.environment, 'dev') }}:
+  - ${{ if eq(parameters.artifactoryRepo, 'nonprod') }}:
+    - name: REGISTRY_REPO
+      value: camdepositsharedservices-docker-dev
+    # Artifactory creds shared across the per-env variable groups; pick dev for nonprod pushes.
     - group: dev-openshift-credentials
-  - ${{ if eq(parameters.environment, 'qa') }}:
-    - group: qa-openshift-credentials
-  - ${{ if eq(parameters.environment, 'uat') }}:
-    - group: uat-openshift-credentials
-  - ${{ if eq(parameters.environment, 'prd') }}:
+  - ${{ if eq(parameters.artifactoryRepo, 'prd') }}:
+    - name: REGISTRY_REPO
+      value: camdepositsharedservices-docker-prod
     - group: prd-openshift-credentials
 
 stages:
   - stage: PushImage
-    displayName: "Push Image (${{ parameters.targetTag }})"
+    displayName: "Push Image (${{ parameters.artifactoryRepo }} / ${{ parameters.targetTag }})"
     jobs:
       - job: PushImage
         pool: DevOpsLinux
@@ -52,7 +55,7 @@ stages:
               script: |
                 set -euo pipefail
 
-                REGISTRY="artifactory.fcbint.net/camdepositsharedservices-docker-dev"
+                REGISTRY="artifactory.fcbint.net/$REGISTRY_REPO"
                 TARGET_IMAGE="$REGISTRY/confluentinc/cp-cmf:$TARGET_TAG"
 
                 echo "=== Loading image from $SOURCE_TAR ==="
@@ -94,5 +97,6 @@ stages:
             env:
               SOURCE_TAR: ${{ parameters.sourceTar }}
               TARGET_TAG: ${{ parameters.targetTag }}
+              REGISTRY_REPO: $(REGISTRY_REPO)
               ART_USER: $(artifactory-svc-user)
               ART_PWD: $(artifactory-svc-user-password)
