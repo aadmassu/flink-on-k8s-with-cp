@@ -1,4 +1,78 @@
-Starting: Promote image -docker-prod → -docker-dev
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+Remote "origin" does not support the Git LFS locking API. Consider disabling it with:
+  $ git config lfs.https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS.git/info/lfs.locksverify false
+batch request: ** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+remote: Could not find a Command Extension for Command:git-lfs-authenticate: exit status 2
+error: failed to push some refs to 'ssh://azdos-prd.fcpd.fcbint.net:22/CITMain/Banking-DAH/_git/DAH.Kafka.OS'
+
+
+Checkout DAH.Kafka.OS@main to s
+
+View raw log
+
+Starting: Checkout DAH.Kafka.OS@main to s
+==============================================================================
+Task         : Get sources
+Description  : Get sources from a repository. Supports Git, TfsVC, and SVN repositories.
+Version      : 1.0.0
+Author       : Microsoft
+Help         : [More Information](https://go.microsoft.com/fwlink/?LinkId=798199)
+==============================================================================
+Syncing repository: DAH.Kafka.OS (Git)
+git version
+git version 2.43.7
+git init "/opt/azure_pipelines/_work/3457/s"
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: is subject to change. To configure the initial branch name to use in all
+hint: of your new repositories, which will suppress this warning, call:
+hint: 
+hint: 	git config --global init.defaultBranch <name>
+hint: 
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint: 
+hint: 	git branch -m <name>
+Initialized empty Git repository in /opt/azure_pipelines/_work/3457/s/.git/
+git remote add origin https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS
+git config gc.auto 0
+git config --get-all http.https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS.extraheader
+git config --get-all http.extraheader
+git config --get-regexp .*extraheader
+git config --get-all http.proxy
+git config http.version HTTP/1.1
+git --config-env=http.extraheader=env_var_http.extraheader fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin
+remote: Azure Repos        
+remote: 
+remote: Found 1624 objects to send. (57 ms)        
+Receiving objects:   0% (1/1624)
+Receiving objects:   1% (17/1624)
+Receiving objects:   2% (33/1624)
+Receiving objects:   3% (49/1624)
+Receiving objects:   4% (65/1624)
+Receiving objects:   5% (82/1624)
+Receiving objects:   6% (98/1624)
+Receiving objects:   7% (114/1624)
+Receiving objects:   8% (130/1624)
+Receiving objects:   9% (147/1624)
+Receiving objects:  10% (163/1624)
+Receiving objects:  11% (179/1624)
+Receiving objects:  12% (195/1624)
+Receiving objects:  13% (212/1624)
+Receiving objects:  14% (228/1624)
+Receiving objects:  15% (244/1624)
+Receiving objects:  16% (260/1624)
+Receiving objects:  17% (277/1624)
+
+
+Load, tag, and push image
+
+View raw log
+
+Starting: Load, tag, and push image
 ==============================================================================
 Task         : Bash
 Description  : Run a Bash script on macOS, Linux, or Windows
@@ -8,8 +82,12 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/1e2ea2cc-5b42-4ae1-9a3a-c30adb15b5d9.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/b2a9a414-ac28-4292-b084-fee707a39ce4.sh
+=== Loading image from cp-cmf-2.3.0-fcb-amd64.tar ===
 Using docker
+Loaded image: confluentinc/cp-cmf:2.3.0-fcb-amd64
+
+=== Tagging as artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview ===
 
 === Logging in to Artifactory ===
 
@@ -19,7 +97,30 @@ https://docs.docker.com/go/credential-store/
 
 Login Succeeded
 
-=== Pulling artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.3.0-fcb-preview-2 ===
-Error response from daemon: manifest for artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.3.0-fcb-preview-2 not found: manifest unknown: The named manifest is not known to the registry.
-##[error]Bash exited with code '1'.
-Finishing: Promote image -docker-prod → -docker-dev
+=== Pushing artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview ===
+The push refers to repository [artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf]
+216bb75c0207: Preparing
+25ca2bd6f59a: Preparing
+5f70bf18a086: Preparing
+8fd392d9f23c: Preparing
+18a089a4fcc4: Preparing
+b51229e9f4f3: Preparing
+805c06bdce53: Preparing
+eb1b304b4ac2: Preparing
+cfb40e11cc09: Preparing
+eb1b304b4ac2: Waiting
+cfb40e11cc09: Waiting
+b51229e9f4f3: Waiting
+805c06bdce53: Waiting
+5f70bf18a086: Layer already exists
+b51229e9f4f3: Pushed
+25ca2bd6f59a: Pushed
+18a089a4fcc4: Pushed
+805c06bdce53: Pushed
+216bb75c0207: Pushed
+cfb40e11cc09: Pushed
+eb1b304b4ac2: Pushed
+8fd392d9f23c: Pushed
+2.3.0-fcb-preview: digest: sha256:8613f9fc141d8300c8a3e19f4cd166fc7a3e91daedf16266cf0f3c7c71932a60 size: 2194
+
+=== Done ===
