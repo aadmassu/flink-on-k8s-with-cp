@@ -11,6 +11,7 @@ The pipelines in this folder operate against FCB's on-prem OpenShift, deploying 
 | [`push-image.yaml`](push-image.yaml) | Image promotion | Push CMF or utility container images from a tarball into FCB Artifactory. |
 | [`cmf.yaml`](cmf.yaml) | Install CMF | Helm install of `confluent-manager-for-apache-flink` from the local `charts/` copy. Creates `cmf-db-credentials`, `cmf-encryption-key`, `confluent-license` Secrets from variable-group values, then runs `helm upgrade --install`. |
 | [`flink-environments.yaml`](flink-environments.yaml) | CMF REST | Single pipeline that POSTs three CMF resources in order: Flink Environment (`apps/confluent-flink/<env>/environment.yaml`) as upsert, Kafka Catalog (`kafka-catalog.yaml`) and Kafka Database (`kafka-database.yaml`) as create-if-missing. Authored as YAML in Git, converted to JSON in-flight (PyYAML) before posting. |
+| [`flink-application.yaml`](flink-application.yaml) | Flink app install | Applies app ConfigMap/Secret and submits the CMF `FlinkApplication` for the AEP rate-limit job. |
 
 ## Variable group: `<env>-openshift-credentials`
 
@@ -64,7 +65,8 @@ First-time-per-env order:
 2. **`cmf-tls`** — applies the cert-manager `Certificate`, waits up to 10 minutes for Keyfactor approval, produces `secret/cmf-tls` with `tls.crt` + `tls.key` + `ca.crt`.
 3. `cmf` — Helm-installs CMF (mounts `cmf-tls`, serves HTTPS on `cmf-service:443`).
 4. `flink-environments` — registers the Flink environment, Kafka catalog, and Kafka database via CMF's REST API.
-5. `verify-flink-setup` — end-to-end read-only health check; summary table confirms every layer is green.
+5. `flink-application`  - Applies app ConfigMap/Secret and submits the CMF `FlinkApplication` for the AEP rate-limit job.
+6. `verify-flink-setup` — end-to-end read-only health check; summary table confirms every layer is green.
 
 `flink-environments` is idempotent (environment is upsert; catalog/database are create-if-missing) — re-running is safe. `cmf-tls` is bootstrap-once per env; cert-manager handles renewal silently after that.
 

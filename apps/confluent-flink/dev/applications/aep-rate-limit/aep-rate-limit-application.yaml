@@ -1,0 +1,57 @@
+apiVersion: cmf.confluent.io/v1
+kind: FlinkApplication
+metadata:
+  name: aep-rate-limit-job
+  labels:
+    app.kubernetes.io/name: aep-rate-limit-job
+    app.kubernetes.io/component: flink-application
+    fcbint.net/app-id: "11547"
+spec:
+  image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/REPLACE_WITH_APP_REPO/aep-rate-limit-job:1.0.0
+  flinkVersion: v2_1
+
+  # Use the SA that exists in dah-flink-dev and has the FCB-approved RBAC.
+  # If Container Platforms provides a separate runtime SA named "flink", use that instead.
+  serviceAccount: flink-operator
+
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+    execution.checkpointing.interval: "60s"
+    execution.checkpointing.mode: AT_LEAST_ONCE
+    restart-strategy.type: fixed-delay
+    restart-strategy.fixed-delay.attempts: "3"
+    restart-strategy.fixed-delay.delay: "10 s"
+
+    # Replace with approved NetApp S3 path for dev if available.
+    # Example:
+    # state.checkpoints.dir: "s3://<dev-bucket>/flink/aep-rate-limit/checkpoints"
+    # state.savepoints.dir: "s3://<dev-bucket>/flink/aep-rate-limit/savepoints"
+
+  podTemplate:
+    spec:
+      imagePullSecrets:
+        - name: artifactory-registry-secret
+      containers:
+        - name: flink-main-container
+          envFrom:
+            - configMapRef:
+                name: aep-rate-limit-config
+            - secretRef:
+                name: aep-rate-limit-secrets
+
+  jobManager:
+    resource:
+      memory: 4000m
+      cpu: 1
+
+  taskManager:
+    resource:
+      memory: 4000m
+      cpu: 1
+
+  job:
+    jarURI: local:///opt/flink/usrlib/aep-rate-limit-job.jar
+    entryClass: com.company.flink.AepRateLimitJob
+    state: running
+    parallelism: 2
+    upgradeMode: savepoint

@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aep-rate-limit-config
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: aep-rate-limit-job
+    app.kubernetes.io/component: flink-application
+    fcbint.net/app-id: "11547"
+data:
+  JOB_NAME: "aep-rate-limit-job"
+
+  # Kafka source
+  SOURCE_TOPICS: "place_holder_topic"
+  CONSUMER_GROUP_ID: "aep-rate-limit-group"
+  AUTO_OFFSET_RESET: "earliest"
+  DLQ_TOPIC: "placeholder_dlq"
+
+  # AEP sink
+  AEP_ENDPOINT_URL: "http://placeholder.com"
+  CONTENT_TYPE: "application/json"
+  HTTP_TIMEOUT_MS: "10000"
+  HTTP_MAX_RETRIES: "6"
+  HTTP_INITIAL_BACKOFF_MS: "500"
+  HTTP_MAX_BACKOFF_MS: "30000"
+
+  # AEP connector-equivalent header
+  AEP_HEADER_1_NAME: "x-adobe-dataset-id"
+
+  # Rate and batch controls
+  RATE_LIMIT_REQUESTS_PER_SECOND: "200"
+  TARGET_BATCH_SIZE_BYTES: "10240"
+  MAX_BATCH_SIZE_BYTES: "51200"
+  MAX_BATCH_RECORDS: "166"
+  BATCH_FLUSH_INTERVAL_MS: "100"
+
+  # Runtime behavior
+  CHECKPOINTING_ENABLED: "true"
+  CHECKPOINT_INTERVAL_MS: "60000"
+  DELIVERY_GUARANTEE: "AT_LEAST_ONCE"
+  ENABLE_DYNAMIC_429_BACKOFF: "true"
+  ENABLE_DOWNSTREAM_COMPRESSION: "false"
+
+  # DLQ/logging behavior
+  DLQ_INCLUDE_ORIGINAL_PAYLOAD: "true"
+  DLQ_INCLUDE_ERROR_MESSAGE: "true"
+  DLQ_INCLUDE_HTTP_RESPONSE_BODY: "true"
+  LOG_LEVEL: "INFO"
