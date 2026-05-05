@@ -17,6 +17,11 @@ parameters:
     type: string
     default: dev
     values: [dev, qa, uat, prd]
+  - name: action
+    displayName: "Action"
+    type: string
+    default: install
+    values: [install, uninstall]
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: dev-openshift-credentials
@@ -29,7 +34,7 @@ variables:
 
 stages:
   - stage: CMF
-    displayName: "CMF (${{ parameters.environment }})"
+    displayName: "CMF ${{ parameters.action }} (${{ parameters.environment }})"
     jobs:
       - job: CMF
         pool: DevOpsLinux
@@ -65,85 +70,116 @@ stages:
               OC_PWD: $(openshift-service-account-pwd)
               OC_NS: dah-flink-${{ parameters.environment }}
 
-          - task: Bash@3
-            displayName: "Install CMF"
-            inputs:
-              targetType: inline
-              script: |
-                set -euo pipefail
+          - ${{ if eq(parameters.action, 'install') }}:
+            - task: Bash@3
+              displayName: "Install CMF"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
 
-                echo "=== Git commit ==="
-                git rev-parse HEAD
+                  echo "=== Git commit ==="
+                  git rev-parse HEAD
 
-                echo ""
-                echo "=== Resources CMF will create ==="
-                helm template confluent-cmf charts/confluent-manager-for-apache-flink \
-                  --namespace "$OC_NS" \
-                  -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
-                  --set namespaced=true \
-                  | grep -E "^kind:|^  name:|^  namespace:" || true
+                  echo ""
+                  echo "=== Resources CMF will create ==="
+                  helm template confluent-cmf charts/confluent-manager-for-apache-flink \
+                    --namespace "$OC_NS" \
+                    -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
+                    --set namespaced=true \
+                    | grep -E "^kind:|^  name:|^  namespace:" || true
 
-                echo ""
-                echo "=== Checking for stuck Helm release ==="
-                STATUS=$(helm status confluent-cmf -n "$OC_NS" -o json 2>/dev/null | grep -o '"status":"[^"]*"' | head -1 || true)
-                if echo "$STATUS" | grep -qE "pending-install|pending-upgrade|pending-rollback"; then
-                  echo "Found stuck release ($STATUS), rolling back..."
-                  helm rollback confluent-cmf -n "$OC_NS" || helm uninstall confluent-cmf -n "$OC_NS" --no-hooks
-                fi
+                  echo ""
+                  echo "=== Checking for stuck Helm release ==="
+                  STATUS=$(helm status confluent-cmf -n "$OC_NS" -o json 2>/dev/null | grep -o '"status":"[^"]*"' | head -1 || true)
+                  if echo "$STATUS" | grep -qE "pending-install|pending-upgrade|pending-rollback"; then
+                    echo "Found stuck release ($STATUS), rolling back..."
+                    helm rollback confluent-cmf -n "$OC_NS" || helm uninstall confluent-cmf -n "$OC_NS" --no-hooks
+                  fi
 
-                echo ""
-                echo "=== Creating CMF secrets ==="
-                # FCB Common Metadata standard requires these labels on every object
-                # (https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata)
-                create_labeled_secret() {
-                  local name=$1
-                  local key=$2
-                  local value=$3
-                  oc create secret generic "$name" \
-                    --from-literal="$key=$value" \
-                    -n "$OC_NS" --dry-run=client -o yaml \
-                    | oc label --local -f - --dry-run=client -o yaml \
-                        app.kubernetes.io/name=confluent-manager-for-apache-flink \
-                        app.kubernetes.io/instance="$name" \
-                        app.kubernetes.io/component=cmf \
-                        fcbint.net/app-id=11547 \
-                    | oc apply -f -
-                }
+                  echo ""
+                  echo "=== Creating CMF secrets ==="
+                  # FCB Common Metadata standard requires these labels on every object
+                  # (https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata)
+                  create_labeled_secret() {
+                    local name=$1
+                    local key=$2
+                    local value=$3
+                    oc create secret generic "$name" \
+                      --from-literal="$key=$value" \
+                      -n "$OC_NS" --dry-run=client -o yaml \
+                      | oc label --local -f - --dry-run=client -o yaml \
+                          app.kubernetes.io/name=confluent-manager-for-apache-flink \
+                          app.kubernetes.io/instance="$name" \
+                          app.kubernetes.io/component=cmf \
+                          fcbint.net/app-id=11547 \
+                      | oc apply -f -
+                  }
 
-                create_labeled_secret cmf-db-credentials password "$CMF_DB_PWD"
-                create_labeled_secret cmf-encryption-key key "$CMF_ENC_KEY"
-                create_labeled_secret confluent-license license.txt "$CMF_LICENSE"
+                  create_labeled_secret cmf-db-credentials password "$CMF_DB_PWD"
+                  create_labeled_secret cmf-encryption-key key "$CMF_ENC_KEY"
+                  create_labeled_secret confluent-license license.txt "$CMF_LICENSE"
 
-                echo ""
-                echo "=== Verifying cmf-tls Secret exists ==="
-                # CMF reads the TLS cert/key from this Secret on startup. If it's
-                # missing, the pod will crashloop with an opaque Spring error —
-                # fail fast here instead.
-                if ! oc get secret cmf-tls -n "$OC_NS" >/dev/null 2>&1; then
-                  echo "ERROR: secret/cmf-tls not found in $OC_NS."
-                  echo "Run the cmf-tls pipeline first to provision the cert-manager Certificate."
-                  exit 1
-                fi
-                echo "secret/cmf-tls found."
+                  echo ""
+                  echo "=== Verifying cmf-tls Secret exists ==="
+                  # CMF reads the TLS cert/key from this Secret on startup. If it's
+                  # missing, the pod will crashloop with an opaque Spring error —
+                  # fail fast here instead.
+                  if ! oc get secret cmf-tls -n "$OC_NS" >/dev/null 2>&1; then
+                    echo "ERROR: secret/cmf-tls not found in $OC_NS."
+                    echo "Run the cmf-tls pipeline first to provision the cert-manager Certificate."
+                    exit 1
+                  fi
+                  echo "secret/cmf-tls found."
 
-                echo ""
-                echo "=== Installing CMF ==="
-                helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
-                  --namespace "$OC_NS" \
-                  -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
-                  --set namespaced=true \
-                  --set cmf.database.jdbc.url="$CMF_DB_URL" \
-                  --set cmf.database.jdbc.user="$CMF_DB_USER" \
-                  --wait --timeout 10m
+                  echo ""
+                  echo "=== Installing CMF ==="
+                  helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
+                    --namespace "$OC_NS" \
+                    -f apps/confluent-cmf/$TARGET_ENV/values.yaml \
+                    --set namespaced=true \
+                    --set cmf.database.jdbc.url="$CMF_DB_URL" \
+                    --set cmf.database.jdbc.user="$CMF_DB_USER" \
+                    --wait --timeout 10m
 
-                echo ""
-                helm status confluent-cmf -n "$OC_NS"
-                oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
-            env:
-              OC_NS: dah-flink-${{ parameters.environment }}
-              TARGET_ENV: ${{ parameters.environment }}
-              CMF_DB_URL: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
-              CMF_DB_USER: $(${{ parameters.environment }}-cmf-sql-server-user)
-              CMF_DB_PWD: $(${{ parameters.environment }}-cmf-sql-server-user-password)
-              CMF_ENC_KEY: $(${{ parameters.environment }}-cmf-encryption-key)
-              CMF_LICENSE: $(${{ parameters.environment }}-confluent-license)
+                  echo ""
+                  helm status confluent-cmf -n "$OC_NS"
+                  oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
+              env:
+                OC_NS: dah-flink-${{ parameters.environment }}
+                TARGET_ENV: ${{ parameters.environment }}
+                CMF_DB_URL: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
+                CMF_DB_USER: $(${{ parameters.environment }}-cmf-sql-server-user)
+                CMF_DB_PWD: $(${{ parameters.environment }}-cmf-sql-server-user-password)
+                CMF_ENC_KEY: $(${{ parameters.environment }}-cmf-encryption-key)
+                CMF_LICENSE: $(${{ parameters.environment }}-confluent-license)
+
+          - ${{ if eq(parameters.action, 'uninstall') }}:
+            - task: Bash@3
+              displayName: "Uninstall CMF"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  echo "=== Helm release status (before) ==="
+                  helm status confluent-cmf -n "$OC_NS" 2>&1 | head -20 || echo "(no release)"
+
+                  echo ""
+                  echo "=== Uninstalling Helm release ==="
+                  helm uninstall confluent-cmf -n "$OC_NS" --wait --timeout 5m || true
+
+                  echo ""
+                  echo "=== Deleting pipeline-managed secrets ==="
+                  # cmf-tls is intentionally preserved — owned by cert-manager
+                  # via the cmf-tls pipeline. SQL Server data persists.
+                  oc -n "$OC_NS" delete secret \
+                    cmf-db-credentials cmf-encryption-key confluent-license \
+                    --ignore-not-found
+
+                  echo ""
+                  echo "=== Remaining CMF objects ==="
+                  oc -n "$OC_NS" get pods,deploy,svc,secret \
+                    -l app.kubernetes.io/name=confluent-manager-for-apache-flink || true
+              env:
+                OC_NS: dah-flink-${{ parameters.environment }}
