@@ -1,51 +1,25 @@
+Starting: Promote image -docker-prod → -docker-dev
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/1e2ea2cc-5b42-4ae1-9a3a-c30adb15b5d9.sh
+Using docker
 
+=== Logging in to Artifactory ===
 
---- Resources owned by the release (about to be deleted) ---
-NAME                  TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
-service/cmf-service   ClusterIP   10.245.39.27   <none>        443/TCP   20d
+WARNING! Your credentials are stored unencrypted in '/home/FCPD.FCBINT.NET/pd_azure_bld-svc/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
 
-NAME                                                 READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/confluent-manager-for-apache-flink   0/1     0            0           19d
+Login Succeeded
 
-NAME                                                            DESIRED   CURRENT   READY   AGE
-replicaset.apps/confluent-manager-for-apache-flink-56dd985b7    1         0         0       29m
-replicaset.apps/confluent-manager-for-apache-flink-5b5b7646bd   0         0         0       13d
-replicaset.apps/confluent-manager-for-apache-flink-5b6f95b6b4   0         0         0       9d
-replicaset.apps/confluent-manager-for-apache-flink-5dd4fc98dc   0         0         0       15d
-replicaset.apps/confluent-manager-for-apache-flink-5f9c75f474   0         0         0       45m
-replicaset.apps/confluent-manager-for-apache-flink-65cbb66987   0         0         0       13d
-replicaset.apps/confluent-manager-for-apache-flink-674b565bd    0         0         0       9d
-replicaset.apps/confluent-manager-for-apache-flink-698bf65b4d   0         0         0       13d
-replicaset.apps/confluent-manager-for-apache-flink-7477496f96   0         0         0       12d
-replicaset.apps/confluent-manager-for-apache-flink-754fdc8758   0         0         0       15d
-replicaset.apps/confluent-manager-for-apache-flink-75cfd98788   0         0         0       58m
-replicaset.apps/confluent-manager-for-apache-flink-77f6f9cbc5   0         0         0       12d
-replicaset.apps/confluent-manager-for-apache-flink-789cd75665   0         0         0       8d
-replicaset.apps/confluent-manager-for-apache-flink-7bb885d4f    0         0         0       12d
-
---- Running helm uninstall ---
-release "confluent-cmf" uninstalled
-
---- Verifying cleanup ---
-Pods (should be none):
-No resources found in dah-flink-dev namespace.
-
-ReplicaSets (should be none):
-No resources found in dah-flink-dev namespace.
-
-Deployment (should be Not Found):
-Error from server (NotFound): deployments.apps "confluent-manager-for-apache-flink" not found
-
-Service cmf-service (should be Not Found):
-Error from server (NotFound): services "cmf-service" not found
-
-Secrets that SHOULD survive (cmf-tls + the three pipeline-managed):
-  [ok] cmf-tls
-  [ok] cmf-db-credentials
-  [ok] cmf-encryption-key
-  [ok] confluent-license
-
-==================================================================
- UNINSTALL DONE — next pipeline run will reinstall CMF from scratch
-==================================================================
-Finishing: Install CMF
+=== Pulling artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.3.0-fcb-preview-2 ===
+Error response from daemon: manifest for artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:2.3.0-fcb-preview-2 not found: manifest unknown: The named manifest is not known to the registry.
+##[error]Bash exited with code '1'.
+Finishing: Promote image -docker-prod → -docker-dev
