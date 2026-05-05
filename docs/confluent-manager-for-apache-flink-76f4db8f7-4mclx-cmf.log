@@ -1,0 +1,105 @@
+Starting CMF with external configurations from /opt/config/cmf-config.yaml
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+2026-05-05T22:02:13.267455087Z main WARN Converter key 'rEx' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.RootThrowablePatternConverter].
+2026-05-05T22:02:13.268952525Z main WARN Converter key 'ex' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.ThrowablePatternConverter].
+2026-05-05T22:02:13.269198809Z main WARN Converter key 'throwable' is already mapped to 'class io.confluent.cmf.logging.ConditionalStackTracePatternConverter'. Sorry, Dave, I can't let you do that! Ignoring plugin [class org.apache.logging.log4j.core.pattern.ThrowablePatternConverter].
+[33m2026-05-05 22:02:13,273[m [36mi.c.c.l.ConditionalStackTracePatternConverter[m [32m[INFO ] [.] Stack trace logging enabled: false
+[m[2026-05-05 22:02:13.772] [main] INFO  - i.c.c.CmfApplication - Starting CmfApplication v2.4-SNAPSHOT using Java 21.0.10 with PID 2 (/app/cmf.jar started by 1001040000 in /app)
+[2026-05-05 22:02:13.776] [main] INFO  - i.c.c.CmfApplication - No active profile set, falling back to 1 default profile: "default"
+[2026-05-05 22:02:13.973] [main] INFO  - i.c.c.LogBootstrapInformation - --------------------------------------
+[2026-05-05 22:02:13.983] [main] INFO  - i.c.c.LogBootstrapInformation -  Starting Confluent Manager for Apache Flink® (Version: <unknown>, Rev:<unknown>, Date:1970-01-01T01:00:00+01:00)
+[2026-05-05 22:02:13.983] [main] INFO  - i.c.c.LogBootstrapInformation -  OS current user: 1001040000
+[2026-05-05 22:02:13.983] [main] INFO  - i.c.c.LogBootstrapInformation -  JVM: OpenJDK 64-Bit Server VM - Azul Systems, Inc. - 21/21.0.10+7-LTS
+[2026-05-05 22:02:13.983] [main] INFO  - i.c.c.LogBootstrapInformation -  Arch: amd64
+[2026-05-05 22:02:13.984] [main] INFO  - i.c.c.LogBootstrapInformation -  Maximum heap size: 247 MiBytes
+[2026-05-05 22:02:13.984] [main] INFO  - i.c.c.LogBootstrapInformation -  JAVA_HOME: /usr/lib/jvm/jre-21
+[2026-05-05 22:02:13.984] [main] INFO  - i.c.c.LogBootstrapInformation -  JVM Options: (none)
+[2026-05-05 22:02:13.985] [main] INFO  - i.c.c.LogBootstrapInformation -  Program Arguments:
+[2026-05-05 22:02:14.063] [main] INFO  - i.c.c.LogBootstrapInformation -     --spring.config.location=classpath:/,/opt/config/cmf-config.yaml
+[2026-05-05 22:02:14.063] [main] INFO  - i.c.c.LogBootstrapInformation - --------------------------------------
+[2026-05-05 22:02:19.267] [main] INFO  - o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+[2026-05-05 22:02:19.875] [main] INFO  - o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 599 ms. Found 16 JPA repository interfaces.
+[2026-05-05 22:02:25.177] [main] INFO  - o.s.b.w.e.t.TomcatWebServer - Tomcat initialized with port 8080 (https)
+[2026-05-05 22:02:25.273] [main] INFO  - o.a.c.h.Http11NioProtocol - Initializing ProtocolHandler ["https-jsse-nio-8080"]
+[2026-05-05 22:02:25.276] [main] INFO  - o.a.c.c.StandardService - Starting service [Tomcat]
+[2026-05-05 22:02:25.276] [main] INFO  - o.a.c.c.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.54]
+[2026-05-05 22:02:25.580] [main] INFO  - o.a.c.c.C.[.[.[/] - Initializing Spring embedded WebApplicationContext
+[2026-05-05 22:02:25.580] [main] INFO  - o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 11515 ms
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+[2026-05-05 22:02:26.276] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Configuring the CMF database with type: local
+[2026-05-05 22:02:26.276] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Creating SQLite datasource for CMF
+[2026-05-05 22:02:27.676] [main] INFO  - o.f.c.FlywayExecutor - Database: jdbc:sqlite:local/cmf.db (SQLite 3.45)
+[2026-05-05 22:02:27.793] [main] INFO  - o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "main"."flyway_schema_history" does not exist yet
+[2026-05-05 22:02:27.865] [main] INFO  - o.f.c.i.c.DbValidate - Successfully validated 29 migrations (execution time 00:00.172s)
+[2026-05-05 22:02:27.870] [main] INFO  - o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "main"."flyway_schema_history" ...
+[2026-05-05 22:02:27.967] [main] INFO  - o.f.c.i.c.DbMigrate - Current version of schema "main": << Empty Schema >>
+[2026-05-05 22:02:27.973] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "1.1.0 - initial schema"
+[2026-05-05 22:02:27.983] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "2.1.0 - add license table"
+[2026-05-05 22:02:28.066] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "3.1.0 - add application table"
+[2026-05-05 22:02:28.070] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "4.1.0 - add statement table"
+[2026-05-05 22:02:28.079] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "5.1.0 - add computepool table"
+[2026-05-05 22:02:28.083] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "6.1.0 - add tables for secret"
+[2026-05-05 22:02:28.163] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "7.1.0 - add app events"
+[2026-05-05 22:02:28.168] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "8.1.0 - add app instances"
+[2026-05-05 22:02:28.171] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "9.1.0 - add catalog table"
+[2026-05-05 22:02:28.173] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "10.1.0 - add statement exception table"
+[2026-05-05 22:02:28.176] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "11.1.0 - add instance column to app.sqlite"
+[2026-05-05 22:02:28.179] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "12.1.0 - add sql default cols to env"
+[2026-05-05 22:02:28.182] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "13.1.0 - add secret key cols to env"
+[2026-05-05 22:02:28.264] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "14.1.0 - add system table"
+[2026-05-05 22:02:28.267] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "15.1.0 - add last checkpointed offset for result to statement"
+[2026-05-05 22:02:28.269] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "16.1.0 - add savepoint table"
+[2026-05-05 22:02:28.272] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "17.1.0 - add path details"
+[2026-05-05 22:02:28.274] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "18.1.0 - add detached savepoint table"
+[2026-05-05 22:02:28.277] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "19.1.0 - add database table"
+[2026-05-05 22:02:28.279] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "20.1.0 - add deployment scope to license"
+[2026-05-05 22:02:28.363] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "21.1.0 - migrate kafka clusters to databases"
+[2026-05-05 22:02:28.365] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Starting migration V21_1_0: Migrating Kafka clusters from catalogs to databases
+[2026-05-05 22:02:28.365] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Executing query: SELECT name, uid, creation_timestamp, spec, metadata_payload FROM catalog WHERE type = 'KAFKA'
+[2026-05-05 22:02:28.365] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Query returned 0 catalogs
+[2026-05-05 22:02:28.365] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Found 0 Kafka catalogs to process
+[2026-05-05 22:02:28.366] [main] INFO  - d.m.V21_1_0__migrate_kafka_clusters_to_databases - Migration completed successfully. Created 0 KafkaDatabase records
+[2026-05-05 22:02:28.369] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "22.1.0 - change primary key for license"
+[2026-05-05 22:02:28.372] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "23.1.0 - add metadata payload to environment"
+[2026-05-05 22:02:28.375] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "24.1.0 - add kubernetes cluster table"
+[2026-05-05 22:02:28.377] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "25.1.0 - add status message to kubernetes cluster"
+[2026-05-05 22:02:28.379] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "26.1.0 - add shared computepool columns"
+[2026-05-05 22:02:28.381] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "27.1.0 - rename alter environments to ddl environments"
+[2026-05-05 22:02:28.465] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "28.1.0 - add kubernetes version to kubernetes cluster"
+[2026-05-05 22:02:28.467] [main] INFO  - o.f.c.i.c.DbMigrate - Migrating schema "main" to version "29.1.0 - rename is sql production to is encryption enabled"
+[2026-05-05 22:02:28.474] [main] INFO  - o.f.c.i.c.DbMigrate - Successfully applied 29 migrations to schema "main", now at version v29.1.0 (execution time 00:00.015s)
+[2026-05-05 22:02:28.568] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Initialized SpecificationUtils with dialect: SQLITE
+[2026-05-05 22:02:28.963] [main] INFO  - i.c.c.c.d.DatabaseConfiguration - Setting Hibernate dialect to: org.hibernate.community.dialect.SQLiteDialect
+[2026-05-05 22:02:29.065] [main] INFO  - o.h.j.i.u.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+[2026-05-05 22:02:29.276] [main] INFO  - o.h.Version - HHH000412: Hibernate ORM core version 6.6.45.Final
+[2026-05-05 22:02:29.388] [main] INFO  - o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+[2026-05-05 22:02:30.383] [main] INFO  - o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+[2026-05-05 22:02:30.680] [main] INFO  - o.h.o.c.pooling - HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.DriverManagerDataSource@12e40e98']
+	Database driver: undefined/unknown
+	Database version: 3.45.2
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+[2026-05-05 22:02:32.076] [main] INFO  - o.h.v.i.u.Version - HV000001: Hibernate Validator 8.0.3.Final
+[2026-05-05 22:02:35.265] [main] INFO  - o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+[2026-05-05 22:02:35.293] [main] INFO  - o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+[2026-05-05 22:02:36.377] [main] INFO  - o.s.d.j.r.q.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+[2026-05-05 22:02:39.387] [main] INFO  - o.a.f.k.o.c.FlinkConfigManager - Setting default configuration to {parallelism.default=1, kubernetes.operator.dynamic.config.enabled=false, taskmanager.numberOfTaskSlots=1, kubernetes.operator.reconcile.interval=15 s, kubernetes.operator.metrics.reporter.slf4j.interval=5 MINUTE, kubernetes.operator.observer.progress-check.interval=5 s, kubernetes.operator.metrics.reporter.slf4j.factory.class=org.apache.flink.metrics.slf4j.Slf4jReporterFactory}
+[2026-05-05 22:02:39.981] [main] INFO  - i.c.c.k.r.K8sClientFactory - Creating KubernetesClient for default cluster using in-cluster config
+[2026-05-05 22:02:40.964] [main] INFO  - i.c.c.k.FkoVersionValidator - Flink Kubernetes Operator version check: Skipping CRD registration check in namespace-scoped mode (cluster-scoped resource, not accessible with Role-only RBAC).
+[2026-05-05 22:02:46.179] [main] WARN  - i.c.c.k.FkoVersionValidator - Unable to validate Flink Kubernetes Operator installation on cluster 'default-k8s-cluster'.
+class io.fabric8.kubernetes.client.KubernetesClientException: Operation: [list]  for kind: [Deployment]  with name: [null]  in namespace: [dah-flink-qa]  failed.
+[2026-05-05 22:02:46.184] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Initializing Kubernetes cluster manager
+[2026-05-05 22:02:46.184] [main] INFO  - i.c.c.k.r.ManagedK8sClusterManager - Initializing default cluster 'default-k8s-cluster'
+[2026-05-05 22:02:51.189] [main] ERROR - i.c.c.k.r.ManagedK8sClusterManager - Failed to initialize default cluster 'default-k8s-cluster'
+class io.fabric8.kubernetes.client.KubernetesClientException: An error has occurred.
+[2026-05-05 22:02:51.191] [main] WARN  - o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'applicationController' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/api/v1/controller/ApplicationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'metadataSync' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/CmfMetadataSync.class]: Unsatisfied dependency expressed through constructor parameter 4: Error creating bean with name 'flinkApplicationConverter' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/kubernetes/converter/FlinkApplicationConverter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'environmentService' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/EnvironmentService.class]: Unsatisfied dependency expressed through constructor parameter 9: Error creating bean with name 'clusterResourceManager' defined in class path resource [io/confluent/cmf/di/CmfDefaultProductionConfig.class]: Failed to instantiate [io.confluent.cmf.kubernetes.resource.K8sResourceManager]: Factory method 'clusterResourceManager' threw exception with message: Error creating bean with name 'k8sClusterManager' defined in class path resource [io/confluent/cmf/di/CmfDefaultProductionConfig.class]: Cannot start CMF: default cluster initialization failed
+[2026-05-05 22:02:51.191] [main] INFO  - o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+[2026-05-05 22:02:51.197] [main] INFO  - o.a.c.c.StandardService - Stopping service [Tomcat]
+[2026-05-05 22:02:51.211] [main] INFO  - o.s.b.a.l.ConditionEvaluationReportLogger - 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+[2026-05-05 22:02:51.211] [main] ERROR - i.c.c.ShutdownOnApplicationFailedEventListener - Fatal exception occurred, stopping application
+class org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'applicationController' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/api/v1/controller/ApplicationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'metadataSync' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/CmfMetadataSync.class]: Unsatisfied dependency expressed through constructor parameter 4: Error creating bean with name 'flinkApplicationConverter' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/kubernetes/converter/FlinkApplicationConverter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'environmentService' defined in URL [jar:nested:/app/cmf.jar/!BOOT-INF/classes/!/io/confluent/cmf/service/EnvironmentService.class]: Unsatisfied dependency expressed through constructor parameter 9: Error creating bean with name 'clusterResourceManager' defined in class path resource [io/confluent/cmf/di/CmfDefaultProductionConfig.class]: Failed to instantiate [io.confluent.cmf.kubernetes.resource.K8sResourceManager]: Factory method 'clusterResourceManager' threw exception with message: Error creating bean with name 'k8sClusterManager' defined in class path resource [io/confluent/cmf/di/CmfDefaultProductionConfig.class]: Cannot start CMF: default cluster initialization failed
