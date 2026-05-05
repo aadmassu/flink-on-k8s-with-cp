@@ -23,10 +23,6 @@ parameters:
     displayName: "Target Tag in Artifactory"
     type: string
     default: "2.3.0-fcb-preview-2"
-  - name: sourceTag
-    displayName: "Source Tag in -docker-prod (promotion mode only; defaults to targetTag)"
-    type: string
-    default: "5632522f7-amd64"
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -49,102 +45,54 @@ stages:
             env:
               GIT_SSL_NO_VERIFY: "true"
 
-          # ----------------------------------------------------------
-          # TEMPORARY PROMOTION MODE — pulls cp-cmf from the -docker-prod
-          # Artifactory repo and pushes to -docker-dev so non-prod envs can
-          # consume it. Avoids transferring the 600+ MB tar through Git.
-          # Restore the original load-from-tar block below once the image
-          # is in -docker-dev.
-          # ----------------------------------------------------------
-          # - task: Bash@3
-          #   displayName: "Load, tag, and push image"
-          #   inputs:
-          #     targetType: inline
-          #     script: |
-          #       set -euo pipefail
-          #       REGISTRY="artifactory.fcbint.net/camdepositsharedservices-docker-dev"
-          #       TARGET_IMAGE="$REGISTRY/confluentinc/cp-cmf:$TARGET_TAG"
-          #       echo "=== Loading image from $SOURCE_TAR ==="
-          #       if [ ! -f "$SOURCE_TAR" ]; then
-          #         echo "ERROR: $SOURCE_TAR not found in repo root"
-          #         exit 1
-          #       fi
-          #       CONTAINER_CLI="docker"
-          #       if command -v podman &>/dev/null; then
-          #         CONTAINER_CLI="podman"
-          #       fi
-          #       echo "Using $CONTAINER_CLI"
-          #       LOAD_OUTPUT=$($CONTAINER_CLI load < "$SOURCE_TAR")
-          #       echo "$LOAD_OUTPUT"
-          #       SOURCE_IMAGE=$(echo "$LOAD_OUTPUT" | grep -oE 'Loaded image:?\s+\S+' | awk '{print $NF}' | head -1)
-          #       if [ -z "$SOURCE_IMAGE" ]; then
-          #         echo "ERROR: Could not detect loaded image from tar"
-          #         exit 1
-          #       fi
-          #       echo ""
-          #       echo "=== Tagging $SOURCE_IMAGE as $TARGET_IMAGE ==="
-          #       $CONTAINER_CLI tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
-          #       echo ""
-          #       echo "=== Logging in to Artifactory ==="
-          #       echo "$ART_PWD" | $CONTAINER_CLI login artifactory.fcbint.net --username "$ART_USER" --password-stdin
-          #       echo ""
-          #       echo "=== Pushing $TARGET_IMAGE ==="
-          #       $CONTAINER_CLI push "$TARGET_IMAGE"
-          #       echo ""
-          #       echo "=== Done ==="
-          #       echo "Image pushed: $TARGET_IMAGE"
-          #   env:
-          #     SOURCE_TAR: ${{ parameters.sourceTar }}
-          #     TARGET_TAG: ${{ parameters.targetTag }}
-          #     ART_USER: $(artifactory-svc-user)
-          #     ART_PWD: $(artifactory-svc-user-password)
-
           - task: Bash@3
-            displayName: "Promote image -docker-prod → -docker-dev"
+            displayName: "Load, tag, and push image"
             inputs:
               targetType: inline
               script: |
                 set -euo pipefail
 
-                SOURCE_IMAGE="artifactory.fcbint.net/camdepositsharedservices-docker-prod/confluentinc/cp-cmf:$SOURCE_TAG"
-                TARGET_IMAGE="artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:$TARGET_TAG"
+                REGISTRY="artifactory.fcbint.net/camdepositsharedservices-docker-dev"
+                TARGET_IMAGE="$REGISTRY/confluentinc/cp-cmf:$TARGET_TAG"
 
+                echo "=== Loading image from $SOURCE_TAR ==="
+                if [ ! -f "$SOURCE_TAR" ]; then
+                  echo "ERROR: $SOURCE_TAR not found in repo root"
+                  exit 1
+                fi
+
+                # Use podman if available, otherwise docker
                 CONTAINER_CLI="docker"
                 if command -v podman &>/dev/null; then
                   CONTAINER_CLI="podman"
                 fi
                 echo "Using $CONTAINER_CLI"
 
+                LOAD_OUTPUT=$($CONTAINER_CLI load < "$SOURCE_TAR")
+                echo "$LOAD_OUTPUT"
+                SOURCE_IMAGE=$(echo "$LOAD_OUTPUT" | grep -oE 'Loaded image:?\s+\S+' | awk '{print $NF}' | head -1)
+                if [ -z "$SOURCE_IMAGE" ]; then
+                  echo "ERROR: Could not detect loaded image from tar"
+                  exit 1
+                fi
+
+                echo ""
+                echo "=== Tagging $SOURCE_IMAGE as $TARGET_IMAGE ==="
+                $CONTAINER_CLI tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
+
                 echo ""
                 echo "=== Logging in to Artifactory ==="
-                # Same registry hostname covers both repos. The svc account
-                # needs read on -docker-prod AND write on -docker-dev. If the
-                # pull below fails 401/403, the account is non-prod-scoped —
-                # fall back to the SNOW promotion path.
                 echo "$ART_PWD" | $CONTAINER_CLI login artifactory.fcbint.net --username "$ART_USER" --password-stdin
-
-                echo ""
-                echo "=== Pulling $SOURCE_IMAGE ==="
-                $CONTAINER_CLI pull "$SOURCE_IMAGE"
-
-                echo ""
-                echo "=== Tagging as $TARGET_IMAGE ==="
-                $CONTAINER_CLI tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
 
                 echo ""
                 echo "=== Pushing $TARGET_IMAGE ==="
                 $CONTAINER_CLI push "$TARGET_IMAGE"
 
                 echo ""
-                echo "=== Verifying tag in -docker-dev ==="
-                $CONTAINER_CLI pull "$TARGET_IMAGE"
-
-                echo ""
                 echo "=== Done ==="
-                echo "Image promoted from:  $SOURCE_IMAGE"
-                echo "                  to: $TARGET_IMAGE"
+                echo "Image pushed: $TARGET_IMAGE"
             env:
+              SOURCE_TAR: ${{ parameters.sourceTar }}
               TARGET_TAG: ${{ parameters.targetTag }}
-              SOURCE_TAG: ${{ parameters.sourceTag }}
               ART_USER: $(artifactory-svc-user)
               ART_PWD: $(artifactory-svc-user-password)
