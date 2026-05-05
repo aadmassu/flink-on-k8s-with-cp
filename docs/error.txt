@@ -1,133 +1,585 @@
-Initialize job
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: flink-operator
+  namespace: dah-flink-qa
+  uid: efa97a9c-5c07-4271-b507-00e2cf623614
+  resourceVersion: '382443914'
+  creationTimestamp: '2026-04-24T18:52:16Z'
+  labels:
+    fcbint.net/argo-app: security
+    app.kubernetes.io/instance: fcb-security
+    fcbint.net/app-tier: '0'
+    fcbint.net/ritm: ''
+    app.kubernetes.io/version: 2.0.16
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: fcb-security-2.0.16
+    fcbint.net/network: ''
+    app.kubernetes.io/name: fcb-security
+    fcbint.net/app-id: '12055'
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/tracking-id: 'security:/ServiceAccount:dah-flink-qa/flink-operator'
+    fcbint.net/contact: ContainerPlatforms@firstcitizens.com
+    fcbint.net/requester: ''
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"ServiceAccount","metadata":{"annotations":{"argocd.argoproj.io/sync-options":"Prune=false","argocd.argoproj.io/tracking-id":"security:/ServiceAccount:dah-flink-qa/flink-operator","fcbint.net/contact":"ContainerPlatforms@firstcitizens.com","fcbint.net/requester":""},"labels":{"app.kubernetes.io/instance":"fcb-security","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"fcb-security","app.kubernetes.io/version":"2.0.16","fcbint.net/app-id":"12055","fcbint.net/app-tier":"0","fcbint.net/argo-app":"security","fcbint.net/network":"","fcbint.net/ritm":"","helm.sh/chart":"fcb-security-2.0.16"},"name":"flink-operator","namespace":"dah-flink-qa"}}
+  managedFields:
+    - manager: argocd-controller
+      operation: Update
+      apiVersion: v1
+      time: '2026-04-24T18:52:16Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:argocd.argoproj.io/sync-options': {}
+            'f:argocd.argoproj.io/tracking-id': {}
+            'f:fcbint.net/contact': {}
+            'f:fcbint.net/requester': {}
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+          'f:labels':
+            'f:helm.sh/chart': {}
+            'f:app.kubernetes.io/managed-by': {}
+            'f:fcbint.net/app-id': {}
+            'f:fcbint.net/network': {}
+            'f:app.kubernetes.io/name': {}
+            .: {}
+            'f:fcbint.net/argo-app': {}
+            'f:fcbint.net/app-tier': {}
+            'f:fcbint.net/ritm': {}
+            'f:app.kubernetes.io/version': {}
+            'f:app.kubernetes.io/instance': {}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flink-operator
+  namespace: dah-flink-qa
+  uid: 91c53597-00e4-47f0-8441-154ef07e176a
+  resourceVersion: '412868643'
+  creationTimestamp: '2026-04-24T18:52:19Z'
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/version: 1.13.0-cp2
+    fcbint.net/argo-app: security
+    helm.sh/chart: flink-kubernetes-operator-1.130.2
+  annotations:
+    argocd.argoproj.io/tracking-id: 'security:rbac.authorization.k8s.io/Role:dah-flink-qa/flink-operator'
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"Role","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"security:rbac.authorization.k8s.io/Role:dah-flink-qa/flink-operator"},"labels":{"app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"flink-kubernetes-operator","app.kubernetes.io/version":"1.13.0-cp2","fcbint.net/argo-app":"security","helm.sh/chart":"flink-kubernetes-operator-1.130.2"},"name":"flink-operator","namespace":"dah-flink-qa"},"rules":[{"apiGroups":[""],"resources":["pods","services","events","configmaps","secrets"],"verbs":["get","list","watch","create","update","patch","delete","deletecollection"]},{"apiGroups":["apps"],"resources":["deployments","deployments/finalizers","replicasets"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["apps"],"resources":["deployments/scale"],"verbs":["get","update","patch"]},{"apiGroups":["extensions"],"resources":["deployments","ingresses"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["flink.apache.org"],"resources":["flinkdeployments","flinkdeployments/finalizers","flinksessionjobs","flinksessionjobs/finalizers","flinkstatesnapshots","flinkstatesnapshots/finalizers"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["flink.apache.org"],"resources":["flinkdeployments/status","flinksessionjobs/status","flinkstatesnapshots/status"],"verbs":["get","update","patch"]},{"apiGroups":["networking.k8s.io"],"resources":["ingresses"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["coordination.k8s.io"],"resources":["leases"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":[""],"resources":["serviceaccounts"],"verbs":["get"]},{"apiGroups":["rbac.authorization.k8s.io"],"resources":["roles","rolebindings"],"verbs":["get","list","watch"]}]}
+  managedFields:
+    - manager: argocd-application-controller
+      operation: Update
+      apiVersion: rbac.authorization.k8s.io/v1
+      time: '2026-05-05T18:18:02Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:argocd.argoproj.io/tracking-id': {}
+          'f:labels':
+            .: {}
+            'f:app.kubernetes.io/managed-by': {}
+            'f:app.kubernetes.io/name': {}
+            'f:app.kubernetes.io/version': {}
+            'f:fcbint.net/argo-app': {}
+            'f:helm.sh/chart': {}
+    - manager: argocd-controller
+      operation: Update
+      apiVersion: rbac.authorization.k8s.io/v1
+      time: '2026-05-05T18:18:02Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+        'f:rules': {}
+rules:
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+    apiGroups:
+      - ''
+    resources:
+      - pods
+      - services
+      - events
+      - configmaps
+      - secrets
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - apps
+    resources:
+      - deployments
+      - deployments/finalizers
+      - replicasets
+  - verbs:
+      - get
+      - update
+      - patch
+    apiGroups:
+      - apps
+    resources:
+      - deployments/scale
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - extensions
+    resources:
+      - deployments
+      - ingresses
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - flink.apache.org
+    resources:
+      - flinkdeployments
+      - flinkdeployments/finalizers
+      - flinksessionjobs
+      - flinksessionjobs/finalizers
+      - flinkstatesnapshots
+      - flinkstatesnapshots/finalizers
+  - verbs:
+      - get
+      - update
+      - patch
+    apiGroups:
+      - flink.apache.org
+    resources:
+      - flinkdeployments/status
+      - flinksessionjobs/status
+      - flinkstatesnapshots/status
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+  - verbs:
+      - get
+    apiGroups:
+      - ''
+    resources:
+      - serviceaccounts
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flink-operator-dah-flink
+  namespace: dah-flink-qa
+  uid: 8abb66ee-678f-4bbd-8b28-cbb83452e31a
+  resourceVersion: '382444255'
+  creationTimestamp: '2026-04-24T18:52:21Z'
+  labels:
+    fcbint.net/argo-app: security
+    app.kubernetes.io/instance: fcb-security
+    fcbint.net/app-tier: '0'
+    fcbint.net/ritm: ''
+    app.kubernetes.io/version: 2.0.16
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: fcb-security-2.0.16
+    fcbint.net/network: ''
+    app.kubernetes.io/name: fcb-security
+    fcbint.net/app-id: '12055'
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/tracking-id: 'security:rbac.authorization.k8s.io/RoleBinding:dah-flink-qa/flink-operator-dah-flink'
+    fcbint.net/contact: ContainerPlatforms@firstcitizens.com
+    fcbint.net/requester: ''
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"RoleBinding","metadata":{"annotations":{"argocd.argoproj.io/sync-options":"Prune=false","argocd.argoproj.io/tracking-id":"security:rbac.authorization.k8s.io/RoleBinding:dah-flink-qa/flink-operator-dah-flink","fcbint.net/contact":"ContainerPlatforms@firstcitizens.com","fcbint.net/requester":""},"labels":{"app.kubernetes.io/instance":"fcb-security","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"fcb-security","app.kubernetes.io/version":"2.0.16","fcbint.net/app-id":"12055","fcbint.net/app-tier":"0","fcbint.net/argo-app":"security","fcbint.net/network":"","fcbint.net/ritm":"","helm.sh/chart":"fcb-security-2.0.16"},"name":"flink-operator-dah-flink","namespace":"dah-flink-qa"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"Role","name":"flink-operator"},"subjects":[{"kind":"ServiceAccount","name":"flink-operator","namespace":"dah-flink-qa"}]}
+  managedFields:
+    - manager: argocd-application-controller
+      operation: Update
+      apiVersion: rbac.authorization.k8s.io/v1
+      time: '2026-04-24T18:52:21Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:argocd.argoproj.io/sync-options': {}
+            'f:argocd.argoproj.io/tracking-id': {}
+            'f:fcbint.net/contact': {}
+            'f:fcbint.net/requester': {}
+          'f:labels':
+            'f:helm.sh/chart': {}
+            'f:app.kubernetes.io/managed-by': {}
+            'f:fcbint.net/app-id': {}
+            'f:fcbint.net/network': {}
+            'f:app.kubernetes.io/name': {}
+            .: {}
+            'f:fcbint.net/argo-app': {}
+            'f:fcbint.net/app-tier': {}
+            'f:fcbint.net/ritm': {}
+            'f:app.kubernetes.io/version': {}
+            'f:app.kubernetes.io/instance': {}
+        'f:roleRef': {}
+        'f:subjects': {}
+    - manager: argocd-controller
+      operation: Update
+      apiVersion: rbac.authorization.k8s.io/v1
+      time: '2026-04-24T18:52:26Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+subjects:
+  - kind: ServiceAccount
+    name: flink-operator
+    namespace: dah-flink-qa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flink-operator
+  
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: flink-operator
+  namespace: dah-flink-dev
+  uid: 83b7b895-fe46-45f3-97f8-7d0cf9ac7589
+  resourceVersion: '586873014'
+  creationTimestamp: '2026-04-16T20:40:12Z'
+  labels:
+    fcbint.net/argo-app: security
+    app.kubernetes.io/instance: fcb-security
+    fcbint.net/app-tier: '0'
+    fcbint.net/ritm: ''
+    app.kubernetes.io/version: 2.0.16
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: fcb-security-2.0.16
+    fcbint.net/network: ''
+    app.kubernetes.io/name: fcb-security
+    fcbint.net/app-id: '12055'
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/tracking-id: 'security:/ServiceAccount:dah-flink-dev/flink-operator'
+    fcbint.net/contact: ContainerPlatforms@firstcitizens.com
+    fcbint.net/requester: ''
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"ServiceAccount","metadata":{"annotations":{"argocd.argoproj.io/sync-options":"Prune=false","argocd.argoproj.io/tracking-id":"security:/ServiceAccount:dah-flink-dev/flink-operator","fcbint.net/contact":"ContainerPlatforms@firstcitizens.com","fcbint.net/requester":""},"labels":{"app.kubernetes.io/instance":"fcb-security","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"fcb-security","app.kubernetes.io/version":"2.0.16","fcbint.net/app-id":"12055","fcbint.net/app-tier":"0","fcbint.net/argo-app":"security","fcbint.net/network":"","fcbint.net/ritm":"","helm.sh/chart":"fcb-security-2.0.16"},"name":"flink-operator","namespace":"dah-flink-dev"}}
+  managedFields:
+    - manager: argocd-controller
+      operation: Update
+      apiVersion: v1
+      time: '2026-04-16T20:40:12Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:argocd.argoproj.io/sync-options': {}
+            'f:argocd.argoproj.io/tracking-id': {}
+            'f:fcbint.net/contact': {}
+            'f:fcbint.net/requester': {}
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+          'f:labels':
+            'f:helm.sh/chart': {}
+            'f:app.kubernetes.io/managed-by': {}
+            'f:fcbint.net/app-id': {}
+            'f:fcbint.net/network': {}
+            'f:app.kubernetes.io/name': {}
+            .: {}
+            'f:fcbint.net/argo-app': {}
+            'f:fcbint.net/app-tier': {}
+            'f:fcbint.net/ritm': {}
+            'f:app.kubernetes.io/version': {}
+            'f:app.kubernetes.io/instance': {}
 
-View raw log
-Starting: Initialize job
-Agent name: 'p12149-a-86335'
-Agent machine name: 'p12149-a-86335'
-Current agent version: '3.238.0'
-Agent running as: 'pd_azure_bld-svc'
-Prepare build directory.
-Set build variables.
-Download all required tasks.
-Checking job knob settings.
-   Knob: CheckForTaskDeprecation = false Source: $(AZP_AGENT_CHECK_FOR_TASK_DEPRECATION) 
-   Knob: MountWorkspace = false Source: $(AZP_AGENT_MOUNT_WORKSPACE) 
-Finished checking job knob settings.
-Start tracking orphan processes.
-Finishing: Initialize job
-
-
-Checkout DAH.Kafka.OS@main to s
-
-View raw log
-Starting: Checkout DAH.Kafka.OS@main to s
-==============================================================================
-Task         : Get sources
-Description  : Get sources from a repository. Supports Git, TfsVC, and SVN repositories.
-Version      : 1.0.0
-Author       : Microsoft
-Help         : [More Information](https://go.microsoft.com/fwlink/?LinkId=798199)
-==============================================================================
-Syncing repository: DAH.Kafka.OS (Git)
-git version
-git version 2.43.7
-git config --get remote.origin.url
-git clean -ffdx
-git reset --hard HEAD
-HEAD is now at b3e8ead CMF Image push to Artifactory
-git config gc.auto 0
-git config --get-all http.https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS.extraheader
-git config --get-all http.extraheader
-git config --get-regexp .*extraheader
-git config --get-all http.proxy
-git config http.version HTTP/1.1
-git --config-env=http.extraheader=env_var_http.extraheader fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin
-git --config-env=http.extraheader=env_var_http.extraheader fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin   +b3e8ead51efdb04ea44f4f7b9ec2fbbc33d4981e
-From https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS
- * branch            b3e8ead51efdb04ea44f4f7b9ec2fbbc33d4981e -> FETCH_HEAD
-git checkout --progress --force b3e8ead51efdb04ea44f4f7b9ec2fbbc33d4981e
-HEAD is now at b3e8ead CMF Image push to Artifactory
-Finishing: Checkout DAH.Kafka.OS@main to s
-
-
-Load, tag, and push image
-
-View raw log
-Starting: Load, tag, and push image
-==============================================================================
-Task         : Bash
-Description  : Run a Bash script on macOS, Linux, or Windows
-Version      : 3.231.4
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/2682807b-bb07-47ac-8fa0-dd83c1681dd5.sh
-=== Loading image from cp-cmf-2.3.0-fcb-2-amd64.tar ===
-Using docker
-Loaded image: confluentinc/cp-cmf:5632522f7-amd64
-
-=== Tagging confluentinc/cp-cmf:5632522f7-amd64 as artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview-2 ===
-
-=== Logging in to Artifactory ===
-Login Succeeded
-
-=== Pushing artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview-2 ===
-The push refers to repository [artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf]
-b49abeaeee3d: Preparing
-28e85e98202d: Preparing
-5f70bf18a086: Preparing
-e243349c8b6f: Preparing
-6bf9fce3d76c: Preparing
-84814801c3a8: Preparing
-f8b105fca678: Preparing
-ee53737b3ed9: Preparing
-cfb40e11cc09: Preparing
-f8b105fca678: Waiting
-ee53737b3ed9: Waiting
-cfb40e11cc09: Waiting
-84814801c3a8: Waiting
-28e85e98202d: Layer already exists
-5f70bf18a086: Layer already exists
-f8b105fca678: Layer already exists
-b49abeaeee3d: Layer already exists
-6bf9fce3d76c: Layer already exists
-e243349c8b6f: Layer already exists
-cfb40e11cc09: Layer already exists
-84814801c3a8: Layer already exists
-ee53737b3ed9: Layer already exists
-2.3.0-fcb-preview-2: digest: sha256:4d2d5c9cd69f74f0ec2fc4a5ddfb582235cc4754264ef46f9a4ac8c03837cf89 size: 2194
-
-=== Done ===
-Image pushed: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview-2
-Finishing: Load, tag, and push image
-
-
-Post-job: Checkout DAH.Kafka.OS@main to s
-
-View raw log
-Starting: Checkout DAH.Kafka.OS@main to s
-==============================================================================
-Task         : Get sources
-Description  : Get sources from a repository. Supports Git, TfsVC, and SVN repositories.
-Version      : 1.0.0
-Author       : Microsoft
-Help         : [More Information](https://go.microsoft.com/fwlink/?LinkId=798199)
-==============================================================================
-Cleaning any cached credential from repository: DAH.Kafka.OS (Git)
-Finishing: Checkout DAH.Kafka.OS@main to s
-
-
-Finalize Job
-
-View raw log
-Starting: Finalize Job
-Cleaning up task key
-Start cleaning up orphan processes.
-Finishing: Finalize Job
-
-Report build status
-
-View raw log
-Set build status for commit b3e8ea.
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flink-operator
+  namespace: dah-flink-dev
+  uid: fc9bcef0-7089-4b7f-81ee-aa3f8b8f876e
+  resourceVersion: '640898667'
+  creationTimestamp: '2026-03-31T23:55:32Z'
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/version: 1.13.0-cp2
+    fcbint.net/argo-app: security
+    helm.sh/chart: flink-kubernetes-operator-1.130.2
+  annotations:
+    argocd.argoproj.io/tracking-id: 'security:rbac.authorization.k8s.io/Role:dah-flink-dev/flink-operator'
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"Role","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"security:rbac.authorization.k8s.io/Role:dah-flink-dev/flink-operator"},"labels":{"app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"flink-kubernetes-operator","app.kubernetes.io/version":"1.13.0-cp2","fcbint.net/argo-app":"security","helm.sh/chart":"flink-kubernetes-operator-1.130.2"},"name":"flink-operator","namespace":"dah-flink-dev"},"rules":[{"apiGroups":[""],"resources":["pods","services","events","configmaps","secrets"],"verbs":["get","list","watch","create","update","patch","delete","deletecollection"]},{"apiGroups":["apps"],"resources":["deployments","deployments/finalizers","replicasets"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["apps"],"resources":["deployments/scale"],"verbs":["get","update","patch"]},{"apiGroups":["extensions"],"resources":["deployments","ingresses"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["flink.apache.org"],"resources":["flinkdeployments","flinkdeployments/finalizers","flinksessionjobs","flinksessionjobs/finalizers","flinkstatesnapshots","flinkstatesnapshots/finalizers"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["flink.apache.org"],"resources":["flinkdeployments/status","flinksessionjobs/status","flinkstatesnapshots/status"],"verbs":["get","update","patch"]},{"apiGroups":["networking.k8s.io"],"resources":["ingresses"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":["coordination.k8s.io"],"resources":["leases"],"verbs":["get","list","watch","create","update","patch","delete"]},{"apiGroups":[""],"resources":["serviceaccounts"],"verbs":["get"]},{"apiGroups":["rbac.authorization.k8s.io"],"resources":["roles","rolebindings"],"verbs":["get","list","watch"]}]}
+  managedFields:
+    - manager: argocd-application-controller
+      operation: Update
+      apiVersion: rbac.authorization.k8s.io/v1
+      time: '2026-04-28T17:32:24Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:argocd.argoproj.io/tracking-id': {}
+          'f:labels':
+            .: {}
+            'f:app.kubernetes.io/managed-by': {}
+            'f:app.kubernetes.io/name': {}
+            'f:app.kubernetes.io/version': {}
+            'f:fcbint.net/argo-app': {}
+            'f:helm.sh/chart': {}
+    - manager: argocd-controller
+      operation: Update
+      apiVersion: rbac.authorization.k8s.io/v1
+      time: '2026-04-28T17:32:25Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+        'f:rules': {}
+rules:
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+    apiGroups:
+      - ''
+    resources:
+      - pods
+      - services
+      - events
+      - configmaps
+      - secrets
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - apps
+    resources:
+      - deployments
+      - deployments/finalizers
+      - replicasets
+  - verbs:
+      - get
+      - update
+      - patch
+    apiGroups:
+      - apps
+    resources:
+      - deployments/scale
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - extensions
+    resources:
+      - deployments
+      - ingresses
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - flink.apache.org
+    resources:
+      - flinkdeployments
+      - flinkdeployments/finalizers
+      - flinksessionjobs
+      - flinksessionjobs/finalizers
+      - flinkstatesnapshots
+      - flinkstatesnapshots/finalizers
+  - verbs:
+      - get
+      - update
+      - patch
+    apiGroups:
+      - flink.apache.org
+    resources:
+      - flinkdeployments/status
+      - flinksessionjobs/status
+      - flinkstatesnapshots/status
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+  - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+    apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+  - verbs:
+      - get
+    apiGroups:
+      - ''
+    resources:
+      - serviceaccounts
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flink-operator-dah-flink
+  namespace: dah-flink-dev
+  uid: f6259305-3390-4c7b-8fc6-ba66a4666fb6
+  resourceVersion: '591123652'
+  creationTimestamp: '2026-04-17T18:15:56Z'
+  labels:
+    fcbint.net/argo-app: security
+    app.kubernetes.io/instance: fcb-security
+    fcbint.net/app-tier: '0'
+    fcbint.net/ritm: ''
+    app.kubernetes.io/version: 2.0.16
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: fcb-security-2.0.16
+    fcbint.net/network: ''
+    app.kubernetes.io/name: fcb-security
+    fcbint.net/app-id: '12055'
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/tracking-id: 'security:rbac.authorization.k8s.io/RoleBinding:dah-flink-dev/flink-operator-dah-flink'
+    fcbint.net/contact: ContainerPlatforms@firstcitizens.com
+    fcbint.net/requester: ''
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"RoleBinding","metadata":{"annotations":{"argocd.argoproj.io/sync-options":"Prune=false","argocd.argoproj.io/tracking-id":"security:rbac.authorization.k8s.io/RoleBinding:dah-flink-dev/flink-operator-dah-flink","fcbint.net/contact":"ContainerPlatforms@firstcitizens.com","fcbint.net/requester":""},"labels":{"app.kubernetes.io/instance":"fcb-security","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"fcb-security","app.kubernetes.io/version":"2.0.16","fcbint.net/app-id":"12055","fcbint.net/app-tier":"0","fcbint.net/argo-app":"security","fcbint.net/network":"","fcbint.net/ritm":"","helm.sh/chart":"fcb-security-2.0.16"},"name":"flink-operator-dah-flink","namespace":"dah-flink-dev"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"Role","name":"flink-operator"},"subjects":[{"kind":"ServiceAccount","name":"flink-operator","namespace":"dah-flink-dev"}]}
+  managedFields:
+    - manager: argocd-application-controller
+      operation: Update
+      apiVersion: rbac.authorization.k8s.io/v1
+      time: '2026-04-17T18:15:56Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:argocd.argoproj.io/sync-options': {}
+            'f:argocd.argoproj.io/tracking-id': {}
+            'f:fcbint.net/contact': {}
+            'f:fcbint.net/requester': {}
+          'f:labels':
+            'f:helm.sh/chart': {}
+            'f:app.kubernetes.io/managed-by': {}
+            'f:fcbint.net/app-id': {}
+            'f:fcbint.net/network': {}
+            'f:app.kubernetes.io/name': {}
+            .: {}
+            'f:fcbint.net/argo-app': {}
+            'f:fcbint.net/app-tier': {}
+            'f:fcbint.net/ritm': {}
+            'f:app.kubernetes.io/version': {}
+            'f:app.kubernetes.io/instance': {}
+        'f:roleRef': {}
+        'f:subjects': {}
+    - manager: argocd-controller
+      operation: Update
+      apiVersion: rbac.authorization.k8s.io/v1
+      time: '2026-04-17T18:16:03Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+subjects:
+  - kind: ServiceAccount
+    name: flink-operator
+    namespace: dah-flink-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flink-operator
