@@ -1,19 +1,25 @@
-** WARNING: connection is not using a post-quantum key exchange algorithm.
-** This session may be vulnerable to "store now, decrypt later" attacks.
-** The server may need to be upgraded. See https://openssh.com/pq.html
-Remote "origin" does not support the Git LFS locking API. Consider disabling it with:
-  $ git config lfs.https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS.git/info/lfs.locksverify false
-batch request: ** WARNING: connection is not using a post-quantum key exchange algorithm.
-** This session may be vulnerable to "store now, decrypt later" attacks.
-** The server may need to be upgraded. See https://openssh.com/pq.html
-remote: Could not find a Command Extension for Command:git-lfs-authenticate: exit status 2
-error: failed to push some refs to 'ssh://azdos-prd.fcpd.fcbint.net:22/CITMain/Banking-DAH/_git/DAH.Kafka.OS'
+Initialize job
+
+View raw log
+Starting: Initialize job
+Agent name: 'p12149-a-86335'
+Agent machine name: 'p12149-a-86335'
+Current agent version: '3.238.0'
+Agent running as: 'pd_azure_bld-svc'
+Prepare build directory.
+Set build variables.
+Download all required tasks.
+Checking job knob settings.
+   Knob: CheckForTaskDeprecation = false Source: $(AZP_AGENT_CHECK_FOR_TASK_DEPRECATION) 
+   Knob: MountWorkspace = false Source: $(AZP_AGENT_MOUNT_WORKSPACE) 
+Finished checking job knob settings.
+Start tracking orphan processes.
+Finishing: Initialize job
 
 
 Checkout DAH.Kafka.OS@main to s
 
 View raw log
-
 Starting: Checkout DAH.Kafka.OS@main to s
 ==============================================================================
 Task         : Get sources
@@ -25,19 +31,10 @@ Help         : [More Information](https://go.microsoft.com/fwlink/?LinkId=798199
 Syncing repository: DAH.Kafka.OS (Git)
 git version
 git version 2.43.7
-git init "/opt/azure_pipelines/_work/3457/s"
-hint: Using 'master' as the name for the initial branch. This default branch name
-hint: is subject to change. To configure the initial branch name to use in all
-hint: of your new repositories, which will suppress this warning, call:
-hint: 
-hint: 	git config --global init.defaultBranch <name>
-hint: 
-hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
-hint: 'development'. The just-created branch can be renamed via this command:
-hint: 
-hint: 	git branch -m <name>
-Initialized empty Git repository in /opt/azure_pipelines/_work/3457/s/.git/
-git remote add origin https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS
+git config --get remote.origin.url
+git clean -ffdx
+git reset --hard HEAD
+HEAD is now at b3e8ead CMF Image push to Artifactory
 git config gc.auto 0
 git config --get-all http.https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS.extraheader
 git config --get-all http.extraheader
@@ -45,33 +42,17 @@ git config --get-regexp .*extraheader
 git config --get-all http.proxy
 git config http.version HTTP/1.1
 git --config-env=http.extraheader=env_var_http.extraheader fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin
-remote: Azure Repos        
-remote: 
-remote: Found 1624 objects to send. (57 ms)        
-Receiving objects:   0% (1/1624)
-Receiving objects:   1% (17/1624)
-Receiving objects:   2% (33/1624)
-Receiving objects:   3% (49/1624)
-Receiving objects:   4% (65/1624)
-Receiving objects:   5% (82/1624)
-Receiving objects:   6% (98/1624)
-Receiving objects:   7% (114/1624)
-Receiving objects:   8% (130/1624)
-Receiving objects:   9% (147/1624)
-Receiving objects:  10% (163/1624)
-Receiving objects:  11% (179/1624)
-Receiving objects:  12% (195/1624)
-Receiving objects:  13% (212/1624)
-Receiving objects:  14% (228/1624)
-Receiving objects:  15% (244/1624)
-Receiving objects:  16% (260/1624)
-Receiving objects:  17% (277/1624)
+git --config-env=http.extraheader=env_var_http.extraheader fetch --force --tags --prune --prune-tags --progress --no-recurse-submodules origin   +b3e8ead51efdb04ea44f4f7b9ec2fbbc33d4981e
+From https://azdos-prd.fcpd.fcbint.net/CITMain/Banking-DAH/_git/DAH.Kafka.OS
+ * branch            b3e8ead51efdb04ea44f4f7b9ec2fbbc33d4981e -> FETCH_HEAD
+git checkout --progress --force b3e8ead51efdb04ea44f4f7b9ec2fbbc33d4981e
+HEAD is now at b3e8ead CMF Image push to Artifactory
+Finishing: Checkout DAH.Kafka.OS@main to s
 
 
 Load, tag, and push image
 
 View raw log
-
 Starting: Load, tag, and push image
 ==============================================================================
 Task         : Bash
@@ -82,45 +63,71 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/b2a9a414-ac28-4292-b084-fee707a39ce4.sh
-=== Loading image from cp-cmf-2.3.0-fcb-amd64.tar ===
+/bin//bash /opt/azure_pipelines/_work/_temp/2682807b-bb07-47ac-8fa0-dd83c1681dd5.sh
+=== Loading image from cp-cmf-2.3.0-fcb-2-amd64.tar ===
 Using docker
-Loaded image: confluentinc/cp-cmf:2.3.0-fcb-amd64
+Loaded image: confluentinc/cp-cmf:5632522f7-amd64
 
-=== Tagging as artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview ===
+=== Tagging confluentinc/cp-cmf:5632522f7-amd64 as artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview-2 ===
 
 === Logging in to Artifactory ===
-
-WARNING! Your credentials are stored unencrypted in '/home/FCPD.FCBINT.NET/pd_azure_bld-svc/.docker/config.json'.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/go/credential-store/
-
 Login Succeeded
 
-=== Pushing artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview ===
+=== Pushing artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview-2 ===
 The push refers to repository [artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf]
-216bb75c0207: Preparing
-25ca2bd6f59a: Preparing
+b49abeaeee3d: Preparing
+28e85e98202d: Preparing
 5f70bf18a086: Preparing
-8fd392d9f23c: Preparing
-18a089a4fcc4: Preparing
-b51229e9f4f3: Preparing
-805c06bdce53: Preparing
-eb1b304b4ac2: Preparing
+e243349c8b6f: Preparing
+6bf9fce3d76c: Preparing
+84814801c3a8: Preparing
+f8b105fca678: Preparing
+ee53737b3ed9: Preparing
 cfb40e11cc09: Preparing
-eb1b304b4ac2: Waiting
+f8b105fca678: Waiting
+ee53737b3ed9: Waiting
 cfb40e11cc09: Waiting
-b51229e9f4f3: Waiting
-805c06bdce53: Waiting
+84814801c3a8: Waiting
+28e85e98202d: Layer already exists
 5f70bf18a086: Layer already exists
-b51229e9f4f3: Pushed
-25ca2bd6f59a: Pushed
-18a089a4fcc4: Pushed
-805c06bdce53: Pushed
-216bb75c0207: Pushed
-cfb40e11cc09: Pushed
-eb1b304b4ac2: Pushed
-8fd392d9f23c: Pushed
-2.3.0-fcb-preview: digest: sha256:8613f9fc141d8300c8a3e19f4cd166fc7a3e91daedf16266cf0f3c7c71932a60 size: 2194
+f8b105fca678: Layer already exists
+b49abeaeee3d: Layer already exists
+6bf9fce3d76c: Layer already exists
+e243349c8b6f: Layer already exists
+cfb40e11cc09: Layer already exists
+84814801c3a8: Layer already exists
+ee53737b3ed9: Layer already exists
+2.3.0-fcb-preview-2: digest: sha256:4d2d5c9cd69f74f0ec2fc4a5ddfb582235cc4754264ef46f9a4ac8c03837cf89 size: 2194
 
 === Done ===
+Image pushed: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-cmf:2.3.0-fcb-preview-2
+Finishing: Load, tag, and push image
+
+
+Post-job: Checkout DAH.Kafka.OS@main to s
+
+View raw log
+Starting: Checkout DAH.Kafka.OS@main to s
+==============================================================================
+Task         : Get sources
+Description  : Get sources from a repository. Supports Git, TfsVC, and SVN repositories.
+Version      : 1.0.0
+Author       : Microsoft
+Help         : [More Information](https://go.microsoft.com/fwlink/?LinkId=798199)
+==============================================================================
+Cleaning any cached credential from repository: DAH.Kafka.OS (Git)
+Finishing: Checkout DAH.Kafka.OS@main to s
+
+
+Finalize Job
+
+View raw log
+Starting: Finalize Job
+Cleaning up task key
+Start cleaning up orphan processes.
+Finishing: Finalize Job
+
+Report build status
+
+View raw log
+Set build status for commit b3e8ea.
