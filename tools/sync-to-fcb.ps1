@@ -53,9 +53,14 @@ $Destination = "C:\git-repos\DAH.Kafka.OS"           # FCB Azure DevOps clone
 # tools/        local sync helpers (this script); not needed in DAH.Kafka.OS
 # node_modules/ defensive; nothing tracked uses it but skip if it appears
 # error.txt     same intent as docs/ — FCB pipeline output shared up to GitHub
+# .gitattributes routes *.tar through Git LFS, which the destination Azure DevOps
+#                Repos server does NOT support (push fails with
+#                "Could not find a Command Extension for Command:git-lfs-authenticate").
+#                Excluding it means tar files are committed on the destination
+#                as regular large files (Azure DevOps Repos accepts those).
 
 $excludeDirs  = @('.git', '.github', 'docs', 'tools', 'node_modules')
-$excludeFiles = @('error.txt')
+$excludeFiles = @('error.txt', '.gitattributes')
 
 # =============================================================================
 # Logic — usually no need to edit below this line
