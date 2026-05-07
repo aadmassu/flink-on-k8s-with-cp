@@ -69,6 +69,39 @@ stages:
               OC_NS: $(openshift-dev-namespace)
 
           - task: Bash@3
+            displayName: "RBAC: flink-operator SA can-i checks"
+            inputs:
+              targetType: inline
+              script: |
+                set -uo pipefail
+
+                SA="system:serviceaccount:$OC_NS:flink-operator"
+                echo "=== Impersonating $SA ==="
+
+                run_check() {
+                  local label=$1
+                  shift
+                  echo ""
+                  echo "--- $label ---"
+                  echo "+ oc auth can-i $* --as=$SA -n $OC_NS"
+                  oc auth can-i "$@" --as="$SA" -n "$OC_NS" || true
+                }
+
+                # Baseline: can the SA reach the API server at all?
+                run_check "get /version (non-resource URL)" get /version
+
+                # The call that fails for the QA CMF pod at FkoVersionValidator.
+                run_check "list deployments.apps" list deployments.apps
+
+                # Other verbs CMF exercises during startup / reconcile.
+                run_check "get pods"            get pods
+                run_check "list configmaps"     list configmaps
+                run_check "list flinkdeployments.flink.apache.org" \
+                          list flinkdeployments.flink.apache.org
+            env:
+              OC_NS: $(openshift-dev-namespace)
+
+          - task: Bash@3
             displayName: "Pull, tag, and push busybox"
             inputs:
               targetType: inline
