@@ -7,10 +7,7 @@ Helm values and Kubernetes/CMF manifests for the FCB stack, deployed via the pip
 | Directory | Type | Deployed today? | Pipeline |
 |-----------|------|-----------------|----------|
 | [`confluent-cmf/`](confluent-cmf/) | Helm values for the local CMF chart | **Yes** | [`cmf.yaml`](../.azure-pipelines/cmf.yaml) |
-| [`confluent-flink/<env>/`](confluent-flink/) (`environment.yaml`, `kafka-catalog.yaml`, `kafka-database.yaml`) | CMF REST API payloads, expressed as YAML | **Yes (dev populated; qa/uat/prd to follow)** | [`flink-environments`](../.azure-pipelines/flink-environments.yaml) (single pipeline applies all three) |
-| [`confluent-flink/<env>/`](confluent-flink/) (`cmf-rest-class.yaml`, `flink-environment.yaml`, `flink-pvc.yaml`, `flink-session-cluster.yaml`) | CFK-based Flink CRs (reference only) | **No** — FCB doesn't run CFK; kept as documented reference | None |
-
-The CMF REST API YAMLs and the CFK-based CR templates share similar names (`flink-environment.yaml`!), so be careful: they target completely different controllers.
+| [`confluent-flink/<env>/`](confluent-flink/) (`environment.json`, `kafka-catalog.json`, `kafka-database.json`) | CMF REST API payloads, authored as JSON | **Yes (dev populated; qa/uat/prd ship with placeholder hostnames)** | [`flink-environments`](../.azure-pipelines/flink-environments.yaml) (single pipeline applies all three) |
 
 ## Per-environment layout
 
@@ -22,7 +19,7 @@ apps/<component>/
 └── prd/...
 ```
 
-Each env folder holds either Helm values (CMF), CMF REST API payloads (Flink dev), or CFK-style CR reference templates (other Flink files).
+Each env folder holds either Helm values (CMF) or CMF REST API payloads (Flink env / catalog / database).
 
 | Environment | Namespace |
 |---|---|
@@ -46,13 +43,6 @@ Driven by [`.azure-pipelines/cmf.yaml`](../.azure-pipelines/cmf.yaml).
 
 ### CMF REST API payloads (Flink Environment, Kafka Catalog, Kafka Database)
 
-```bash
-# YAML manifests at apps/confluent-flink/<env>/{environment,kafka-catalog,kafka-database}.yaml
-# A single pipeline reads all three, converts YAML -> JSON via PyYAML, and POSTs them to CMF.
-```
+JSON files at `apps/confluent-flink/<env>/{environment,kafka-catalog,kafka-database}.json` are POSTed verbatim to CMF — no YAML conversion, no PyYAML. The pipeline pre-flight aborts if any `REPLACE_WITH_*` placeholder is still present (qa/uat/prd ship with placeholders for env-specific Kafka brokers and Schema Registry URL).
 
 Driven by [`.azure-pipelines/flink-environments.yaml`](../.azure-pipelines/flink-environments.yaml).
-
-### CFK-based CRs (reference templates)
-
-The `cmf-rest-class.yaml`, `flink-environment.yaml`, `flink-pvc.yaml`, and `flink-session-cluster.yaml` files under `apps/confluent-flink/<env>/` use the CFK CRD shapes (`apiVersion: platform.confluent.io/v1beta1`). FCB does not run CFK, so there's **no pipeline** that applies them. They're reference material — kept as a documented starting point for a future CFK-enabled environment or for non-FCB consumers of this stack pattern.

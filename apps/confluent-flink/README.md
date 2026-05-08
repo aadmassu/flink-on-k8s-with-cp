@@ -1,10 +1,8 @@
-# Confluent Flink — Environment, Catalog, Database (and CFK templates)
+# Confluent Flink — Environment, Catalog, Database
 
-This directory holds **two distinct kinds of file** that look superficially similar but go to different controllers. Read this header first or you'll get confused.
+CMF REST API payloads, posted by [`flink-environments.yaml`](../../.azure-pipelines/flink-environments.yaml) into the CMF instance running in `dah-flink-<env>`.
 
-## What's actually deployed at FCB today
-
-Per environment under `apps/confluent-flink/<env>/`:
+## Files (per env)
 
 | File | Kind | Applied via | Active? |
 |------|------|-------------|---------|
@@ -16,34 +14,15 @@ These are **not Kubernetes resources**. They're CMF REST API payloads — author
 
 `dev/` is fully populated and live. `qa/`, `uat/`, `prd/` ship with `REPLACE_WITH_*` placeholder hostnames in their Kafka broker / Schema Registry URL fields; the pipeline pre-flight aborts with a clear error if any are still unresolved. Replace those with the env-specific values before running the pipeline against that env.
 
-## What's reference-only (not deployed; no pipeline)
-
-Per environment under `apps/confluent-flink/<env>/`:
-
-| File | Kind | Status |
-|------|------|--------|
-| `cmf-rest-class.yaml` | CFK CR — `CMFRestClass` | **Reference only** |
-| `flink-environment.yaml` | CFK CR — `FlinkEnvironment` (apiVersion `platform.confluent.io/v1beta1`) | **Reference only** |
-| `flink-pvc.yaml` | `PersistentVolumeClaim` for checkpoints | **Reference only** (state goes to NetApp S3, not PVC) |
-| `flink-session-cluster.yaml` | CFK CR — `FlinkDeployment` (session cluster) | **Reference only** |
-
-These all require **CFK (Confluent for Kubernetes)**, which **FCB does not run**. There's no pipeline that applies them — they're documented reference material for a future CFK-enabled environment.
-
-⚠️ **Naming collision warning:** `flink-environment.yaml` (CFK CR) and `environment.yaml` (CMF REST payload) **both produce a Flink "Environment"**, but in different controllers. Don't mix them up — the CMF REST payload has no `apiVersion`/`kind`/`metadata` block; the CFK CR does.
-
 ## Per-env layout
 
 ```
 apps/confluent-flink/
 ├── README.md  (this file)
 └── <env>/
-    ├── environment.json           # CMF REST — Flink Environment    (live; placeholders in qa/uat/prd)
-    ├── kafka-catalog.json         # CMF REST — Kafka Catalog        (live; placeholders in qa/uat/prd)
-    ├── kafka-database.json        # CMF REST — Kafka Database       (live; placeholders in qa/uat/prd)
-    ├── cmf-rest-class.yaml        # CFK CR — reference only
-    ├── flink-environment.yaml     # CFK CR — reference only
-    ├── flink-pvc.yaml             # PVC — reference only
-    └── flink-session-cluster.yaml # CFK CR — reference only
+    ├── environment.json           # CMF REST — Flink Environment   (live; placeholders in qa/uat/prd)
+    ├── kafka-catalog.json         # CMF REST — Kafka Catalog       (live; placeholders in qa/uat/prd)
+    └── kafka-database.json        # CMF REST — Kafka Database      (live; placeholders in qa/uat/prd)
 ```
 
 ## CMF REST payload — what they look like
