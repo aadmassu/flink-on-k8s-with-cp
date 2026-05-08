@@ -1,0 +1,18 @@
+{
+  "apiVersion": "cmf.confluent.io/v1",
+  "kind": "KafkaCatalog",
+  "metadata": {
+    "name": "fcb-catalog",
+    "labels": {
+      "environment": "prd",
+      "managedBy": "CMF"
+    }
+  },
+  "spec": {
+    "srInstance": {
+      "connectionConfig": {
+        "schema.registry.url": "http://REPLACE_WITH_PRD_SR_HOST:8081"
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "apiVersion": "cmf.confluent.io/v1",
+  "kind": "KafkaDatabase",
+  "metadata": {
+    "name": "dah-kafka-dev",
+    "labels": {
+      "environment": "dev",
+      "managedBy": "CMF"
+    }
+  },
+  "spec": {
+    "kafkaCluster": {
+      "connectionConfig": {
+        "bootstrap.servers": "d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094",
+        "security.protocol": "PLAINTEXT"
+      }
+    },
+    "ddlEnvironments": [
+      "dah-flink-dev"
+    ]
+  }
+}

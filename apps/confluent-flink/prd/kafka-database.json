@@ -1,0 +1,22 @@
+{
+  "apiVersion": "cmf.confluent.io/v1",
+  "kind": "KafkaDatabase",
+  "metadata": {
+    "name": "dah-kafka-prd",
+    "labels": {
+      "environment": "prd",
+      "managedBy": "CMF"
+    }
+  },
+  "spec": {
+    "kafkaCluster": {
+      "connectionConfig": {
+        "bootstrap.servers": "REPLACE_WITH_PRD_KAFKA_BROKER_1:9094,REPLACE_WITH_PRD_KAFKA_BROKER_2:9094,REPLACE_WITH_PRD_KAFKA_BROKER_3:9094",
+        "security.protocol": "PLAINTEXT"
+      }
+    },
+    "ddlEnvironments": [
+      "dah-flink-prd"
+    ]
+  }
+}

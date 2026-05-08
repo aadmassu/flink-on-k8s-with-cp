@@ -1,0 +1,32 @@
+{
+  "name": "dah-flink-dev",
+  "kubernetesNamespace": "dah-flink-dev",
+  "flinkApplicationDefaults": {
+    "spec": {
+      "flinkConfiguration": {
+        "taskmanager.numberOfTaskSlots": "2"
+      },
+      "jobManager": {
+        "resource": {
+          "memory": "4000m",
+          "cpu": 1
+        }
+      },
+      "taskManager": {
+        "resource": {
+          "memory": "4000m",
+          "cpu": 1
+        }
+      }
+    }
+  },
+  "computePoolDefaults": {
+    "clusterSpec": {
+      "flinkVersion": "v2_1",
+      "image": "artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-flink:2.1.1-cp1-java21",
+      "flinkConfiguration": {
+        "taskmanager.numberOfTaskSlots": "2"
+      }
+    }
+  }
+}
