@@ -11,7 +11,7 @@
   "spec": {
     "kafkaCluster": {
       "connectionConfig": {
-        "bootstrap.servers": "REPLACE_WITH_QA_KAFKA_BROKER_1:9094,REPLACE_WITH_QA_KAFKA_BROKER_2:9094,REPLACE_WITH_QA_KAFKA_BROKER_3:9094",
+        "bootstrap.servers": "d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094",
         "security.protocol": "PLAINTEXT"
       }
     },

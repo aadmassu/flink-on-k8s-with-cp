@@ -11,7 +11,7 @@
   "spec": {
     "srInstance": {
       "connectionConfig": {
-        "schema.registry.url": "http://REPLACE_WITH_QA_SR_HOST:8081"
+        "schema.registry.url": "http://d11547varc-4559.fcpd.fcbint.net:8081"
       }
     }
   }
