@@ -27,15 +27,15 @@ Eleven Opaque Secrets the CFK CRs reference for OAuth, SASL, license, MDS token 
 |---|---|---|
 | `confluent-license` | `license.txt` | `<env>-confluent-license` |
 | `mds-token-keypair` | `mdsTokenKeyPair.pem` | `<env>-mds-token-keypair-pem` |
-| `sasl-plain-internal` | `admin`, `client`, `schema_registry`, `kafka_connect`, `kafka_rest`, `control_center` | `<env>-sasl-plain-<user>-pwd` (6 vars) |
-| `oauth-broker` | `clientId`, `clientSecret` | `<env>-oauth-broker-client-id` / `-client-secret` |
-| `oauth-schemaregistry` | `clientId`, `clientSecret` | `<env>-oauth-schemaregistry-client-id` / `-client-secret` |
-| `oauth-connect` | `clientId`, `clientSecret` | `<env>-oauth-connect-client-id` / `-client-secret` |
-| `oauth-kafkarest` | `clientId`, `clientSecret` | `<env>-oauth-kafkarest-client-id` / `-client-secret` |
-| `oauth-controlcenter` | `clientId`, `clientSecret` | `<env>-oauth-controlcenter-client-id` / `-client-secret` |
-| `oauth-mds-rest` | `clientId`, `clientSecret` | `<env>-oauth-mds-rest-client-id` / `-client-secret` |
-| `c3-prometheus-basic-auth` | `username`, `password` | `<env>-c3-prometheus-username` / `-password` |
-| `c3-alertmanager-basic-auth` | `username`, `password` | `<env>-c3-alertmanager-username` / `-password` |
+| `sasl-plain-internal` | `admin`<br>`client`<br>`schema_registry`<br>`kafka_connect`<br>`kafka_rest`<br>`control_center` | `<env>-sasl-plain-admin-pwd`<br>`<env>-sasl-plain-client-pwd`<br>`<env>-sasl-plain-schema-registry-pwd`<br>`<env>-sasl-plain-kafka-connect-pwd`<br>`<env>-sasl-plain-kafka-rest-pwd`<br>`<env>-sasl-plain-control-center-pwd` |
+| `oauth-broker` | `clientId`<br>`clientSecret` | `<env>-oauth-broker-client-id`<br>`<env>-oauth-broker-client-secret` |
+| `oauth-schemaregistry` | `clientId`<br>`clientSecret` | `<env>-oauth-schemaregistry-client-id`<br>`<env>-oauth-schemaregistry-client-secret` |
+| `oauth-connect` | `clientId`<br>`clientSecret` | `<env>-oauth-connect-client-id`<br>`<env>-oauth-connect-client-secret` |
+| `oauth-kafkarest` | `clientId`<br>`clientSecret` | `<env>-oauth-kafkarest-client-id`<br>`<env>-oauth-kafkarest-client-secret` |
+| `oauth-controlcenter` | `clientId`<br>`clientSecret` | `<env>-oauth-controlcenter-client-id`<br>`<env>-oauth-controlcenter-client-secret` |
+| `oauth-mds-rest` | `clientId`<br>`clientSecret` | `<env>-oauth-mds-rest-client-id`<br>`<env>-oauth-mds-rest-client-secret` |
+| `c3-prometheus-basic-auth` | `username`<br>`password` | `<env>-c3-prometheus-username`<br>`<env>-c3-prometheus-password` |
+| `c3-alertmanager-basic-auth` | `username`<br>`password` | `<env>-c3-alertmanager-username`<br>`<env>-c3-alertmanager-password` |
 
 The **MDS keypair** is the only one with a non-obvious source: the VM brokers' `/var/ssl/private/tokenKeypair.pem`. Copy that file's contents into the `<env>-mds-token-keypair-pem` secret variable verbatim (multiline PEM-encoded RSA). Reusing the VM keypair keeps VM-issued MDS tokens valid in the CFK cluster during the cluster-link migration window — **do not generate a fresh keypair without coordination** as doing so invalidates every outstanding token.
 
