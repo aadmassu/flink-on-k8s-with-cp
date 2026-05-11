@@ -1,0 +1,334 @@
+# Pipeline:  confluent-platform
+# Purpose:   Install or uninstall the CFK-managed Confluent Platform cluster
+#            (KRaft controllers, brokers, Schema Registry, Connect, REST
+#            Proxy, Control Center) in dah-flink-<env>. Applies the YAMLs
+#            under apps/confluent-platform/<env>/ in CFK dependency order.
+# Author:    Ayele Admassu
+# Created:   2026-05-12
+#
+# Variable Group: <env>-openshift-credentials
+#   openshift-service-account-name  — service account username
+#   openshift-service-account-pwd   — service account password (secret)
+#   openshift-dev-api               — OpenShift API server URL
+#   openshift-dev-namespace         — target namespace (dah-flink-<env>)
+#
+# Prerequisite Secrets in the target namespace (created out-of-band; today
+# pipeline-managed by a separate process, eventually CyberArk via ESO):
+#   confluent-license, sasl-plain-internal, mds-token-keypair,
+#   oauth-broker, oauth-schemaregistry, oauth-connect, oauth-kafkarest,
+#   oauth-controlcenter, oauth-mds-rest, c3-prometheus-basic-auth,
+#   c3-alertmanager-basic-auth.
+# Pre-flight aborts if any are missing — see apps/confluent-platform/<env>/00-prereq-secrets.md.
+#
+# The six *-tls Secrets (kafka-tls, kraftcontroller-tls, schemaregistry-tls,
+# connect-tls, kafkarest-tls, controlcenter-tls) are *not* prerequisites;
+# this pipeline creates the cert-manager Certificate CRs and waits for the
+# Keyfactor-issued Secrets to land before applying the component CRs.
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, uat, stg, prd-1, prd-2]
+  - name: action
+    displayName: "Action"
+    type: string
+    default: install
+    values: [install, uninstall]
+
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: dev-openshift-credentials
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: qa-openshift-credentials
+  - ${{ if eq(parameters.environment, 'uat') }}:
+    - group: uat-openshift-credentials
+  - ${{ if eq(parameters.environment, 'stg') }}:
+    - group: stg-openshift-credentials
+  # prd-1 and prd-2 land in the same dah-flink-prd namespace (logical halves
+  # of the active+passive PRD pair) — they share the prd OpenShift creds.
+  - ${{ if eq(parameters.environment, 'prd-1') }}:
+    - group: prd-openshift-credentials
+  - ${{ if eq(parameters.environment, 'prd-2') }}:
+    - group: prd-openshift-credentials
+
+stages:
+  - stage: ConfluentPlatform
+    displayName: "Confluent Platform ${{ parameters.action }} (${{ parameters.environment }})"
+    jobs:
+      - job: ConfluentPlatform
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - template: templates/install-tools.yaml
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Logging in to OpenShift at $OC_API..."
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+
+                echo ""
+                echo "=== Logged-in user ==="
+                oc whoami
+
+                echo ""
+                echo "=== Switching to namespace $OC_NS ==="
+                oc project "$OC_NS"
+            env:
+              OC_API: $(openshift-dev-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: $(openshift-dev-namespace)
+
+          - ${{ if eq(parameters.action, 'install') }}:
+            - task: Bash@3
+              displayName: "Pre-flight: verify env folder + prerequisite Secrets"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+
+                  echo "=== Git commit ==="
+                  git rev-parse HEAD
+
+                  echo ""
+                  echo "=== Verifying env folder $ENV_DIR ==="
+                  REQUIRED_FILES=(
+                    kafkarestclass.yaml
+                    kraftcontroller.yaml
+                    kafka.yaml
+                    schemaregistry.yaml
+                    connect.yaml
+                    kafkarest.yaml
+                    controlcenter.yaml
+                    kafka-tls-certificate.yaml
+                    kraftcontroller-tls-certificate.yaml
+                    schemaregistry-tls-certificate.yaml
+                    connect-tls-certificate.yaml
+                    kafkarest-tls-certificate.yaml
+                    controlcenter-tls-certificate.yaml
+                  )
+                  missing_files=0
+                  for f in "${REQUIRED_FILES[@]}"; do
+                    if [ -f "$ENV_DIR/$f" ]; then
+                      echo "OK    $f"
+                    else
+                      echo "MISS  $f"
+                      missing_files=$((missing_files+1))
+                    fi
+                  done
+                  if [ "$missing_files" -gt 0 ]; then
+                    echo ""
+                    echo "ERROR: $missing_files file(s) missing in $ENV_DIR — this env is not"
+                    echo "populated yet. Add the CRs (see apps/confluent-platform/dev/ as a"
+                    echo "template) before running this pipeline against $TARGET_ENV."
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "=== Refusing to apply if any REPLACE_WITH_ marker remains ==="
+                  if grep -nrE 'REPLACE_WITH_' "$ENV_DIR"/*.yaml 2>/dev/null; then
+                    echo "ERROR: unresolved placeholder(s) above. Fix before running."
+                    exit 1
+                  fi
+                  echo "(no unresolved placeholders)"
+
+                  echo ""
+                  echo "=== Verifying prerequisite Secrets in $OC_NS ==="
+                  REQUIRED_SECRETS=(
+                    confluent-license
+                    sasl-plain-internal
+                    mds-token-keypair
+                    oauth-broker
+                    oauth-schemaregistry
+                    oauth-connect
+                    oauth-kafkarest
+                    oauth-controlcenter
+                    oauth-mds-rest
+                    c3-prometheus-basic-auth
+                    c3-alertmanager-basic-auth
+                  )
+                  missing_secrets=0
+                  for s in "${REQUIRED_SECRETS[@]}"; do
+                    if oc get secret "$s" -n "$OC_NS" >/dev/null 2>&1; then
+                      echo "OK    $s"
+                    else
+                      echo "MISS  $s"
+                      missing_secrets=$((missing_secrets+1))
+                    fi
+                  done
+                  if [ "$missing_secrets" -gt 0 ]; then
+                    echo ""
+                    echo "ERROR: $missing_secrets required Secret(s) missing in $OC_NS."
+                    echo "See $ENV_DIR/00-prereq-secrets.md for the full list and creation pattern."
+                    exit 1
+                  fi
+              env:
+                OC_NS: $(openshift-dev-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
+              displayName: "Apply cert-manager Certificates and wait for TLS Secrets"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+
+                  echo "=== Applying Certificate CRs ==="
+                  for cert in "$ENV_DIR"/*-tls-certificate.yaml; do
+                    echo ""
+                    echo "+ oc apply -f $cert"
+                    oc apply -f "$cert"
+                  done
+
+                  echo ""
+                  echo "=== Waiting for Keyfactor to issue all 6 *-tls Secrets ==="
+                  # Each cert may take a couple of minutes (approver-policy +
+                  # Keyfactor RTT). Cap at 10 minutes total per secret.
+                  TLS_SECRETS=(
+                    kafka-tls
+                    kraftcontroller-tls
+                    schemaregistry-tls
+                    connect-tls
+                    kafkarest-tls
+                    controlcenter-tls
+                  )
+                  for s in "${TLS_SECRETS[@]}"; do
+                    echo ""
+                    echo "Waiting for secret/$s..."
+                    for i in $(seq 1 60); do
+                      if oc get secret "$s" -n "$OC_NS" >/dev/null 2>&1; then
+                        echo "  ready after $((i*10))s"
+                        break
+                      fi
+                      if [ "$i" -eq 60 ]; then
+                        echo ""
+                        echo "ERROR: secret/$s not materialized after 10 min."
+                        echo "Investigate the Certificate / CertificateRequest:"
+                        oc describe certificate "$s" -n "$OC_NS" 2>&1 | tail -30 || true
+                        oc get certificaterequest -n "$OC_NS" 2>&1 | tail -10 || true
+                        exit 1
+                      fi
+                      sleep 10
+                    done
+                  done
+              env:
+                OC_NS: $(openshift-dev-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
+              displayName: "Apply Confluent Platform CRs"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+
+                  echo "=== Apply order (CFK dependency order) ==="
+                  # CFK reconciles in dependency order, but applying in the
+                  # right sequence makes failures easier to attribute to the
+                  # right component.
+                  APPLY_ORDER=(
+                    kafkarestclass.yaml
+                    kraftcontroller.yaml
+                    kafka.yaml
+                    schemaregistry.yaml
+                    connect.yaml
+                    kafkarest.yaml
+                    controlcenter.yaml
+                  )
+                  for f in "${APPLY_ORDER[@]}"; do
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/$f"
+                    oc apply -f "$ENV_DIR/$f"
+                  done
+
+                  echo ""
+                  echo "=== Cluster status (immediate post-apply) ==="
+                  oc get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
+                    -n "$OC_NS" 2>&1 || true
+
+                  echo ""
+                  echo "=== Pods ==="
+                  oc get pods -n "$OC_NS" -l app.kubernetes.io/part-of=confluent-platform 2>&1 || true
+
+                  echo ""
+                  echo "NOTE: the CFK operator takes 10-15 minutes to reconcile a full"
+                  echo "cluster on first install. The pipeline is not waiting beyond apply."
+                  echo "Monitor convergence with:"
+                  echo "  oc -n $OC_NS get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter"
+                  echo "  oc -n $OC_NS get pods -l app.kubernetes.io/part-of=confluent-platform"
+              env:
+                OC_NS: $(openshift-dev-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+
+          - ${{ if eq(parameters.action, 'uninstall') }}:
+            - task: Bash@3
+              displayName: "Uninstall Confluent Platform CRs"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+
+                  echo "=== Deleting Confluent Platform CRs (reverse dependency order) ==="
+                  # Reverse order so dependents shut down before their backends.
+                  DELETE_ORDER=(
+                    controlcenter.yaml
+                    kafkarest.yaml
+                    connect.yaml
+                    schemaregistry.yaml
+                    kafka.yaml
+                    kraftcontroller.yaml
+                    kafkarestclass.yaml
+                  )
+                  for f in "${DELETE_ORDER[@]}"; do
+                    if [ -f "$ENV_DIR/$f" ]; then
+                      echo ""
+                      echo "+ oc delete -f $ENV_DIR/$f --ignore-not-found --wait=true --timeout=5m"
+                      oc delete -f "$ENV_DIR/$f" --ignore-not-found --wait=true --timeout=5m || true
+                    fi
+                  done
+
+                  echo ""
+                  echo "=== Deleting cert-manager Certificates (cascades to *-tls Secrets) ==="
+                  for cert in "$ENV_DIR"/*-tls-certificate.yaml; do
+                    if [ -f "$cert" ]; then
+                      echo "+ oc delete -f $cert --ignore-not-found"
+                      oc delete -f "$cert" --ignore-not-found || true
+                    fi
+                  done
+
+                  echo ""
+                  echo "=== Remaining Confluent Platform objects ==="
+                  oc get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
+                    -n "$OC_NS" 2>&1 || true
+                  oc get pods -n "$OC_NS" -l app.kubernetes.io/part-of=confluent-platform 2>&1 || true
+
+                  echo ""
+                  echo "NOTE: prerequisite Secrets (confluent-license, oauth-*, mds-token-keypair,"
+                  echo "sasl-plain-internal, c3-*-basic-auth) are intentionally preserved. PVCs"
+                  echo "from the Kafka, KRaftController, and ControlCenter StatefulSets persist"
+                  echo "after CR deletion — delete them manually if a true clean wipe is needed."
+              env:
+                OC_NS: $(openshift-dev-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
