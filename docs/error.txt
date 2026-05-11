@@ -1,14 +1,15 @@
 Starting: Apply Flink environment and catalog
-==============================================================================
+=====================================================================================
 Task         : Bash
 Description  : Run a Bash script on macOS, Linux, or Windows
 Version      : 3.231.4
 Author       : Microsoft Corporation
 Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-==============================================================================
+=====================================================================================
 Generating script.
-========================== Starting Command Output ===========================
+========================== Starting Command Output ==================================
 /bin//b***h /opt/azure_pipelines/_work/_temp/ab75eaa9-da09-43e0-ba72-561be43ba678.sh
 ERROR: apps/confluent-flink/qa/environment.yaml not found
 ##[error]B***h exited with code '1'.
 Finishing: Apply Flink environment and catalog
+
