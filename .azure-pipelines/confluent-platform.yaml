@@ -37,7 +37,7 @@ parameters:
     displayName: "Action"
     type: string
     default: install
-    values: [install, uninstall]
+    values: [create-prereqs, install, uninstall]
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -93,6 +93,182 @@ stages:
               OC_PWD: $(openshift-service-account-pwd)
               OC_NS: $(openshift-dev-namespace)
 
+          - ${{ if eq(parameters.action, 'create-prereqs') }}:
+            - task: Bash@3
+              displayName: "Create prerequisite Opaque Secrets and describe"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  # Refuse to proceed if any required variable is empty.
+                  # Listing them up front gives a clear miss-list before we try
+                  # to create any Secret with empty values.
+                  required_vars=(
+                    CONFLUENT_LICENSE MDS_PEM
+                    SASL_ADMIN SASL_CLIENT SASL_SR SASL_CONNECT SASL_REST SASL_C3
+                    OAUTH_BROKER_ID OAUTH_BROKER_SECRET
+                    OAUTH_SR_ID OAUTH_SR_SECRET
+                    OAUTH_CONNECT_ID OAUTH_CONNECT_SECRET
+                    OAUTH_REST_ID OAUTH_REST_SECRET
+                    OAUTH_C3_ID OAUTH_C3_SECRET
+                    OAUTH_MDS_REST_ID OAUTH_MDS_REST_SECRET
+                    C3_PROM_USER C3_PROM_PWD
+                    C3_ALERT_USER C3_ALERT_PWD
+                  )
+                  missing=0
+                  for v in "${required_vars[@]}"; do
+                    if [ -z "${!v:-}" ]; then
+                      echo "MISS  $v"
+                      missing=$((missing+1))
+                    fi
+                  done
+                  if [ "$missing" -gt 0 ]; then
+                    echo ""
+                    echo "ERROR: $missing required variable(s) above are empty. Populate them"
+                    echo "in variable group $TARGET_ENV-openshift-credentials before re-running."
+                    echo "Variable naming mapping: apps/confluent-platform/$TARGET_ENV/prereqs/README.md"
+                    exit 1
+                  fi
+
+                  # FCB Common Metadata standard requires these labels on every object.
+                  label_secret() {
+                    local name=$1
+                    oc label --local --overwrite -f - --dry-run=client -o yaml \
+                      app.kubernetes.io/name=confluent-platform \
+                      app.kubernetes.io/instance="$name" \
+                      app.kubernetes.io/component=cfk-prereq \
+                      app.kubernetes.io/part-of=confluent-platform \
+                      fcbint.net/app-id=11547
+                  }
+
+                  apply_secret_from_literals() {
+                    local name=$1; shift
+                    echo ""
+                    echo "=== $name ==="
+                    oc create secret generic "$name" \
+                      -n "$OC_NS" --dry-run=client -o yaml "$@" \
+                      | label_secret "$name" \
+                      | oc apply -f -
+                  }
+
+                  apply_secret_from_file() {
+                    local name=$1
+                    local key=$2
+                    local file=$3
+                    echo ""
+                    echo "=== $name ==="
+                    oc create secret generic "$name" \
+                      -n "$OC_NS" --dry-run=client -o yaml \
+                      --from-file="$key=$file" \
+                      | label_secret "$name" \
+                      | oc apply -f -
+                  }
+
+                  echo "=== Creating prerequisite Secrets in $OC_NS ==="
+
+                  # Confluent license — same shape as the CMF pipeline uses.
+                  apply_secret_from_literals confluent-license \
+                    --from-literal=license.txt="$CONFLUENT_LICENSE"
+
+                  # MDS RSA token keypair. PEM is multiline; write to a temp
+                  # file then --from-file to avoid shell escaping issues.
+                  MDS_TMP=$(mktemp)
+                  printf '%s' "$MDS_PEM" > "$MDS_TMP"
+                  apply_secret_from_file mds-token-keypair mdsTokenKeyPair.pem "$MDS_TMP"
+                  rm -f "$MDS_TMP"
+
+                  # SASL PLAIN inter-broker user passwords (one Secret, six keys).
+                  apply_secret_from_literals sasl-plain-internal \
+                    --from-literal=admin="$SASL_ADMIN" \
+                    --from-literal=client="$SASL_CLIENT" \
+                    --from-literal=schema_registry="$SASL_SR" \
+                    --from-literal=kafka_connect="$SASL_CONNECT" \
+                    --from-literal=kafka_rest="$SASL_REST" \
+                    --from-literal=control_center="$SASL_C3"
+
+                  # OAuth client credentials (one Secret per component).
+                  apply_secret_from_literals oauth-broker \
+                    --from-literal=clientId="$OAUTH_BROKER_ID" \
+                    --from-literal=clientSecret="$OAUTH_BROKER_SECRET"
+                  apply_secret_from_literals oauth-schemaregistry \
+                    --from-literal=clientId="$OAUTH_SR_ID" \
+                    --from-literal=clientSecret="$OAUTH_SR_SECRET"
+                  apply_secret_from_literals oauth-connect \
+                    --from-literal=clientId="$OAUTH_CONNECT_ID" \
+                    --from-literal=clientSecret="$OAUTH_CONNECT_SECRET"
+                  apply_secret_from_literals oauth-kafkarest \
+                    --from-literal=clientId="$OAUTH_REST_ID" \
+                    --from-literal=clientSecret="$OAUTH_REST_SECRET"
+                  apply_secret_from_literals oauth-controlcenter \
+                    --from-literal=clientId="$OAUTH_C3_ID" \
+                    --from-literal=clientSecret="$OAUTH_C3_SECRET"
+                  apply_secret_from_literals oauth-mds-rest \
+                    --from-literal=clientId="$OAUTH_MDS_REST_ID" \
+                    --from-literal=clientSecret="$OAUTH_MDS_REST_SECRET"
+
+                  # C3 Prometheus / AlertManager basic auth.
+                  apply_secret_from_literals c3-prometheus-basic-auth \
+                    --from-literal=username="$C3_PROM_USER" \
+                    --from-literal=password="$C3_PROM_PWD"
+                  apply_secret_from_literals c3-alertmanager-basic-auth \
+                    --from-literal=username="$C3_ALERT_USER" \
+                    --from-literal=password="$C3_ALERT_PWD"
+
+                  echo ""
+                  echo "=== oc describe for every prereq Secret ==="
+                  # describe prints key names + sizes but NOT values — safe for
+                  # the pipeline log. To inspect a value, fetch the Secret
+                  # outside the pipeline with `oc get secret <name> -o jsonpath`.
+                  for s in \
+                      confluent-license \
+                      mds-token-keypair \
+                      sasl-plain-internal \
+                      oauth-broker oauth-schemaregistry oauth-connect \
+                      oauth-kafkarest oauth-controlcenter oauth-mds-rest \
+                      c3-prometheus-basic-auth c3-alertmanager-basic-auth; do
+                    echo ""
+                    echo "--- $s ---"
+                    oc describe secret "$s" -n "$OC_NS"
+                  done
+
+                  echo ""
+                  echo "=== Summary ==="
+                  oc -n "$OC_NS" get secret \
+                      confluent-license \
+                      mds-token-keypair \
+                      sasl-plain-internal \
+                      oauth-broker oauth-schemaregistry oauth-connect \
+                      oauth-kafkarest oauth-controlcenter oauth-mds-rest \
+                      c3-prometheus-basic-auth c3-alertmanager-basic-auth
+              env:
+                OC_NS: $(openshift-dev-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+                CONFLUENT_LICENSE: $(${{ parameters.environment }}-confluent-license)
+                MDS_PEM: $(${{ parameters.environment }}-mds-token-keypair-pem)
+                SASL_ADMIN: $(${{ parameters.environment }}-sasl-plain-admin-pwd)
+                SASL_CLIENT: $(${{ parameters.environment }}-sasl-plain-client-pwd)
+                SASL_SR: $(${{ parameters.environment }}-sasl-plain-schema-registry-pwd)
+                SASL_CONNECT: $(${{ parameters.environment }}-sasl-plain-kafka-connect-pwd)
+                SASL_REST: $(${{ parameters.environment }}-sasl-plain-kafka-rest-pwd)
+                SASL_C3: $(${{ parameters.environment }}-sasl-plain-control-center-pwd)
+                OAUTH_BROKER_ID: $(${{ parameters.environment }}-oauth-broker-client-id)
+                OAUTH_BROKER_SECRET: $(${{ parameters.environment }}-oauth-broker-client-secret)
+                OAUTH_SR_ID: $(${{ parameters.environment }}-oauth-schemaregistry-client-id)
+                OAUTH_SR_SECRET: $(${{ parameters.environment }}-oauth-schemaregistry-client-secret)
+                OAUTH_CONNECT_ID: $(${{ parameters.environment }}-oauth-connect-client-id)
+                OAUTH_CONNECT_SECRET: $(${{ parameters.environment }}-oauth-connect-client-secret)
+                OAUTH_REST_ID: $(${{ parameters.environment }}-oauth-kafkarest-client-id)
+                OAUTH_REST_SECRET: $(${{ parameters.environment }}-oauth-kafkarest-client-secret)
+                OAUTH_C3_ID: $(${{ parameters.environment }}-oauth-controlcenter-client-id)
+                OAUTH_C3_SECRET: $(${{ parameters.environment }}-oauth-controlcenter-client-secret)
+                OAUTH_MDS_REST_ID: $(${{ parameters.environment }}-oauth-mds-rest-client-id)
+                OAUTH_MDS_REST_SECRET: $(${{ parameters.environment }}-oauth-mds-rest-client-secret)
+                C3_PROM_USER: $(${{ parameters.environment }}-c3-prometheus-username)
+                C3_PROM_PWD: $(${{ parameters.environment }}-c3-prometheus-password)
+                C3_ALERT_USER: $(${{ parameters.environment }}-c3-alertmanager-username)
+                C3_ALERT_PWD: $(${{ parameters.environment }}-c3-alertmanager-password)
+
           - ${{ if eq(parameters.action, 'install') }}:
             - task: Bash@3
               displayName: "Pre-flight: verify env folder + prerequisite Secrets"
@@ -116,12 +292,12 @@ stages:
                     connect.yaml
                     kafkarest.yaml
                     controlcenter.yaml
-                    kafka-tls-certificate.yaml
-                    kraftcontroller-tls-certificate.yaml
-                    schemaregistry-tls-certificate.yaml
-                    connect-tls-certificate.yaml
-                    kafkarest-tls-certificate.yaml
-                    controlcenter-tls-certificate.yaml
+                    prereqs/kafka-tls-certificate.yaml
+                    prereqs/kraftcontroller-tls-certificate.yaml
+                    prereqs/schemaregistry-tls-certificate.yaml
+                    prereqs/connect-tls-certificate.yaml
+                    prereqs/kafkarest-tls-certificate.yaml
+                    prereqs/controlcenter-tls-certificate.yaml
                   )
                   missing_files=0
                   for f in "${REQUIRED_FILES[@]}"; do
@@ -142,7 +318,7 @@ stages:
 
                   echo ""
                   echo "=== Refusing to apply if any REPLACE_WITH_ marker remains ==="
-                  if grep -nrE 'REPLACE_WITH_' "$ENV_DIR"/*.yaml 2>/dev/null; then
+                  if grep -nrE 'REPLACE_WITH_' "$ENV_DIR" --include='*.yaml' 2>/dev/null; then
                     echo "ERROR: unresolved placeholder(s) above. Fix before running."
                     exit 1
                   fi
@@ -192,7 +368,7 @@ stages:
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
                   echo "=== Applying Certificate CRs ==="
-                  for cert in "$ENV_DIR"/*-tls-certificate.yaml; do
+                  for cert in "$ENV_DIR"/prereqs/*-tls-certificate.yaml; do
                     echo ""
                     echo "+ oc apply -f $cert"
                     oc apply -f "$cert"
@@ -311,7 +487,7 @@ stages:
 
                   echo ""
                   echo "=== Deleting cert-manager Certificates (cascades to *-tls Secrets) ==="
-                  for cert in "$ENV_DIR"/*-tls-certificate.yaml; do
+                  for cert in "$ENV_DIR"/prereqs/*-tls-certificate.yaml; do
                     if [ -f "$cert" ]; then
                       echo "+ oc delete -f $cert --ignore-not-found"
                       oc delete -f "$cert" --ignore-not-found || true

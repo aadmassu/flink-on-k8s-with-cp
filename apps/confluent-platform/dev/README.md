@@ -20,19 +20,39 @@ CFK Custom Resources that reproduce the existing dev VM Confluent Platform clust
 | Kafka REST Proxy | 1 | `d11547varc-hsu5` | [`kafkarest.yaml`](kafkarest.yaml) |
 | Control Center | 1 | `d11547varc-g5w0` | [`controlcenter.yaml`](controlcenter.yaml) |
 
+## Folder layout
+
+```
+dev/
+├── README.md                  (this file)
+├── kafkarestclass.yaml        \
+├── kraftcontroller.yaml        |
+├── kafka.yaml                  |  ── CFK Custom Resources (root)
+├── schemaregistry.yaml         |
+├── connect.yaml                |
+├── kafkarest.yaml              |
+├── controlcenter.yaml         /
+└── prereqs/                   ── supporting prerequisites (TLS Certificates + prereqs README)
+    ├── README.md
+    └── *-tls-certificate.yaml
+```
+
+CFK CRs live at the root for clear grouping. The `prereqs/` subfolder holds the cert-manager `Certificate` CRs that land the six `*-tls` Secrets, plus its own [README](prereqs/README.md) documenting the 11 non-TLS Opaque Secrets the pipeline creates from variable-group values.
+
 ## Apply order
 
-CFK reconciles in dependency order, but for the first install do this top-down so you can spot a failure early:
+Run the pipeline twice — `create-prereqs` first, then `install`. CFK reconciles in dependency order itself, but the pipeline applies in this sequence so any failure attributes to the right component:
 
-1. **TLS Certificates** — `*-tls-certificate.yaml` (six files). Each triggers a Keyfactor `CertificateRequest` and lands a Secret of the same name. Wait for all six Secrets to exist before continuing.
-2. **Prerequisite non-TLS Secrets** — see [`00-prereq-secrets.md`](00-prereq-secrets.md): OAuth client creds, license, SASL PLAIN, C3 basic-auth, MDS token keypair.
-3. **`kafkarestclass.yaml`** — connection profile referenced by Connect + ControlCenter.
-4. **`kraftcontroller.yaml`** — KRaft quorum must be up before brokers can register.
-5. **`kafka.yaml`** — brokers join the quorum.
-6. **`schemaregistry.yaml`** — uses Kafka as its kafkastore.
-7. **`connect.yaml`** — needs Kafka + SR.
-8. **`kafkarest.yaml`** — needs Kafka + SR.
-9. **`controlcenter.yaml`** — depends on all of the above.
+1. **`create-prereqs` action** — pipeline creates the 11 non-TLS Opaque Secrets from `<env>-openshift-credentials` variable group entries. See [`prereqs/README.md`](prereqs/README.md) for the variable mapping.
+2. **`install` action**:
+   1. Apply the six TLS `Certificate` CRs under `prereqs/`. Pipeline waits up to 10 min per cert for Keyfactor to materialize each `*-tls` Secret.
+   2. `kafkarestclass.yaml` — connection profile referenced by Connect + ControlCenter.
+   3. `kraftcontroller.yaml` — KRaft quorum must be up before brokers register.
+   4. `kafka.yaml` — brokers join the quorum.
+   5. `schemaregistry.yaml` — uses Kafka as its kafkastore.
+   6. `connect.yaml` — needs Kafka + SR.
+   7. `kafkarest.yaml` — needs Kafka + SR.
+   8. `controlcenter.yaml` — depends on all of the above.
 
 ## Capacity (from `docs/server capacity and utlization.png`)
 
