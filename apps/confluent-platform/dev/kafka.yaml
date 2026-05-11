@@ -1,0 +1,165 @@
+---
+# CFK Kafka CR — dev (3-broker, KRaft mode)
+#
+# Sources (apps/confluent-platform/cp-confluent/dev/):
+#   d11547varc-pgm8-broker-1-server.properties  (broker.id=101)
+#   d11547varc-g719-broker-2-server.properties  (broker.id=102)
+#   d11547varc-81mb-broker-3-server.properties  (broker.id=103)
+#
+# Per-VM config carried over here:
+#   listeners=INTERNAL://:9092,BROKER://:9091,CERTONLY://:9094
+#   listener.security.protocol.map=INTERNAL:SASL_SSL,BROKER:SASL_SSL,CERTONLY:SSL
+#   inter.broker.listener.name=BROKER
+#   advertised.listeners (internal: 9092, broker: 9091, external mTLS: 7055 via CERTONLY)
+#   confluent.metadata.server.listeners=https://0.0.0.0:8090   (MDS embedded in broker)
+#   log.dirs=/data/kafka
+#   log.retention.hours=168, log.segment.bytes=1073741824
+#   offsets/transaction/license/metrics topic replication = 3
+#   transaction.state.log.min.isr=2
+#   num.io.threads=16, num.network.threads=8
+#   process.roles=broker
+#   controller.quorum.voters=1@<jxvh>:9093,2@<pnvg>:9093,3@<d2kd>:9093 (resolved by CFK from KRaftController CR)
+#   authorizer=ConfluentServerAuthorizer with CONFLUENT,KRAFT_ACL
+#   SBC + telemetry enabled
+#
+# OAuth (Okta) carried over: issuer myapps.firstcitizens.com/oauth2/default,
+#   JWKS endpoint, expected audience Confluent,account,api://default,
+#   sub claim sub, groups claim dahDev_groups, scope 11547.DAH(Dev).
+
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: kafka-broker
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 3
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+  dataVolumeCapacity: 1Ti  # VM is 1 TB today, +3 TB planned — bump to 4Ti when ready
+  storageClass:
+    name: REPLACE_WITH_FCB_STORAGE_CLASS
+  resources:
+    requests:
+      cpu: "16"
+      memory: 16Gi
+    limits:
+      cpu: "16"   # VM plan calls for 26 cores — raise to "26" when planned bump approved
+      memory: 16Gi
+
+  # KRaft mode — points at the KRaftController CR (kraftcontroller.yaml)
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller
+
+  # Listeners — mirror the VM listener model:
+  #   internal  (SASL_SSL, PLAIN)        — replaces VM BROKER:9091 inter-broker
+  #   external  (SASL_SSL, OAUTHBEARER)  — replaces VM INTERNAL:9092 (client OAuth)
+  #   custom    (SSL, mTLS)              — replaces VM CERTONLY:9094 (mTLS-only clients)
+  listeners:
+    internal:
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+      tls:
+        enabled: true
+    external:
+      authentication:
+        type: oauth
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        subClaimName: sub
+        groupsClaimName: dahDev_groups
+        expectedAudiences:
+          - Confluent
+          - account
+          - api://default
+      tls:
+        enabled: true
+      externalAccess:
+        type: loadBalancer
+        loadBalancer:
+          # Per-broker LBs + a bootstrap LB are created by CFK. The cluster
+          # domain controls the advertised hostname suffix; brokers will be
+          # advertised as <brokerPrefix><N>.<domain> and the bootstrap as
+          # <bootstrapPrefix>.<domain>. Add the matching SANs in
+          # kafka-tls-certificate.yaml before applying.
+          domain: REPLACE_WITH_KAFKA_LB_DOMAIN
+          brokerPrefix: kafka-
+          bootstrapPrefix: kafka-bootstrap
+    custom:
+      - name: certonly
+        port: 9094
+        authentication:
+          type: mtls
+        tls:
+          enabled: true
+
+  tls:
+    secretRef: kafka-tls
+  license:
+    secretRef: confluent-license
+
+  # MDS — Metadata Server is embedded on the brokers (VM port 8090). CFK
+  # exposes it via this block; same OAuth issuer / JWKS as the listeners.
+  metadataServer:
+    listenerConfig:
+      port: 8090
+    authentication:
+      type: oauth
+      jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+      subClaimName: sub
+      groupsClaimName: dahDev_groups
+      expectedAudiences:
+        - Confluent
+        - account
+        - api://default
+    tls:
+      enabled: true
+    tokenKeyPair:
+      secretRef: REPLACE_WITH_MDS_TOKEN_KEYPAIR_SECRET
+
+  # Carry-over Kafka server settings that don't have a structured CR field.
+  # Keep this list aligned with the broker .properties — drift here breaks
+  # cluster-link / VM client compatibility.
+  configOverrides:
+    server:
+      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+      - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+      - super.users=User:admin
+      - inter.broker.listener.name=internal
+      - log.retention.hours=168
+      - log.segment.bytes=1073741824
+      - log.retention.check.interval.ms=300000
+      - num.io.threads=16
+      - num.network.threads=8
+      - num.partitions=1
+      - num.recovery.threads.per.data.dir=2
+      - offsets.topic.replication.factor=3
+      - transaction.state.log.replication.factor=3
+      - transaction.state.log.min.isr=2
+      - confluent.license.topic.replication.factor=3
+      - confluent.metadata.topic.replication.factor=3
+      - confluent.balancer.topic.replication.factor=3
+      - confluent.cluster.link.metadata.topic.replication.factor=3
+      - confluent.metrics.reporter.topic.replicas=3
+      - confluent.security.event.logger.exporter.kafka.topic.replicas=3
+      - confluent.consumer.lag.emitter.enabled=true
+      - confluent.balancer.enable=true
+      - confluent.balancer.data.enabled=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+      - confluent.telemetry.enabled=true
+      - confluent.reporters.telemetry.auto.enable=true
+      - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
+
+  podTemplate:
+    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT

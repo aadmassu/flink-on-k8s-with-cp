@@ -1,0 +1,104 @@
+---
+# CFK KafkaRestProxy CR — dev (1 replica, matching VM)
+#
+# Source: apps/confluent-platform/cp-confluent/dev/d11547varc-hsu5-rest-proxy.properties
+#
+# Per-VM config carried over:
+#   bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
+#   listeners=https://0.0.0.0:8082
+#   schema.registry.url=https://<sr>:8081
+#   confluent.monitoring.interceptor.topic=_confluent-monitoring
+#   kafka.rest.resource.extension.class=KafkaRestSecurityResourceExtension
+#   OAuth via Okta — issuer/JWKS/audiences/scope per dev properties
+#   confluent.metadata.bootstrap.server.urls -> MDS endpoint
+#
+# Replica count is 1 to match the VM. Bump for HA later if needed.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaRestProxy
+metadata:
+  name: kafkarest
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/component: kafka-rest-proxy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 1
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+  resources:
+    requests:
+      cpu: "4"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+      authentication:
+        type: oauth
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        subClaimName: sub
+        groupsClaimName: dahDev_groups
+        expectedAudiences:
+          - Confluent
+          - account
+          - api://default
+        oauthSettings:
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)
+          clientCredentials:
+            secretRef: oauth-kafkarest
+      tls:
+        enabled: true
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
+      tls:
+        enabled: true
+      authentication:
+        type: oauth
+        clientCredentials:
+          secretRef: oauth-kafkarest
+    mds:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: REPLACE_WITH_MDS_TOKEN_KEYPAIR_SECRET
+      authentication:
+        type: oauth
+        clientCredentials:
+          secretRef: oauth-kafkarest
+
+  authentication:
+    type: oauth
+    jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+    expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+    subClaimName: sub
+    groupsClaimName: dahDev_groups
+    expectedAudiences:
+      - Confluent
+      - account
+      - api://default
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: kafkarest-tls
+  license:
+    secretRef: confluent-license
+
+  configOverrides:
+    server:
+      - kafka.rest.resource.extension.class=io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension
+      - confluent.monitoring.interceptor.topic=_confluent-monitoring
+
+  podTemplate:
+    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT

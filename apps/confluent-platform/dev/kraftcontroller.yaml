@@ -1,0 +1,72 @@
+---
+# CFK KRaftController CR — dev (3-node KRaft quorum)
+#
+# Sources (apps/confluent-platform/cp-confluent/dev/):
+#   d11547varc-jxvh-controller-1-server.properties  (node.id=1)
+#   d11547varc-pnvg-controller-2-server.properties  (node.id=2)
+#   d11547varc-d2kd-controller-3-server.properties  (node.id=3)
+#
+# Per-VM config carried over here:
+#   process.roles=controller
+#   listeners=CONTROLLER://:9093  (SASL_SSL, PLAIN inter-controller)
+#   listener.security.protocol.map=CONTROLLER:SASL_SSL,BROKER:SASL_SSL
+#   log.dirs=/data/kafka
+#   sasl.mechanism.controller.protocol=PLAIN
+#   metric.reporters=TelemetryReporter,ConfluentMetricsReporter
+#   confluent.balancer.enable=true  (SBC)
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 3
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+  dataVolumeCapacity: 64Gi
+  storageClass:
+    name: REPLACE_WITH_FCB_STORAGE_CLASS
+  resources:
+    requests:
+      cpu: "4"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+  # CONTROLLER listener on 9093, SASL_SSL with PLAIN (matches VM).
+  listeners:
+    controller:
+      tls:
+        enabled: true
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+  tls:
+    secretRef: kraftcontroller-tls
+  license:
+    secretRef: confluent-license
+  # Carried over from controller .properties so the cluster keeps the same
+  # internal-topic replication factors and authorizer config as the VM.
+  configOverrides:
+    server:
+      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+      - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+      - super.users=User:admin
+      - confluent.metadata.topic.replication.factor=3
+      - confluent.balancer.topic.replication.factor=3
+      - confluent.license.topic.replication.factor=3
+      - confluent.balancer.enable=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+      - confluent.telemetry.enabled=true
+      - confluent.reporters.telemetry.auto.enable=true
+  podTemplate:
+    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT

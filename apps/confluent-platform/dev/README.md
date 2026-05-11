@@ -1,0 +1,86 @@
+# CFK Confluent Platform — dev
+
+CFK Custom Resources that reproduce the existing dev VM Confluent Platform cluster on OpenShift. Every CR in this folder is authored against the corresponding `.properties` file under [`../cp-confluent/dev/`](../cp-confluent/dev/) — that's the source of truth for parity.
+
+## Target
+
+- **Confluent Platform**: 8.1.x
+- **CFK operator**: latest version that supports CP 8.1.x. Operator install is owned by FCB's Container Platforms team; FCB will upgrade if a newer version is required.
+- **Namespace**: `dah-flink-dev` (CFK operator lives in its own namespace and watches `dah-flink-<env>`)
+- **Mode**: KRaft (3 controllers, 3 brokers) — matching the dev VM cluster
+
+## Topology mirrored from VM dev
+
+| Component | Replicas | VM hosts | CR file |
+|---|---|---|---|
+| KRaft Controller | 3 | `d11547varc-jxvh`, `pnvg`, `d2kd` | [`kraftcontroller.yaml`](kraftcontroller.yaml) |
+| Kafka Broker | 3 | `d11547varc-pgm8`, `g719`, `81mb` | [`kafka.yaml`](kafka.yaml) |
+| Schema Registry | 1 | `d11547varc-4559` | [`schemaregistry.yaml`](schemaregistry.yaml) |
+| Connect | 2 | `d11547varc-y0lb`, `rigt` | [`connect.yaml`](connect.yaml) |
+| Kafka REST Proxy | 1 | `d11547varc-hsu5` | [`kafkarest.yaml`](kafkarest.yaml) |
+| Control Center | 1 | `d11547varc-g5w0` | [`controlcenter.yaml`](controlcenter.yaml) |
+
+## Apply order
+
+CFK reconciles in dependency order, but for the first install do this top-down so you can spot a failure early:
+
+1. **TLS Certificates** — `*-tls-certificate.yaml` (six files). Each triggers a Keyfactor `CertificateRequest` and lands a Secret of the same name. Wait for all six Secrets to exist before continuing.
+2. **Prerequisite non-TLS Secrets** — see [`00-prereq-secrets.md`](00-prereq-secrets.md): OAuth client creds, license, SASL PLAIN, C3 basic-auth, MDS token keypair.
+3. **`kafkarestclass.yaml`** — connection profile referenced by Connect + ControlCenter.
+4. **`kraftcontroller.yaml`** — KRaft quorum must be up before brokers can register.
+5. **`kafka.yaml`** — brokers join the quorum.
+6. **`schemaregistry.yaml`** — uses Kafka as its kafkastore.
+7. **`connect.yaml`** — needs Kafka + SR.
+8. **`kafkarest.yaml`** — needs Kafka + SR.
+9. **`controlcenter.yaml`** — depends on all of the above.
+
+## Capacity (from `docs/server capacity and utlization.png`)
+
+| Component | Cores | RAM | Disk | Notes |
+|---|---|---|---|---|
+| Broker (×3) | 16 (→ 26 planned) | 16 GB | 1 TB (→ 4 TB planned) | 2% utilization today |
+| Controller (×3) | 4 | 4 GB | 64 GB | 9% |
+| Schema Registry | 4 | 4 GB | 64 GB | stable, moderate |
+| REST Proxy | 4 | 4 GB | 64 GB | — |
+| Connect (×2) | 4 | 4 GB | 64 GB | moderate |
+| Control Center | 12 | 16 GB | 300 GB | stable |
+
+The CR `resources.requests` track these values; raise `limits` if the planned core/disk bump goes through.
+
+## What's preserved vs adapted from the VM config
+
+**Preserved as-is** (cluster contract — don't change without coordinating with VM clients):
+- All inter-component topic replication factors = 3 (`offsets`, `transaction`, `__confluent-command`, `_schemas`, `_confluent-monitoring`, `_confluent-secrets`, `connect-cluster-*`)
+- Log retention 168h (7d), 1 GiB segments
+- Min ISR for transaction-state log = 2
+- KRaft quorum size = 3
+- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, scope `11547.DAH(Dev)`
+- Authorizer: `ConfluentServerAuthorizer` with `CONFLUENT,KRAFT_ACL` rule providers
+- Embedded MDS on broker port 8090 (HTTPS, BEARER)
+- Self-Balancing Cluster (SBC) enabled
+- Telemetry export to C3 enabled
+
+**Adapted** (Kubernetes-native equivalents):
+- Hostnames become Service DNS (`<component>.<ns>.svc.cluster.local`)
+- Listener ports follow CFK conventions (internal + external) — VM `INTERNAL:9092 / BROKER:9091 / CERTONLY:9094` collapses to CFK `internal` + `external` (LoadBalancer) + a `custom` mTLS-only listener
+- TLS cert/key/truststore JKS paths → cert-manager `Certificate` CRs issuing through FCB Keyfactor; each lands a `*-tls` Secret consumed by the matching CR via `tls.secretRef` (same pattern as `cmf-tls`)
+- All OAuth client IDs and secrets → K8s Secrets (see [`00-prereq-secrets.md`](00-prereq-secrets.md)); will move to CyberArk via ESO
+- Confluent license → `confluent-license` Secret (already used by CMF)
+- Kafka admin REST (VM `kafka.rest.*` on broker) → CFK `KafkaRestClass` CR (`kafkarestclass.yaml`) referenced by Connect + ControlCenter
+- `log.dirs=/data/kafka` → CFK PV with the storage class FCB approves; mount path is operator-managed
+- Container images use the same Artifactory pattern as Flink: `artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-*:8.1.0` for dev / qa / uat, `-docker-prod` for prd
+- External Kafka access: `loadBalancer` type — CFK creates per-broker LBs plus a bootstrap LB
+
+**Open items / placeholders** (search for `REPLACE_WITH_` in the YAMLs):
+- **Storage class** name (FCB OpenShift default — needs Container Platforms confirmation; the docs/ PDFs cover cert-manager / ESO / common metadata but not storage)
+- **Init-container image tag** — operator team confirms the exact tag matching the CFK version FCB upgrades to
+- **MDS token keypair Secret** — RSA keypair Secret name (needs generation; matches VM `confluent.metadata.server.token.key.path`)
+- **Service account** name — whether to reuse `flink-operator` SA or create a CP-specific one
+- **Kafka external LB domain** — DNS suffix CFK appends to each broker / bootstrap LB
+- **External SANs** in `kafka-tls-certificate.yaml` and `controlcenter-tls-certificate.yaml` — fill in once LB hostnames are allocated
+
+## Cross-reference
+
+- VM reference properties: [`../cp-confluent/dev/`](../cp-confluent/dev/)
+- Project memory on the migration plan: `project_cfk_migration.md`
+- Flink stays pointed at the VM cluster until migration completes: `project_flink_targets_vm_cp.md`

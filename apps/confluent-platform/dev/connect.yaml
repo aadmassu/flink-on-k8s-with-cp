@@ -1,0 +1,150 @@
+---
+# CFK Connect CR — dev (2 workers, matching VM)
+#
+# Sources (apps/confluent-platform/cp-confluent/dev/):
+#   d11547varc-y0lb-connect-1.properties
+#   d11547varc-rigt-connect-2.properties
+#
+# Per-VM config carried over:
+#   bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
+#   group.id=connect-cluster
+#   listeners=https://0.0.0.0:8083
+#   config.storage.topic=connect-cluster-configs (rf=3)
+#   offset.storage.topic=connect-cluster-offsets (rf=3)
+#   status.storage.topic=connect-cluster-status (rf=3)
+#   internal.{key,value}.converter=JsonConverter (schemas off)
+#   key/value.converter=AvroConverter with SR URL
+#   plugin.path=/usr/share/java/connect_plugins
+#   InternalSecretConfigProvider with _confluent-secrets topic (rf=3)
+#   connector.client.config.override.policy=All
+#   rest.extension.classes=ConnectSecurityExtension, ConnectSecretRegistryExtension
+#   monitoring interceptors enabled (consumer/producer/admin)
+#   confluent.monitoring.interceptor.topic=_confluent-monitoring
+
+apiVersion: platform.confluent.io/v1beta1
+kind: Connect
+metadata:
+  name: connect
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/component: kafka-connect
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 2
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+  resources:
+    requests:
+      cpu: "4"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+      authentication:
+        type: oauth
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        subClaimName: sub
+        groupsClaimName: dahDev_groups
+        expectedAudiences:
+          - Confluent
+          - account
+          - api://default
+        oauthSettings:
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)
+          clientCredentials:
+            secretRef: oauth-connect
+      tls:
+        enabled: true
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
+      tls:
+        enabled: true
+      authentication:
+        type: oauth
+        clientCredentials:
+          secretRef: oauth-connect
+    mds:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: REPLACE_WITH_MDS_TOKEN_KEYPAIR_SECRET
+      authentication:
+        type: oauth
+        clientCredentials:
+          secretRef: oauth-connect
+    kafkaRestClassRef:
+      name: default
+      namespace: dah-flink-dev
+    interceptor:
+      enabled: true
+      consumer:
+        bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+        authentication:
+          type: oauth
+          clientCredentials:
+            secretRef: oauth-connect
+      producer:
+        bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+        authentication:
+          type: oauth
+          clientCredentials:
+            secretRef: oauth-connect
+
+  authentication:
+    type: oauth
+    jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+    expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+    subClaimName: sub
+    groupsClaimName: dahDev_groups
+    expectedAudiences:
+      - Confluent
+      - account
+      - api://default
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: connect-tls
+  license:
+    secretRef: confluent-license
+
+  configOverrides:
+    server:
+      - group.id=connect-cluster
+      - config.storage.topic=connect-cluster-configs
+      - offset.storage.topic=connect-cluster-offsets
+      - status.storage.topic=connect-cluster-status
+      - config.storage.replication.factor=3
+      - offset.storage.replication.factor=3
+      - status.storage.replication.factor=3
+      - offset.flush.interval.ms=10000
+      - connector.client.config.override.policy=All
+      - plugin.path=/usr/share/java/connect_plugins
+      - key.converter=io.confluent.connect.avro.AvroConverter
+      - value.converter=io.confluent.connect.avro.AvroConverter
+      - internal.key.converter=org.apache.kafka.connect.json.JsonConverter
+      - internal.value.converter=org.apache.kafka.connect.json.JsonConverter
+      - internal.key.converter.schemas.enable=false
+      - internal.value.converter.schemas.enable=false
+      - rest.extension.classes=io.confluent.connect.security.ConnectSecurityExtension,io.confluent.connect.secretregistry.ConnectSecretRegistryExtension
+      - config.providers=secret
+      - config.providers.secret.class=io.confluent.connect.secretregistry.rbac.config.provider.InternalSecretConfigProvider
+      - config.providers.secret.param.kafkastore.topic=_confluent-secrets
+      - config.providers.secret.param.kafkastore.topic.replication.factor=3
+      - confluent.monitoring.interceptor.topic=_confluent-monitoring
+      - producer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor
+      - consumer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor
+
+  podTemplate:
+    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT

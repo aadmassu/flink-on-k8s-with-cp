@@ -1,0 +1,142 @@
+---
+# CFK ControlCenter CR — dev (1 replica, matching VM)
+#
+# Source: apps/confluent-platform/cp-confluent/dev/d11547varc-g5w0-control-center.properties
+#
+# Per-VM config carried over:
+#   confluent.controlcenter.rest.listeners=https://0.0.0.0:9021
+#   confluent.controlcenter.data.dir=/var/lib/confluent/control-center
+#   confluent.controlcenter.streams.num.stream.threads=12
+#   confluent.controlcenter.command.topic.replication=3
+#   confluent.controlcenter.internal.topics.replication=3
+#   confluent.controlcenter.metrics.topic.replication=3
+#   confluent.controlcenter.monitoring.interceptor.topic.replication=3
+#   bootstrap.servers, schema.registry.url, connect cluster reference -> CFK service DNS
+#   Prometheus enabled (port 9090, basic auth)
+#   AlertManager URL (port 9093, basic auth)
+#   OAuth (Okta) for streams + MDS
+#   confluent.controlcenter.cmf.healthcheck.interval.sec=600000 (CMF noise quieted)
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 1
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+  dataVolumeCapacity: 300Gi
+  storageClass:
+    name: REPLACE_WITH_FCB_STORAGE_CLASS
+  resources:
+    requests:
+      cpu: "12"
+      memory: 16Gi
+    limits:
+      cpu: "12"
+      memory: 16Gi
+
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+      authentication:
+        type: oauth
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        subClaimName: sub
+        groupsClaimName: dahDev_groups
+        expectedAudiences:
+          - Confluent
+          - account
+          - api://default
+        oauthSettings:
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)
+          clientCredentials:
+            secretRef: oauth-controlcenter
+      tls:
+        enabled: true
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
+      tls:
+        enabled: true
+      authentication:
+        type: oauth
+        clientCredentials:
+          secretRef: oauth-controlcenter
+    connect:
+      - name: connect-cluster
+        url: https://connect.dah-flink-dev.svc.cluster.local:8083
+        tls:
+          enabled: true
+        authentication:
+          type: oauth
+          clientCredentials:
+            secretRef: oauth-controlcenter
+    mds:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: REPLACE_WITH_MDS_TOKEN_KEYPAIR_SECRET
+      authentication:
+        type: oauth
+        clientCredentials:
+          secretRef: oauth-controlcenter
+    kafkaRestClassRef:
+      name: default
+      namespace: dah-flink-dev
+
+  authentication:
+    type: oauth
+    jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+    expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+    subClaimName: sub
+    groupsClaimName: dahDev_groups
+    expectedAudiences:
+      - Confluent
+      - account
+      - api://default
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: controlcenter-tls
+  license:
+    secretRef: confluent-license
+
+  monitoring:
+    # Prometheus + AlertManager next-gen bundle, matching VM C3.
+    prometheus:
+      enabled: true
+      tls:
+        enabled: true
+      basicAuth:
+        secretRef: c3-prometheus-basic-auth
+    alertmanager:
+      enabled: true
+      tls:
+        enabled: true
+      basicAuth:
+        secretRef: c3-alertmanager-basic-auth
+
+  configOverrides:
+    server:
+      - confluent.controlcenter.data.dir=/var/lib/confluent/control-center
+      - confluent.controlcenter.streams.num.stream.threads=12
+      - confluent.controlcenter.command.topic.replication=3
+      - confluent.controlcenter.internal.topics.replication=3
+      - confluent.controlcenter.metrics.topic.replication=3
+      - confluent.controlcenter.monitoring.interceptor.topic.replication=3
+      - confluent.controlcenter.cmf.healthcheck.interval.sec=600000
+
+  podTemplate:
+    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT
