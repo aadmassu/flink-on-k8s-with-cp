@@ -56,3 +56,62 @@ The pipeline **`oc describe`s** each Secret after creation (showing key names + 
 ```
 oc -n dah-flink-dev get secret <name> -o jsonpath='{.data.<key>}' | base64 -d
 ```
+
+---
+
+## Dev values to paste into `dev-openshift-credentials` *(TEMPORARY — delete this section after Tushar has loaded them into the variable group)*
+
+> ⚠️ This section contains real credentials extracted from the dev VM `.properties` files. **Remove it from the committed README as soon as Tushar finishes populating `dev-openshift-credentials`.** The values stay in the ADO secret variables and the pipeline reads them from there; no need to keep them in Git.
+>
+> Excludes `dev-confluent-license` (already in the variable group from CMF) and `dev-mds-token-keypair-pem` (multi-line PEM — copy verbatim from VM `/var/ssl/private/tokenKeypair.pem`).
+
+### SASL PLAIN inter-broker passwords
+
+Source: broker `.properties` line `listener.name.broker.plain.sasl.jaas.config=…user_<user>=<password>…`
+
+| Variable | Value |
+|---|---|
+| `dev-sasl-plain-admin-pwd` | `admin-secret` |
+| `dev-sasl-plain-client-pwd` | `client-secret` |
+| `dev-sasl-plain-schema-registry-pwd` | `schema_registry-secret` |
+| `dev-sasl-plain-kafka-connect-pwd` | `kafka_connect-secret` |
+| `dev-sasl-plain-kafka-rest-pwd` | `kafka_rest-secret` |
+| `dev-sasl-plain-control-center-pwd` | `control_center-secret` |
+
+> These look like literal defaults that were never replaced (`<user>-secret`). Fine for dev; rotate before stg / prd-1 / prd-2.
+
+### OAuth client credentials (Okta)
+
+| Variable | Value | Source field in VM properties |
+|---|---|---|
+| `dev-oauth-broker-client-id` | `0oa1owiage2MyoHdt358` | broker `confluent.bearer.auth.client.id` |
+| `dev-oauth-broker-client-secret` | `r4xpfcAyxhI6xng4DeWgSQ9sPodj99O-17xZ5hIZ-BSD1B8ai41_B2T8rSffdXJs` | broker `confluent.bearer.auth.client.secret` |
+| `dev-oauth-schemaregistry-client-id` | `0oa1owiage2MyoHdt358` *(same client as broker)* | SR `confluent.metadata.oauthbearer.login.client.id` |
+| `dev-oauth-schemaregistry-client-secret` | `r4xpfcAyxhI6xng4DeWgSQ9sPodj99O-17xZ5hIZ-BSD1B8ai41_B2T8rSffdXJs` *(same secret as broker)* | SR `confluent.metadata.oauthbearer.login.client.secret` |
+| `dev-oauth-connect-client-id` | `0oa1owi0yntGMBvPS358` | Connect `confluent.metadata.oauthbearer.login.client.id` |
+| `dev-oauth-connect-client-secret` | `TGbBqg4XCIN6ktGkLmMQjZVeqc6ynXUBb-Pnv_8lScIQdKJZut40DPNAx2YNSgb6` | Connect `confluent.metadata.oauthbearer.login.client.secret` |
+| `dev-oauth-kafkarest-client-id` | `0oa1owi3wkxJS3b3b358` | REST Proxy `confluent.metadata.oauthbearer.login.client.id` |
+| `dev-oauth-kafkarest-client-secret` | `WL8iLzfjwROtpGgKAgpmiiRY9jWREQEDLdW8AGeDiD6mieJoOly0_V0ZrfmJuSDh` | REST Proxy `confluent.metadata.oauthbearer.login.client.secret` |
+| `dev-oauth-controlcenter-client-id` | `0oa1ov6h5mwmQTCKI358` | C3 `confluent.metadata.oauthbearer.login.client.id` |
+| `dev-oauth-controlcenter-client-secret` | `Hsf0LrSnbs3rQMR_46bFXSIgwDRBZ_rj0c1ZO1VSAYsn9DuegbN3midCQBo36VRS` | C3 `confluent.metadata.oauthbearer.login.client.secret` |
+| `dev-oauth-mds-rest-client-id` | `0oa1owhtq2olDZWwf358` | broker `kafka.rest.confluent.metadata.oauthbearer.login.client.id` |
+| `dev-oauth-mds-rest-client-secret` | `nZRMA8zFHIjlqbsnCLZyJWI5mzyMOU2gLGJ_FSiHFH9kmSf8stpBDcbXe0o2AwZb` | broker `kafka.rest.confluent.metadata.oauthbearer.login.client.secret` |
+
+> The VM reuses the **same Okta client** (`0oa1owiage2MyoHdt358`) for Broker and Schema Registry. CFK doesn't require them to be separate; carry the reuse over. If Okta admins want per-component identities later, only the variable group needs updating — no manifest changes.
+
+A separate **OIDC client** (`0oa1o0ea1m26pITBQ358` / `rLioO_quXC_PJI1MOl-5B9r0GWveI8_QwchYxR-idD4S4rxH_X5BDbdaPsWrXEI3`) is used by the broker MDS for human SSO flow. Not referenced by any current CFK CR, so not added to the variable group today — keep in mind if the Confluent UI SSO is wired up later.
+
+### Control Center basic-auth (Prometheus + AlertManager)
+
+Source: C3 `.properties` lines `confluent.controlcenter.prometheus.basic.auth.user.info` and `confluent.controlcenter.alertmanager.basic.auth.user.info` (both `confluent:bFGeIT2K`).
+
+| Variable | Value |
+|---|---|
+| `dev-c3-prometheus-username` | `confluent` |
+| `dev-c3-prometheus-password` | `bFGeIT2K` |
+| `dev-c3-alertmanager-username` | `confluent` |
+| `dev-c3-alertmanager-password` | `bFGeIT2K` |
+
+> Same `confluent:bFGeIT2K` pair is also used by the broker telemetry exporter (`confluent.telemetry.exporter._c3.api.key/secret`). Weak credential — rotate before prod.
+
+**Total**: 22 variables here + `dev-confluent-license` (existing) + `dev-mds-token-keypair-pem` (paste VM PEM separately) = **24 variables in `dev-openshift-credentials`**.
