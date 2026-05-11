@@ -34,7 +34,7 @@ spec:
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
   dataVolumeCapacity: 300Gi
   storageClass:
-    name: REPLACE_WITH_FCB_STORAGE_CLASS
+    name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — C3 RocksDB state under /var/lib/confluent/control-center
   resources:
     requests:
       cpu: "12"

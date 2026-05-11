@@ -71,8 +71,20 @@ The CR `resources.requests` track these values; raise `limits` if the planned co
 - Container images use the same Artifactory pattern as Flink: `artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-*:8.1.0` for dev / qa / uat, `-docker-prod` for prd
 - External Kafka access: `loadBalancer` type — CFK creates per-broker LBs plus a bootstrap LB
 
+**Storage** (resolved from [`docs/OpenShift Persistent Storage.pdf`](../../../docs/OpenShift%20Persistent%20Storage.pdf)):
+
+FCB OpenShift uses **OpenShift Data Foundation (ODF / Ceph)** with two storage classes. We use **`ocs-storagecluster-ceph-rbd`** (raw block device) for every PV in this stack — Kafka log dirs, KRaft quorum log, and Control Center RocksDB state. The alternative (`ocs-storagecluster-ceph-filesystem`) is CephFS RWX and would add an FS layer overhead that's not needed for these single-writer workloads.
+
+**Backup caveat** (from [`docs/OpenShift Backup and Restore.pdf`](../../../docs/OpenShift%20Backup%20and%20Restore.pdf)):
+
+OADP / Velero is the platform backup mechanism, but the PDF explicitly notes it is **not intended for volumes ≥ 500 GB**. Our broker volumes are 1 TB today (4 TB planned), well above that threshold. We will **not** rely on OADP for Kafka data protection. Instead, DR sits at the Kafka layer:
+
+- **Intra-cluster**: RF=3 across the 3 brokers in each env.
+- **Cross-env**: cluster-link between the CFK CP envs (and to the existing VM CP during migration) — same pattern the VM PRD-1 ↔ PRD-2 already uses.
+
+KRaft controller (64 GB) and C3 (300 GB) volumes are under the 500 GB threshold so they're eligible for OADP if needed; we can ask Container Platforms to add a Schedule for the namespace if they want one.
+
 **Open items / placeholders** (search for `REPLACE_WITH_` in the YAMLs):
-- **Storage class** name (FCB OpenShift default — needs Container Platforms confirmation; the docs/ PDFs cover cert-manager / ESO / common metadata but not storage)
 - **Init-container image tag** — operator team confirms the exact tag matching the CFK version FCB upgrades to
 - **MDS token keypair Secret** — RSA keypair Secret name (needs generation; matches VM `confluent.metadata.server.token.key.path`)
 - **Service account** name — whether to reuse `flink-operator` SA or create a CP-specific one

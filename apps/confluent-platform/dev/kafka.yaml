@@ -43,7 +43,7 @@ spec:
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
   dataVolumeCapacity: 1Ti  # VM is 1 TB today, +3 TB planned — bump to 4Ti when ready
   storageClass:
-    name: REPLACE_WITH_FCB_STORAGE_CLASS
+    name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — best write throughput for log dirs
   resources:
     requests:
       cpu: "16"
