@@ -8,6 +8,7 @@ Helm values and Kubernetes/CMF manifests for the FCB stack, deployed via the pip
 |-----------|------|-----------------|----------|
 | [`confluent-cmf/`](confluent-cmf/) | Helm values for the local CMF chart | **Yes** | [`cmf.yaml`](../.azure-pipelines/cmf.yaml) |
 | [`confluent-flink/<env>/`](confluent-flink/) (`environment.json`, `kafka-catalog.json`, `kafka-database.json`) | CMF REST API payloads, authored as JSON | **Yes (dev populated; qa/uat/prd ship with placeholder hostnames)** | [`flink-environments`](../.azure-pipelines/flink-environments.yaml) (single pipeline applies all three) |
+| [`confluent-platform/`](confluent-platform/) | CFK Custom Resources for the new on-cluster CP (target of VM-CP migration); `cp-confluent/<env>/` holds the VM `.properties` reference files | **No — placeholders only** | TBD |
 
 ## Per-environment layout
 
