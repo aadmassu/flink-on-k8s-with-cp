@@ -84,12 +84,33 @@ OADP / Velero is the platform backup mechanism, but the PDF explicitly notes it 
 
 KRaft controller (64 GB) and C3 (300 GB) volumes are under the 500 GB threshold so they're eligible for OADP if needed; we can ask Container Platforms to add a Schedule for the namespace if they want one.
 
-**Open items / placeholders** (search for `REPLACE_WITH_` in the YAMLs):
-- **Init-container image tag** — operator team confirms the exact tag matching the CFK version FCB upgrades to
-- **MDS token keypair Secret** — RSA keypair Secret name (needs generation; matches VM `confluent.metadata.server.token.key.path`)
-- **Service account** name — whether to reuse `flink-operator` SA or create a CP-specific one
-- **Kafka external LB domain** — DNS suffix CFK appends to each broker / bootstrap LB
-- **External SANs** in `kafka-tls-certificate.yaml` and `controlcenter-tls-certificate.yaml` — fill in once LB hostnames are allocated
+**Versions, accounts, and hostnames (set in this commit)**:
+
+- **CFK / init container**: `0.1351.59` (matches the vendored chart `charts/confluent-for-kubernetes/` `appVersion: 3.1.1`, operator image `confluentinc/confluent-operator:0.1351.59`). The same tag is used for `confluentinc/confluent-init-container`. If FCB's Container Platforms upgrades the operator, bump these in lockstep.
+- **Service account**: `flink-operator` — same SA the CMF and Flink Operator pods run under. RBAC is owned by FCB's `fcb-security` ArgoCD chart in `dah-flink-dev`.
+- **External Kafka LB** (tentative — confirm with Tom 2026-05-12):
+  - bootstrap: `bootstrap.kafka.dev.dah.fcbint.net`
+  - brokers: `b0/b1/b2.kafka.dev.dah.fcbint.net`
+- **External C3 UI** (tentative): `c3.dev.dah.fcbint.net`
+
+**MDS token keypair** (`mds-token-keypair` Secret — *manual one-time setup, not pipeline-managed*):
+
+CFK's MDS uses a **raw RSA keypair PEM**, not an X.509 cert, so **cert-manager is the wrong tool** — its `tls.crt` + `tls.key` shape doesn't match what MDS expects in the Secret. Two options:
+
+1. **Reuse the VM keypair (recommended for migration)** — the VM brokers' `/var/ssl/private/tokenKeypair.pem` is the keypair MDS currently signs tokens with. Copy that file into a K8s Secret in `dah-flink-dev`:
+   ```
+   oc create secret generic mds-token-keypair \
+     --from-file=mdsTokenKeyPair.pem=tokenKeypair.pem \
+     -n dah-flink-dev
+   ```
+   This keeps VM-issued tokens valid in the CFK cluster during the cluster-link migration window.
+
+2. **Generate fresh** — `openssl genrsa -out mds.pem 4096` and push as above. Cleaner cutover but invalidates every VM-issued token, forcing all clients to re-auth.
+
+The keypair should not rotate (rotation invalidates outstanding tokens), so this is one-time setup — *not* pipeline-managed and not driven by cert-manager.
+
+**Still open** (search for `REPLACE_WITH_` if any remain):
+- LB / C3 hostnames are tentative until Tom confirms — if they change, update `kafka.yaml`, `kafka-tls-certificate.yaml`, and `controlcenter-tls-certificate.yaml` together.
 
 ## Cross-reference
 

@@ -31,7 +31,7 @@ spec:
   replicas: 1
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:8.1.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.59
   dataVolumeCapacity: 300Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — C3 RocksDB state under /var/lib/confluent/control-center
@@ -83,7 +83,7 @@ spec:
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
       tokenKeyPair:
-        secretRef: REPLACE_WITH_MDS_TOKEN_KEYPAIR_SECRET
+        secretRef: mds-token-keypair
       authentication:
         type: oauth
         clientCredentials:
@@ -139,4 +139,4 @@ spec:
       - confluent.controlcenter.cmf.healthcheck.interval.sec=600000
 
   podTemplate:
-    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT
+    serviceAccountName: flink-operator

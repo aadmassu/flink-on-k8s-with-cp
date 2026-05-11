@@ -29,7 +29,7 @@ spec:
   replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.59
   dataVolumeCapacity: 64Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — quorum log volume
@@ -69,4 +69,4 @@ spec:
       - confluent.telemetry.enabled=true
       - confluent.reporters.telemetry.auto.enable=true
   podTemplate:
-    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT
+    serviceAccountName: flink-operator

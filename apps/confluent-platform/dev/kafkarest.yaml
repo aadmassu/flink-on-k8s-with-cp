@@ -28,7 +28,7 @@ spec:
   replicas: 1
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.59
   resources:
     requests:
       cpu: "4"
@@ -68,7 +68,7 @@ spec:
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
       tokenKeyPair:
-        secretRef: REPLACE_WITH_MDS_TOKEN_KEYPAIR_SECRET
+        secretRef: mds-token-keypair
       authentication:
         type: oauth
         clientCredentials:
@@ -101,4 +101,4 @@ spec:
       - confluent.monitoring.interceptor.topic=_confluent-monitoring
 
   podTemplate:
-    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT
+    serviceAccountName: flink-operator

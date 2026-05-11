@@ -29,13 +29,15 @@ spec:
     - kafka-0.kafka.dah-flink-dev.svc.cluster.local
     - kafka-1.kafka.dah-flink-dev.svc.cluster.local
     - kafka-2.kafka.dah-flink-dev.svc.cluster.local
-    # External LoadBalancer SANs — add the actual LB hostname once allocated.
-    # Without these, OAuth-aware clients reaching the LB will fail TLS hostname
-    # verification.
-    - REPLACE_WITH_KAFKA_EXTERNAL_BOOTSTRAP_DNS
-    - REPLACE_WITH_KAFKA_BROKER_0_EXTERNAL_DNS
-    - REPLACE_WITH_KAFKA_BROKER_1_EXTERNAL_DNS
-    - REPLACE_WITH_KAFKA_BROKER_2_EXTERNAL_DNS
+    # External LoadBalancer SANs — match the kafka.yaml externalAccess block:
+    #   domain: kafka.dev.dah.fcbint.net
+    #   brokerPrefix: b   bootstrapPrefix: bootstrap
+    # If the LB domain changes (pending Tom's confirmation 2026-05-12), update
+    # both this file and kafka.yaml in lockstep.
+    - bootstrap.kafka.dev.dah.fcbint.net
+    - b0.kafka.dev.dah.fcbint.net
+    - b1.kafka.dev.dah.fcbint.net
+    - b2.kafka.dev.dah.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:

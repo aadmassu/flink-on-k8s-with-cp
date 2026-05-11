@@ -40,7 +40,7 @@ spec:
   replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:REPLACE_WITH_INIT_CONTAINER_TAG
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.59
   dataVolumeCapacity: 1Ti  # VM is 1 TB today, +3 TB planned — bump to 4Ti when ready
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — best write throughput for log dirs
@@ -91,9 +91,14 @@ spec:
           # advertised as <brokerPrefix><N>.<domain> and the bootstrap as
           # <bootstrapPrefix>.<domain>. Add the matching SANs in
           # kafka-tls-certificate.yaml before applying.
-          domain: REPLACE_WITH_KAFKA_LB_DOMAIN
-          brokerPrefix: kafka-
-          bootstrapPrefix: kafka-bootstrap
+          # TENTATIVE — confirm with Tom 2026-05-12. Brokers will be advertised
+          # as b<N>.kafka.dev.dah.fcbint.net and the bootstrap as
+          # bootstrap.kafka.dev.dah.fcbint.net. Matching SANs are in
+          # kafka-tls-certificate.yaml; if the domain changes, update both
+          # files in lockstep.
+          domain: kafka.dev.dah.fcbint.net
+          brokerPrefix: b
+          bootstrapPrefix: bootstrap
     custom:
       - name: certonly
         port: 9094
@@ -125,7 +130,7 @@ spec:
     tls:
       enabled: true
     tokenKeyPair:
-      secretRef: REPLACE_WITH_MDS_TOKEN_KEYPAIR_SECRET
+      secretRef: mds-token-keypair
 
   # Carry-over Kafka server settings that don't have a structured CR field.
   # Keep this list aligned with the broker .properties — drift here breaks
@@ -162,4 +167,4 @@ spec:
       - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
 
   podTemplate:
-    serviceAccountName: REPLACE_WITH_FCB_SERVICE_ACCOUNT
+    serviceAccountName: flink-operator

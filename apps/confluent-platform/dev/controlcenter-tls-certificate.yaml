@@ -26,9 +26,11 @@ spec:
     - controlcenter.dah-flink-dev.svc
     - controlcenter.dah-flink-dev.svc.cluster.local
     - controlcenter-0.controlcenter.dah-flink-dev.svc.cluster.local
-    # External UI hostname — add the actual OpenShift Route / LB hostname when
-    # exposure is wired up. Without it the C3 UI will trip TLS warnings.
-    - REPLACE_WITH_C3_EXTERNAL_DNS
+    # External UI hostname — using the same dev.dah.fcbint.net suffix as the
+    # Kafka LB. Confirm with Tom whether C3 will be exposed via Route or LB;
+    # this SAN matches a Route hostname (c3.dev.dah.fcbint.net) as a starting
+    # point — adjust if a different host gets allocated.
+    - c3.dev.dah.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:
