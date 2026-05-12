@@ -1,15 +1,53 @@
-Starting: Apply Flink environment and catalog
-=====================================================================================
-Task         : Bash
-Description  : Run a Bash script on macOS, Linux, or Windows
-Version      : 3.231.4
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-=====================================================================================
-Generating script.
-========================== Starting Command Output ==================================
-/bin//b***h /opt/azure_pipelines/_work/_temp/ab75eaa9-da09-43e0-ba72-561be43ba678.sh
-ERROR: apps/confluent-flink/qa/environment.yaml not found
-##[error]B***h exited with code '1'.
-Finishing: Apply Flink environment and catalog
+Create prerequisite Opaque Secrets and describe
 
+View raw log
+clientId:      20 bytes
+
+--- c3-prometheus-basic-auth ---
+Name:         c3-prometheus-basic-auth
+Namespace:    dah-flink-dev
+Labels:       app.kubernetes.io/component=cfk-prereq
+              app.kubernetes.io/instance=c3-prometheus-basic-auth
+              app.kubernetes.io/name=confluent-platform
+              app.kubernetes.io/part-of=confluent-platform
+              fcbint.net/app-id=11547
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+password:  8 bytes
+username:  9 bytes
+
+--- c3-alertmanager-basic-auth ---
+Name:         c3-alertmanager-basic-auth
+Namespace:    dah-flink-dev
+Labels:       app.kubernetes.io/component=cfk-prereq
+              app.kubernetes.io/instance=c3-alertmanager-basic-auth
+              app.kubernetes.io/name=confluent-platform
+              app.kubernetes.io/part-of=confluent-platform
+              fcbint.net/app-id=11547
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+password:  8 bytes
+username:  9 bytes
+
+=== Summary ===
+NAME                         TYPE     DATA   AGE
+confluent-license            Opaque   1      21d
+mds-token-keypair            Opaque   1      40m
+sasl-plain-internal          Opaque   6      40m
+oauth-broker                 Opaque   2      40m
+oauth-schemaregistry         Opaque   2      40m
+oauth-connect                Opaque   2      40m
+oauth-kafkarest              Opaque   2      40m
+oauth-controlcenter          Opaque   2      40m
+oauth-mds-rest               Opaque   2      40m
+c3-prometheus-basic-auth     Opaque   2      40m
+c3-alertmanager-basic-auth   Opaque   2      40m
+Finishing: Create prerequisite Opaque Secrets and describe
