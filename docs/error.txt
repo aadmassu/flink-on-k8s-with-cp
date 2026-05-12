@@ -1,38 +1,29 @@
-Apply Confluent Platform CRs
+Generated from kraftcontroller
+503 times in the last 4 hours
+required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype plain
 
-View raw log
-Starting: Apply Confluent Platform CRs
-==============================================================================
-Task         : Bash
-Description  : Run a Bash script on macOS, Linux, or Windows
-Version      : 3.231.4
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/5245703d-4a7e-4bcd-9419-2d35cc0de628.sh
-=== Apply order (CFK dependency order) ===
 
-+ oc apply -f apps/confluent-platform/dev/kafkarestclass.yaml
-kafkarestclass.platform.confluent.io/default created
+Generated from kraftcontroller
+503 times in the last 4 hours
+required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype pla]
 
-+ oc apply -f apps/confluent-platform/dev/kraftcontroller.yaml
-kraftcontroller.platform.confluent.io/kraftcontroller created
+Generated from schemaregistry
+502 times in the last 4 hours
+required one of [mds-server-publicKey.pem mdsPublicKey.pem] missing in secretRef [mds-token-keypair] for for mds public key
 
-+ oc apply -f apps/confluent-platform/dev/kafka.yaml
-kafka.platform.confluent.io/kafka created
+Generated from kafkarestproxy
+503 times in the last 4 hours
+oauthForRest: missing authentication.oauth struct
 
-+ oc apply -f apps/confluent-platform/dev/schemaregistry.yaml
-schemaregistry.platform.confluent.io/schemaregistry created
+Generated from connect
+502 times in the last 4 hours
+oauthForRest: missing authentication.oauth struct
 
-+ oc apply -f apps/confluent-platform/dev/connect.yaml
-connect.platform.confluent.io/connect created
+Generated from kafka
+1002 times in the last 4 hours
+waiting for at-least one kRaft controller pod availability\\
 
-+ oc apply -f apps/confluent-platform/dev/kafkarest.yaml
-kafkarestproxy.platform.confluent.io/kafkarest created
 
-+ oc apply -f apps/confluent-platform/dev/controlcenter.yaml
-The ControlCenter "controlcenter" is invalid: spec.authentication.type: Unsupported value: "oauth": supported values: "basic", "ldap", "mtls"
-##[error]Bash exited with code '1'.
-Finishing: Apply Confluent Platform CRs
+Generated from kafkarestclass
+1001 times in the last 4 hours
+waiting for at-least one kafka pod availability
