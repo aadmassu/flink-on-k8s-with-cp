@@ -55,12 +55,21 @@ spec:
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — best write throughput for log dirs
   resources:
+    # Sized to fit FCB's 16 vCPU / 32 GiB worker nodes alongside a co-located
+    # KRaft controller (anti-affinity allows one broker + one controller per
+    # node) and system daemons. The VM ran with a 16 vCPU / 16 GiB allocation
+    # at 2% CPU and 20% memory utilization — actual usage is ~0.3 vCPU + 3 GiB.
+    # The numbers below give ~6x headroom over actual without exhausting a
+    # worker; with co-location, per-node usage lands around broker 4 + ctrlr 4
+    # + system 2 = 10 vCPU and ~16 GiB, leaving room on the worker for CMF and
+    # other workloads. If broker traffic grows, raise the limits first (heap
+    # auto-tunes to ~75% of memory limit).
     requests:
-      cpu: "16"
-      memory: 16Gi
+      cpu: "2"
+      memory: 4Gi
     limits:
-      cpu: "16"   # VM plan calls for 26 cores — raise to "26" when planned bump approved
-      memory: 16Gi
+      cpu: "4"
+      memory: 8Gi
 
   # KRaft mode — points at the KRaftController CR (kraftcontroller.yaml)
   dependencies:
