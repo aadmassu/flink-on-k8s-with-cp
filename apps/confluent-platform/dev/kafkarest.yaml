@@ -74,16 +74,21 @@ spec:
         clientCredentials:
           secretRef: oauth-kafkarest
 
+  # CFK 3.1.1 requires OAuth config nested under authentication.oauth.{secretRef,configuration}
+  # — flat fields directly under authentication.* are rejected with
+  # "oauthForRest: missing authentication.oauth struct".
   authentication:
     type: oauth
-    jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-    expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-    subClaimName: sub
-    groupsClaimName: dahDev_groups
-    expectedAudiences:
-      - Confluent
-      - account
-      - api://default
+    oauth:
+      secretRef: oauth-kafkarest
+      configuration:
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        audience: "Confluent,account,api://default"
+        subClaimName: sub
+        groupsClaimName: dahDev_groups
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        scope: 11547.DAH(Dev)
 
   authorization:
     type: rbac

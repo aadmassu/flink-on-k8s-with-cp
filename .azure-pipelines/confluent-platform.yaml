@@ -177,32 +177,67 @@ stages:
                   # breaks Java's PEM parser at runtime (it requires the
                   # BEGIN/END markers on their own lines). Decoding here is
                   # bulletproof regardless of how the UI rendered the input.
-                  MDS_TMP=$(mktemp)
-                  printf '%s' "$MDS_PEM" | base64 -d > "$MDS_TMP" 2>/dev/null || {
+                  #
+                  # CFK requires the Secret to contain BOTH PEM files:
+                  #   mdsTokenKeyPair.pem — the private key, signs tokens
+                  #   mdsPublicKey.pem    — the public key, used by SR /
+                  #                         Connect / REST / C3 to validate
+                  # We derive the public key from the private with openssl.
+                  MDS_PRIV=$(mktemp)
+                  printf '%s' "$MDS_PEM" | base64 -d > "$MDS_PRIV" 2>/dev/null || {
                     echo "ERROR: dev-mds-token-keypair-pem is not valid base64."
                     echo "Re-encode the VM /var/ssl/private/tokenKeypair.pem with:"
                     echo "  sudo base64 -w0 /var/ssl/private/tokenKeypair.pem"
                     echo "and paste the single-line output into the variable."
-                    rm -f "$MDS_TMP"
+                    rm -f "$MDS_PRIV"
                     exit 1
                   }
-                  if ! head -1 "$MDS_TMP" | grep -q "^-----BEGIN"; then
+                  if ! head -1 "$MDS_PRIV" | grep -q "^-----BEGIN"; then
                     echo "ERROR: decoded MDS keypair does not start with a PEM"
                     echo "BEGIN marker. Check the base64 source."
-                    rm -f "$MDS_TMP"
+                    rm -f "$MDS_PRIV"
                     exit 1
                   fi
-                  apply_secret_from_file mds-token-keypair mdsTokenKeyPair.pem "$MDS_TMP"
-                  rm -f "$MDS_TMP"
+                  MDS_PUB=$(mktemp)
+                  openssl rsa -in "$MDS_PRIV" -pubout -out "$MDS_PUB" 2>/dev/null || {
+                    echo "ERROR: openssl could not derive a public key from the"
+                    echo "decoded MDS private key. The input is not a valid RSA"
+                    echo "private key — re-encode and try again."
+                    rm -f "$MDS_PRIV" "$MDS_PUB"
+                    exit 1
+                  }
+                  echo ""
+                  echo "=== mds-token-keypair ==="
+                  oc create secret generic mds-token-keypair \
+                    -n "$OC_NS" --dry-run=client -o yaml \
+                    --from-file=mdsTokenKeyPair.pem="$MDS_PRIV" \
+                    --from-file=mdsPublicKey.pem="$MDS_PUB" \
+                    | label_secret mds-token-keypair \
+                    | oc apply -f -
+                  rm -f "$MDS_PRIV" "$MDS_PUB"
 
-                  # SASL PLAIN inter-broker user passwords (one Secret, six keys).
-                  apply_secret_from_literals sasl-plain-internal \
-                    --from-literal=admin="$SASL_ADMIN" \
-                    --from-literal=client="$SASL_CLIENT" \
-                    --from-literal=schema_registry="$SASL_SR" \
-                    --from-literal=kafka_connect="$SASL_CONNECT" \
-                    --from-literal=kafka_rest="$SASL_REST" \
-                    --from-literal=control_center="$SASL_C3"
+                  # SASL PLAIN inter-broker users. CFK expects a SINGLE Secret
+                  # key whose value is a JSON map of user → password. The
+                  # accepted key names are (in order of CFK preference):
+                  #   kafka-server-listener-internal-plain-users.json
+                  #   kafka-server-plain-users.json
+                  #   plain-users.json
+                  # Using the listener-specific name for clarity.
+                  SASL_JSON_TMP=$(mktemp)
+                  cat > "$SASL_JSON_TMP" <<EOF
+                  {
+                    "admin": "$SASL_ADMIN",
+                    "client": "$SASL_CLIENT",
+                    "schema_registry": "$SASL_SR",
+                    "kafka_connect": "$SASL_CONNECT",
+                    "kafka_rest": "$SASL_REST",
+                    "control_center": "$SASL_C3"
+                  }
+                  EOF
+                  apply_secret_from_file sasl-plain-internal \
+                    kafka-server-listener-internal-plain-users.json \
+                    "$SASL_JSON_TMP"
+                  rm -f "$SASL_JSON_TMP"
 
                   # OAuth client credentials (one Secret per component).
                   apply_secret_from_literals oauth-broker \
