@@ -171,10 +171,27 @@ stages:
                   apply_secret_from_literals confluent-license \
                     --from-literal=license.txt="$CONFLUENT_LICENSE"
 
-                  # MDS RSA token keypair. PEM is multiline; write to a temp
-                  # file then --from-file to avoid shell escaping issues.
+                  # MDS RSA token keypair. The variable holds the PEM
+                  # base64-encoded as a SINGLE LINE — pasting multiline PEM
+                  # into the ADO UI can silently strip newlines, which then
+                  # breaks Java's PEM parser at runtime (it requires the
+                  # BEGIN/END markers on their own lines). Decoding here is
+                  # bulletproof regardless of how the UI rendered the input.
                   MDS_TMP=$(mktemp)
-                  printf '%s' "$MDS_PEM" > "$MDS_TMP"
+                  printf '%s' "$MDS_PEM" | base64 -d > "$MDS_TMP" 2>/dev/null || {
+                    echo "ERROR: dev-mds-token-keypair-pem is not valid base64."
+                    echo "Re-encode the VM /var/ssl/private/tokenKeypair.pem with:"
+                    echo "  sudo base64 -w0 /var/ssl/private/tokenKeypair.pem"
+                    echo "and paste the single-line output into the variable."
+                    rm -f "$MDS_TMP"
+                    exit 1
+                  }
+                  if ! head -1 "$MDS_TMP" | grep -q "^-----BEGIN"; then
+                    echo "ERROR: decoded MDS keypair does not start with a PEM"
+                    echo "BEGIN marker. Check the base64 source."
+                    rm -f "$MDS_TMP"
+                    exit 1
+                  fi
                   apply_secret_from_file mds-token-keypair mdsTokenKeyPair.pem "$MDS_TMP"
                   rm -f "$MDS_TMP"
 
