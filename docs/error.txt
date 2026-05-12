@@ -1,52 +1,319 @@
-Diagnostics: dump Secret + CR state before install
+2026-05-12T23:47:41.7850810Z ##[section]Starting: Create prerequisite Opaque Secrets and describe
+2026-05-12T23:47:41.7857280Z ==============================================================================
+2026-05-12T23:47:41.7857459Z Task         : Bash
+2026-05-12T23:47:41.7857537Z Description  : Run a Bash script on macOS, Linux, or Windows
+2026-05-12T23:47:41.7857634Z Version      : 3.231.4
+2026-05-12T23:47:41.7857720Z Author       : Microsoft Corporation
+2026-05-12T23:47:41.7857795Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+2026-05-12T23:47:41.7858051Z ==============================================================================
+2026-05-12T23:47:42.0557123Z Generating script.
+2026-05-12T23:47:42.0571554Z ========================== Starting Command Output ===========================
+2026-05-12T23:47:42.0586598Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/8ff24c11-911f-438d-a3b5-0f30017c6a9d.sh
+2026-05-12T23:47:42.0647988Z === Creating prerequisite Secrets in dah-flink-dev ===
+2026-05-12T23:47:42.0649782Z 
+2026-05-12T23:47:42.0651525Z === confluent-license ===
+2026-05-12T23:47:42.7352823Z secret/confluent-license configured
+2026-05-12T23:47:42.7538117Z 
+2026-05-12T23:47:42.7539352Z === mds-token-keypair ===
+2026-05-12T23:47:43.4213385Z secret/mds-token-keypair configured
+2026-05-12T23:47:43.4301188Z 
+2026-05-12T23:47:43.4303549Z === sasl-plain-internal ===
+2026-05-12T23:47:44.0672670Z secret/sasl-plain-internal configured
+2026-05-12T23:47:44.0748735Z 
+2026-05-12T23:47:44.0749852Z === oauth-broker ===
+2026-05-12T23:47:44.7352929Z secret/oauth-broker configured
+2026-05-12T23:47:44.7412358Z 
+2026-05-12T23:47:44.7413603Z === oauth-schemaregistry ===
+2026-05-12T23:47:45.4392893Z secret/oauth-schemaregistry configured
+2026-05-12T23:47:45.4449954Z 
+2026-05-12T23:47:45.4451512Z === oauth-connect ===
+2026-05-12T23:47:46.1258732Z secret/oauth-connect configured
+2026-05-12T23:47:46.1316357Z 
+2026-05-12T23:47:46.1317470Z === oauth-kafkarest ===
+2026-05-12T23:47:46.8283647Z secret/oauth-kafkarest configured
+2026-05-12T23:47:46.8374057Z 
+2026-05-12T23:47:46.8375422Z === oauth-controlcenter ===
+2026-05-12T23:47:47.4731538Z secret/oauth-controlcenter configured
+2026-05-12T23:47:47.4785734Z 
+2026-05-12T23:47:47.4786769Z === oauth-mds-rest ===
+2026-05-12T23:47:48.1324438Z secret/oauth-mds-rest configured
+2026-05-12T23:47:48.1378056Z 
+2026-05-12T23:47:48.1379228Z === c3-prometheus-basic-auth ===
+2026-05-12T23:47:48.8055446Z secret/c3-prometheus-basic-auth configured
+2026-05-12T23:47:48.8126957Z 
+2026-05-12T23:47:48.8128592Z === c3-alertmanager-basic-auth ===
+2026-05-12T23:47:49.4817930Z secret/c3-alertmanager-basic-auth configured
+2026-05-12T23:47:49.4877471Z 
+2026-05-12T23:47:49.4878011Z === oc describe for every prereq Secret ===
+2026-05-12T23:47:49.4878111Z 
+2026-05-12T23:47:49.4878472Z --- confluent-license ---
+2026-05-12T23:47:49.6144694Z Name:         confluent-license
+2026-05-12T23:47:49.6145041Z Namespace:    dah-flink-dev
+2026-05-12T23:47:49.6145296Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:49.6145592Z               app.kubernetes.io/instance=confluent-license
+2026-05-12T23:47:49.6145894Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:49.6146270Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:49.6146614Z               fcbint.net/app-id=11547
+2026-05-12T23:47:49.6146778Z Annotations:  <none>
+2026-05-12T23:47:49.6146840Z 
+2026-05-12T23:47:49.6146970Z Type:  Opaque
+2026-05-12T23:47:49.6147025Z 
+2026-05-12T23:47:49.6147149Z Data
+2026-05-12T23:47:49.6147282Z ====
+2026-05-12T23:47:49.6147421Z license.txt:  644 bytes
+2026-05-12T23:47:49.6184524Z 
+2026-05-12T23:47:49.6186242Z --- mds-token-keypair ---
+2026-05-12T23:47:49.7401029Z Name:         mds-token-keypair
+2026-05-12T23:47:49.7401634Z Namespace:    dah-flink-dev
+2026-05-12T23:47:49.7402763Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:49.7403245Z               app.kubernetes.io/instance=mds-token-keypair
+2026-05-12T23:47:49.7403626Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:49.7404981Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:49.7405326Z               fcbint.net/app-id=11547
+2026-05-12T23:47:49.7405519Z Annotations:  <none>
+2026-05-12T23:47:49.7405595Z 
+2026-05-12T23:47:49.7405738Z Type:  Opaque
+2026-05-12T23:47:49.7405862Z 
+2026-05-12T23:47:49.7405992Z Data
+2026-05-12T23:47:49.7406347Z ====
+2026-05-12T23:47:49.7406492Z mdsPublicKey.pem:     451 bytes
+2026-05-12T23:47:49.7406662Z mdsTokenKeyPair.pem:  1704 bytes
+2026-05-12T23:47:49.7441946Z 
+2026-05-12T23:47:49.7443031Z --- sasl-plain-internal ---
+2026-05-12T23:47:49.8747342Z Name:         sasl-plain-internal
+2026-05-12T23:47:49.8747895Z Namespace:    dah-flink-dev
+2026-05-12T23:47:49.8748231Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:49.8748591Z               app.kubernetes.io/instance=sasl-plain-internal
+2026-05-12T23:47:49.8748939Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:49.8749324Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:49.8749653Z               fcbint.net/app-id=11547
+2026-05-12T23:47:49.8749889Z Annotations:  <none>
+2026-05-12T23:47:49.8750046Z 
+2026-05-12T23:47:49.8750210Z Type:  Opaque
+2026-05-12T23:47:49.8750288Z 
+2026-05-12T23:47:49.8750414Z Data
+2026-05-12T23:47:49.8750539Z ====
+2026-05-12T23:47:49.8750782Z kafka-server-listener-internal-plain-users.json:  231 bytes
+2026-05-12T23:47:49.8787363Z 
+2026-05-12T23:47:49.8788201Z --- oauth-broker ---
+2026-05-12T23:47:50.0061968Z Name:         oauth-broker
+2026-05-12T23:47:50.0062323Z Namespace:    dah-flink-dev
+2026-05-12T23:47:50.0062673Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:50.0062947Z               app.kubernetes.io/instance=oauth-broker
+2026-05-12T23:47:50.0063222Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:50.0063490Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:50.0065357Z               fcbint.net/app-id=11547
+2026-05-12T23:47:50.0065810Z Annotations:  <none>
+2026-05-12T23:47:50.0066114Z 
+2026-05-12T23:47:50.0066492Z Type:  Opaque
+2026-05-12T23:47:50.0066558Z 
+2026-05-12T23:47:50.0066689Z Data
+2026-05-12T23:47:50.0066827Z ====
+2026-05-12T23:47:50.0067803Z clientId:      20 bytes
+2026-05-12T23:47:50.0068332Z clientSecret:  64 bytes
+2026-05-12T23:47:50.0106691Z 
+2026-05-12T23:47:50.0107423Z --- oauth-schemaregistry ---
+2026-05-12T23:47:50.1361672Z Name:         oauth-schemaregistry
+2026-05-12T23:47:50.1361968Z Namespace:    dah-flink-dev
+2026-05-12T23:47:50.1362227Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:50.1362649Z               app.kubernetes.io/instance=oauth-schemaregistry
+2026-05-12T23:47:50.1362943Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:50.1363216Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:50.1363466Z               fcbint.net/app-id=11547
+2026-05-12T23:47:50.1363629Z Annotations:  <none>
+2026-05-12T23:47:50.1363730Z 
+2026-05-12T23:47:50.1363860Z Type:  Opaque
+2026-05-12T23:47:50.1363935Z 
+2026-05-12T23:47:50.1364059Z Data
+2026-05-12T23:47:50.1364171Z ====
+2026-05-12T23:47:50.1364317Z clientSecret:  64 bytes
+2026-05-12T23:47:50.1364492Z clientId:      20 bytes
+2026-05-12T23:47:50.1401562Z 
+2026-05-12T23:47:50.1402507Z --- oauth-connect ---
+2026-05-12T23:47:50.2590901Z Name:         oauth-connect
+2026-05-12T23:47:50.2591239Z Namespace:    dah-flink-dev
+2026-05-12T23:47:50.2591497Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:50.2591783Z               app.kubernetes.io/instance=oauth-connect
+2026-05-12T23:47:50.2594874Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:50.2595416Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:50.2595823Z               fcbint.net/app-id=11547
+2026-05-12T23:47:50.2596003Z Annotations:  <none>
+2026-05-12T23:47:50.2596086Z 
+2026-05-12T23:47:50.2596499Z Type:  Opaque
+2026-05-12T23:47:50.2596576Z 
+2026-05-12T23:47:50.2597522Z Data
+2026-05-12T23:47:50.2597651Z ====
+2026-05-12T23:47:50.2597794Z clientSecret:  64 bytes
+2026-05-12T23:47:50.2597952Z clientId:      20 bytes
+2026-05-12T23:47:50.2632339Z 
+2026-05-12T23:47:50.2633298Z --- oauth-kafkarest ---
+2026-05-12T23:47:50.3822316Z Name:         oauth-kafkarest
+2026-05-12T23:47:50.3822805Z Namespace:    dah-flink-dev
+2026-05-12T23:47:50.3823073Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:50.3823351Z               app.kubernetes.io/instance=oauth-kafkarest
+2026-05-12T23:47:50.3823626Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:50.3826069Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:50.3826637Z               fcbint.net/app-id=11547
+2026-05-12T23:47:50.3826927Z Annotations:  <none>
+2026-05-12T23:47:50.3826999Z 
+2026-05-12T23:47:50.3827136Z Type:  Opaque
+2026-05-12T23:47:50.3827630Z 
+2026-05-12T23:47:50.3827745Z Data
+2026-05-12T23:47:50.3827877Z ====
+2026-05-12T23:47:50.3828058Z clientId:      20 bytes
+2026-05-12T23:47:50.3828212Z clientSecret:  64 bytes
+2026-05-12T23:47:50.3864853Z 
+2026-05-12T23:47:50.3865562Z --- oauth-controlcenter ---
+2026-05-12T23:47:50.5129038Z Name:         oauth-controlcenter
+2026-05-12T23:47:50.5143665Z Namespace:    dah-flink-dev
+2026-05-12T23:47:50.5144022Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:50.5144328Z               app.kubernetes.io/instance=oauth-controlcenter
+2026-05-12T23:47:50.5144598Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:50.5144870Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:50.5145127Z               fcbint.net/app-id=11547
+2026-05-12T23:47:50.5145290Z Annotations:  <none>
+2026-05-12T23:47:50.5145351Z 
+2026-05-12T23:47:50.5145484Z Type:  Opaque
+2026-05-12T23:47:50.5145557Z 
+2026-05-12T23:47:50.5145682Z Data
+2026-05-12T23:47:50.5145793Z ====
+2026-05-12T23:47:50.5145930Z clientId:      20 bytes
+2026-05-12T23:47:50.5146090Z clientSecret:  64 bytes
+2026-05-12T23:47:50.5172147Z 
+2026-05-12T23:47:50.5173109Z --- oauth-mds-rest ---
+2026-05-12T23:47:50.6481702Z Name:         oauth-mds-rest
+2026-05-12T23:47:50.6482091Z Namespace:    dah-flink-dev
+2026-05-12T23:47:50.6482354Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:50.6483655Z               app.kubernetes.io/instance=oauth-mds-rest
+2026-05-12T23:47:50.6483927Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:50.6484195Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:50.6484462Z               fcbint.net/app-id=11547
+2026-05-12T23:47:50.6484627Z Annotations:  <none>
+2026-05-12T23:47:50.6484688Z 
+2026-05-12T23:47:50.6484820Z Type:  Opaque
+2026-05-12T23:47:50.6484877Z 
+2026-05-12T23:47:50.6485000Z Data
+2026-05-12T23:47:50.6485131Z ====
+2026-05-12T23:47:50.6485272Z clientId:      20 bytes
+2026-05-12T23:47:50.6485427Z clientSecret:  64 bytes
+2026-05-12T23:47:50.6526323Z 
+2026-05-12T23:47:50.6527038Z --- c3-prometheus-basic-auth ---
+2026-05-12T23:47:50.7782755Z Name:         c3-prometheus-basic-auth
+2026-05-12T23:47:50.7783118Z Namespace:    dah-flink-dev
+2026-05-12T23:47:50.7783371Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:50.7783662Z               app.kubernetes.io/instance=c3-prometheus-basic-auth
+2026-05-12T23:47:50.7783968Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:50.7784245Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:50.7784485Z               fcbint.net/app-id=11547
+2026-05-12T23:47:50.7784646Z Annotations:  <none>
+2026-05-12T23:47:50.7784705Z 
+2026-05-12T23:47:50.7784835Z Type:  Opaque
+2026-05-12T23:47:50.7784892Z 
+2026-05-12T23:47:50.7785016Z Data
+2026-05-12T23:47:50.7785140Z ====
+2026-05-12T23:47:50.7785276Z password:  8 bytes
+2026-05-12T23:47:50.7785422Z username:  9 bytes
+2026-05-12T23:47:50.7823819Z 
+2026-05-12T23:47:50.7824964Z --- c3-alertmanager-basic-auth ---
+2026-05-12T23:47:50.9116221Z Name:         c3-alertmanager-basic-auth
+2026-05-12T23:47:50.9117253Z Namespace:    dah-flink-dev
+2026-05-12T23:47:50.9118168Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-12T23:47:50.9118635Z               app.kubernetes.io/instance=c3-alertmanager-basic-auth
+2026-05-12T23:47:50.9118963Z               app.kubernetes.io/name=confluent-platform
+2026-05-12T23:47:50.9119228Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:47:50.9119472Z               fcbint.net/app-id=11547
+2026-05-12T23:47:50.9119636Z Annotations:  <none>
+2026-05-12T23:47:50.9119699Z 
+2026-05-12T23:47:50.9119833Z Type:  Opaque
+2026-05-12T23:47:50.9119904Z 
+2026-05-12T23:47:50.9120040Z Data
+2026-05-12T23:47:50.9120188Z ====
+2026-05-12T23:47:50.9120328Z password:  8 bytes
+2026-05-12T23:47:50.9120470Z username:  9 bytes
+2026-05-12T23:47:50.9160436Z 
+2026-05-12T23:47:50.9160922Z === Summary ===
+2026-05-12T23:47:51.2334305Z NAME                         TYPE     DATA   AGE
+2026-05-12T23:47:51.2335711Z confluent-license            Opaque   1      22d
+2026-05-12T23:47:51.2336384Z mds-token-keypair            Opaque   2      6h1m
+2026-05-12T23:47:51.2336950Z sasl-plain-internal          Opaque   1      6h1m
+2026-05-12T23:47:51.2337403Z oauth-broker                 Opaque   2      6h1m
+2026-05-12T23:47:51.2337844Z oauth-schemaregistry         Opaque   2      6h1m
+2026-05-12T23:47:51.2338262Z oauth-connect                Opaque   2      6h1m
+2026-05-12T23:47:51.2339093Z oauth-kafkarest              Opaque   2      6h1m
+2026-05-12T23:47:51.2339509Z oauth-controlcenter          Opaque   2      6h1m
+2026-05-12T23:47:51.2339767Z oauth-mds-rest               Opaque   2      6h1m
+2026-05-12T23:47:51.2340012Z c3-prometheus-basic-auth     Opaque   2      6h1m
+2026-05-12T23:47:51.2340261Z c3-alertmanager-basic-auth   Opaque   2      6h1m
+2026-05-12T23:47:51.2462257Z ##[section]Finishing: Create prerequisite Opaque Secrets and describe
 
-View raw log
-        },
-        "secretRef": "oauth-schemaregistry"
-    },
-    "type": "oauth"
-}
 
-=== CR: controlcenter/controlcenter — spec.authentication ===
-(expected: nested authentication.oauth.{secretRef, configuration})
-{
-    "mtls": {
-        "sslClientAuthentication": "requested"
-    },
-    "type": "mtls"
-}
 
-=== Recent Warning events (last 30) ===
-2026-05-12T21:20:29Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T21:27:31Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T21:28:51Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for Deployment: aep-rate-limit-job. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
-Review Documentation:
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
-2026-05-12T21:28:51Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: required-workload-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T21:49:15Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for Deployment: aep-rate-limit-job. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
-Review Documentation:
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
-2026-05-12T21:49:15Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: required-workload-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T22:16:17Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: required-workload-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T22:16:17Z   Error              <none>   Could not create Kubernetes cluster "aep-rate-limit-job". -> Failure executing: POST at: https://10.245.0.1:443/apis/apps/v1/namespaces/dah-flink-dev/deployments. Message: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata. Received status: Status(apiVersion=v1, code=403, details=null, kind=Status, message=admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}). -> Failure executing: POST at: https://10.245.0.1:443/apis/apps/v1/namespaces/dah-flink-dev/deployments. Message: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata. Received status: Status(apiVersion=v1, code=403, details=null, kind=Status, message=admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
-2026-05-12T22:16:17Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for Deployment: aep-rate-limit-job. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
-Review Documentation:
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
-2026-05-12T23:35:40Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T23:37:24Z   Warning               <none>   waiting for at-least one kafka pod availability
-2026-05-12T23:37:26Z   Warning               <none>   waiting for at-least one kRaft controller pod availability
-2026-05-12T23:37:40Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
-2026-05-12T23:37:41Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
-2026-05-12T23:37:45Z   KeyInSecretRefIssue   <none>   required one of [mds-server-publicKey.pem mdsPublicKey.pem] missing in secretRef [mds-token-keypair] for for mds public key
-2026-05-12T23:37:48Z   KeyInSecretRefIssue   <none>   required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype plain
-2026-05-12T23:38:51Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T23:39:45Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T23:40:14Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T23:40:17Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-12T23:40:26Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
 
-=== End of diagnostics ===
-Finishing: Diagnostics: dump Secret + CR state before install
+
+
+
+2026-05-12T23:48:59.8612165Z ##[section]Starting: Apply Confluent Platform CRs
+2026-05-12T23:48:59.8617908Z ==============================================================================
+2026-05-12T23:48:59.8618032Z Task         : Bash
+2026-05-12T23:48:59.8618093Z Description  : Run a Bash script on macOS, Linux, or Windows
+2026-05-12T23:48:59.8618204Z Version      : 3.231.4
+2026-05-12T23:48:59.8618280Z Author       : Microsoft Corporation
+2026-05-12T23:48:59.8618359Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+2026-05-12T23:48:59.8618481Z ==============================================================================
+2026-05-12T23:49:00.0241787Z Generating script.
+2026-05-12T23:49:00.0263403Z ========================== Starting Command Output ===========================
+2026-05-12T23:49:00.0276930Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/cff25392-ab0f-48df-a58c-aff2dd23eb72.sh
+2026-05-12T23:49:00.0333772Z === Apply order (CFK dependency order) ===
+2026-05-12T23:49:00.0334176Z 
+2026-05-12T23:49:00.0334999Z + oc apply -f apps/confluent-platform/dev/kafkarestclass.yaml
+2026-05-12T23:49:00.6716378Z kafkarestclass.platform.confluent.io/default unchanged
+2026-05-12T23:49:00.6777413Z 
+2026-05-12T23:49:00.6778817Z + oc apply -f apps/confluent-platform/dev/kraftcontroller.yaml
+2026-05-12T23:49:01.3261036Z kraftcontroller.platform.confluent.io/kraftcontroller configured
+2026-05-12T23:49:01.3310160Z 
+2026-05-12T23:49:01.3311016Z + oc apply -f apps/confluent-platform/dev/kafka.yaml
+2026-05-12T23:49:02.0167999Z kafka.platform.confluent.io/kafka configured
+2026-05-12T23:49:02.0231851Z 
+2026-05-12T23:49:02.0235903Z + oc apply -f apps/confluent-platform/dev/schemaregistry.yaml
+2026-05-12T23:49:02.6848214Z schemaregistry.platform.confluent.io/schemaregistry configured
+2026-05-12T23:49:02.6910488Z 
+2026-05-12T23:49:02.6911872Z + oc apply -f apps/confluent-platform/dev/connect.yaml
+2026-05-12T23:49:03.3381442Z connect.platform.confluent.io/connect configured
+2026-05-12T23:49:03.3437267Z 
+2026-05-12T23:49:03.3438550Z + oc apply -f apps/confluent-platform/dev/kafkarest.yaml
+2026-05-12T23:49:03.9794014Z kafkarestproxy.platform.confluent.io/kafkarest configured
+2026-05-12T23:49:03.9848760Z 
+2026-05-12T23:49:03.9849938Z + oc apply -f apps/confluent-platform/dev/controlcenter.yaml
+2026-05-12T23:49:04.6420807Z controlcenter.platform.confluent.io/controlcenter configured
+2026-05-12T23:49:04.6476532Z 
+2026-05-12T23:49:04.6477973Z === Cluster status (immediate post-apply) ===
+2026-05-12T23:49:04.8527918Z NAME                                REPLICAS   READY   STATUS   AGE
+2026-05-12T23:49:04.8528308Z kafka.platform.confluent.io/kafka   0                           5h6m
+2026-05-12T23:49:04.8530416Z 
+2026-05-12T23:49:04.8530608Z NAME                                                    REPLICAS   READY   STATUS   AGE
+2026-05-12T23:49:04.8530904Z kraftcontroller.platform.confluent.io/kraftcontroller   0                           5h6m
+2026-05-12T23:49:04.8535270Z 
+2026-05-12T23:49:04.8537746Z NAME                                                  REPLICAS   READY   STATUS   AGE
+2026-05-12T23:49:04.8538248Z schemaregistry.platform.confluent.io/schemaregistry   0                           5h6m
+2026-05-12T23:49:04.8542996Z 
+2026-05-12T23:49:04.8543664Z NAME                                    REPLICAS   READY   STATUS   AGE
+2026-05-12T23:49:04.8544381Z connect.platform.confluent.io/connect   0                           5h6m
+2026-05-12T23:49:04.8550048Z 
+2026-05-12T23:49:04.8550403Z NAME                                             REPLICAS   READY   STATUS   AGE
+2026-05-12T23:49:04.8550641Z kafkarestproxy.platform.confluent.io/kafkarest   0                           5h6m
+2026-05-12T23:49:04.8553885Z 
+2026-05-12T23:49:04.8554459Z NAME                                                REPLICAS   READY   STATUS   AGE
+2026-05-12T23:49:04.8554710Z controlcenter.platform.confluent.io/controlcenter   0                           4h54m
+2026-05-12T23:49:04.8556298Z 
+2026-05-12T23:49:04.8557126Z NAME                                           ENDPOINT   KAFKACLUSTERID   AGE
+2026-05-12T23:49:04.8558863Z kafkarestclass.platform.confluent.io/default                               5h6m
+2026-05-12T23:49:04.8616229Z 
+2026-05-12T23:49:04.8617387Z === Pods ===
+2026-05-12T23:49:04.9846368Z No resources found in dah-flink-dev namespace.
+2026-05-12T23:49:04.9886801Z 
+2026-05-12T23:49:04.9887505Z NOTE: the CFK operator takes 10-15 minutes to reconcile a full
+2026-05-12T23:49:04.9888321Z cluster on first install. The pipeline is not waiting beyond apply.
+2026-05-12T23:49:04.9888565Z Monitor convergence with:
+2026-05-12T23:49:04.9889055Z   oc -n dah-flink-dev get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter
+2026-05-12T23:49:04.9889429Z   oc -n dah-flink-dev get pods -l app.kubernetes.io/part-of=confluent-platform
+2026-05-12T23:49:04.9955653Z ##[section]Finishing: Apply Confluent Platform CRs
