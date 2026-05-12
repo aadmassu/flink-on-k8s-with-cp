@@ -86,6 +86,11 @@ spec:
             secretRef: oauth-controlcenter
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      # OIDC SSO for the C3 UI is delivered through MDS — clients hit C3,
+      # get redirected to MDS (which fronts Okta), authenticate, and come
+      # back with an MDS-issued bearer token. This is CFK's mechanism for
+      # what the VM expressed as confluent.controlcenter.auth.sso.mode=oidc.
+      ssoProtocol: oidc
       tokenKeyPair:
         secretRef: mds-token-keypair
       authentication:
@@ -96,16 +101,17 @@ spec:
       name: default
       namespace: dah-flink-dev
 
+  # CFK 3.1.1's ControlCenter CR only allows basic|ldap|mtls for the
+  # top-level inbound UI auth — `oauth` is not a valid type (unlike Kafka /
+  # SR / Connect / REST, which all do allow oauth top-level). VM C3 uses
+  # BEARER/OIDC, which CFK delivers via dependencies.mds.ssoProtocol=oidc
+  # above. Set mtls/requested here to satisfy the CRD's required `type`
+  # field without forcing a client cert on every UI request — the OIDC
+  # redirect through MDS handles the actual user authentication.
   authentication:
-    type: oauth
-    jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-    expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-    subClaimName: sub
-    groupsClaimName: dahDev_groups
-    expectedAudiences:
-      - Confluent
-      - account
-      - api://default
+    type: mtls
+    mtls:
+      sslClientAuthentication: requested
 
   authorization:
     type: rbac
