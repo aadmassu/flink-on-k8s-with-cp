@@ -1,37 +1,116 @@
+##[section]Starting: Diagnostics: dump Secret + CR state before install
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+[command]/bin//bash /opt/azure_pipelines/_work/_temp/210bafb1-5afa-4f05-b6c2-a690a2b16d9a.sh
+=== Secret: sasl-plain-internal — keys ===
+(expected: kafka-server-listener-internal-plain-users.json)
+['admin', 'client', 'control_center', 'kafka_connect', 'kafka_rest', 'schema_registry']
 
-KRaftControllerKRCkraftcontroller
-NamespaceNSdah-flink-dev
-May 12, 2026, 6:07 PM
-Generated from kraftcontroller
-533 times in the last 4 hours
-required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype plain
-SchemaRegistrySRschemaregistry
-NamespaceNSdah-flink-dev
-May 12, 2026, 6:07 PM
-Generated from schemaregistry
-532 times in the last 4 hours
-required one of [mds-server-publicKey.pem mdsPublicKey.pem] missing in secretRef [mds-token-keypair] for for mds public key
-KafkaRestProxyKRPkafkarest
-NamespaceNSdah-flink-dev
-May 12, 2026, 6:07 PM
-Generated from kafkarestproxy
-533 times in the last 4 hours
-oauthForRest: missing authentication.oauth struct
-ConnectCconnect
-NamespaceNSdah-flink-dev
-May 12, 2026, 6:07 PM
-Generated from connect
-532 times in the last 4 hours
-oauthForRest: missing authentication.oauth struct
-KafkaRestClassKRCdefault
-NamespaceNSdah-flink-dev
-May 12, 2026, 6:07 PM
-Generated from kafkarestclass
-1061 times in the last 4 hours
-waiting for at-least one kafka pod availability
-KafkaKkafka
-NamespaceNSdah-flink-dev
-May 12, 2026, 6:07 PM
-Generated from kafka
-1061 times in the last 4 hours
-waiting for at-least one kRaft controller pod availability
+=== Secret: mds-token-keypair — keys ===
+(expected: ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem'])
+['mdsTokenKeyPair.pem']
+
+=== CR: connect/connect — spec.authentication ===
+(expected: nested authentication.oauth.{secretRef, configuration})
+{
+    "oauth": {
+        "configuration": {
+            "audience": "Confluent,account,api://default",
+            "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+            "groupsClaimName": "dahDev_groups",
+            "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+            "scope": "11547.DAH(Dev)",
+            "subClaimName": "sub",
+            "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+        },
+        "secretRef": "oauth-connect"
+    },
+    "type": "oauth"
+}
+
+=== CR: kafkarestproxy/kafkarest — spec.authentication ===
+(expected: nested authentication.oauth.{secretRef, configuration})
+{
+    "oauth": {
+        "configuration": {
+            "audience": "Confluent,account,api://default",
+            "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+            "groupsClaimName": "dahDev_groups",
+            "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+            "scope": "11547.DAH(Dev)",
+            "subClaimName": "sub",
+            "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+        },
+        "secretRef": "oauth-kafkarest"
+    },
+    "type": "oauth"
+}
+
+=== CR: schemaregistry/schemaregistry — spec.authentication ===
+(expected: nested authentication.oauth.{secretRef, configuration})
+{
+    "oauth": {
+        "configuration": {
+            "audience": "Confluent,account,api://default",
+            "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+            "groupsClaimName": "dahDev_groups",
+            "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+            "scope": "11547.DAH(Dev)",
+            "subClaimName": "sub",
+            "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+        },
+        "secretRef": "oauth-schemaregistry"
+    },
+    "type": "oauth"
+}
+
+=== CR: controlcenter/controlcenter — spec.authentication ===
+(expected: nested authentication.oauth.{secretRef, configuration})
+{
+    "mtls": {
+        "sslClientAuthentication": "requested"
+    },
+    "type": "mtls"
+}
+
+=== Recent Warning events (last 30) ===
+WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for Deployment: aep-rate-limit-job. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
+Review Documentation:
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
+FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: required-workload-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for Deployment: aep-rate-limit-job. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
+Review Documentation:
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
+FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: required-workload-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: required-workload-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+Error              <none>   Could not create Kubernetes cluster "aep-rate-limit-job". -> Failure executing: POST at: https://10.245.0.1:443/apis/apps/v1/namespaces/dah-flink-dev/deployments. Message: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata. Received status: Status(apiVersion=v1, code=403, details=null, kind=Status, message=admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}). -> Failure executing: POST at: https://10.245.0.1:443/apis/apps/v1/namespaces/dah-flink-dev/deployments. Message: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata. Received status: Status(apiVersion=v1, code=403, details=null, kind=Status, message=admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata, metadata=ListMeta(_continue=null, remainingItemCount=null, resourceVersion=null, selfLink=null, additionalProperties={}), reason=Forbidden, status=Failure, additionalProperties={}).
+WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for Deployment: aep-rate-limit-job. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
+Review Documentation:
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
+WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+Warning               <none>   waiting for at-least one kafka pod availability
+Warning               <none>   waiting for at-least one kRaft controller pod availability
+InputError            <none>   oauthForRest: missing authentication.oauth struct
+InputError            <none>   oauthForRest: missing authentication.oauth struct
+KeyInSecretRefIssue   <none>   required one of [mds-server-publicKey.pem mdsPublicKey.pem] missing in secretRef [mds-token-keypair] for for mds public key
+KeyInSecretRefIssue   <none>   required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype plain
+WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+
+=== End of diagnostics ===
+##[section]Finishing: Diagnostics: dump Secret + CR state before install
