@@ -95,6 +95,24 @@ The CR `resources.requests` track these values; raise `limits` if the planned co
 
 FCB OpenShift uses **OpenShift Data Foundation (ODF / Ceph)** with two storage classes. We use **`ocs-storagecluster-ceph-rbd`** (raw block device) for every PV in this stack — Kafka log dirs, KRaft quorum log, and Control Center RocksDB state. The alternative (`ocs-storagecluster-ceph-filesystem`) is CephFS RWX and would add an FS layer overhead that's not needed for these single-writer workloads.
 
+**PV determinism — broker/controller/C3 always rebind to their own PV.** CFK turns `spec.dataVolumeCapacity` + `spec.storageClass.name` into a StatefulSet `volumeClaimTemplate`. Each pod gets a deterministically-named PVC tied to its ordinal:
+
+| StatefulSet | PVC names |
+|---|---|
+| `kafka` | `data-kafka-0`, `data-kafka-1`, `data-kafka-2` |
+| `kraftcontroller` | `data-kraftcontroller-0`, `data-kraftcontroller-1`, `data-kraftcontroller-2` |
+| `controlcenter` | `data-controlcenter-0` |
+
+When a pod restarts — same node, evicted to another node, or after a `helm`-style replace — Kubernetes reuses the **same PVC**, which is bound to the **same PV**. Since the underlying volume is Ceph RBD (network-attached), the PV is re-attachable from any worker, so a broker can drift to a different node and still come back up with its log dir intact. The deterministic name also means the broker's `node.id` ↔ PVC ↔ log dir mapping is stable across the entire cluster lifetime — `kafka-1` always reads from the same `data-kafka-1` PV.
+
+**Pod anti-affinity — brokers spread, controllers spread, mixed colocation allowed.** The Kafka and KRaftController CRs each define a hard `podAntiAffinity` on `kubernetes.io/hostname` keyed by a custom `cfk-role` pod label. The result:
+
+- No two brokers on the same node (`cfk-role: kafka-broker`)
+- No two controllers on the same node (`cfk-role: kraft-controller`)
+- A broker and a controller MAY colocate on the same node — they carry different `cfk-role` values, so neither anti-affinity rule matches across components
+
+In a 3+ worker cluster this means brokers and controllers each fully spread, and you can have at most one broker + one controller per worker. With Ceph RBD storage, an evicted broker rescheduled to a different worker still picks up its own PV — see "PV determinism" above.
+
 **Backup caveat** (from [`docs/OpenShift Backup and Restore.pdf`](../../../docs/OpenShift%20Backup%20and%20Restore.pdf)):
 
 OADP / Velero is the platform backup mechanism, but the PDF explicitly notes it is **not intended for volumes ≥ 500 GB**. Our broker volumes are 1 TB today (4 TB planned), well above that threshold. We will **not** rely on OADP for Kafka data protection. Instead, DR sits at the Kafka layer:

@@ -41,6 +41,16 @@ spec:
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.59
+  # CFK turns dataVolumeCapacity + storageClass into a StatefulSet
+  # volumeClaimTemplate. Each broker gets a deterministic PVC named
+  #   data-kafka-<ordinal>      (kafka-0, kafka-1, kafka-2)
+  # bound to a Ceph RBD PV. When a pod restarts (same node OR rescheduled
+  # to another node — Ceph RBD is network-attached and re-attachable
+  # anywhere in the cluster), it reuses the SAME PVC and therefore the
+  # SAME PV. Log dirs survive pod restarts and node failures by design.
+  # Do NOT enable any "recreate-on-restart" knob — CFK doesn't expose one
+  # for this volume, and adding one would forfeit the deterministic
+  # PVC↔broker.id binding.
   dataVolumeCapacity: 1Ti  # VM is 1 TB today, +3 TB planned — bump to 4Ti when ready
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — best write throughput for log dirs
@@ -168,3 +178,19 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
+    # Custom pod label used by the anti-affinity rule below. Set here (not
+    # at metadata.labels of the CR — those only label the CR object itself).
+    labels:
+      cfk-role: kafka-broker
+    # Spread brokers across nodes. The selector matches the cfk-role label
+    # we just set, so brokers refuse to schedule on a node that already has
+    # another broker pod. Brokers and KRaft controllers carry *different*
+    # cfk-role values, so a node may host one broker + one controller — but
+    # no two brokers and no two controllers.
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                cfk-role: kafka-broker
+            topologyKey: kubernetes.io/hostname
