@@ -323,6 +323,61 @@ stages:
 
           - ${{ if eq(parameters.action, 'install') }}:
             - task: Bash@3
+              displayName: "Diagnostics: dump Secret + CR state before install"
+              inputs:
+                targetType: inline
+                script: |
+                  # Diagnostics intentionally never fail the install — they
+                  # just log state. set +e so a missing CR or secret prints
+                  # an error line but doesn't abort the pipeline.
+                  set +e
+
+                  echo "=== Secret: sasl-plain-internal — keys ==="
+                  echo "(expected: kafka-server-listener-internal-plain-users.json)"
+                  oc -n "$OC_NS" get secret sasl-plain-internal \
+                    -o jsonpath='{.data}' 2>/dev/null \
+                    | python3 -c "import json,sys; d=json.load(sys.stdin); print(sorted(d.keys()))" \
+                    2>&1 || echo "(secret missing or not parseable)"
+
+                  echo ""
+                  echo "=== Secret: mds-token-keypair — keys ==="
+                  echo "(expected: ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem'])"
+                  oc -n "$OC_NS" get secret mds-token-keypair \
+                    -o jsonpath='{.data}' 2>/dev/null \
+                    | python3 -c "import json,sys; d=json.load(sys.stdin); print(sorted(d.keys()))" \
+                    2>&1 || echo "(secret missing or not parseable)"
+
+                  for cr_kind in connect kafkarestproxy schemaregistry controlcenter; do
+                    cr_name=$cr_kind
+                    [ "$cr_kind" = "kafkarestproxy" ] && cr_name=kafkarest
+                    [ "$cr_kind" = "controlcenter" ] && cr_name=controlcenter
+                    [ "$cr_kind" = "schemaregistry" ] && cr_name=schemaregistry
+
+                    echo ""
+                    echo "=== CR: $cr_kind/$cr_name — spec.authentication ==="
+                    echo "(expected: nested authentication.oauth.{secretRef, configuration})"
+                    oc -n "$OC_NS" get "$cr_kind" "$cr_name" \
+                      -o jsonpath='{.spec.authentication}' 2>/dev/null \
+                      | python3 -m json.tool 2>&1 \
+                      || echo "(CR not found yet — expected on first install)"
+                  done
+
+                  echo ""
+                  echo "=== Recent Warning events (last 30) ==="
+                  oc -n "$OC_NS" get events --sort-by=.lastTimestamp \
+                    --field-selector type=Warning \
+                    -o custom-columns=TIME:.lastTimestamp,REASON:.reason,KIND:.involvedObject.kind/.involvedObject.name,MSG:.message \
+                    2>/dev/null | tail -30 \
+                    || echo "(no Warning events or oc error)"
+
+                  echo ""
+                  echo "=== End of diagnostics ==="
+                  # Always succeed so install proceeds to its own pre-flight.
+                  exit 0
+              env:
+                OC_NS: $(openshift-dev-namespace)
+
+            - task: Bash@3
               displayName: "Pre-flight: verify env folder + prerequisite Secrets"
               inputs:
                 targetType: inline
