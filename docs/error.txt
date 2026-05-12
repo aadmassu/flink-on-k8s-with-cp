@@ -1,13 +1,38 @@
-Generated from policy.cert-manager.io
-No policy approved this request: [cluster-policy: [spec.allowed.dnsNames.validations[0]: Invalid value: "bootstrap.kafka.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided, spec.allowed.dnsNames.validations[0]: Invalid value: "b0.kafka.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided, spec.allowed.dnsNames.validations[0]: Invalid value: "b1.kafka.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided, spec.allowed.dnsNames.validations[0]: Invalid value: "b2.kafka.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided]]
+Apply Confluent Platform CRs
 
+View raw log
+Starting: Apply Confluent Platform CRs
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/5245703d-4a7e-4bcd-9419-2d35cc0de628.sh
+=== Apply order (CFK dependency order) ===
 
-enerated from cert-manager-certificates-issuing
-The certificate request has failed to complete and will be retried: No policy approved this request: [cluster-policy: [spec.allowed.dnsNames.validations[0]: Invalid value: "bootstrap.kafka.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided, spec.allowed.dnsNames.validations[0]: Invalid value: "b0.kafka.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided, spec.allowed.dnsNames.validations[0]: Invalid value: "b1.kafka.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided, spec.allowed.dnsNames.validations[0]: Invalid value: "b2.kafka.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided]]
++ oc apply -f apps/confluent-platform/dev/kafkarestclass.yaml
+kafkarestclass.platform.confluent.io/default created
 
++ oc apply -f apps/confluent-platform/dev/kraftcontroller.yaml
+kraftcontroller.platform.confluent.io/kraftcontroller created
 
-Generated from cert-manager-certificates-issuing
-The certificate request has failed to complete and will be retried: No policy approved this request: [cluster-policy: spec.allowed.dnsNames.validations[0]: Invalid value: "c3.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided]
++ oc apply -f apps/confluent-platform/dev/kafka.yaml
+kafka.platform.confluent.io/kafka created
 
-Generated from policy.cert-manager.io
-No policy approved this request: [cluster-policy: spec.allowed.dnsNames.validations[0]: Invalid value: "c3.dev.dah.fcbint.net": DNSName must match an approved subdomain if provided]
++ oc apply -f apps/confluent-platform/dev/schemaregistry.yaml
+schemaregistry.platform.confluent.io/schemaregistry created
+
++ oc apply -f apps/confluent-platform/dev/connect.yaml
+connect.platform.confluent.io/connect created
+
++ oc apply -f apps/confluent-platform/dev/kafkarest.yaml
+kafkarestproxy.platform.confluent.io/kafkarest created
+
++ oc apply -f apps/confluent-platform/dev/controlcenter.yaml
+The ControlCenter "controlcenter" is invalid: spec.authentication.type: Unsupported value: "oauth": supported values: "basic", "ldap", "mtls"
+##[error]Bash exited with code '1'.
+Finishing: Apply Confluent Platform CRs
