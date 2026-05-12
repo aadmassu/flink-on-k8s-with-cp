@@ -1,29 +1,37 @@
+
+KRaftControllerKRCkraftcontroller
+NamespaceNSdah-flink-dev
+May 12, 2026, 6:07 PM
 Generated from kraftcontroller
-503 times in the last 4 hours
+533 times in the last 4 hours
 required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype plain
-
-
-Generated from kraftcontroller
-503 times in the last 4 hours
-required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype pla]
-
+SchemaRegistrySRschemaregistry
+NamespaceNSdah-flink-dev
+May 12, 2026, 6:07 PM
 Generated from schemaregistry
-502 times in the last 4 hours
+532 times in the last 4 hours
 required one of [mds-server-publicKey.pem mdsPublicKey.pem] missing in secretRef [mds-token-keypair] for for mds public key
-
+KafkaRestProxyKRPkafkarest
+NamespaceNSdah-flink-dev
+May 12, 2026, 6:07 PM
 Generated from kafkarestproxy
-503 times in the last 4 hours
+533 times in the last 4 hours
 oauthForRest: missing authentication.oauth struct
-
+ConnectCconnect
+NamespaceNSdah-flink-dev
+May 12, 2026, 6:07 PM
 Generated from connect
-502 times in the last 4 hours
+532 times in the last 4 hours
 oauthForRest: missing authentication.oauth struct
-
-Generated from kafka
-1002 times in the last 4 hours
-waiting for at-least one kRaft controller pod availability\\
-
-
+KafkaRestClassKRCdefault
+NamespaceNSdah-flink-dev
+May 12, 2026, 6:07 PM
 Generated from kafkarestclass
-1001 times in the last 4 hours
+1061 times in the last 4 hours
 waiting for at-least one kafka pod availability
+KafkaKkafka
+NamespaceNSdah-flink-dev
+May 12, 2026, 6:07 PM
+Generated from kafka
+1061 times in the last 4 hours
+waiting for at-least one kRaft controller pod availability
