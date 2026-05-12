@@ -40,12 +40,18 @@ spec:
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — quorum log volume
   resources:
+    # KRaft controllers handle metadata-log writes only (topic creates,
+    # partition reassignments, leader elections) — they don't process
+    # messages. VM allocation was 4 vCPU / 4 GiB at 9% utilization, so
+    # actual usage is ~0.36 vCPU and ~0.36 GiB. The numbers below give
+    # ~3x CPU and ~5x memory headroom while freeing ~3 vCPU and 2 GiB
+    # per worker for broker / CMF / monitoring co-tenants.
     requests:
-      cpu: "4"
-      memory: 4Gi
+      cpu: "1"
+      memory: 2Gi
     limits:
-      cpu: "4"
-      memory: 4Gi
+      cpu: "2"
+      memory: 2Gi
   # CONTROLLER listener on 9093, SASL_SSL with PLAIN (matches VM).
   listeners:
     controller:

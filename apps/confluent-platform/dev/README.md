@@ -2,6 +2,15 @@
 
 CFK Custom Resources that reproduce the existing dev VM Confluent Platform cluster on OpenShift. Every CR in this folder is authored against the corresponding `.properties` file under [`../cp-confluent/dev/`](../cp-confluent/dev/) — that's the source of truth for parity.
 
+> ⚠️ **Heads-up — broker and controller resources have been scaled down from the VM allocation (2026-05-12).** FCB worker nodes are **16 vCPU / 32 GiB**. The VM cluster ran on dedicated hardware with each broker getting 16 vCPU / 16 GiB and each controller getting 4 vCPU / 4 GiB, but actual utilization is 2% CPU on brokers and 9% on controllers. Carrying VM-sized requests into K8s would leave the broker pods stuck `Pending` because kubelet + OpenShift system daemons reserve ~1–2 vCPU off the top, leaving ~14 allocatable.
+>
+> | Component | Old (VM allocation) | **New CFK `request` / `limit`** |
+> |---|---|---|
+> | Broker | 16 vCPU / 16 GiB | **2 / 4 vCPU**, **4 / 8 GiB** |
+> | KRaft controller | 4 vCPU / 4 GiB | **1 / 2 vCPU**, **2 / 2 GiB** |
+>
+> Full table + per-node co-tenancy math in the [Capacity](#capacity-cfk-cr-settings-vs-vm-source) section below. SR / Connect / REST / C3 unchanged — those VM sizes already fit a 16/32 worker.
+
 ## Target
 
 - **Confluent Platform**: 8.1.x
@@ -54,18 +63,35 @@ Run the pipeline twice — `create-prereqs` first, then `install`. CFK reconcile
    7. `kafkarest.yaml` — needs Kafka + SR.
    8. `controlcenter.yaml` — depends on all of the above.
 
-## Capacity (from `docs/server capacity and utlization.png`)
+## Capacity (CFK CR settings vs. VM source)
 
-| Component | Cores | RAM | Disk | Notes |
+| Component | CR `requests` | CR `limits` | Disk | VM allocation / utilization |
 |---|---|---|---|---|
-| Broker (×3) | 16 (→ 26 planned) | 16 GB | 1 TB (→ 4 TB planned) | 2% utilization today |
-| Controller (×3) | 4 | 4 GB | 64 GB | 9% |
-| Schema Registry | 4 | 4 GB | 64 GB | stable, moderate |
-| REST Proxy | 4 | 4 GB | 64 GB | — |
-| Connect (×2) | 4 | 4 GB | 64 GB | moderate |
-| Control Center | 12 | 16 GB | 300 GB | stable |
+| Broker (×3) | 2 vCPU / 4 Gi | 4 vCPU / 8 Gi | 1 TB | VM 16 vCPU / 16 GiB; actual usage 2% CPU / 20% mem |
+| Controller (×3) | 1 vCPU / 2 Gi | 2 vCPU / 2 Gi | 64 GB | VM 4 vCPU / 4 GiB; 9% utilization (actual ~0.36 vCPU / 0.36 GiB) |
+| Schema Registry | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB; stable moderate |
+| REST Proxy | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB |
+| Connect (×2) | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB; moderate |
+| Control Center | 12 vCPU / 16 Gi | 12 vCPU / 16 Gi | 300 GB | VM 12 vCPU / 16 GiB; stable |
 
-The CR `resources.requests` track these values; raise `limits` if the planned core/disk bump goes through.
+**Broker sizing rationale**: FCB worker nodes are **16 vCPU / 32 GiB** (per Tom). The VM had 100% of a 16-vCPU box, but only used 2% CPU and 20% memory. On a K8s node, requesting that full VM allocation makes the broker un-schedulable (kubelet + OpenShift system daemons reserve ~1–2 vCPU). The CR `requests` are sized at ~6× actual dev usage — comfortable headroom — and the `limits` allow the broker to burst when needed without monopolizing a worker.
+
+**Controller sizing rationale**: KRaft controllers handle metadata-log writes only (topic creates, partition reassignments, leader elections), no data-path traffic. VM was 4 vCPU / 4 GiB at 9% utilization — actual usage ~0.36 vCPU and ~0.36 GiB. Shrunk to `request: 1 vCPU / 2 Gi`, `limit: 2 vCPU / 2 Gi` — still ~3× CPU and ~5× memory over actual.
+
+**Co-tenancy on a 16 vCPU / 32 GiB worker** with one broker + one controller co-located (per the anti-affinity rules):
+
+```
+broker     limit  4 vCPU / 8 GiB
+controller limit  2 vCPU / 2 GiB
+system            ~2 vCPU / ~4 GiB   (kubelet, OpenShift node-exporter, ovs-cni, etc.)
+─────────────────────────────────────
+total used        ~8 vCPU / ~14 GiB
+free on worker    ~8 vCPU / ~18 GiB  (for CMF, monitoring, other CFK pods)
+```
+
+**SR / REST / Connect / C3** match VM allocation 1:1 — those VMs were 4 vCPU / 4 GiB (12 / 16 for C3), and there's no scheduling issue at those sizes on a 16/32 worker.
+
+If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, raise `limits` first (JVM heap auto-tunes to ~75% of memory limit); request increases only if average load consistently exceeds requests.
 
 ## What's preserved vs adapted from the VM config
 
