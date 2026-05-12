@@ -152,10 +152,11 @@ KRaft controller (64 GB) and C3 (300 GB) volumes are under the 500 GB threshold 
 
 - **CFK / init container**: `0.1351.59` (matches the vendored chart `charts/confluent-for-kubernetes/` `appVersion: 3.1.1`, operator image `confluentinc/confluent-operator:0.1351.59`). The same tag is used for `confluentinc/confluent-init-container`. If FCB's Container Platforms upgrades the operator, bump these in lockstep.
 - **Service account**: `flink-operator` — same SA the CMF and Flink Operator pods run under. RBAC is owned by FCB's `fcb-security` ArgoCD chart in `dah-flink-dev`.
-- **External Kafka LB** (tentative — confirm with Tom 2026-05-12):
+- **External Kafka LB** (tentative — confirm with Tom; needs hostname under `*.ocp.fcbint.net` per Keyfactor approver-policy):
   - bootstrap: `bootstrap.kafka.dev.dah.fcbint.net`
   - brokers: `b0/b1/b2.kafka.dev.dah.fcbint.net`
-- **External C3 UI** (tentative): `c3.dev.dah.fcbint.net`
+  - **Note**: these SANs are *not* in the cert today — Keyfactor rejected the request as a policy violation (allowed suffixes are `*.svc`, `*.svc.cluster.local`, `*.ocp.fcbint.net`; `*.dah.fcbint.net` is not allowed). Internal cluster bringup is unaffected (CMF, Flink jobs use the internal `*.svc.cluster.local` listener). Re-add the SANs once a real LB hostname is allocated under `*.ocp.fcbint.net`.
+- **External C3 UI** (tentative): same situation — SAN removed from the cert until a real Route hostname under `*.apps.<cluster>.ocp.fcbint.net` is allocated.
 
 **MDS token keypair** (`mds-token-keypair` Secret — *manual one-time setup, not pipeline-managed*):
 

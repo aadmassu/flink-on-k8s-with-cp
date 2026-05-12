@@ -21,16 +21,19 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
+  # Internal-only SANs. The FCB Keyfactor approver-policy allows DNS names
+  # under *.svc, *.svc.cluster.local, and *.ocp.fcbint.net — anything else
+  # is rejected. The earlier external UI SAN c3.dev.dah.fcbint.net failed
+  # the policy and blocked the CertificateRequest.
+  #
+  # When C3 needs external exposure, the OpenShift Route hostname will
+  # follow the *.apps.<cluster>.ocp.fcbint.net pattern (per the FCB
+  # cert-manager doc examples). Add that hostname here once allocated.
   commonName: controlcenter.dah-flink-dev.svc.cluster.local
   dnsNames:
     - controlcenter.dah-flink-dev.svc
     - controlcenter.dah-flink-dev.svc.cluster.local
     - controlcenter-0.controlcenter.dah-flink-dev.svc.cluster.local
-    # External UI hostname — using the same dev.dah.fcbint.net suffix as the
-    # Kafka LB. Confirm with Tom whether C3 will be exposed via Route or LB;
-    # this SAN matches a Route hostname (c3.dev.dah.fcbint.net) as a starting
-    # point — adjust if a different host gets allocated.
-    - c3.dev.dah.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:

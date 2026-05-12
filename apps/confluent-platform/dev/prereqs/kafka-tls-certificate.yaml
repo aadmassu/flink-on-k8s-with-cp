@@ -22,6 +22,19 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
+  # Internal-only SANs. The FCB Keyfactor approver-policy allows DNS names
+  # under *.svc, *.svc.cluster.local, and *.ocp.fcbint.net — anything else
+  # is rejected. The earlier draft included external LB SANs under
+  # kafka.dev.dah.fcbint.net (a stand-in for the eventual external hostname);
+  # those tripped the policy and blocked the CertificateRequest.
+  #
+  # External LB exposure remains staged in kafka.yaml's externalAccess block.
+  # External SANs will be re-added once either (a) Tom allocates an LB
+  # hostname under *.ocp.fcbint.net, or (b) FCB binds a separate ClusterIssuer
+  # to Keyfactor's wildcard template. Until then, external clients that
+  # strictly validate TLS hostname will fail against the LB; in-cluster
+  # traffic (CMF, Flink jobs) uses the *.svc.cluster.local listener and is
+  # unaffected.
   commonName: kafka.dah-flink-dev.svc.cluster.local
   dnsNames:
     - kafka.dah-flink-dev.svc
@@ -29,15 +42,6 @@ spec:
     - kafka-0.kafka.dah-flink-dev.svc.cluster.local
     - kafka-1.kafka.dah-flink-dev.svc.cluster.local
     - kafka-2.kafka.dah-flink-dev.svc.cluster.local
-    # External LoadBalancer SANs — match the kafka.yaml externalAccess block:
-    #   domain: kafka.dev.dah.fcbint.net
-    #   brokerPrefix: b   bootstrapPrefix: bootstrap
-    # If the LB domain changes (pending Tom's confirmation 2026-05-12), update
-    # both this file and kafka.yaml in lockstep.
-    - bootstrap.kafka.dev.dah.fcbint.net
-    - b0.kafka.dev.dah.fcbint.net
-    - b1.kafka.dev.dah.fcbint.net
-    - b2.kafka.dev.dah.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:
