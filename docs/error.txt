@@ -1,1 +1,18 @@
-{"level":"ERROR","time":"2026-05-12T23:56:50.100Z","name":"kraftcontroller","caller":"log/log.go:53","msg":"apply failed","name":"kraftcontroller","namespace":"dah-flink-dev","error":"missing inter controller credentials, please configure any one of the following keys kafka-server-listener-replication-plain-interbroker.txt,kafka-server-plain-interbroker.txt,plain-interbroker.txt in secretRef sasl-plain-internal"}
+{{ 
+   caller: log/log.go:53
+   error: oauthForRest: missing authentication.oauth struct
+   level: ERROR
+   msg: apply failed
+   name: schemaregistry
+   namespace: dah-flink-dev
+   time: 2026-05-12T23:58:17.432Z
+   }
+}{ 
+   caller: log/log.go:53
+   error: missing inter controller credentials, please configure any one of the following keys kafka-server-listener-replication-plain-interbroker.txt,kafka-server-plain-interbroker.txt,plain-interbroker.txt in secretRef sasl-plain-internal
+   level: ERROR
+   msg: apply failed
+   name: kraftcontroller
+   namespace: dah-flink-dev
+   time: 2026-05-12T23:58:20.192Z
+}}
