@@ -59,15 +59,28 @@ Run the pipeline twice — `create-prereqs` first, then `install`. CFK reconcile
 | Component | CR `requests` | CR `limits` | Disk | VM allocation / utilization |
 |---|---|---|---|---|
 | Broker (×3) | 2 vCPU / 4 Gi | 4 vCPU / 8 Gi | 1 TB | VM 16 vCPU / 16 GiB; actual usage 2% CPU / 20% mem |
-| Controller (×3) | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | 64 GB | VM 4 vCPU / 4 GiB; 9% utilization |
+| Controller (×3) | 1 vCPU / 2 Gi | 2 vCPU / 2 Gi | 64 GB | VM 4 vCPU / 4 GiB; 9% utilization (actual ~0.36 vCPU / 0.36 GiB) |
 | Schema Registry | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB; stable moderate |
 | REST Proxy | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB |
 | Connect (×2) | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB; moderate |
 | Control Center | 12 vCPU / 16 Gi | 12 vCPU / 16 Gi | 300 GB | VM 12 vCPU / 16 GiB; stable |
 
-**Broker sizing rationale**: FCB worker nodes are **16 vCPU / 32 GiB** (per Tom). The VM had 100% of a 16-vCPU box, but only used 2% CPU and 20% memory. On a K8s node, requesting that full VM allocation makes the broker un-schedulable (kubelet + OpenShift system daemons reserve ~1–2 vCPU). The CR `requests` are sized at ~6× actual dev usage — comfortable headroom — and the `limits` allow the broker to burst when needed without monopolizing a worker. With anti-affinity capping each node to one broker + one controller, per-node usage lands around `broker(4) + controller(4) + system(2) ≈ 10 vCPU and ~16 GiB`, leaving the rest of the worker free for CMF, monitoring, and other CFK CP pods.
+**Broker sizing rationale**: FCB worker nodes are **16 vCPU / 32 GiB** (per Tom). The VM had 100% of a 16-vCPU box, but only used 2% CPU and 20% memory. On a K8s node, requesting that full VM allocation makes the broker un-schedulable (kubelet + OpenShift system daemons reserve ~1–2 vCPU). The CR `requests` are sized at ~6× actual dev usage — comfortable headroom — and the `limits` allow the broker to burst when needed without monopolizing a worker.
 
-**Controller / SR / REST / Connect / C3** match VM allocation 1:1 — those VMs were 4 vCPU / 4 GiB (12 / 16 for C3), and there's no scheduling issue at those sizes on a 16/32 worker.
+**Controller sizing rationale**: KRaft controllers handle metadata-log writes only (topic creates, partition reassignments, leader elections), no data-path traffic. VM was 4 vCPU / 4 GiB at 9% utilization — actual usage ~0.36 vCPU and ~0.36 GiB. Shrunk to `request: 1 vCPU / 2 Gi`, `limit: 2 vCPU / 2 Gi` — still ~3× CPU and ~5× memory over actual.
+
+**Co-tenancy on a 16 vCPU / 32 GiB worker** with one broker + one controller co-located (per the anti-affinity rules):
+
+```
+broker     limit  4 vCPU / 8 GiB
+controller limit  2 vCPU / 2 GiB
+system            ~2 vCPU / ~4 GiB   (kubelet, OpenShift node-exporter, ovs-cni, etc.)
+─────────────────────────────────────
+total used        ~8 vCPU / ~14 GiB
+free on worker    ~8 vCPU / ~18 GiB  (for CMF, monitoring, other CFK pods)
+```
+
+**SR / REST / Connect / C3** match VM allocation 1:1 — those VMs were 4 vCPU / 4 GiB (12 / 16 for C3), and there's no scheduling issue at those sizes on a 16/32 worker.
 
 If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, raise `limits` first (JVM heap auto-tunes to ~75% of memory limit); request increases only if average load consistently exceeds requests.
 
