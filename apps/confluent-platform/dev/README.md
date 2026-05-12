@@ -2,6 +2,15 @@
 
 CFK Custom Resources that reproduce the existing dev VM Confluent Platform cluster on OpenShift. Every CR in this folder is authored against the corresponding `.properties` file under [`../cp-confluent/dev/`](../cp-confluent/dev/) — that's the source of truth for parity.
 
+> ⚠️ **Heads-up — broker and controller resources have been scaled down from the VM allocation (2026-05-12).** FCB worker nodes are **16 vCPU / 32 GiB**. The VM cluster ran on dedicated hardware with each broker getting 16 vCPU / 16 GiB and each controller getting 4 vCPU / 4 GiB, but actual utilization is 2% CPU on brokers and 9% on controllers. Carrying VM-sized requests into K8s would leave the broker pods stuck `Pending` because kubelet + OpenShift system daemons reserve ~1–2 vCPU off the top, leaving ~14 allocatable.
+>
+> | Component | Old (VM allocation) | **New CFK `request` / `limit`** |
+> |---|---|---|
+> | Broker | 16 vCPU / 16 GiB | **2 / 4 vCPU**, **4 / 8 GiB** |
+> | KRaft controller | 4 vCPU / 4 GiB | **1 / 2 vCPU**, **2 / 2 GiB** |
+>
+> Full table + per-node co-tenancy math in the [Capacity](#capacity-cfk-cr-settings-vs-vm-source) section below. SR / Connect / REST / C3 unchanged — those VM sizes already fit a 16/32 worker.
+
 ## Target
 
 - **Confluent Platform**: 8.1.x
