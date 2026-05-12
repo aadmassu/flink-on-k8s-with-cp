@@ -37,7 +37,15 @@ Eleven Opaque Secrets the CFK CRs reference for OAuth, SASL, license, MDS token 
 | `c3-prometheus-basic-auth` | `username`<br>`password` | `<env>-c3-prometheus-username`<br>`<env>-c3-prometheus-password` |
 | `c3-alertmanager-basic-auth` | `username`<br>`password` | `<env>-c3-alertmanager-username`<br>`<env>-c3-alertmanager-password` |
 
-The **MDS keypair** is the only one with a non-obvious source: the VM brokers' `/var/ssl/private/tokenKeypair.pem`. Copy that file's contents into the `<env>-mds-token-keypair-pem` secret variable verbatim (multiline PEM-encoded RSA). Reusing the VM keypair keeps VM-issued MDS tokens valid in the CFK cluster during the cluster-link migration window — **do not generate a fresh keypair without coordination** as doing so invalidates every outstanding token.
+The **MDS keypair** is the only one with a non-obvious source: the VM brokers' `/var/ssl/private/tokenKeypair.pem`. **The variable value must be base64-encoded as a single line** — ADO's UI silently strips newlines from multiline secret variables, which then breaks Java's PEM parser at runtime (it requires the BEGIN/END markers on their own lines). On any dev VM broker:
+
+```
+sudo base64 -w0 /var/ssl/private/tokenKeypair.pem
+```
+
+Paste the resulting single-line string (~4400 chars for a 4096-bit RSA key) into `<env>-mds-token-keypair-pem` with the 🔒 secret lock. The `create-prereqs` action decodes it back to PEM before landing the Secret, and validates that the decoded content actually starts with `-----BEGIN` — pipeline fails fast with a clear message if either step doesn't check out.
+
+Reusing the VM keypair keeps VM-issued MDS tokens valid in the CFK cluster during the cluster-link migration window — **do not generate a fresh keypair without coordination** as doing so invalidates every outstanding token.
 
 > **OAuth client decision**: today the variable group reuses the existing VM client IDs (e.g. `0oa1owiage2MyoHdt358` for the broker). When FCB Okta admins decide whether to keep reusing or to provision new CFK-specific clients, the only change needed is in the variable group — no manifest changes here.
 
