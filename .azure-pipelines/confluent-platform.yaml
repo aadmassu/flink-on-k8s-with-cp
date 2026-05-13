@@ -435,9 +435,14 @@ stages:
 
                   echo ""
                   echo "=== Recent Warning events (last 30) ==="
+                  # The KIND/.involvedObject.name slash syntax above doesn't
+                  # actually work — custom-columns can't concatenate two
+                  # jsonpath expressions in one column, so the column comes
+                  # out as "<none>" for every row and we can't tell which
+                  # resource each warning is on. Split into two columns.
                   oc -n "$OC_NS" get events --sort-by=.lastTimestamp \
                     --field-selector type=Warning \
-                    -o custom-columns=TIME:.lastTimestamp,REASON:.reason,KIND:.involvedObject.kind/.involvedObject.name,MSG:.message \
+                    -o custom-columns=TIME:.lastTimestamp,REASON:.reason,KIND:.involvedObject.kind,NAME:.involvedObject.name,MSG:.message \
                     2>/dev/null | tail -30 \
                     || echo "(no Warning events or oc error)"
 
