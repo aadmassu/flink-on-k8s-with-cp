@@ -77,22 +77,10 @@ spec:
   dataVolumeCapacity: 2Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — best write throughput for log dirs
-  resources:
-    # Sized to fit FCB's 16 vCPU / 32 GiB worker nodes alongside a co-located
-    # KRaft controller (anti-affinity allows one broker + one controller per
-    # node) and system daemons. The VM ran with a 16 vCPU / 16 GiB allocation
-    # at 2% CPU and 20% memory utilization — actual usage is ~0.3 vCPU + 3 GiB.
-    # The numbers below give ~6x headroom over actual without exhausting a
-    # worker; with co-location, per-node usage lands around broker 4 + ctrlr 4
-    # + system 2 = 10 vCPU and ~16 GiB, leaving room on the worker for CMF and
-    # other workloads. If broker traffic grows, raise the limits first (heap
-    # auto-tunes to ~75% of memory limit).
-    requests:
-      cpu: "2"
-      memory: 4Gi
-    limits:
-      cpu: "4"
-      memory: 8Gi
+  # Resources MUST live under spec.podTemplate.resources — top-level
+  # spec.resources is not in the Kafka CRD and gets pruned at admission.
+  # See schemaregistry.yaml for the full rationale. The sizing values
+  # below move to podTemplate.resources further down this file.
 
   # KRaft mode — points at the KRaftController CR (kraftcontroller.yaml)
   dependencies:
@@ -227,6 +215,22 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
+    # Sized to fit FCB's 16 vCPU / 32 GiB worker nodes alongside a co-located
+    # KRaft controller (anti-affinity allows one broker + one controller per
+    # node) and system daemons. The VM ran with a 16 vCPU / 16 GiB allocation
+    # at 2% CPU and 20% memory utilization — actual usage is ~0.3 vCPU + 3 GiB.
+    # The numbers below give ~6x headroom over actual without exhausting a
+    # worker; with co-location, per-node usage lands around broker 4 + ctrlr 4
+    # + system 2 = 10 vCPU and ~16 GiB, leaving room on the worker for CMF
+    # and other workloads. If broker traffic grows, raise the limits first
+    # (heap auto-tunes to ~75% of memory limit).
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 8Gi
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001).
     # OpenShift's restricted-v2 SCC then assigns a UID from this namespace's
     # allocated range (1001320000–1001329999) and adds GID 0 as a supplemental

@@ -43,13 +43,11 @@ spec:
     app.kubernetes.io/component: schema-registry
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  resources:
-    requests:
-      cpu: "4"
-      memory: 4Gi
-    limits:
-      cpu: "4"
-      memory: 4Gi
+  # Resources MUST live under spec.podTemplate.resources — the SR CRD has
+  # no top-level spec.resources field, so anything placed there gets
+  # pruned silently at admission and the application container starts
+  # with no requests/limits. FCB's namespace ResourceQuota then rejects
+  # every pod with "must specify limits.cpu for: schemaregistry ...".
 
   dependencies:
     # dependencies.kafka uses SASL OAUTHBEARER to brokers — CRD shape is:
@@ -144,6 +142,14 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
+    # CRD path for resources — top-level spec.resources is silently dropped.
+    resources:
+      requests:
+        cpu: "4"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.

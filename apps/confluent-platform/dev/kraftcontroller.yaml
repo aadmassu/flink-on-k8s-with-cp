@@ -86,19 +86,11 @@ spec:
         resources:
           requests:
             storage: 1Gi
-  resources:
-    # KRaft controllers handle metadata-log writes only (topic creates,
-    # partition reassignments, leader elections) — they don't process
-    # messages. VM allocation was 4 vCPU / 4 GiB at 9% utilization, so
-    # actual usage is ~0.36 vCPU and ~0.36 GiB. The numbers below give
-    # ~3x CPU and ~5x memory headroom while freeing ~3 vCPU and 2 GiB
-    # per worker for broker / CMF / monitoring co-tenants.
-    requests:
-      cpu: "1"
-      memory: 2Gi
-    limits:
-      cpu: "2"
-      memory: 2Gi
+  # Resources MUST live under spec.podTemplate.resources — top-level
+  # spec.resources is not in the KRaftController CRD and gets pruned at
+  # admission. See schemaregistry.yaml for the full rationale. Sizing
+  # values move to podTemplate.resources further down this file.
+
   # CONTROLLER listener on 9093, SASL_SSL with PLAIN (matches VM).
   listeners:
     controller:
@@ -129,6 +121,19 @@ spec:
       - confluent.reporters.telemetry.auto.enable=true
   podTemplate:
     serviceAccountName: flink-operator
+    # KRaft controllers handle metadata-log writes only (topic creates,
+    # partition reassignments, leader elections) — they don't process
+    # messages. VM allocation was 4 vCPU / 4 GiB at 9% utilization, so
+    # actual usage is ~0.36 vCPU and ~0.36 GiB. The numbers below give
+    # ~3x CPU and ~5x memory headroom while freeing ~3 vCPU and 2 GiB
+    # per worker for broker / CMF / monitoring co-tenants.
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 2Gi
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.

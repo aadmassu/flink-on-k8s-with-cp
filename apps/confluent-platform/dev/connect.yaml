@@ -46,13 +46,9 @@ spec:
     app.kubernetes.io/component: kafka-connect
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  resources:
-    requests:
-      cpu: "4"
-      memory: 4Gi
-    limits:
-      cpu: "4"
-      memory: 4Gi
+  # Resources MUST live under spec.podTemplate.resources — top-level
+  # spec.resources is not in the Connect CRD and gets pruned at
+  # admission. See schemaregistry.yaml for the full rationale.
 
   dependencies:
     # SASL OAUTHBEARER to brokers (CRD shape: oauthbearer + oauthSettings).
@@ -206,6 +202,13 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
+    resources:
+      requests:
+        cpu: "4"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.
