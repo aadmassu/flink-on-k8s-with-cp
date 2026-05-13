@@ -826,6 +826,26 @@ stages:
                     exit 1
                   fi
 
+                  # Also refuse if the CFK CRs themselves still exist — even
+                  # when the StatefulSet is in ApplyFailed state and never
+                  # materialized, the operator continues reconciling and will
+                  # immediately recreate any PVC we delete. (We hit this:
+                  # PVCs deleted cleanly, then `oc get pvc` showed them back
+                  # at age 0s.) The CRs must be removed via `uninstall`
+                  # before this action does anything useful.
+                  REMAINING_CRS=$(oc -n "$OC_NS" get kafka,kraftcontroller,controlcenter \
+                    -o jsonpath='{range .items[*]}{.kind}/{.metadata.name}{"\n"}{end}' 2>/dev/null \
+                    || true)
+                  if [ -n "$REMAINING_CRS" ]; then
+                    echo ""
+                    echo "ERROR: refusing to wipe PVCs — these CFK CRs still exist:"
+                    echo "$REMAINING_CRS" | sed 's/^/  - /'
+                    echo "While these CRs exist, the operator will recreate any PVC"
+                    echo "we delete within seconds. Run action=uninstall first, then"
+                    echo "re-run wipe-pvcs."
+                    exit 1
+                  fi
+
                   echo ""
                   echo "=== Deleting PVCs ==="
                   for pvc in $MATCHED; do
