@@ -90,16 +90,20 @@ spec:
       tls:
         enabled: true
     external:
+      # Kafka listener auth is the SERVER side — brokers accept SASL/OAUTHBEARER
+      # client connections. CRD wants OIDC config nested under oauthSettings.
+      # Flat fields (jwksEndpointUri, expectedIssuer, etc.) directly under
+      # authentication.* are silently dropped during CRD admission.
       authentication:
         type: oauth
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        subClaimName: sub
-        groupsClaimName: dahDev_groups
-        expectedAudiences:
-          - Confluent
-          - account
-          - api://default
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(Dev)
+          subClaimName: sub
+          groupsClaimName: dahDev_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
       tls:
         enabled: true
       externalAccess:
@@ -131,25 +135,38 @@ spec:
   license:
     secretRef: confluent-license
 
-  # MDS — Metadata Server is embedded on the brokers (VM port 8090). CFK
-  # exposes it via this block; same OAuth issuer / JWKS as the listeners.
-  metadataServer:
-    listenerConfig:
-      port: 8090
-    authentication:
-      type: oauth
-      jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-      expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-      subClaimName: sub
-      groupsClaimName: dahDev_groups
-      expectedAudiences:
-        - Confluent
-        - account
-        - api://default
-    tls:
-      enabled: true
-    tokenKeyPair:
-      secretRef: mds-token-keypair
+  # Embedded MDS (Metadata Service) — VM equivalent is the broker-hosted
+  # MDS on port 8090. In CFK, the correct path is spec.services.mds (the
+  # earlier `metadataServer:` block was NOT in the CRD schema and got
+  # silently dropped during admission, which is why SR / Connect / REST /
+  # C3 couldn't reach MDS at all).
+  #
+  # provider.oauth.{clientCredentials, configurations} is what tells MDS
+  # how to validate incoming bearer tokens against Okta and how to mint
+  # tokens of its own. configurations.{authorizeBaseEndpointUri, issuer,
+  # jwksEndpointUri, refreshToken, tokenBaseEndpointUri} are REQUIRED.
+  services:
+    mds:
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      tls:
+        enabled: true
+      authentication:
+        type: bearer
+      provider:
+        type: oauth
+        oauth:
+          clientCredentials:
+            secretRef: oauth-mds-rest
+          configurations:
+            audience: "Confluent,account,api://default"
+            authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
+            issuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            refreshToken: true
+            tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
 
   # Carry-over Kafka server settings that don't have a structured CR field.
   # Keep this list aligned with the broker .properties — drift here breaks
