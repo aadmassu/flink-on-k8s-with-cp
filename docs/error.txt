@@ -1,18 +1,101 @@
-{{ 
-   caller: log/log.go:53
-   error: oauthForRest: missing authentication.oauth struct
-   level: ERROR
-   msg: apply failed
-   name: schemaregistry
-   namespace: dah-flink-dev
-   time: 2026-05-12T23:58:17.432Z
-   }
-}{ 
-   caller: log/log.go:53
-   error: missing inter controller credentials, please configure any one of the following keys kafka-server-listener-replication-plain-interbroker.txt,kafka-server-plain-interbroker.txt,plain-interbroker.txt in secretRef sasl-plain-internal
-   level: ERROR
-   msg: apply failed
-   name: kraftcontroller
-   namespace: dah-flink-dev
-   time: 2026-05-12T23:58:20.192Z
-}}
+2026-05-13T01:42:12.8943238Z ##[section]Starting: Diagnostics: dump Secret + CR state before install
+2026-05-13T01:42:12.8949913Z ==============================================================================
+2026-05-13T01:42:12.8950046Z Task         : Bash
+2026-05-13T01:42:12.8950159Z Description  : Run a Bash script on macOS, Linux, or Windows
+2026-05-13T01:42:12.8950256Z Version      : 3.231.4
+2026-05-13T01:42:12.8950318Z Author       : Microsoft Corporation
+2026-05-13T01:42:12.8950449Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+2026-05-13T01:42:12.8950561Z ==============================================================================
+2026-05-13T01:42:13.1417526Z Generating script.
+2026-05-13T01:42:13.1439930Z ========================== Starting Command Output ===========================
+2026-05-13T01:42:13.1465549Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/35937eb7-37e2-42bc-b5c3-16a5056d5782.sh
+2026-05-13T01:42:13.1536449Z === Secret: sasl-plain-internal — keys ===
+2026-05-13T01:42:13.1537278Z (expected: kafka-server-listener-internal-plain-users.json)
+2026-05-13T01:42:13.2776503Z ['kafka-server-listener-internal-plain-users.json', 'plain-interbroker.txt']
+2026-05-13T01:42:13.2815594Z 
+2026-05-13T01:42:13.2816199Z === Secret: mds-token-keypair — keys ===
+2026-05-13T01:42:13.2818939Z (expected: ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem'])
+2026-05-13T01:42:13.4356283Z ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem']
+2026-05-13T01:42:13.4398097Z 
+2026-05-13T01:42:13.4399050Z === CR: connect/connect — spec.authentication ===
+2026-05-13T01:42:13.4399906Z (expected: nested authentication.oauth.{secretRef, configuration})
+2026-05-13T01:42:13.5673416Z {
+2026-05-13T01:42:13.5673743Z     "oauth": {
+2026-05-13T01:42:13.5673902Z         "configuration": {
+2026-05-13T01:42:13.5674083Z             "audience": "Confluent,account,api://default",
+2026-05-13T01:42:13.5674305Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+2026-05-13T01:42:13.5674521Z             "groupsClaimName": "dahDev_groups",
+2026-05-13T01:42:13.5674789Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+2026-05-13T01:42:13.5675000Z             "scope": "11547.DAH(Dev)",
+2026-05-13T01:42:13.5675168Z             "subClaimName": "sub",
+2026-05-13T01:42:13.5676019Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+2026-05-13T01:42:13.5676214Z         },
+2026-05-13T01:42:13.5676699Z         "secretRef": "oauth-connect"
+2026-05-13T01:42:13.5676831Z     },
+2026-05-13T01:42:13.5676974Z     "type": "oauth"
+2026-05-13T01:42:13.5677104Z }
+2026-05-13T01:42:13.5720906Z 
+2026-05-13T01:42:13.5721687Z === CR: kafkarestproxy/kafkarest — spec.authentication ===
+2026-05-13T01:42:13.5721913Z (expected: nested authentication.oauth.{secretRef, configuration})
+2026-05-13T01:42:13.6964602Z {
+2026-05-13T01:42:13.6964930Z     "oauth": {
+2026-05-13T01:42:13.6965085Z         "configuration": {
+2026-05-13T01:42:13.6965269Z             "audience": "Confluent,account,api://default",
+2026-05-13T01:42:13.6965654Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+2026-05-13T01:42:13.6965869Z             "groupsClaimName": "dahDev_groups",
+2026-05-13T01:42:13.6966114Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+2026-05-13T01:42:13.6966513Z             "scope": "11547.DAH(Dev)",
+2026-05-13T01:42:13.6966682Z             "subClaimName": "sub",
+2026-05-13T01:42:13.6966897Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+2026-05-13T01:42:13.6967088Z         },
+2026-05-13T01:42:13.6967541Z         "secretRef": "oauth-kafkarest"
+2026-05-13T01:42:13.6967688Z     },
+2026-05-13T01:42:13.6967829Z     "type": "oauth"
+2026-05-13T01:42:13.6967962Z }
+2026-05-13T01:42:13.7014111Z 
+2026-05-13T01:42:13.7015240Z === CR: schemaregistry/schemaregistry — spec.authentication ===
+2026-05-13T01:42:13.7015493Z (expected: nested authentication.oauth.{secretRef, configuration})
+2026-05-13T01:42:13.8349296Z {
+2026-05-13T01:42:13.8349964Z     "oauth": {
+2026-05-13T01:42:13.8350352Z         "configuration": {
+2026-05-13T01:42:13.8350679Z             "audience": "Confluent,account,api://default",
+2026-05-13T01:42:13.8350960Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+2026-05-13T01:42:13.8351175Z             "groupsClaimName": "dahDev_groups",
+2026-05-13T01:42:13.8351405Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+2026-05-13T01:42:13.8351615Z             "scope": "11547.DAH(Dev)",
+2026-05-13T01:42:13.8351783Z             "subClaimName": "sub",
+2026-05-13T01:42:13.8351998Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+2026-05-13T01:42:13.8352192Z         },
+2026-05-13T01:42:13.8352764Z         "secretRef": "oauth-schemaregistry"
+2026-05-13T01:42:13.8352929Z     },
+2026-05-13T01:42:13.8353057Z     "type": "oauth"
+2026-05-13T01:42:13.8353750Z }
+2026-05-13T01:42:13.8399987Z 
+2026-05-13T01:42:13.8401019Z === CR: controlcenter/controlcenter — spec.authentication ===
+2026-05-13T01:42:13.8401437Z (expected: nested authentication.oauth.{secretRef, configuration})
+2026-05-13T01:42:13.9776846Z {
+2026-05-13T01:42:13.9777148Z     "mtls": {
+2026-05-13T01:42:13.9777301Z         "sslClientAuthentication": "requested"
+2026-05-13T01:42:13.9777464Z     },
+2026-05-13T01:42:13.9777601Z     "type": "mtls"
+2026-05-13T01:42:13.9777734Z }
+2026-05-13T01:42:13.9826606Z 
+2026-05-13T01:42:13.9827158Z === Recent Warning events (last 30) ===
+2026-05-13T01:42:14.1269047Z TIME                   REASON                KIND     MSG
+2026-05-13T01:42:14.1277761Z 2026-05-12T23:37:45Z   KeyInSecretRefIssue   <none>   required one of [mds-server-publicKey.pem mdsPublicKey.pem] missing in secretRef [mds-token-keypair] for for mds public key
+2026-05-13T01:42:14.1278516Z 2026-05-12T23:37:48Z   KeyInSecretRefIssue   <none>   required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype plain
+2026-05-13T01:42:14.1279108Z 2026-05-13T01:37:22Z   Warning               <none>   waiting for at-least one kRaft controller pod availability
+2026-05-13T01:42:14.1280435Z 2026-05-13T01:37:25Z   Warning               <none>   waiting for at-least one kafka pod availability
+2026-05-13T01:42:14.1280814Z 2026-05-13T01:37:25Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
+2026-05-13T01:42:14.1281708Z 2026-05-13T01:37:28Z   InputError            <none>   missing inter controller credentials, please configure any one of the following keys kafka-server-listener-replication-plain-interbroker.txt,kafka-server-plain-interbroker.txt,plain-interbroker.txt in secretRef sasl-plain-internal
+2026-05-13T01:42:14.1282264Z 2026-05-13T01:37:46Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
+2026-05-13T01:42:14.1282857Z 2026-05-13T01:37:46Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
+2026-05-13T01:42:14.1283540Z 2026-05-13T01:37:58Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T01:42:14.1284371Z 2026-05-13T01:38:08Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T01:42:14.1285183Z 2026-05-13T01:39:21Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T01:42:14.1286496Z 2026-05-13T01:40:39Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T01:42:14.1287332Z 2026-05-13T01:40:57Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T01:42:14.1288137Z 2026-05-13T01:41:23Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T01:42:14.1288444Z 
+2026-05-13T01:42:14.1288606Z === End of diagnostics ===
+2026-05-13T01:42:14.1352521Z ##[section]Finishing: Diagnostics: dump Secret + CR state before install
