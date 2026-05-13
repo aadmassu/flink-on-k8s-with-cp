@@ -8,7 +8,7 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-[command]/bin//bash /opt/azure_pipelines/_work/_temp/8dad6b5c-3598-4b22-939a-3ef7092d8bf2.sh
+[command]/bin//bash /opt/azure_pipelines/_work/_temp/5478adc0-93d7-42a0-9251-2e22d8ada9a7.sh
 === Secret: sasl-plain-internal — keys ===
 (expected: kafka-server-listener-internal-plain-users.json)
 ['kafka-server-listener-internal-plain-users.json', 'plain-interbroker.txt']
@@ -19,78 +19,152 @@ Generating script.
 
 === CR: connect/connect — spec.authentication ===
 (expected: nested authentication.oauth.{secretRef, configuration})
-Expecting value: line 1 column 1 (char 0)
-(CR not found yet — expected on first install)
+{
+    "oauth": {
+        "configuration": {
+            "audience": "Confluent,account,api://default",
+            "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+            "groupsClaimName": "dahDev_groups",
+            "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+            "scope": "11547.DAH(Dev)",
+            "subClaimName": "sub",
+            "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+        },
+        "secretRef": "oauth-connect"
+    },
+    "type": "oauth"
+}
 
 === CR: kafkarestproxy/kafkarest — spec.authentication ===
 (expected: nested authentication.oauth.{secretRef, configuration})
-Expecting value: line 1 column 1 (char 0)
-(CR not found yet — expected on first install)
+{
+    "oauth": {
+        "configuration": {
+            "audience": "Confluent,account,api://default",
+            "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+            "groupsClaimName": "dahDev_groups",
+            "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+            "scope": "11547.DAH(Dev)",
+            "subClaimName": "sub",
+            "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+        },
+        "secretRef": "oauth-kafkarest"
+    },
+    "type": "oauth"
+}
 
 === CR: schemaregistry/schemaregistry — spec.authentication ===
 (expected: nested authentication.oauth.{secretRef, configuration})
-Expecting value: line 1 column 1 (char 0)
-(CR not found yet — expected on first install)
+{
+    "oauth": {
+        "configuration": {
+            "audience": "Confluent,account,api://default",
+            "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+            "groupsClaimName": "dahDev_groups",
+            "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+            "scope": "11547.DAH(Dev)",
+            "subClaimName": "sub",
+            "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+        },
+        "secretRef": "oauth-schemaregistry"
+    },
+    "type": "oauth"
+}
 
 === CR: controlcenter/controlcenter — spec.authentication ===
 (expected: nested authentication.oauth.{secretRef, configuration})
-Expecting value: line 1 column 1 (char 0)
-(CR not found yet — expected on first install)
+{
+    "mtls": {
+        "sslClientAuthentication": "requested"
+    },
+    "type": "mtls"
+}
 
 === Recent Warning events (last 30) ===
-2026-05-13T14:23:43Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T14:26:35Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <schemaregistry> in your <Pod> <schemaregistry-0> has no <startupProbe>
-2026-05-13T14:26:35Z   FailedCreate       <none>   create Pod schemaregistry-0 in StatefulSet schemaregistry failed error: pods "schemaregistry-0" is forbidden: failed quota: compute-resources: must specify limits.cpu for: schemaregistry; limits.memory for: schemaregistry; requests.cpu for: schemaregistry; requests.memory for: schemaregistry
-2026-05-13T14:26:35Z   FailedCreate       <none>   create Pod connect-0 in StatefulSet connect failed error: pods "connect-0" is forbidden: failed quota: compute-resources: must specify limits.cpu for: connect; limits.memory for: connect; requests.cpu for: connect; requests.memory for: connect
-2026-05-13T14:26:35Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <connect> in your <Pod> <connect-0> has no <startupProbe>
-2026-05-13T14:26:36Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <kafkarest> in your <Pod> <kafkarest-0> has no <startupProbe>
-2026-05-13T14:26:36Z   FailedCreate       <none>   create Pod kafkarest-0 in StatefulSet kafkarest failed error: pods "kafkarest-0" is forbidden: failed quota: compute-resources: must specify limits.cpu for: kafkarest; limits.memory for: kafkarest; requests.cpu for: kafkarest; requests.memory for: kafkarest
-2026-05-13T14:28:49Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for StatefulSet: controlcenter. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
+2026-05-13T14:50:34Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <connect> in your <Pod> <connect-0> has no <startupProbe>
+2026-05-13T14:50:35Z   FailedCreate       <none>   create Pod kafkarest-0 in StatefulSet kafkarest failed error: pods "kafkarest-0" is forbidden: failed quota: compute-resources: must specify limits.cpu for: kafkarest; limits.memory for: kafkarest; requests.cpu for: kafkarest; requests.memory for: kafkarest
+2026-05-13T14:50:35Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <kafkarest> in your <Pod> <kafkarest-0> has no <startupProbe>
+2026-05-13T14:52:43Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:53:57Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:54:33Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:55:05Z   Warning            <none>   waiting for at-least one kafka pod availability
+2026-05-13T14:55:05Z   FailedToDiscover   <none>   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T14:55:05Z   Warning            <none>   waiting for at-least one kRaft controller pod availability
+2026-05-13T14:55:05Z   FailedToDiscover   <none>   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T14:55:05Z   FailedToDiscover   <none>   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T14:55:06Z   FailedToDiscover   <none>   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T14:55:06Z   FailedToDiscover   <none>   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T14:55:06Z   FailedToDiscover   <none>   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T14:55:25Z   FailedToDiscover   <none>   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T14:55:36Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:56:01Z   FailedToCreate     <none>   admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T14:56:01Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T14:56:05Z   FailedToCreate     <none>   admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T14:56:05Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for StatefulSet: controlcenter. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
 Review Documentation:
 * https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
 * https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
-2026-05-13T14:28:49Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+2026-05-13T14:56:05Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
 Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T14:28:51Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T14:28:51Z   FailedToCreate     <none>   admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T14:38:45Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T14:40:30Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for StatefulSet: controlcenter. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
-Review Documentation:
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
-2026-05-13T14:40:30Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T14:40:30Z   FailedToCreate     <none>   admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T14:40:41Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T14:40:42Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T14:41:10Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T14:42:42Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:56:17Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:57:08Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
 
 === CFK CR status conditions ===
 
 --- kafka ---
-NAME   READY   REPLICAS   PHASE   MSG
+NAME    READY    REPLICAS   PHASE    MSG
+kafka   <none>   <none>     <none>   <none>
+kafka:
+  - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=waiting for at-least one kRaft controller pod availability
 
 --- kraftcontroller ---
-NAME   READY   REPLICAS   PHASE   MSG
+NAME              READY    REPLICAS   PHASE    MSG
+kraftcontroller   <none>   <none>     <none>   <none>
+kraftcontroller:
+  - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
 
 --- schemaregistry ---
-NAME   READY   REPLICAS   PHASE   MSG
+NAME             READY    REPLICAS   PHASE          MSG
+schemaregistry   <none>   <none>     PROVISIONING   <none>
+schemaregistry:
+  - type=platform.confluent.io/statefulset-available status=False reason=MinimumReplicasUnavailable message=1 out of 1 replicas are not ready
+  - type=platform.confluent.io/resources-ready status=False reason=KubernetesResourcesNotReady message=Kubernetes resources not ready.
+  - type=platform.confluent.io/cluster-ready status=False reason=ReplicasNotReady message=1 out of 1 replicas are not ready.
+  - type=platform.confluent.io/garbage-collecting status=False reason=Garbage Collection not triggered message=Cluster is not being garbage collected
 
 --- connect ---
-NAME   READY   REPLICAS   PHASE   MSG
+NAME      READY    REPLICAS   PHASE          MSG
+connect   <none>   <none>     PROVISIONING   <none>
+connect:
+  - type=platform.confluent.io/statefulset-available status=False reason=MinimumReplicasUnavailable message=2 out of 2 replicas are not ready
+  - type=platform.confluent.io/resources-ready status=False reason=KubernetesResourcesNotReady message=Kubernetes resources not ready.
+  - type=platform.confluent.io/cluster-ready status=False reason=ReplicasNotReady message=2 out of 2 replicas are not ready.
+  - type=platform.confluent.io/garbage-collecting status=False reason=Garbage Collection not triggered message=Cluster is not being garbage collected
 
 --- kafkarestproxy ---
-NAME   READY   REPLICAS   PHASE   MSG
+NAME        READY    REPLICAS   PHASE          MSG
+kafkarest   <none>   <none>     PROVISIONING   <none>
+kafkarest:
+  - type=platform.confluent.io/statefulset-available status=False reason=MinimumReplicasUnavailable message=1 out of 1 replicas are not ready
+  - type=platform.confluent.io/resources-ready status=False reason=KubernetesResourcesNotReady message=Kubernetes resources not ready.
+  - type=platform.confluent.io/cluster-ready status=False reason=ReplicasNotReady message=1 out of 1 replicas are not ready.
+  - type=platform.confluent.io/garbage-collecting status=False reason=Garbage Collection not triggered message=Cluster is not being garbage collected
 
 --- controlcenter ---
-NAME   READY   REPLICAS   PHASE   MSG
+NAME            READY    REPLICAS   PHASE    MSG
+controlcenter   <none>   <none>     <none>   <none>
+controlcenter:
+  - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
 
 --- kafkarestclass ---
-NAME   READY   REPLICAS   PHASE   MSG
+NAME      READY    REPLICAS   PHASE    MSG
+default   <none>   <none>     <none>   <none>
+default:
 
 === Pods (all in namespace) ===
 NAME                                                  READY   STATUS      RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
@@ -98,8 +172,17 @@ busybox                                               0/1     Completed   0     
 confluent-manager-for-apache-flink-64d4d785f8-pxbr7   1/1     Running     0          13d   10.40.12.12   dp12055oxc-wpxl-srrn8   <none>           <none>
 
 === PVCs ===
+NAME                      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                  VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
+data0-controlcenter-0     Bound    pvc-5ce37a00-e838-41a4-bb6f-86716c5c43f6   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 12m   Filesystem
+data0-kraftcontroller-0   Bound    pvc-9913c2a4-92ee-44b8-8295-bd1f4c15cf17   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 12m   Filesystem
+data0-kraftcontroller-1   Bound    pvc-b83b350d-abd6-4b0b-88a8-f8d64326637c   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 12m   Filesystem
+data0-kraftcontroller-2   Bound    pvc-916733c9-9dc8-4819-b67d-6a5a489debed   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 12m   Filesystem
 
 === StatefulSets in namespace ===
+NAME             READY   AGE   CONTAINERS       IMAGES
+connect          0/2     12m   connect          artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.0
+kafkarest        0/1     12m   kafkarest        artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.0
+schemaregistry   0/1     12m   schemaregistry   artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
 
 === StatefulSet volumeClaimTemplates (storage class debug) ===
 --- sts/kraftcontroller ---
@@ -107,6 +190,90 @@ confluent-manager-for-apache-flink-64d4d785f8-pxbr7   1/1     Running     0     
 --- sts/controlcenter ---
 
 === Full SR CR yaml (looking for unrendered fields) ===
+spec:
+  authentication:
+    oauth:
+      configuration:
+        audience: Confluent,account,api://default
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        groupsClaimName: dahDev_groups
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        scope: 11547.DAH(Dev)
+        subClaimName: sub
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      secretRef: oauth-schemaregistry
+    type: oauth
+  authorization:
+    type: rbac
+  configOverrides:
+    server:
+    - schema.registry.group.id=schema-registry
+    - kafkastore.topic=_schemas
+    - kafkastore.topic.replication.factor=3
+    - inter.instance.protocol=https
+    - confluent.schema.registry.auth.mechanism=JETTY_AUTH
+    - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
+    - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
+  dependencies:
+    kafka:
+      authentication:
+        oauthSettings:
+          audience: Confluent,account,api://default
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahDev_groups
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(Dev)
+          subClaimName: sub
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        oauthbearer:
+          secretRef: oauth-schemaregistry
+        type: oauthbearer
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+      tls:
+        enabled: true
+    mds:
+      authentication:
+        oauth:
+          configuration:
+            audience: Confluent,account,api://default
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahDev_groups
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          secretRef: oauth-schemaregistry
+        type: oauth
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  injectLabels:
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/instance: schemaregistry
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  license:
+    secretRef: cfk-license
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+  podTemplate:
+    labels:
+      app.kubernetes.io/component: schema-registry
+      app.kubernetes.io/instance: schemaregistry
+      app.kubernetes.io/name: schemaregistry
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
+    podSecurityContext: {}
+    serviceAccountName: flink-operator
+  replicas: 1
+  tls:
+    secretRef: schemaregistry-tls
+status:
 
 === CFK operator pod logs (last 200 lines, filtered) ===
 (could not locate confluent-operator pod — searched by image fingerprint)
