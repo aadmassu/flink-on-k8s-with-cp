@@ -512,6 +512,35 @@ stages:
                     fi
                   done
 
+                  # `oc explain` returns the CRD SCHEMA as the API server
+                  # sees it on THIS cluster — independent of any applied
+                  # CR. Use it as ground truth for whether a field exists
+                  # in the installed CRD (different from our vendored
+                  # chart CRDs, which may be at a different patch level).
+                  # The user (Rick) explicitly asked for this — it answers
+                  # "did the API server prune my field, or did CFK ignore
+                  # it after preserving it?" directly, without inference.
+                  echo ""
+                  echo "=== oc explain — CRD schema as the cluster sees it ==="
+                  for query in \
+                      "kraftcontroller" \
+                      "kraftcontroller.spec" \
+                      "kraftcontroller.spec.volumeClaimTemplates" \
+                      "kraftcontroller.spec.storageClass" \
+                      "kraftcontroller.spec.podTemplate" \
+                      "kafka" \
+                      "kafka.spec" \
+                      "kafka.spec.volumeClaimTemplates" \
+                      "kafka.spec.storageClass" \
+                      "controlcenter" \
+                      "controlcenter.spec" \
+                      "controlcenter.spec.volumeClaimTemplates" \
+                      "controlcenter.spec.storageClass"; do
+                    echo ""
+                    echo "############### oc explain $query ###############"
+                    oc explain "$query" 2>&1 || true
+                  done
+
                   echo ""
                   echo "=== CFK operator pod logs (last 200 lines, filtered) ==="
                   # The operator runs in its own namespace. Different installs
