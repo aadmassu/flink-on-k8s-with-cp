@@ -155,7 +155,7 @@ spec:
   tls:
     secretRef: connect-tls
   license:
-    secretRef: confluent-license
+    secretRef: cfk-license
 
   configOverrides:
     server:

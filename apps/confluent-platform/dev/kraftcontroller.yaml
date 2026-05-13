@@ -64,7 +64,7 @@ spec:
   tls:
     secretRef: kraftcontroller-tls
   license:
-    secretRef: confluent-license
+    secretRef: cfk-license
   # Carried over from controller .properties so the cluster keeps the same
   # internal-topic replication factors and authorizer config as the VM.
   configOverrides:

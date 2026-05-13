@@ -142,7 +142,7 @@ spec:
   tls:
     secretRef: controlcenter-tls
   license:
-    secretRef: confluent-license
+    secretRef: cfk-license
 
   monitoring:
     # Prometheus + AlertManager next-gen bundle, matching VM C3.

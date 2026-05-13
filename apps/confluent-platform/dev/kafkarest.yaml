@@ -111,7 +111,7 @@ spec:
   tls:
     secretRef: kafkarest-tls
   license:
-    secretRef: confluent-license
+    secretRef: cfk-license
 
   configOverrides:
     server:

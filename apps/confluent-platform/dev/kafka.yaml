@@ -133,7 +133,7 @@ spec:
   tls:
     secretRef: kafka-tls
   license:
-    secretRef: confluent-license
+    secretRef: cfk-license
 
   # Embedded MDS (Metadata Service) — VM equivalent is the broker-hosted
   # MDS on port 8090. In CFK, the correct path is spec.services.mds (the

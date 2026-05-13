@@ -107,7 +107,7 @@ spec:
   tls:
     secretRef: schemaregistry-tls
   license:
-    secretRef: confluent-license
+    secretRef: cfk-license
 
   # Carry-over for SR linking (Schema Exporter), encoder secret, and the
   # JETTY_AUTH mechanism the VM cluster uses.

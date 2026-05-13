@@ -167,9 +167,16 @@ stages:
 
                   echo "=== Creating prerequisite Secrets in $OC_NS ==="
 
-                  # Confluent license — same shape as the CMF pipeline uses.
+                  # Confluent license — TWO Secrets, different content formats:
+                  #   - confluent-license      : raw JWT, key license.txt
+                  #     (shared with CMF Helm release; CMF expects raw JWT)
+                  #   - cfk-license            : Java-properties form
+                  #     (CFK 3.1.1 KRaftController/Kafka error explicitly:
+                  #      "must contain value in format license=<license_value>")
                   apply_secret_from_literals confluent-license \
                     --from-literal=license.txt="$CONFLUENT_LICENSE"
+                  apply_secret_from_literals cfk-license \
+                    --from-literal=license="license=$CONFLUENT_LICENSE"
 
                   # MDS RSA token keypair. The variable holds the PEM
                   # base64-encoded as a SINGLE LINE — pasting multiline PEM
@@ -291,7 +298,7 @@ stages:
                   # the pipeline log. To inspect a value, fetch the Secret
                   # outside the pipeline with `oc get secret <name> -o jsonpath`.
                   for s in \
-                      confluent-license \
+                      confluent-license cfk-license \
                       mds-token-keypair \
                       sasl-plain-internal \
                       oauth-broker oauth-schemaregistry oauth-connect \
@@ -305,7 +312,7 @@ stages:
                   echo ""
                   echo "=== Summary ==="
                   oc -n "$OC_NS" get secret \
-                      confluent-license \
+                      confluent-license cfk-license \
                       mds-token-keypair \
                       sasl-plain-internal \
                       oauth-broker oauth-schemaregistry oauth-connect \
@@ -423,8 +430,13 @@ stages:
                   # label the pod differently — search by image name as the
                   # most reliable fingerprint (any container image containing
                   # `confluent-operator`).
+                  # Match `confluent-operator` substring anywhere in the image
+                  # — FCB retags through Artifactory so the image will be
+                  # artifactory.fcbint.net/.../confluent-operator:<tag>, not
+                  # confluentinc/confluent-operator. The full-substring match
+                  # catches both.
                   OP_LINE=$(oc get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}|{.metadata.name}|{.spec.containers[*].image}{"\n"}{end}' 2>/dev/null \
-                    | grep -E '\|.*confluentinc/confluent-operator' \
+                    | grep -E '\|[^|]*confluent-operator' \
                     | head -1)
                   OPNS=$(echo "$OP_LINE" | cut -d'|' -f1)
                   OPPOD=$(echo "$OP_LINE" | cut -d'|' -f2)
@@ -507,6 +519,7 @@ stages:
                   echo "=== Verifying prerequisite Secrets in $OC_NS ==="
                   REQUIRED_SECRETS=(
                     confluent-license
+                    cfk-license
                     sasl-plain-internal
                     mds-token-keypair
                     oauth-broker
