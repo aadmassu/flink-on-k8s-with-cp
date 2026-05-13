@@ -40,7 +40,7 @@ spec:
   replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.59
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
   # CFK turns dataVolumeCapacity + storageClass into a StatefulSet
   # volumeClaimTemplate. Each broker gets a deterministic PVC named
   #   data-kafka-<ordinal>      (kafka-0, kafka-1, kafka-2)
