@@ -144,3 +144,13 @@ spec:
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.
     podSecurityContext: {}
+    # podTemplate.labels lands on the Pod template inside the StatefulSet.
+    # injectLabels above only labels the StatefulSet; FCB Gatekeeper's
+    # [required-workload-labels] policy also inspects the Pod at admission,
+    # so the FCB common-metadata labels must be repeated here.
+    labels:
+      app.kubernetes.io/name: kafkarest
+      app.kubernetes.io/instance: kafkarest
+      app.kubernetes.io/component: kafka-rest-proxy
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

@@ -99,8 +99,16 @@ spec:
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.
     podSecurityContext: {}
-    # Custom pod label used by the anti-affinity rule below.
+    # podTemplate.labels lands on the Pod template inside the StatefulSet.
+    # injectLabels above only labels the StatefulSet; the FCB Gatekeeper
+    # [required-workload-labels] policy ALSO inspects the Pod at admission.
+    # cfk-role is the custom label used by the anti-affinity rule below.
     labels:
+      app.kubernetes.io/name: kraftcontroller
+      app.kubernetes.io/instance: kraftcontroller
+      app.kubernetes.io/component: kraft-controller
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
       cfk-role: kraft-controller
     # Spread controllers across nodes. The selector matches the cfk-role
     # label set above, so controllers refuse to schedule on a node that
