@@ -167,45 +167,49 @@ stages:
 
                   # OAuth-style Secret: stores credentials under MULTIPLE key
                   # names, since CFK 3.1.x's runtime classifies the same Secret
-                  # under different "auth type" labels depending on the consumer:
+                  # under different "auth type" labels depending on consumer:
                   #
-                  #   clientId / clientSecret  →  simple key/value pair the
+                  #   clientId / clientSecret  →  simple key/value used by
                   #                              top-level authentication.oauth
-                  #                              path reads on first reconcile
-                  #   bearer.txt               →  required by
-                  #                              dependencies.mds.authentication
-                  #                              (operator labels this auth
-                  #                              type "bearer")
-                  #   oauth.txt                →  required by SR/Connect/REST/C3
-                  #                              top-level inbound REST auth
-                  #                              (operator labels this auth
-                  #                              type "basic" because the
-                  #                              JETTY_AUTH mechanism is used)
                   #
-                  # bearer.txt and oauth.txt have the same content (Java
-                  # properties: `username=<clientId>\npassword=<clientSecret>`)
-                  # — same secret material, two file names the operator looks
-                  # for. Putting both in every oauth-* Secret keeps any future
-                  # auth-path resolution from re-tripping the "missing key" check.
+                  #   bearer.txt               →  dependencies.mds.authentication
+                  #                              (operator label "bearer").
+                  #                              Format: Java properties
+                  #                              username=<id>\npassword=<sec>
+                  #
+                  #   oauth.txt                →  top-level inbound REST auth
+                  #                              (operator label "basic", since
+                  #                              JETTY_AUTH wraps OAuth). Format:
+                  #                              clientId=<id>\nclientSecret=<sec>
+                  #                              (per regex error reported by
+                  #                              operator: clientId=.+[\r\n]*$).
+                  #
+                  # Different file names + different inner formats — same
+                  # credential material. CFK is inconsistent about how it
+                  # consumes credentials across these paths; we satisfy all of
+                  # them in one Secret to avoid more iterations.
                   apply_oauth_secret() {
                     local name=$1
                     local client_id=$2
                     local client_secret=$3
-                    local creds_tmp
-                    creds_tmp=$(mktemp)
+                    local bearer_tmp oauth_tmp
+                    bearer_tmp=$(mktemp)
+                    oauth_tmp=$(mktemp)
                     printf 'username=%s\npassword=%s\n' \
-                      "$client_id" "$client_secret" > "$creds_tmp"
+                      "$client_id" "$client_secret" > "$bearer_tmp"
+                    printf 'clientId=%s\nclientSecret=%s\n' \
+                      "$client_id" "$client_secret" > "$oauth_tmp"
                     echo ""
                     echo "=== $name ==="
                     oc create secret generic "$name" \
                       -n "$OC_NS" --dry-run=client -o yaml \
                       --from-literal=clientId="$client_id" \
                       --from-literal=clientSecret="$client_secret" \
-                      --from-file=bearer.txt="$creds_tmp" \
-                      --from-file=oauth.txt="$creds_tmp" \
+                      --from-file=bearer.txt="$bearer_tmp" \
+                      --from-file=oauth.txt="$oauth_tmp" \
                       | label_secret "$name" \
                       | oc apply -f -
-                    rm -f "$creds_tmp"
+                    rm -f "$bearer_tmp" "$oauth_tmp"
                   }
 
                   echo "=== Creating prerequisite Secrets in $OC_NS ==="
