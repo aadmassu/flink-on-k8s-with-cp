@@ -147,6 +147,17 @@ spec:
   license:
     secretRef: cfk-license
 
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. CFK auto-creates a PDB per workload; for the single-
+  # replica C3 StatefulSet it defaults to maxUnavailable=0, which the
+  # policy reads as "blocks drains forever". maxUnavailable=1 makes the
+  # auto-generated PDB drainable. The C3 PVC is RBD-attached so on node
+  # drain the pod reschedules to another node and re-binds the same PVC;
+  # brief UI/monitoring outage during the move is acceptable for dev.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
   monitoring:
     # Prometheus + AlertManager next-gen bundle, matching VM C3.
     prometheus:

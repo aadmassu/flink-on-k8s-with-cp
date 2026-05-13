@@ -157,6 +157,16 @@ spec:
   license:
     secretRef: cfk-license
 
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. CFK auto-creates a PDB per workload; the default for
+  # Connect lands at 0, which the policy treats as "blocks drains forever".
+  # Setting maxUnavailable=1 lets one of the 2 workers be evicted during a
+  # voluntary disruption (node drain / rolling update) while the other
+  # keeps serving the REST API and running tasks.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
   configOverrides:
     server:
       - group.id=connect-cluster

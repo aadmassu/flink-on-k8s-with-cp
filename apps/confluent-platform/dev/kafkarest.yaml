@@ -113,6 +113,16 @@ spec:
   license:
     secretRef: cfk-license
 
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. CFK auto-creates a PDB per workload; for a single-
+  # replica REST proxy it defaults to maxUnavailable=0, which the policy
+  # reads as "blocks drains forever". maxUnavailable=1 makes the
+  # auto-generated PDB drainable. Brief REST outage during node drain is
+  # acceptable for dev; bump replicas first if HA is required.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
   configOverrides:
     server:
       - kafka.rest.resource.extension.class=io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension

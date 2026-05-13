@@ -109,6 +109,17 @@ spec:
   license:
     secretRef: cfk-license
 
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. CFK auto-creates a PDB per workload; for a single-
+  # replica SR it defaults to maxUnavailable=0 (refuse any voluntary
+  # disruption), which the policy treats as "blocks drains forever".
+  # Setting maxUnavailable=1 here makes the auto-generated PDB drainable
+  # — acceptable for dev (1 replica = brief outage on node drain). For HA,
+  # bump replicas first, then revisit this number.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
   # Carry-over for SR linking (Schema Exporter), encoder secret, and the
   # JETTY_AUTH mechanism the VM cluster uses.
   configOverrides:
