@@ -385,6 +385,57 @@ stages:
                     || echo "(no Warning events or oc error)"
 
                   echo ""
+                  echo "=== CFK CR status conditions ==="
+                  for kind in kafka kraftcontroller schemaregistry connect kafkarestproxy controlcenter kafkarestclass; do
+                    echo ""
+                    echo "--- $kind ---"
+                    oc -n "$OC_NS" get "$kind" -o custom-columns=NAME:.metadata.name,READY:.status.replicas.ready,REPLICAS:.status.replicas.total,PHASE:.status.phase,MSG:.status.kafka.state 2>/dev/null \
+                      || echo "(no $kind in namespace)"
+                    oc -n "$OC_NS" get "$kind" -o jsonpath='{range .items[*]}{.metadata.name}{":\n"}{range .status.conditions[*]}  - type={.type} status={.status} reason={.reason} message={.message}{"\n"}{end}{end}' 2>/dev/null
+                  done
+
+                  echo ""
+                  echo "=== Pods (all in namespace) ==="
+                  oc -n "$OC_NS" get pods -o wide 2>/dev/null || true
+
+                  echo ""
+                  echo "=== PVCs ==="
+                  oc -n "$OC_NS" get pvc -o wide 2>/dev/null || true
+
+                  echo ""
+                  echo "=== Full SR CR yaml (looking for unrendered fields) ==="
+                  # If CRD admission silently dropped fields (e.g. clientCredentials
+                  # isn't in the schema), the live YAML shows only what the API
+                  # server accepted — diffing against our source is the way to spot
+                  # missing/renamed fields.
+                  oc -n "$OC_NS" get schemaregistry schemaregistry -o yaml 2>/dev/null \
+                    | sed -n '/^spec:/,/^status:/p' \
+                    | head -120 \
+                    || echo "(SR CR not found)"
+
+                  echo ""
+                  echo "=== CFK operator pod logs (last 200 lines, filtered) ==="
+                  # The operator runs in its own namespace; discover it by label.
+                  OPNS=$(oc get pods -A -l app.kubernetes.io/name=confluent-operator \
+                    --no-headers 2>/dev/null \
+                    | head -1 \
+                    | awk '{print $1}')
+                  OPPOD=$(oc -n "$OPNS" get pods \
+                    -l app.kubernetes.io/name=confluent-operator \
+                    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+                  if [ -n "$OPNS" ] && [ -n "$OPPOD" ]; then
+                    echo "Operator: $OPNS/$OPPOD"
+                    echo ""
+                    echo "--- Last 200 lines, filtered for our components / errors ---"
+                    oc -n "$OPNS" logs "$OPPOD" --tail=200 2>&1 \
+                      | grep -iE 'error|warn|oauth|interbroker|schemaregistry|kraftcontroller|connect|kafkarest|controlcenter|kafka ' \
+                      | tail -60 \
+                      || echo "(no matching log lines)"
+                  else
+                    echo "(could not locate confluent-operator pod)"
+                  fi
+
+                  echo ""
                   echo "=== End of diagnostics ==="
                   # Always succeed so install proceeds to its own pre-flight.
                   exit 0
