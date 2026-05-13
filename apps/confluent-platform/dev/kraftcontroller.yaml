@@ -95,6 +95,10 @@ spec:
       - confluent.reporters.telemetry.auto.enable=true
   podTemplate:
     serviceAccountName: flink-operator
+    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
+    # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
+    # admission. See kafka.yaml for the full rationale.
+    podSecurityContext: {}
     # Custom pod label used by the anti-affinity rule below.
     labels:
       cfk-role: kraft-controller

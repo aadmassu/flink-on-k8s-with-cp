@@ -227,6 +227,13 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
+    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001).
+    # OpenShift's restricted-v2 SCC then assigns a UID from this namespace's
+    # allocated range (1001320000–1001329999) and adds GID 0 as a supplemental
+    # group. CP 8.1 images are built UID-agnostic with GID-0 group-write on
+    # runtime paths, so this works without any anyuid/custom SCC binding.
+    # Mirrors apps/confluent-cmf/dev/values.yaml's podSecurity.enabled: false.
+    podSecurityContext: {}
     # Custom pod label used by the anti-affinity rule below. Set here (not
     # at metadata.labels of the CR — those only label the CR object itself).
     labels:

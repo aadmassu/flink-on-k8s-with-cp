@@ -140,3 +140,7 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
+    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
+    # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
+    # admission. See kafka.yaml for the full rationale.
+    podSecurityContext: {}
