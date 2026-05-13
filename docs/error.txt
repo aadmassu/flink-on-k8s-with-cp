@@ -1,21 +1,24 @@
 Uninstall Confluent Platform CRs
 
 View raw log
-Starting: Uninstall Confluent Platform CRs
-==============================================================================
-Task         : Bash
-Description  : Run a Bash script on macOS, Linux, or Windows
+
 Version      : 3.231.4
 Author       : Microsoft Corporation
 Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/9b1f9cea-23d9-4ac8-832a-2ebcd48d2d9f.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/7636a4ed-0ce4-4ab0-9ed7-b1f98b406734.sh
+=== Labeling stateful CRs for allow-pv-deletion ===
++ oc -n dah-flink-dev label kraftcontroller kraftcontroller confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion=true --overwrite
+kraftcontroller.platform.confluent.io/kraftcontroller labeled
++ oc -n dah-flink-dev label controlcenter controlcenter confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion=true --overwrite
+controlcenter.platform.confluent.io/controlcenter labeled
+
 === Deleting Confluent Platform CRs (reverse dependency order) ===
 
 + oc delete -f apps/confluent-platform/dev/controlcenter.yaml --ignore-not-found --wait=true --timeout=5m
-Error from server (Forbidden): error when deleting "apps/confluent-platform/dev/controlcenter.yaml": admission webhook "cfk-resources.webhooks.platform.confluent.io" denied the request: one or more persistent volumes are in Delete reclaim policy. to allow request set label: confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion
+controlcenter.platform.confluent.io "controlcenter" deleted
 
 + oc delete -f apps/confluent-platform/dev/kafkarest.yaml --ignore-not-found --wait=true --timeout=5m
 
@@ -26,7 +29,7 @@ Error from server (Forbidden): error when deleting "apps/confluent-platform/dev/
 + oc delete -f apps/confluent-platform/dev/kafka.yaml --ignore-not-found --wait=true --timeout=5m
 
 + oc delete -f apps/confluent-platform/dev/kraftcontroller.yaml --ignore-not-found --wait=true --timeout=5m
-Error from server (Forbidden): error when deleting "apps/confluent-platform/dev/kraftcontroller.yaml": admission webhook "cfk-resources.webhooks.platform.confluent.io" denied the request: one or more persistent volumes are in Delete reclaim policy. to allow request set label: confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion
+kraftcontroller.platform.confluent.io "kraftcontroller" deleted
 
 + oc delete -f apps/confluent-platform/dev/kafkarestclass.yaml --ignore-not-found --wait=true --timeout=5m
 
@@ -39,11 +42,7 @@ Error from server (Forbidden): error when deleting "apps/confluent-platform/dev/
 + oc delete -f apps/confluent-platform/dev/prereqs/schemaregistry-tls-certificate.yaml --ignore-not-found
 
 === Remaining Confluent Platform objects ===
-NAME                                                    REPLICAS   READY   STATUS   AGE
-kraftcontroller.platform.confluent.io/kraftcontroller   0                           19h
-
-NAME                                                REPLICAS   READY   STATUS   AGE
-controlcenter.platform.confluent.io/controlcenter   0                           19h
+No resources found in dah-flink-dev namespace.
 No resources found in dah-flink-dev namespace.
 
 NOTE: prerequisite Secrets (confluent-license, oauth-*, mds-token-keypair,
@@ -53,6 +52,9 @@ after CR deletion. To delete them too, run the pipeline again with
 action=wipe-pvcs (separate explicit action so this destruction is
 always opt-in).
 Finishing: Uninstall Confluent Platform CRs
+
+
+
 
 
 Wipe orphaned CFK PVCs
@@ -68,19 +70,7 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/96ab56e7-5a9b-4eda-a9e3-0879f1be1f29.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/088cf47c-7272-44ec-bf76-9bee0d90b3e9.sh
 === Checking for orphaned CFK PVCs in dah-flink-dev ===
-PVCs to delete:
-  - data0-controlcenter-0
-  - data0-kraftcontroller-0
-  - data0-kraftcontroller-1
-  - data0-kraftcontroller-2
-
-ERROR: refusing to wipe PVCs — these CFK CRs still exist:
-  - KRaftController/kraftcontroller
-  - ControlCenter/controlcenter
-While these CRs exist, the operator will recreate any PVC
-we delete within seconds. Run action=uninstall first, then
-re-run wipe-pvcs.
-##[error]Bash exited with code '1'.
+No matching PVCs found — nothing to delete.
 Finishing: Wipe orphaned CFK PVCs
