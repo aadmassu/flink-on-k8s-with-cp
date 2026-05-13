@@ -216,28 +216,42 @@ stages:
                     | oc apply -f -
                   rm -f "$MDS_PRIV" "$MDS_PUB"
 
-                  # SASL PLAIN inter-broker users. CFK expects a SINGLE Secret
-                  # key whose value is a JSON map of user → password. The
-                  # accepted key names are (in order of CFK preference):
-                  #   kafka-server-listener-internal-plain-users.json
-                  #   kafka-server-plain-users.json
-                  #   plain-users.json
-                  # Using the listener-specific name for clarity.
+                  # SASL PLAIN — CFK expects TWO files in the same Secret:
                   #
-                  # Build the JSON with printf (no heredoc → no indentation
-                  # gotchas, no quote-escaping surprises with leading-whitespace
-                  # EOF markers). Passwords are assumed to be simple strings
-                  # without JSON-special chars (admin-secret, client-secret,
-                  # etc.) — fine for dev; revisit if prod passwords contain
-                  # backslashes or double quotes.
+                  #   1. The users database. Accepted key names (in order of
+                  #      preference):
+                  #        kafka-server-listener-internal-plain-users.json
+                  #        kafka-server-plain-users.json
+                  #        plain-users.json
+                  #      Content: JSON map of user → password.
+                  #
+                  #   2. The inter-broker / inter-controller credential.
+                  #      Accepted key names:
+                  #        kafka-server-listener-replication-plain-interbroker.txt
+                  #        kafka-server-plain-interbroker.txt
+                  #        plain-interbroker.txt
+                  #      Content: single line "username:password" identifying
+                  #      which user from the users database authenticates the
+                  #      inter-broker / quorum-replication traffic. By VM
+                  #      convention this is `admin`.
+                  #
+                  # Both files are written into one apply_secret_from_files
+                  # call so they land as the two data keys of the same Secret.
                   SASL_JSON_TMP=$(mktemp)
+                  SASL_IB_TMP=$(mktemp)
                   printf '{\n  "admin": "%s",\n  "client": "%s",\n  "schema_registry": "%s",\n  "kafka_connect": "%s",\n  "kafka_rest": "%s",\n  "control_center": "%s"\n}\n' \
                     "$SASL_ADMIN" "$SASL_CLIENT" "$SASL_SR" "$SASL_CONNECT" "$SASL_REST" "$SASL_C3" \
                     > "$SASL_JSON_TMP"
-                  apply_secret_from_file sasl-plain-internal \
-                    kafka-server-listener-internal-plain-users.json \
-                    "$SASL_JSON_TMP"
-                  rm -f "$SASL_JSON_TMP"
+                  printf 'admin:%s\n' "$SASL_ADMIN" > "$SASL_IB_TMP"
+                  echo ""
+                  echo "=== sasl-plain-internal ==="
+                  oc create secret generic sasl-plain-internal \
+                    -n "$OC_NS" --dry-run=client -o yaml \
+                    --from-file=kafka-server-listener-internal-plain-users.json="$SASL_JSON_TMP" \
+                    --from-file=plain-interbroker.txt="$SASL_IB_TMP" \
+                    | label_secret sasl-plain-internal \
+                    | oc apply -f -
+                  rm -f "$SASL_JSON_TMP" "$SASL_IB_TMP"
 
                   # OAuth client credentials (one Secret per component).
                   apply_secret_from_literals oauth-broker \
