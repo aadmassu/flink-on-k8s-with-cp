@@ -32,6 +32,16 @@ spec:
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:8.1.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  # FCB Gatekeeper [required-workload-labels] inspects the auto-generated
+  # StatefulSet (not the CR). injectLabels is CFK's mechanism for pushing
+  # labels into every managed resource — keep aligned with the FCB common-
+  # metadata standard (name, instance, component, part-of, app-id).
+  injectLabels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
   # Deterministic per-pod PVC via the StatefulSet's volumeClaimTemplate:
   # the single C3 pod always binds to PVC `data-controlcenter-0` on a Ceph
   # RBD PV. C3's RocksDB state under /var/lib/confluent/control-center
@@ -158,20 +168,16 @@ spec:
     enabled: true
     maxUnavailable: 1
 
-  monitoring:
-    # Prometheus + AlertManager next-gen bundle, matching VM C3.
-    prometheus:
-      enabled: true
-      tls:
-        enabled: true
-      basicAuth:
-        secretRef: c3-prometheus-basic-auth
-    alertmanager:
-      enabled: true
-      tls:
-        enabled: true
-      basicAuth:
-        secretRef: c3-alertmanager-basic-auth
+  # NOTE — Next-gen Prometheus + AlertManager bundle deliberately omitted
+  # for the initial install. The CFK ControlCenter CRD exposes monitoring
+  # under spec.services.{prometheus,alertmanager} (NOT spec.monitoring),
+  # and each block requires its own image, pvc.storageClass.name, basic-auth
+  # secret, and (for prometheus) a sized PVC. Pulling those values together
+  # for FCB needs a separate sizing/SC/secret review with Tom, so we ship
+  # C3 without the embedded monitoring bundle first and add it once the
+  # base install is green. The c3-prometheus-basic-auth and
+  # c3-alertmanager-basic-auth secrets the pipeline creates remain in place
+  # so re-enabling later is a CR-only change.
 
   configOverrides:
     server:

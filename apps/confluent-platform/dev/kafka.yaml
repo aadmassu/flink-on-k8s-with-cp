@@ -41,6 +41,19 @@ spec:
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  # FCB Gatekeeper [required-workload-labels] checks the *StatefulSet*, not
+  # the CR. metadata.labels above only label the Kafka CR object itself;
+  # the operator does not auto-propagate them to the generated StatefulSet/
+  # Pod/PDB/Service. injectLabels is CFK's explicit mechanism for pushing
+  # labels into every managed resource. Keep this list in sync with the
+  # FCB common-metadata standard (name, instance, component, part-of,
+  # app-id).
+  injectLabels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka
+    app.kubernetes.io/component: kafka-broker
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
   # CFK turns dataVolumeCapacity + storageClass into a StatefulSet
   # volumeClaimTemplate. Each broker gets a deterministic PVC named
   #   data-kafka-<ordinal>      (kafka-0, kafka-1, kafka-2)
