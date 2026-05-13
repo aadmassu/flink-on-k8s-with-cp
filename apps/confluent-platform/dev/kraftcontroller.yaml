@@ -52,6 +52,40 @@ spec:
   dataVolumeCapacity: 1Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — quorum log volume
+
+  # EXPERIMENT (only on kraftcontroller — kafka & controlcenter are the
+  # control). Our chart-vendored CFK 3.1.1 CRD does NOT define
+  # spec.volumeClaimTemplates at the top level, so K8s' structural schema
+  # would normally prune this block at admission. The hypothesis we're
+  # testing is that FCB's installed CRDs (operator image 0.1351.103, a
+  # slightly newer patch than the .59 chart we vendored) DO expose this
+  # field, in which case CFK will honor it and emit the StatefulSet with
+  # an EXPLICIT storageClassName on the vct — which is what FCB's
+  # [ceph-storage] Gatekeeper constraint requires (it currently rejects
+  # with placeholder `<dummy>` because CFK auto-generates the vct with no
+  # storageClassName).
+  #
+  # vct name MUST match what CFK auto-generates — we observed PVCs named
+  # data0-kraftcontroller-{0,1,2} in earlier runs, so the vct name is
+  # `data0`. No selector.matchLabels because we want CFK's dynamic
+  # provisioning via the Ceph RBD CSI driver to keep working; we're only
+  # forcing the operator to write storageClassName onto the StatefulSet
+  # template, not switching to pre-provisioned PVs.
+  #
+  # If this experiment fails (field pruned, vct still empty, same
+  # `<dummy>` rejection), the path forward shifts to either upgrading
+  # CFK CRDs at FCB or asking Tom for the Gatekeeper exemption.
+  # Run order: uninstall → wipe-pvcs → install.
+  volumeClaimTemplates:
+    - metadata:
+        name: data0
+      spec:
+        storageClassName: ocs-storagecluster-ceph-rbd
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
   resources:
     # KRaft controllers handle metadata-log writes only (topic creates,
     # partition reassignments, leader elections) — they don't process
