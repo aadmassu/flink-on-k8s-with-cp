@@ -1,66 +1,4 @@
-Uninstall Confluent Platform CRs
-
-View raw log
-
-Version      : 3.231.4
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/7636a4ed-0ce4-4ab0-9ed7-b1f98b406734.sh
-=== Labeling stateful CRs for allow-pv-deletion ===
-+ oc -n dah-flink-dev label kraftcontroller kraftcontroller confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion=true --overwrite
-kraftcontroller.platform.confluent.io/kraftcontroller labeled
-+ oc -n dah-flink-dev label controlcenter controlcenter confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion=true --overwrite
-controlcenter.platform.confluent.io/controlcenter labeled
-
-=== Deleting Confluent Platform CRs (reverse dependency order) ===
-
-+ oc delete -f apps/confluent-platform/dev/controlcenter.yaml --ignore-not-found --wait=true --timeout=5m
-controlcenter.platform.confluent.io "controlcenter" deleted
-
-+ oc delete -f apps/confluent-platform/dev/kafkarest.yaml --ignore-not-found --wait=true --timeout=5m
-
-+ oc delete -f apps/confluent-platform/dev/connect.yaml --ignore-not-found --wait=true --timeout=5m
-
-+ oc delete -f apps/confluent-platform/dev/schemaregistry.yaml --ignore-not-found --wait=true --timeout=5m
-
-+ oc delete -f apps/confluent-platform/dev/kafka.yaml --ignore-not-found --wait=true --timeout=5m
-
-+ oc delete -f apps/confluent-platform/dev/kraftcontroller.yaml --ignore-not-found --wait=true --timeout=5m
-kraftcontroller.platform.confluent.io "kraftcontroller" deleted
-
-+ oc delete -f apps/confluent-platform/dev/kafkarestclass.yaml --ignore-not-found --wait=true --timeout=5m
-
-=== Deleting cert-manager Certificates (cascades to *-tls Secrets) ===
-+ oc delete -f apps/confluent-platform/dev/prereqs/connect-tls-certificate.yaml --ignore-not-found
-+ oc delete -f apps/confluent-platform/dev/prereqs/controlcenter-tls-certificate.yaml --ignore-not-found
-+ oc delete -f apps/confluent-platform/dev/prereqs/kafkarest-tls-certificate.yaml --ignore-not-found
-+ oc delete -f apps/confluent-platform/dev/prereqs/kafka-tls-certificate.yaml --ignore-not-found
-+ oc delete -f apps/confluent-platform/dev/prereqs/kraftcontroller-tls-certificate.yaml --ignore-not-found
-+ oc delete -f apps/confluent-platform/dev/prereqs/schemaregistry-tls-certificate.yaml --ignore-not-found
-
-=== Remaining Confluent Platform objects ===
-No resources found in dah-flink-dev namespace.
-No resources found in dah-flink-dev namespace.
-
-NOTE: prerequisite Secrets (confluent-license, oauth-*, mds-token-keypair,
-sasl-plain-internal, c3-*-basic-auth) are intentionally preserved. PVCs
-from the Kafka, KRaftController, and ControlCenter StatefulSets persist
-after CR deletion. To delete them too, run the pipeline again with
-action=wipe-pvcs (separate explicit action so this destruction is
-always opt-in).
-Finishing: Uninstall Confluent Platform CRs
-
-
-
-
-
-Wipe orphaned CFK PVCs
-
-View raw log
-Starting: Wipe orphaned CFK PVCs
+##[section]Starting: Diagnostics: dump Secret + CR state before install
 ==============================================================================
 Task         : Bash
 Description  : Run a Bash script on macOS, Linux, or Windows
@@ -70,7 +8,109 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/088cf47c-7272-44ec-bf76-9bee0d90b3e9.sh
-=== Checking for orphaned CFK PVCs in dah-flink-dev ===
-No matching PVCs found — nothing to delete.
-Finishing: Wipe orphaned CFK PVCs
+[command]/bin//bash /opt/azure_pipelines/_work/_temp/8dad6b5c-3598-4b22-939a-3ef7092d8bf2.sh
+=== Secret: sasl-plain-internal — keys ===
+(expected: kafka-server-listener-internal-plain-users.json)
+['kafka-server-listener-internal-plain-users.json', 'plain-interbroker.txt']
+
+=== Secret: mds-token-keypair — keys ===
+(expected: ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem'])
+['mdsPublicKey.pem', 'mdsTokenKeyPair.pem']
+
+=== CR: connect/connect — spec.authentication ===
+(expected: nested authentication.oauth.{secretRef, configuration})
+Expecting value: line 1 column 1 (char 0)
+(CR not found yet — expected on first install)
+
+=== CR: kafkarestproxy/kafkarest — spec.authentication ===
+(expected: nested authentication.oauth.{secretRef, configuration})
+Expecting value: line 1 column 1 (char 0)
+(CR not found yet — expected on first install)
+
+=== CR: schemaregistry/schemaregistry — spec.authentication ===
+(expected: nested authentication.oauth.{secretRef, configuration})
+Expecting value: line 1 column 1 (char 0)
+(CR not found yet — expected on first install)
+
+=== CR: controlcenter/controlcenter — spec.authentication ===
+(expected: nested authentication.oauth.{secretRef, configuration})
+Expecting value: line 1 column 1 (char 0)
+(CR not found yet — expected on first install)
+
+=== Recent Warning events (last 30) ===
+2026-05-13T14:23:43Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:26:35Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <schemaregistry> in your <Pod> <schemaregistry-0> has no <startupProbe>
+2026-05-13T14:26:35Z   FailedCreate       <none>   create Pod schemaregistry-0 in StatefulSet schemaregistry failed error: pods "schemaregistry-0" is forbidden: failed quota: compute-resources: must specify limits.cpu for: schemaregistry; limits.memory for: schemaregistry; requests.cpu for: schemaregistry; requests.memory for: schemaregistry
+2026-05-13T14:26:35Z   FailedCreate       <none>   create Pod connect-0 in StatefulSet connect failed error: pods "connect-0" is forbidden: failed quota: compute-resources: must specify limits.cpu for: connect; limits.memory for: connect; requests.cpu for: connect; requests.memory for: connect
+2026-05-13T14:26:35Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <connect> in your <Pod> <connect-0> has no <startupProbe>
+2026-05-13T14:26:36Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <kafkarest> in your <Pod> <kafkarest-0> has no <startupProbe>
+2026-05-13T14:26:36Z   FailedCreate       <none>   create Pod kafkarest-0 in StatefulSet kafkarest failed error: pods "kafkarest-0" is forbidden: failed quota: compute-resources: must specify limits.cpu for: kafkarest; limits.memory for: kafkarest; requests.cpu for: kafkarest; requests.memory for: kafkarest
+2026-05-13T14:28:49Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for StatefulSet: controlcenter. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
+Review Documentation:
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
+2026-05-13T14:28:49Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T14:28:51Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T14:28:51Z   FailedToCreate     <none>   admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T14:38:45Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:40:30Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for StatefulSet: controlcenter. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
+Review Documentation:
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
+* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
+2026-05-13T14:40:30Z   FailedAdmission    <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T14:40:30Z   FailedToCreate     <none>   admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T14:40:41Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:40:42Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:41:10Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T14:42:42Z   WarningAdmission   <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+
+=== CFK CR status conditions ===
+
+--- kafka ---
+NAME   READY   REPLICAS   PHASE   MSG
+
+--- kraftcontroller ---
+NAME   READY   REPLICAS   PHASE   MSG
+
+--- schemaregistry ---
+NAME   READY   REPLICAS   PHASE   MSG
+
+--- connect ---
+NAME   READY   REPLICAS   PHASE   MSG
+
+--- kafkarestproxy ---
+NAME   READY   REPLICAS   PHASE   MSG
+
+--- controlcenter ---
+NAME   READY   REPLICAS   PHASE   MSG
+
+--- kafkarestclass ---
+NAME   READY   REPLICAS   PHASE   MSG
+
+=== Pods (all in namespace) ===
+NAME                                                  READY   STATUS      RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+busybox                                               0/1     Completed   0          20d   10.40.12.11   dp12055oxc-wpxl-srrn8   <none>           <none>
+confluent-manager-for-apache-flink-64d4d785f8-pxbr7   1/1     Running     0          13d   10.40.12.12   dp12055oxc-wpxl-srrn8   <none>           <none>
+
+=== PVCs ===
+
+=== StatefulSets in namespace ===
+
+=== StatefulSet volumeClaimTemplates (storage class debug) ===
+--- sts/kraftcontroller ---
+--- sts/kafka ---
+--- sts/controlcenter ---
+
+=== Full SR CR yaml (looking for unrendered fields) ===
+
+=== CFK operator pod logs (last 200 lines, filtered) ===
+(could not locate confluent-operator pod — searched by image fingerprint)
+Listing all pods across all namespaces to help locate it:
+
+=== End of diagnostics ===
+##[section]Finishing: Diagnostics: dump Secret + CR state before install
