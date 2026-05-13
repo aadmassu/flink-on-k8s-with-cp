@@ -723,8 +723,37 @@ stages:
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
+                  # CFK's cfk-resources webhook refuses to delete CRs whose
+                  # backing PVs use reclaimPolicy=Delete (the Ceph RBD CSI
+                  # default for dynamic provisioning). It's a data-loss
+                  # guardrail. To opt in to PV deletion alongside the CR,
+                  # label the CR with allow-pv-deletion=true before delete.
+                  # Applies to the components with PVCs: Kafka,
+                  # KRaftController, ControlCenter (and historically
+                  # ZooKeeper / ksqlDB, neither used here).
+                  echo "=== Labeling stateful CRs for allow-pv-deletion ==="
+                  PV_LABEL="confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion=true"
+                  for kind_name in \
+                      "kafka kafka" \
+                      "kraftcontroller kraftcontroller" \
+                      "controlcenter controlcenter"; do
+                    kind=${kind_name% *}; name=${kind_name#* }
+                    if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+                      echo "+ oc -n $OC_NS label $kind $name $PV_LABEL --overwrite"
+                      oc -n "$OC_NS" label "$kind" "$name" "$PV_LABEL" --overwrite
+                    fi
+                  done
+
+                  echo ""
                   echo "=== Deleting Confluent Platform CRs (reverse dependency order) ==="
                   # Reverse order so dependents shut down before their backends.
+                  # NOTE: no `|| true` on the deletes — we want the pipeline
+                  # to fail loudly if a CR can't be removed (we hit a case
+                  # where the cfk-resources webhook silently rejected
+                  # ctrlcenter+kraftcontroller deletion and the pipeline
+                  # reported "success", leaving the operator to immediately
+                  # recreate any PVCs the next wipe-pvcs action tried to
+                  # delete).
                   DELETE_ORDER=(
                     controlcenter.yaml
                     kafkarest.yaml
@@ -734,16 +763,23 @@ stages:
                     kraftcontroller.yaml
                     kafkarestclass.yaml
                   )
+                  FAIL=0
                   for f in "${DELETE_ORDER[@]}"; do
                     if [ -f "$ENV_DIR/$f" ]; then
                       echo ""
                       echo "+ oc delete -f $ENV_DIR/$f --ignore-not-found --wait=true --timeout=5m"
-                      oc delete -f "$ENV_DIR/$f" --ignore-not-found --wait=true --timeout=5m || true
+                      if ! oc delete -f "$ENV_DIR/$f" --ignore-not-found --wait=true --timeout=5m; then
+                        echo "FAIL: deletion of $f did not complete cleanly"
+                        FAIL=1
+                      fi
                     fi
                   done
 
                   echo ""
                   echo "=== Deleting cert-manager Certificates (cascades to *-tls Secrets) ==="
+                  # Certificates can be force-deleted — no webhook, no risk
+                  # of data loss. Keep `|| true` here so a missing file or
+                  # already-deleted resource doesn't fail the step.
                   for cert in "$ENV_DIR"/prereqs/*-tls-certificate.yaml; do
                     if [ -f "$cert" ]; then
                       echo "+ oc delete -f $cert --ignore-not-found"
@@ -764,6 +800,17 @@ stages:
                   echo "after CR deletion. To delete them too, run the pipeline again with"
                   echo "action=wipe-pvcs (separate explicit action so this destruction is"
                   echo "always opt-in)."
+
+                  if [ "$FAIL" -ne 0 ]; then
+                    echo ""
+                    echo "ERROR: one or more CR deletions failed. See log above. The most"
+                    echo "common cause is the cfk-resources webhook rejecting deletion of"
+                    echo "a CR whose PVs use reclaimPolicy=Delete — we label the CRs with"
+                    echo "allow-pv-deletion=true before deleting, but the label step only"
+                    echo "runs for CRs that exist at the time. If a stale finalizer is"
+                    echo "the cause, investigate with: oc -n $OC_NS get <kind>/<name> -o yaml"
+                    exit 1
+                  fi
               env:
                 OC_NS: $(openshift-dev-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
