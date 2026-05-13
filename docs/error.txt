@@ -1,111 +1,37 @@
-Event stream is paused.
-Showing 232 events
-Older events are not stored.
-CertificateCkafkarest-tls
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:07 PM
-Generated from cert-manager-certificates-request-manager
-Created new CertificateRequest resource "kafkarest-tls-1"
-CertificateCkafkarest-tls
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from cert-manager-certificates-trigger
-Issuing certificate as Secret does not exist
-CertificateCkafkarest-tls
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from cert-manager-certificates-key-manager
-Stored new private key in temporary Secret resource "kafkarest-tls-5k595"
-CertificateRequestCRconnect-tls-1
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from policy.cert-manager.io
-Approved by CertificateRequestPolicy: "cluster-policy"
-CertificateCconnect-tls
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from cert-manager-certificates-key-manager
-Stored new private key in temporary Secret resource "connect-tls-76xfl"
-CertificateCconnect-tls
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from cert-manager-certificates-request-manager
-Created new CertificateRequest resource "connect-tls-1"
-CertificateCconnect-tls
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from cert-manager-certificates-trigger
-Issuing certificate as Secret does not exist
-PersistentVolumeClaimPVCdata0-kraftcontroller-2
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from openshift-storage.rbd.csi.ceph.com_csi-rbdplugin-provisioner-5f86cb9bc-4qp4l_f322777d-b55f-408d-ac55-ee1eecdbf925
-Successfully provisioned volume pvc-c0912b5d-a1e0-4c66-8447-60c3b319e45f
-PersistentVolumeClaimPVCdata0-kraftcontroller-2
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from persistentvolume-controller
-3 times in the last 3 minutes
-Waiting for a volume to be created either by the external provisioner 'openshift-storage.rbd.csi.ceph.com' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
-StatefulSetSSkraftcontroller
-NamespaceNSdah-flink-dev
-May 12, 2026, 11:06 PM
-Generated from gatekeeper-webhook
-3 times in the last 10 minutes
-Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs] Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+Wipe orphaned CFK PVCs
 
+View raw log
+Starting: Wipe orphaned CFK PVCs
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/73cf1abf-a78d-4e94-831d-f8d6ba8b46a9.sh
+=== Checking for orphaned CFK PVCs in dah-flink-dev ===
+PVCs to delete:
+  - data0-controlcenter-0
+  - data0-kraftcontroller-0
+  - data0-kraftcontroller-1
+  - data0-kraftcontroller-2
 
+=== Deleting PVCs ===
++ oc delete pvc/data0-controlcenter-0 -n dah-flink-dev --wait=true --timeout=2m
+persistentvolumeclaim "data0-controlcenter-0" deleted
++ oc delete pvc/data0-kraftcontroller-0 -n dah-flink-dev --wait=true --timeout=2m
+persistentvolumeclaim "data0-kraftcontroller-0" deleted
++ oc delete pvc/data0-kraftcontroller-1 -n dah-flink-dev --wait=true --timeout=2m
+persistentvolumeclaim "data0-kraftcontroller-1" deleted
++ oc delete pvc/data0-kraftcontroller-2 -n dah-flink-dev --wait=true --timeout=2m
+persistentvolumeclaim "data0-kraftcontroller-2" deleted
 
-
-2026-05-13T04:06:22Z   FailedAdmission       <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-
-=== CFK CR status conditions ===
-
---- kafka ---
-NAME   READY   REPLICAS   PHASE   MSG
-
---- kraftcontroller ---
-NAME              READY    REPLICAS   PHASE    MSG
-kraftcontroller   <none>   <none>     <none>   <none>
-kraftcontroller:
-  - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-
---- schemaregistry ---
-NAME   READY   REPLICAS   PHASE   MSG
-
---- connect ---
-NAME   READY   REPLICAS   PHASE   MSG
-
---- kafkarestproxy ---
-NAME   READY   REPLICAS   PHASE   MSG
-
---- controlcenter ---
-NAME            READY    REPLICAS   PHASE    MSG
-controlcenter   <none>   <none>     <none>   <none>
-controlcenter:
-  - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-
---- kafkarestclass ---
-NAME   READY   REPLICAS   PHASE   MSG
-
-=== Pods (all in namespace) ===
-NAME                                                  READY   STATUS      RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
-busybox                                               0/1     Completed   0          20d   10.40.12.11   dp12055oxc-wpxl-srrn8   <none>           <none>
-confluent-manager-for-apache-flink-64d4d785f8-pxbr7   1/1     Running     0          12d   10.40.12.12   dp12055oxc-wpxl-srrn8   <none>           <none>
-
-=== PVCs ===
-NAME                      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                  VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
-data0-controlcenter-0     Bound    pvc-d37cefcf-cb0c-4321-8b41-d67c9b47390e   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 34s   Filesystem
-data0-kraftcontroller-0   Bound    pvc-fbc68719-fb9d-41fc-af05-f0c6a25a5fec   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 34s   Filesystem
-data0-kraftcontroller-1   Bound    pvc-cc4499c1-8d46-441c-9787-5961a6b42303   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 34s   Filesystem
-data0-kraftcontroller-2   Bound    pvc-c0912b5d-a1e0-4c66-8447-60c3b319e45f   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 34s   Filesystem
-
-=== StatefulSets in namespace ===
-
-=== StatefulSet volumeClaimTemplates (storage class debug) ===
---- sts/kraftcontroller ---
---- sts/kafka ---
---- sts/controlcenter ---
+=== Remaining PVCs in dah-flink-dev ===
+NAME                      STATUS    VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                  VOLUMEATTRIBUTESCLASS   AGE
+data0-controlcenter-0     Bound     pvc-b51847f5-0cab-49bd-b067-77818cdd3148   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 0s
+data0-kraftcontroller-0   Bound     pvc-e4e2c557-9630-4dec-a04b-eb10b2fedc9c   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 0s
+data0-kraftcontroller-1   Pending                                                                        ocs-storagecluster-ceph-rbd   <unset>                 0s
+data0-kraftcontroller-2   Pending                                                                        ocs-storagecluster-ceph-rbd   <unset>                 0s
