@@ -1,701 +1,5 @@
-2026-05-13T02:52:17.7457086Z ##[section]Starting: Create prerequisite Opaque Secrets and describe
-2026-05-13T02:52:17.7464508Z ==============================================================================
-2026-05-13T02:52:17.7464650Z Task         : Bash
-2026-05-13T02:52:17.7464878Z Description  : Run a Bash script on macOS, Linux, or Windows
-2026-05-13T02:52:17.7464981Z Version      : 3.231.4
-2026-05-13T02:52:17.7465044Z Author       : Microsoft Corporation
-2026-05-13T02:52:17.7465165Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-2026-05-13T02:52:17.7465276Z ==============================================================================
-2026-05-13T02:52:18.0130258Z Generating script.
-2026-05-13T02:52:18.0152062Z ========================== Starting Command Output ===========================
-2026-05-13T02:52:18.0180760Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/60d77575-5163-4592-a2d2-0f410f094991.sh
-2026-05-13T02:52:18.0226821Z === Creating prerequisite Secrets in dah-flink-dev ===
-2026-05-13T02:52:18.0228705Z 
-2026-05-13T02:52:18.0230330Z === confluent-license ===
-2026-05-13T02:52:18.7286322Z secret/confluent-license configured
-2026-05-13T02:52:18.7347441Z 
-2026-05-13T02:52:18.7348568Z === cfk-license ===
-2026-05-13T02:52:19.4085368Z secret/cfk-license configured
-2026-05-13T02:52:19.4275976Z 
-2026-05-13T02:52:19.4277266Z === mds-token-keypair ===
-2026-05-13T02:52:20.1306439Z secret/mds-token-keypair configured
-2026-05-13T02:52:20.1435084Z 
-2026-05-13T02:52:20.1437595Z === sasl-plain-internal ===
-2026-05-13T02:52:20.8401847Z secret/sasl-plain-internal configured
-2026-05-13T02:52:20.8518058Z 
-2026-05-13T02:52:20.8519152Z === oauth-broker ===
-2026-05-13T02:52:21.5219364Z secret/oauth-broker configured
-2026-05-13T02:52:21.5336951Z 
-2026-05-13T02:52:21.5339448Z === oauth-schemaregistry ===
-2026-05-13T02:52:22.2011652Z secret/oauth-schemaregistry configured
-2026-05-13T02:52:22.2127969Z 
-2026-05-13T02:52:22.2129255Z === oauth-connect ===
-2026-05-13T02:52:22.9106885Z secret/oauth-connect configured
-2026-05-13T02:52:22.9221189Z 
-2026-05-13T02:52:22.9222747Z === oauth-kafkarest ===
-2026-05-13T02:52:23.5908635Z secret/oauth-kafkarest configured
-2026-05-13T02:52:23.6043224Z 
-2026-05-13T02:52:23.6084492Z === oauth-controlcenter ===
-2026-05-13T02:52:24.2443770Z secret/oauth-controlcenter configured
-2026-05-13T02:52:24.2564533Z 
-2026-05-13T02:52:24.2565754Z === oauth-mds-rest ===
-2026-05-13T02:52:24.9077909Z secret/oauth-mds-rest configured
-2026-05-13T02:52:24.9159783Z 
-2026-05-13T02:52:24.9162253Z === c3-prometheus-basic-auth ===
-2026-05-13T02:52:25.5893276Z secret/c3-prometheus-basic-auth configured
-2026-05-13T02:52:25.5955504Z 
-2026-05-13T02:52:25.5956697Z === c3-alertmanager-basic-auth ===
-2026-05-13T02:52:26.2403607Z secret/c3-alertmanager-basic-auth configured
-2026-05-13T02:52:26.2462973Z 
-2026-05-13T02:52:26.2463467Z === oc describe for every prereq Secret ===
-2026-05-13T02:52:26.2463563Z 
-2026-05-13T02:52:26.2463915Z --- confluent-license ---
-2026-05-13T02:52:26.3647416Z Name:         confluent-license
-2026-05-13T02:52:26.3647815Z Namespace:    dah-flink-dev
-2026-05-13T02:52:26.3648070Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:26.3648350Z               app.kubernetes.io/instance=confluent-license
-2026-05-13T02:52:26.3648620Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:26.3648880Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:26.3649136Z               fcbint.net/app-id=11547
-2026-05-13T02:52:26.3649297Z Annotations:  <none>
-2026-05-13T02:52:26.3649359Z 
-2026-05-13T02:52:26.3649490Z Type:  Opaque
-2026-05-13T02:52:26.3649546Z 
-2026-05-13T02:52:26.3649668Z Data
-2026-05-13T02:52:26.3649800Z ====
-2026-05-13T02:52:26.3649946Z license.txt:  644 bytes
-2026-05-13T02:52:26.3690247Z 
-2026-05-13T02:52:26.4951492Z --- cfk-license ---
-2026-05-13T02:52:26.4951885Z Name:         cfk-license
-2026-05-13T02:52:26.4953109Z Namespace:    dah-flink-dev
-2026-05-13T02:52:26.4953438Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:26.4954630Z               app.kubernetes.io/instance=cfk-license
-2026-05-13T02:52:26.4954970Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:26.4959279Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:26.4959551Z               fcbint.net/app-id=11547
-2026-05-13T02:52:26.4959720Z Annotations:  <none>
-2026-05-13T02:52:26.4959901Z 
-2026-05-13T02:52:26.4960070Z Type:  Opaque
-2026-05-13T02:52:26.4960130Z 
-2026-05-13T02:52:26.4960266Z Data
-2026-05-13T02:52:26.4960391Z ====
-2026-05-13T02:52:26.4960668Z license.txt:  652 bytes
-2026-05-13T02:52:26.4999551Z 
-2026-05-13T02:52:26.5000374Z --- mds-token-keypair ---
-2026-05-13T02:52:26.6240992Z Name:         mds-token-keypair
-2026-05-13T02:52:26.6241836Z Namespace:    dah-flink-dev
-2026-05-13T02:52:26.6242713Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:26.6243172Z               app.kubernetes.io/instance=mds-token-keypair
-2026-05-13T02:52:26.6243667Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:26.6244788Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:26.6245124Z               fcbint.net/app-id=11547
-2026-05-13T02:52:26.6245354Z Annotations:  <none>
-2026-05-13T02:52:26.6245442Z 
-2026-05-13T02:52:26.6245579Z Type:  Opaque
-2026-05-13T02:52:26.6245635Z 
-2026-05-13T02:52:26.6245755Z Data
-2026-05-13T02:52:26.6245881Z ====
-2026-05-13T02:52:26.6246024Z mdsPublicKey.pem:     451 bytes
-2026-05-13T02:52:26.6246193Z mdsTokenKeyPair.pem:  1704 bytes
-2026-05-13T02:52:26.6285583Z 
-2026-05-13T02:52:26.6286710Z --- sasl-plain-internal ---
-2026-05-13T02:52:26.7581513Z Name:         sasl-plain-internal
-2026-05-13T02:52:26.7581871Z Namespace:    dah-flink-dev
-2026-05-13T02:52:26.7582131Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:26.7583374Z               app.kubernetes.io/instance=sasl-plain-internal
-2026-05-13T02:52:26.7583674Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:26.7583937Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:26.7584194Z               fcbint.net/app-id=11547
-2026-05-13T02:52:26.7584354Z Annotations:  <none>
-2026-05-13T02:52:26.7584416Z 
-2026-05-13T02:52:26.7584551Z Type:  Opaque
-2026-05-13T02:52:26.7584607Z 
-2026-05-13T02:52:26.7584938Z Data
-2026-05-13T02:52:26.7585069Z ====
-2026-05-13T02:52:26.7585309Z kafka-server-listener-internal-plain-users.json:  231 bytes
-2026-05-13T02:52:26.7585579Z plain-interbroker.txt:                            37 bytes
-2026-05-13T02:52:26.7628635Z 
-2026-05-13T02:52:26.7629378Z --- oauth-broker ---
-2026-05-13T02:52:26.8848940Z Name:         oauth-broker
-2026-05-13T02:52:26.8849639Z Namespace:    dah-flink-dev
-2026-05-13T02:52:26.8849998Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:26.8850426Z               app.kubernetes.io/instance=oauth-broker
-2026-05-13T02:52:26.8850782Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:26.8851123Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:26.8851456Z               fcbint.net/app-id=11547
-2026-05-13T02:52:26.8851673Z Annotations:  <none>
-2026-05-13T02:52:26.8851810Z 
-2026-05-13T02:52:26.8852000Z Type:  Opaque
-2026-05-13T02:52:26.8852115Z 
-2026-05-13T02:52:26.8852298Z Data
-2026-05-13T02:52:26.8852661Z ====
-2026-05-13T02:52:26.8852853Z bearer.txt:    104 bytes
-2026-05-13T02:52:26.8853073Z clientId:      20 bytes
-2026-05-13T02:52:26.8853297Z clientSecret:  64 bytes
-2026-05-13T02:52:26.8853527Z oauth.txt:     108 bytes
-2026-05-13T02:52:26.8895057Z 
-2026-05-13T02:52:26.8895852Z --- oauth-schemaregistry ---
-2026-05-13T02:52:27.0215516Z Name:         oauth-schemaregistry
-2026-05-13T02:52:27.0215855Z Namespace:    dah-flink-dev
-2026-05-13T02:52:27.0216107Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:27.0216410Z               app.kubernetes.io/instance=oauth-schemaregistry
-2026-05-13T02:52:27.0216678Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:27.0216942Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:27.0218097Z               fcbint.net/app-id=11547
-2026-05-13T02:52:27.0218257Z Annotations:  <none>
-2026-05-13T02:52:27.0218330Z 
-2026-05-13T02:52:27.0218449Z Type:  Opaque
-2026-05-13T02:52:27.0218523Z 
-2026-05-13T02:52:27.0218645Z Data
-2026-05-13T02:52:27.0218772Z ====
-2026-05-13T02:52:27.0218900Z bearer.txt:    104 bytes
-2026-05-13T02:52:27.0219069Z clientId:      20 bytes
-2026-05-13T02:52:27.0219225Z clientSecret:  64 bytes
-2026-05-13T02:52:27.0219386Z oauth.txt:     108 bytes
-2026-05-13T02:52:27.0262206Z 
-2026-05-13T02:52:27.0263332Z --- oauth-connect ---
-2026-05-13T02:52:27.1515695Z Name:         oauth-connect
-2026-05-13T02:52:27.1516020Z Namespace:    dah-flink-dev
-2026-05-13T02:52:27.1516276Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:27.1516576Z               app.kubernetes.io/instance=oauth-connect
-2026-05-13T02:52:27.1516837Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:27.1517113Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:27.1517370Z               fcbint.net/app-id=11547
-2026-05-13T02:52:27.1517531Z Annotations:  <none>
-2026-05-13T02:52:27.1517593Z 
-2026-05-13T02:52:27.1517728Z Type:  Opaque
-2026-05-13T02:52:27.1517784Z 
-2026-05-13T02:52:27.1517903Z Data
-2026-05-13T02:52:27.1518027Z ====
-2026-05-13T02:52:27.1518165Z clientId:      20 bytes
-2026-05-13T02:52:27.1518321Z clientSecret:  64 bytes
-2026-05-13T02:52:27.1518477Z oauth.txt:     108 bytes
-2026-05-13T02:52:27.1518631Z bearer.txt:    104 bytes
-2026-05-13T02:52:27.1564842Z 
-2026-05-13T02:52:27.1565556Z --- oauth-kafkarest ---
-2026-05-13T02:52:27.2850802Z Name:         oauth-kafkarest
-2026-05-13T02:52:27.2851179Z Namespace:    dah-flink-dev
-2026-05-13T02:52:27.2851438Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:27.2852577Z               app.kubernetes.io/instance=oauth-kafkarest
-2026-05-13T02:52:27.2852848Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:27.2853125Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:27.2853387Z               fcbint.net/app-id=11547
-2026-05-13T02:52:27.2853547Z Annotations:  <none>
-2026-05-13T02:52:27.2853608Z 
-2026-05-13T02:52:27.2853738Z Type:  Opaque
-2026-05-13T02:52:27.2853795Z 
-2026-05-13T02:52:27.2853917Z Data
-2026-05-13T02:52:27.2854042Z ====
-2026-05-13T02:52:27.2854202Z oauth.txt:     108 bytes
-2026-05-13T02:52:27.2854359Z bearer.txt:    104 bytes
-2026-05-13T02:52:27.2854515Z clientId:      20 bytes
-2026-05-13T02:52:27.2854670Z clientSecret:  64 bytes
-2026-05-13T02:52:27.2897729Z 
-2026-05-13T02:52:27.2898874Z --- oauth-controlcenter ---
-2026-05-13T02:52:27.4145836Z Name:         oauth-controlcenter
-2026-05-13T02:52:27.4146204Z Namespace:    dah-flink-dev
-2026-05-13T02:52:27.4146456Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:27.4146762Z               app.kubernetes.io/instance=oauth-controlcenter
-2026-05-13T02:52:27.4147030Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:27.4147309Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:27.4147566Z               fcbint.net/app-id=11547
-2026-05-13T02:52:27.4147727Z Annotations:  <none>
-2026-05-13T02:52:27.4147787Z 
-2026-05-13T02:52:27.4147920Z Type:  Opaque
-2026-05-13T02:52:27.4147990Z 
-2026-05-13T02:52:27.4148098Z Data
-2026-05-13T02:52:27.4148222Z ====
-2026-05-13T02:52:27.4148361Z bearer.txt:    104 bytes
-2026-05-13T02:52:27.4148519Z clientId:      20 bytes
-2026-05-13T02:52:27.4148673Z clientSecret:  64 bytes
-2026-05-13T02:52:27.4148829Z oauth.txt:     108 bytes
-2026-05-13T02:52:27.4191724Z 
-2026-05-13T02:52:27.4193056Z --- oauth-mds-rest ---
-2026-05-13T02:52:27.5438200Z Name:         oauth-mds-rest
-2026-05-13T02:52:27.5438490Z Namespace:    dah-flink-dev
-2026-05-13T02:52:27.5438884Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:27.5439151Z               app.kubernetes.io/instance=oauth-mds-rest
-2026-05-13T02:52:27.5439418Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:27.5440512Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:27.5440770Z               fcbint.net/app-id=11547
-2026-05-13T02:52:27.5440932Z Annotations:  <none>
-2026-05-13T02:52:27.5441013Z 
-2026-05-13T02:52:27.5441142Z Type:  Opaque
-2026-05-13T02:52:27.5441198Z 
-2026-05-13T02:52:27.5441317Z Data
-2026-05-13T02:52:27.5441443Z ====
-2026-05-13T02:52:27.5441582Z bearer.txt:    104 bytes
-2026-05-13T02:52:27.5441724Z clientId:      20 bytes
-2026-05-13T02:52:27.5441880Z clientSecret:  64 bytes
-2026-05-13T02:52:27.5442039Z oauth.txt:     108 bytes
-2026-05-13T02:52:27.5485450Z 
-2026-05-13T02:52:27.5486204Z --- c3-prometheus-basic-auth ---
-2026-05-13T02:52:27.6760173Z Name:         c3-prometheus-basic-auth
-2026-05-13T02:52:27.6760488Z Namespace:    dah-flink-dev
-2026-05-13T02:52:27.6760768Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:27.6761163Z               app.kubernetes.io/instance=c3-prometheus-basic-auth
-2026-05-13T02:52:27.6761460Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:27.6761735Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:27.6761979Z               fcbint.net/app-id=11547
-2026-05-13T02:52:27.6762141Z Annotations:  <none>
-2026-05-13T02:52:27.6762203Z 
-2026-05-13T02:52:27.6762337Z Type:  Opaque
-2026-05-13T02:52:27.6762519Z 
-2026-05-13T02:52:27.6762645Z Data
-2026-05-13T02:52:27.6762771Z ====
-2026-05-13T02:52:27.6762892Z password:  8 bytes
-2026-05-13T02:52:27.6763039Z username:  9 bytes
-2026-05-13T02:52:27.6807864Z 
-2026-05-13T02:52:27.6808533Z --- c3-alertmanager-basic-auth ---
-2026-05-13T02:52:27.8029058Z Name:         c3-alertmanager-basic-auth
-2026-05-13T02:52:27.8029825Z Namespace:    dah-flink-dev
-2026-05-13T02:52:27.8030155Z Labels:       app.kubernetes.io/component=cfk-prereq
-2026-05-13T02:52:27.8031519Z               app.kubernetes.io/instance=c3-alertmanager-basic-auth
-2026-05-13T02:52:27.8031872Z               app.kubernetes.io/name=confluent-platform
-2026-05-13T02:52:27.8032228Z               app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:52:27.8032658Z               fcbint.net/app-id=11547
-2026-05-13T02:52:27.8032891Z Annotations:  <none>
-2026-05-13T02:52:27.8033275Z 
-2026-05-13T02:52:27.8033731Z Type:  Opaque
-2026-05-13T02:52:27.8033808Z 
-2026-05-13T02:52:27.8033938Z Data
-2026-05-13T02:52:27.8034066Z ====
-2026-05-13T02:52:27.8034186Z password:  8 bytes
-2026-05-13T02:52:27.8034334Z username:  9 bytes
-2026-05-13T02:52:27.8074179Z 
-2026-05-13T02:52:27.8074616Z === Summary ===
-2026-05-13T02:52:28.3181814Z NAME                         TYPE     DATA   AGE
-2026-05-13T02:52:28.3182754Z confluent-license            Opaque   1      22d
-2026-05-13T02:52:28.3183094Z cfk-license                  Opaque   1      33m
-2026-05-13T02:52:28.3183417Z mds-token-keypair            Opaque   2      9h
-2026-05-13T02:52:28.3185628Z sasl-plain-internal          Opaque   2      9h
-2026-05-13T02:52:28.3188297Z oauth-broker                 Opaque   4      9h
-2026-05-13T02:52:28.3188724Z oauth-schemaregistry         Opaque   4      9h
-2026-05-13T02:52:28.3189054Z oauth-connect                Opaque   4      9h
-2026-05-13T02:52:28.3189371Z oauth-kafkarest              Opaque   4      9h
-2026-05-13T02:52:28.3189643Z oauth-controlcenter          Opaque   4      9h
-2026-05-13T02:52:28.3189886Z oauth-mds-rest               Opaque   4      9h
-2026-05-13T02:52:28.3190200Z c3-prometheus-basic-auth     Opaque   2      9h
-2026-05-13T02:52:28.3190530Z c3-alertmanager-basic-auth   Opaque   2      9h
-2026-05-13T02:52:28.3299788Z ##[section]Finishing: Create prerequisite Opaque Secrets and describe
-
-
-
-
-2026-05-13T02:54:34.9389585Z ##[section]Starting: Diagnostics: dump Secret + CR state before install
-2026-05-13T02:54:34.9399219Z ==============================================================================
-2026-05-13T02:54:34.9399427Z Task         : Bash
-2026-05-13T02:54:34.9399514Z Description  : Run a Bash script on macOS, Linux, or Windows
-2026-05-13T02:54:34.9399614Z Version      : 3.231.4
-2026-05-13T02:54:34.9399707Z Author       : Microsoft Corporation
-2026-05-13T02:54:34.9399782Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-2026-05-13T02:54:34.9400031Z ==============================================================================
-2026-05-13T02:54:35.2476336Z Generating script.
-2026-05-13T02:54:35.2504057Z ========================== Starting Command Output ===========================
-2026-05-13T02:54:35.2506574Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/9935614e-f606-4d17-8fd9-b5b11204ebfd.sh
-2026-05-13T02:54:35.2568234Z === Secret: sasl-plain-internal — keys ===
-2026-05-13T02:54:35.2568950Z (expected: kafka-server-listener-internal-plain-users.json)
-2026-05-13T02:54:35.4368565Z ['kafka-server-listener-internal-plain-users.json', 'plain-interbroker.txt']
-2026-05-13T02:54:35.4440361Z 
-2026-05-13T02:54:35.4442876Z === Secret: mds-token-keypair — keys ===
-2026-05-13T02:54:35.4443646Z (expected: ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem'])
-2026-05-13T02:54:35.6064214Z ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem']
-2026-05-13T02:54:35.6113654Z 
-2026-05-13T02:54:35.6115218Z === CR: connect/connect — spec.authentication ===
-2026-05-13T02:54:35.6115668Z (expected: nested authentication.oauth.{secretRef, configuration})
-2026-05-13T02:54:35.7884237Z {
-2026-05-13T02:54:35.7884522Z     "oauth": {
-2026-05-13T02:54:35.7884674Z         "configuration": {
-2026-05-13T02:54:35.7884837Z             "audience": "Confluent,account,api://default",
-2026-05-13T02:54:35.7885060Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
-2026-05-13T02:54:35.7885269Z             "groupsClaimName": "dahDev_groups",
-2026-05-13T02:54:35.7885537Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
-2026-05-13T02:54:35.7885745Z             "scope": "11547.DAH(Dev)",
-2026-05-13T02:54:35.7887048Z             "subClaimName": "sub",
-2026-05-13T02:54:35.7887253Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
-2026-05-13T02:54:35.7887438Z         },
-2026-05-13T02:54:35.7887933Z         "secretRef": "oauth-connect"
-2026-05-13T02:54:35.7888077Z     },
-2026-05-13T02:54:35.7888218Z     "type": "oauth"
-2026-05-13T02:54:35.7888354Z }
-2026-05-13T02:54:35.7950478Z 
-2026-05-13T02:54:35.7952529Z === CR: kafkarestproxy/kafkarest — spec.authentication ===
-2026-05-13T02:54:35.7952835Z (expected: nested authentication.oauth.{secretRef, configuration})
-2026-05-13T02:54:35.9608339Z {
-2026-05-13T02:54:35.9608715Z     "oauth": {
-2026-05-13T02:54:35.9608904Z         "configuration": {
-2026-05-13T02:54:35.9609179Z             "audience": "Confluent,account,api://default",
-2026-05-13T02:54:35.9610800Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
-2026-05-13T02:54:35.9611488Z             "groupsClaimName": "dahDev_groups",
-2026-05-13T02:54:35.9611952Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
-2026-05-13T02:54:35.9612336Z             "scope": "11547.DAH(Dev)",
-2026-05-13T02:54:35.9612930Z             "subClaimName": "sub",
-2026-05-13T02:54:35.9613312Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
-2026-05-13T02:54:35.9613666Z         },
-2026-05-13T02:54:35.9614367Z         "secretRef": "oauth-kafkarest"
-2026-05-13T02:54:35.9614647Z     },
-2026-05-13T02:54:35.9614900Z     "type": "oauth"
-2026-05-13T02:54:35.9615109Z }
-2026-05-13T02:54:35.9666149Z 
-2026-05-13T02:54:35.9667893Z === CR: schemaregistry/schemaregistry — spec.authentication ===
-2026-05-13T02:54:35.9668739Z (expected: nested authentication.oauth.{secretRef, configuration})
-2026-05-13T02:54:36.1274717Z {
-2026-05-13T02:54:36.1275140Z     "oauth": {
-2026-05-13T02:54:36.1275294Z         "configuration": {
-2026-05-13T02:54:36.1275655Z             "audience": "Confluent,account,api://default",
-2026-05-13T02:54:36.1277971Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
-2026-05-13T02:54:36.1278415Z             "groupsClaimName": "dahDev_groups",
-2026-05-13T02:54:36.1278850Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
-2026-05-13T02:54:36.1279102Z             "scope": "11547.DAH(Dev)",
-2026-05-13T02:54:36.1279273Z             "subClaimName": "sub",
-2026-05-13T02:54:36.1280449Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
-2026-05-13T02:54:36.1281017Z         },
-2026-05-13T02:54:36.1282316Z         "secretRef": "oauth-schemaregistry"
-2026-05-13T02:54:36.1282924Z     },
-2026-05-13T02:54:36.1283149Z     "type": "oauth"
-2026-05-13T02:54:36.1283349Z }
-2026-05-13T02:54:36.1339418Z 
-2026-05-13T02:54:36.1341960Z === CR: controlcenter/controlcenter — spec.authentication ===
-2026-05-13T02:54:36.1343197Z (expected: nested authentication.oauth.{secretRef, configuration})
-2026-05-13T02:54:36.2808244Z {
-2026-05-13T02:54:36.2808570Z     "mtls": {
-2026-05-13T02:54:36.2808746Z         "sslClientAuthentication": "requested"
-2026-05-13T02:54:36.2808902Z     },
-2026-05-13T02:54:36.2809039Z     "type": "mtls"
-2026-05-13T02:54:36.2809170Z }
-2026-05-13T02:54:36.2865356Z 
-2026-05-13T02:54:36.2866237Z === Recent Warning events (last 30) ===
-2026-05-13T02:54:36.4720814Z 2026-05-13T02:38:56Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4723632Z 2026-05-13T02:38:56Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4725025Z 2026-05-13T02:38:56Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4728625Z 2026-05-13T02:38:56Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4729895Z 2026-05-13T02:38:56Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-network-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4731295Z 2026-05-13T02:38:56Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-network-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4732351Z 2026-05-13T02:38:56Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-network-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4733320Z 2026-05-13T02:47:32Z   InputError            <none>   oauth.txt in secretRef oauth-schemaregistry: clientId is not formatted correctly against the regex 'clientId=.+[\r\n]*$'
-2026-05-13T02:54:36.4734793Z 2026-05-13T02:47:51Z   InputError            <none>   oauth.txt in secretRef oauth-connect: clientId is not formatted correctly against the regex 'clientId=.+[\r\n]*$'
-2026-05-13T02:54:36.4735680Z 2026-05-13T02:47:51Z   InputError            <none>   oauth.txt in secretRef oauth-kafkarest: clientId is not formatted correctly against the regex 'clientId=.+[\r\n]*$'
-2026-05-13T02:54:36.4736554Z 2026-05-13T02:50:19Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4737573Z 2026-05-13T02:51:26Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4738726Z 2026-05-13T02:51:46Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4741364Z 2026-05-13T02:51:58Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4742665Z 2026-05-13T02:52:23Z   FailedToCreate        <none>   admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <schemaregistry> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:36.4747394Z 2026-05-13T02:52:25Z   FailedToCreate        <none>   admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <kafkarest> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:36.4748201Z 2026-05-13T02:52:25Z   Warning               <none>   waiting for at-least one kafka pod availability
-2026-05-13T02:54:36.4749529Z 2026-05-13T02:52:25Z   FailedToCreate        <none>   admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <connect> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:36.4750472Z 2026-05-13T02:52:26Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4751669Z 2026-05-13T02:52:26Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-network-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4753367Z 2026-05-13T02:52:26Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4754980Z 2026-05-13T02:52:26Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4756789Z 2026-05-13T02:52:26Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-network-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4758435Z 2026-05-13T02:52:29Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T02:54:36.4759009Z 2026-05-13T02:52:32Z   Warning               <none>   waiting for at-least one kRaft controller pod availability
-2026-05-13T02:54:36.4759637Z 2026-05-13T02:52:46Z   FailedAdmission       <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: pod-disruption-budget, Message: PodDisruptionBudget <schemaregistry> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:36.4760438Z 2026-05-13T02:52:49Z   FailedAdmission       <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: pod-disruption-budget, Message: PodDisruptionBudget <kafkarest> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:36.4761201Z 2026-05-13T02:53:48Z   FailedAdmission       <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: pod-disruption-budget, Message: PodDisruptionBudget <schemaregistry> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:36.4761986Z 2026-05-13T02:53:50Z   FailedAdmission       <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: pod-disruption-budget, Message: PodDisruptionBudget <kafkarest> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:36.4762895Z 2026-05-13T02:53:51Z   FailedAdmission       <none>   Admission webhook "validation.gatekeeper.sh" denied request, Constraint: pod-disruption-budget, Message: PodDisruptionBudget <connect> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:36.4763184Z 
-2026-05-13T02:54:36.4763356Z === CFK CR status conditions ===
-2026-05-13T02:54:36.4763440Z 
-2026-05-13T02:54:36.4764165Z --- kafka ---
-2026-05-13T02:54:36.6338763Z NAME    READY    REPLICAS   PHASE    MSG
-2026-05-13T02:54:36.6340137Z kafka   <none>   <none>     <none>   <none>
-2026-05-13T02:54:36.7860422Z kafka:
-2026-05-13T02:54:36.7866355Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=waiting for at-least one kRaft controller pod availability
-2026-05-13T02:54:36.7866905Z 
-2026-05-13T02:54:36.7867345Z --- kraftcontroller ---
-2026-05-13T02:54:36.9153727Z NAME              READY    REPLICAS   PHASE    MSG
-2026-05-13T02:54:36.9154073Z kraftcontroller   <none>   <none>     <none>   <none>
-2026-05-13T02:54:37.0499396Z kraftcontroller:
-2026-05-13T02:54:37.0500675Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=persistentvolumeclaims "data0-kraftcontroller-0" is forbidden: exceeded quota: compute-resources, requested: requests.storage=64Gi, used: requests.storage=0, limited: requests.storage=10Gi
-2026-05-13T02:54:37.0547903Z 
-2026-05-13T02:54:37.0549295Z --- schemaregistry ---
-2026-05-13T02:54:37.2027795Z NAME             READY    REPLICAS   PHASE    MSG
-2026-05-13T02:54:37.2028098Z schemaregistry   <none>   <none>     <none>   <none>
-2026-05-13T02:54:37.3355312Z schemaregistry:
-2026-05-13T02:54:37.3357208Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <schemaregistry> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:37.3408194Z 
-2026-05-13T02:54:37.3411030Z --- connect ---
-2026-05-13T02:54:37.5092870Z NAME      READY    REPLICAS   PHASE    MSG
-2026-05-13T02:54:37.5093337Z connect   <none>   <none>     <none>   <none>
-2026-05-13T02:54:37.6918173Z connect:
-2026-05-13T02:54:37.6919882Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <connect> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:37.6975150Z 
-2026-05-13T02:54:37.6976888Z --- kafkarestproxy ---
-2026-05-13T02:54:37.8289603Z NAME        READY    REPLICAS   PHASE    MSG
-2026-05-13T02:54:37.8289886Z kafkarest   <none>   <none>     <none>   <none>
-2026-05-13T02:54:37.9522486Z kafkarest:
-2026-05-13T02:54:37.9523437Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <kafkarest> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
-2026-05-13T02:54:37.9564912Z 
-2026-05-13T02:54:37.9565804Z --- controlcenter ---
-2026-05-13T02:54:38.0782318Z NAME            READY    REPLICAS   PHASE    MSG
-2026-05-13T02:54:38.0782798Z controlcenter   <none>   <none>     <none>   <none>
-2026-05-13T02:54:38.2309953Z controlcenter:
-2026-05-13T02:54:38.2310940Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=persistentvolumeclaims "data0-controlcenter-0" is forbidden: exceeded quota: compute-resources, requested: requests.storage=300Gi, used: requests.storage=0, limited: requests.storage=10Gi
-2026-05-13T02:54:38.2353495Z 
-2026-05-13T02:54:38.2354666Z --- kafkarestclass ---
-2026-05-13T02:54:38.3635378Z NAME      READY    REPLICAS   PHASE    MSG
-2026-05-13T02:54:38.3635700Z default   <none>   <none>     <none>   <none>
-2026-05-13T02:54:38.4909861Z default:
-2026-05-13T02:54:38.4967871Z 
-2026-05-13T02:54:38.4968783Z === Pods (all in namespace) ===
-2026-05-13T02:54:38.6214076Z NAME                                                  READY   STATUS      RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
-2026-05-13T02:54:38.6214984Z busybox                                               0/1     Completed   0          20d   10.40.12.11   dp12055oxc-wpxl-srrn8   <none>           <none>
-2026-05-13T02:54:38.6216207Z confluent-manager-for-apache-flink-64d4d785f8-pxbr7   1/1     Running     0          12d   10.40.12.12   dp12055oxc-wpxl-srrn8   <none>           <none>
-2026-05-13T02:54:38.6261221Z 
-2026-05-13T02:54:38.6261717Z === PVCs ===
-2026-05-13T02:54:38.7575304Z 
-2026-05-13T02:54:38.7576460Z === Full SR CR yaml (looking for unrendered fields) ===
-2026-05-13T02:54:38.8803162Z spec:
-2026-05-13T02:54:38.8804136Z   authentication:
-2026-05-13T02:54:38.8804383Z     oauth:
-2026-05-13T02:54:38.8804526Z       configuration:
-2026-05-13T02:54:38.8804715Z         audience: Confluent,account,api://default
-2026-05-13T02:54:38.8805668Z         expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-2026-05-13T02:54:38.8806075Z         groupsClaimName: dahDev_groups
-2026-05-13T02:54:38.8806458Z         jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-2026-05-13T02:54:38.8806667Z         scope: 11547.DAH(Dev)
-2026-05-13T02:54:38.8806824Z         subClaimName: sub
-2026-05-13T02:54:38.8807057Z         tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-2026-05-13T02:54:38.8808266Z       secretRef: oauth-schemaregistry
-2026-05-13T02:54:38.8808432Z     type: oauth
-2026-05-13T02:54:38.8808576Z   authorization:
-2026-05-13T02:54:38.8808702Z     type: rbac
-2026-05-13T02:54:38.8808846Z   configOverrides:
-2026-05-13T02:54:38.8808986Z     server:
-2026-05-13T02:54:38.8809220Z     - schema.registry.group.id=schema-registry
-2026-05-13T02:54:38.8809460Z     - kafkastore.topic=_schemas
-2026-05-13T02:54:38.8810137Z     - kafkastore.topic.replication.factor=3
-2026-05-13T02:54:38.8810395Z     - inter.instance.protocol=https
-2026-05-13T02:54:38.8810667Z     - confluent.schema.registry.auth.mechanism=JETTY_AUTH
-2026-05-13T02:54:38.8811144Z     - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
-2026-05-13T02:54:38.8812554Z     - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
-2026-05-13T02:54:38.8812800Z   dependencies:
-2026-05-13T02:54:38.8812935Z     kafka:
-2026-05-13T02:54:38.8813078Z       authentication:
-2026-05-13T02:54:38.8813215Z         oauthSettings:
-2026-05-13T02:54:38.8813393Z           audience: Confluent,account,api://default
-2026-05-13T02:54:38.8813617Z           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-2026-05-13T02:54:38.8813819Z           groupsClaimName: dahDev_groups
-2026-05-13T02:54:38.8814034Z           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-2026-05-13T02:54:38.8814232Z           scope: 11547.DAH(Dev)
-2026-05-13T02:54:38.8814386Z           subClaimName: sub
-2026-05-13T02:54:38.8814586Z           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-2026-05-13T02:54:38.8814786Z         oauthbearer:
-2026-05-13T02:54:38.8815014Z           secretRef: oauth-schemaregistry
-2026-05-13T02:54:38.8815179Z         type: oauthbearer
-2026-05-13T02:54:38.8815502Z       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
-2026-05-13T02:54:38.8815694Z       tls:
-2026-05-13T02:54:38.8815836Z         enabled: true
-2026-05-13T02:54:38.8815959Z     mds:
-2026-05-13T02:54:38.8816099Z       authentication:
-2026-05-13T02:54:38.8816239Z         oauth:
-2026-05-13T02:54:38.8816410Z           configuration:
-2026-05-13T02:54:38.8816579Z             audience: Confluent,account,api://default
-2026-05-13T02:54:38.8816793Z             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-2026-05-13T02:54:38.8817001Z             groupsClaimName: dahDev_groups
-2026-05-13T02:54:38.8817212Z             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-2026-05-13T02:54:38.8817409Z             scope: 11547.DAH(Dev)
-2026-05-13T02:54:38.8817576Z             subClaimName: sub
-2026-05-13T02:54:38.8817777Z             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-2026-05-13T02:54:38.8818048Z           secretRef: oauth-schemaregistry
-2026-05-13T02:54:38.8818465Z         type: oauth
-2026-05-13T02:54:38.8818789Z       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
-2026-05-13T02:54:38.8818976Z       tokenKeyPair:
-2026-05-13T02:54:38.8819187Z         secretRef: mds-token-keypair
-2026-05-13T02:54:38.8819339Z   image:
-2026-05-13T02:54:38.8819714Z     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
-2026-05-13T02:54:38.8820161Z     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
-2026-05-13T02:54:38.8820396Z   license:
-2026-05-13T02:54:38.8820598Z     secretRef: cfk-license
-2026-05-13T02:54:38.8820747Z   podTemplate:
-2026-05-13T02:54:38.8820966Z     serviceAccountName: flink-operator
-2026-05-13T02:54:38.8821133Z   replicas: 1
-2026-05-13T02:54:38.8821265Z   tls:
-2026-05-13T02:54:38.8821417Z     secretRef: schemaregistry-tls
-2026-05-13T02:54:38.8821565Z status:
-2026-05-13T02:54:38.8821619Z 
-2026-05-13T02:54:38.8821792Z === CFK operator pod logs (last 200 lines, filtered) ===
-2026-05-13T02:54:39.0163631Z (could not locate confluent-operator pod — searched by image fingerprint)
-2026-05-13T02:54:39.0164354Z Listing all pods across all namespaces to help locate it:
-2026-05-13T02:54:39.1448914Z 
-2026-05-13T02:54:39.1450040Z === End of diagnostics ===
-2026-05-13T02:54:39.1516998Z ##[section]Finishing: Diagnostics: dump Secret + CR state before install
-
-
-
-2026-05-13T02:54:39.1533945Z ##[section]Starting: Pre-flight: verify env folder + prerequisite Secrets
-2026-05-13T02:54:39.1539865Z ==============================================================================
-2026-05-13T02:54:39.1540010Z Task         : Bash
-2026-05-13T02:54:39.1540070Z Description  : Run a Bash script on macOS, Linux, or Windows
-2026-05-13T02:54:39.1540165Z Version      : 3.231.4
-2026-05-13T02:54:39.1540239Z Author       : Microsoft Corporation
-2026-05-13T02:54:39.1540316Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-2026-05-13T02:54:39.1540469Z ==============================================================================
-2026-05-13T02:54:39.3131922Z Generating script.
-2026-05-13T02:54:39.3154072Z ========================== Starting Command Output ===========================
-2026-05-13T02:54:39.3184851Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/2437f976-149a-4193-b73c-9d9f1a382ee1.sh
-2026-05-13T02:54:39.3222967Z === Git commit ===
-2026-05-13T02:54:39.3256684Z 57ae749b6f891d31d9940001b5dc6596eeddea7e
-2026-05-13T02:54:39.3289109Z 
-2026-05-13T02:54:39.3326003Z === Verifying env folder apps/confluent-platform/dev ===
-2026-05-13T02:54:39.3328162Z OK    kafkarestclass.yaml
-2026-05-13T02:54:39.3329809Z OK    kraftcontroller.yaml
-2026-05-13T02:54:39.3330876Z OK    kafka.yaml
-2026-05-13T02:54:39.3331290Z OK    schemaregistry.yaml
-2026-05-13T02:54:39.3331596Z OK    connect.yaml
-2026-05-13T02:54:39.3331892Z OK    kafkarest.yaml
-2026-05-13T02:54:39.3332212Z OK    controlcenter.yaml
-2026-05-13T02:54:39.3333104Z OK    prereqs/kafka-tls-certificate.yaml
-2026-05-13T02:54:39.3333632Z OK    prereqs/kraftcontroller-tls-certificate.yaml
-2026-05-13T02:54:39.3334157Z OK    prereqs/schemaregistry-tls-certificate.yaml
-2026-05-13T02:54:39.3334636Z OK    prereqs/connect-tls-certificate.yaml
-2026-05-13T02:54:39.3335068Z OK    prereqs/kafkarest-tls-certificate.yaml
-2026-05-13T02:54:39.3335583Z OK    prereqs/controlcenter-tls-certificate.yaml
-2026-05-13T02:54:39.3335792Z 
-2026-05-13T02:54:39.3336187Z === Refusing to apply if any REPLACE_WITH_ marker remains ===
-2026-05-13T02:54:39.3336751Z (no unresolved placeholders)
-2026-05-13T02:54:39.3336931Z 
-2026-05-13T02:54:39.3337516Z === Verifying prerequisite Secrets in dah-flink-dev ===
-2026-05-13T02:54:39.4608230Z OK    confluent-license
-2026-05-13T02:54:39.5860778Z OK    cfk-license
-2026-05-13T02:54:39.7067185Z OK    sasl-plain-internal
-2026-05-13T02:54:39.8271822Z OK    mds-token-keypair
-2026-05-13T02:54:39.9508635Z OK    oauth-broker
-2026-05-13T02:54:40.0820382Z OK    oauth-schemaregistry
-2026-05-13T02:54:40.2119403Z OK    oauth-connect
-2026-05-13T02:54:40.3400207Z OK    oauth-kafkarest
-2026-05-13T02:54:40.4630225Z OK    oauth-controlcenter
-2026-05-13T02:54:40.5942062Z OK    oauth-mds-rest
-2026-05-13T02:54:40.7168964Z OK    c3-prometheus-basic-auth
-2026-05-13T02:54:40.8400935Z OK    c3-alertmanager-basic-auth
-2026-05-13T02:54:40.8472356Z ##[section]Finishing: Pre-flight: verify env folder + prerequisite Secrets
-
-
-2026-05-13T02:54:40.8975961Z ##[section]Starting: Apply cert-manager Certificates and wait for TLS Secrets
-2026-05-13T02:54:40.8982116Z ==============================================================================
-2026-05-13T02:54:40.8982243Z Task         : Bash
-2026-05-13T02:54:40.8982304Z Description  : Run a Bash script on macOS, Linux, or Windows
-2026-05-13T02:54:40.8982587Z Version      : 3.231.4
-2026-05-13T02:54:40.8982649Z Author       : Microsoft Corporation
-2026-05-13T02:54:40.8982738Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-2026-05-13T02:54:40.8982867Z ==============================================================================
-2026-05-13T02:54:41.0533225Z Generating script.
-2026-05-13T02:54:41.0563413Z ========================== Starting Command Output ===========================
-2026-05-13T02:54:41.0565522Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/f7597636-a694-4b2e-bce1-1da1b4f6ce48.sh
-2026-05-13T02:54:41.0619384Z === Applying Certificate CRs ===
-2026-05-13T02:54:41.0619613Z 
-2026-05-13T02:54:41.0620108Z + oc apply -f apps/confluent-platform/dev/prereqs/connect-tls-certificate.yaml
-2026-05-13T02:54:41.6886092Z certificate.cert-manager.io/connect-tls unchanged
-2026-05-13T02:54:41.6947486Z 
-2026-05-13T02:54:41.6949582Z + oc apply -f apps/confluent-platform/dev/prereqs/controlcenter-tls-certificate.yaml
-2026-05-13T02:54:42.3217097Z certificate.cert-manager.io/controlcenter-tls unchanged
-2026-05-13T02:54:42.3289265Z 
-2026-05-13T02:54:42.3290501Z + oc apply -f apps/confluent-platform/dev/prereqs/kafkarest-tls-certificate.yaml
-2026-05-13T02:54:42.9660485Z certificate.cert-manager.io/kafkarest-tls unchanged
-2026-05-13T02:54:42.9721149Z 
-2026-05-13T02:54:42.9722313Z + oc apply -f apps/confluent-platform/dev/prereqs/kafka-tls-certificate.yaml
-2026-05-13T02:54:43.5891710Z certificate.cert-manager.io/kafka-tls unchanged
-2026-05-13T02:54:43.5958748Z 
-2026-05-13T02:54:43.5960383Z + oc apply -f apps/confluent-platform/dev/prereqs/kraftcontroller-tls-certificate.yaml
-2026-05-13T02:54:44.2333463Z certificate.cert-manager.io/kraftcontroller-tls unchanged
-2026-05-13T02:54:44.2400771Z 
-2026-05-13T02:54:44.2402034Z + oc apply -f apps/confluent-platform/dev/prereqs/schemaregistry-tls-certificate.yaml
-2026-05-13T02:54:44.8900685Z certificate.cert-manager.io/schemaregistry-tls unchanged
-2026-05-13T02:54:44.8965553Z 
-2026-05-13T02:54:44.8967664Z === Waiting for Keyfactor to issue all 6 *-tls Secrets ===
-2026-05-13T02:54:44.8968037Z 
-2026-05-13T02:54:44.8968276Z Waiting for secret/kafka-tls...
-2026-05-13T02:54:45.0289241Z   ready after 10s
-2026-05-13T02:54:45.0289785Z 
-2026-05-13T02:54:45.0290790Z Waiting for secret/kraftcontroller-tls...
-2026-05-13T02:54:45.1592496Z   ready after 10s
-2026-05-13T02:54:45.1592672Z 
-2026-05-13T02:54:45.1593239Z Waiting for secret/schemaregistry-tls...
-2026-05-13T02:54:45.2939509Z   ready after 10s
-2026-05-13T02:54:45.2939930Z 
-2026-05-13T02:54:45.2940905Z Waiting for secret/connect-tls...
-2026-05-13T02:54:45.4248982Z   ready after 10s
-2026-05-13T02:54:45.4249151Z 
-2026-05-13T02:54:45.4249668Z Waiting for secret/kafkarest-tls...
-2026-05-13T02:54:45.5786611Z   ready after 10s
-2026-05-13T02:54:45.5786776Z 
-2026-05-13T02:54:45.5787281Z Waiting for secret/controlcenter-tls...
-2026-05-13T02:54:45.7092739Z   ready after 10s
-2026-05-13T02:54:45.7161107Z ##[section]Finishing: Apply cert-manager Certificates and wait for TLS Secrets
-
-
-2026-05-13T02:54:45.7178094Z ##[section]Starting: Apply Confluent Platform CRs
-2026-05-13T02:54:45.7184079Z ==============================================================================
-2026-05-13T02:54:45.7184641Z Task         : Bash
-2026-05-13T02:54:45.7184701Z Description  : Run a Bash script on macOS, Linux, or Windows
-2026-05-13T02:54:45.7184819Z Version      : 3.231.4
-2026-05-13T02:54:45.7184881Z Author       : Microsoft Corporation
-2026-05-13T02:54:45.7184970Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-2026-05-13T02:54:45.7185077Z ==============================================================================
-2026-05-13T02:54:45.8764333Z Generating script.
-2026-05-13T02:54:45.8779042Z ========================== Starting Command Output ===========================
-2026-05-13T02:54:45.8788662Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/77897661-1024-4caa-a9ae-66230c706815.sh
-2026-05-13T02:54:45.8844960Z === Apply order (CFK dependency order) ===
-2026-05-13T02:54:45.8846643Z 
-2026-05-13T02:54:45.8848668Z + oc apply -f apps/confluent-platform/dev/kafkarestclass.yaml
-2026-05-13T02:54:46.5413140Z kafkarestclass.platform.confluent.io/default unchanged
-2026-05-13T02:54:46.5486193Z 
-2026-05-13T02:54:46.5487352Z + oc apply -f apps/confluent-platform/dev/kraftcontroller.yaml
-2026-05-13T02:54:47.2507041Z kraftcontroller.platform.confluent.io/kraftcontroller configured
-2026-05-13T02:54:47.2573189Z 
-2026-05-13T02:54:47.2574622Z + oc apply -f apps/confluent-platform/dev/kafka.yaml
-2026-05-13T02:54:47.9286404Z kafka.platform.confluent.io/kafka configured
-2026-05-13T02:54:47.9353633Z 
-2026-05-13T02:54:47.9354626Z + oc apply -f apps/confluent-platform/dev/schemaregistry.yaml
-2026-05-13T02:54:48.5854392Z schemaregistry.platform.confluent.io/schemaregistry configured
-2026-05-13T02:54:48.5912617Z 
-2026-05-13T02:54:48.5914036Z + oc apply -f apps/confluent-platform/dev/connect.yaml
-2026-05-13T02:54:49.2564476Z connect.platform.confluent.io/connect configured
-2026-05-13T02:54:49.2626640Z 
-2026-05-13T02:54:49.2627868Z + oc apply -f apps/confluent-platform/dev/kafkarest.yaml
-2026-05-13T02:54:49.9076267Z kafkarestproxy.platform.confluent.io/kafkarest configured
-2026-05-13T02:54:49.9136346Z 
-2026-05-13T02:54:49.9137624Z + oc apply -f apps/confluent-platform/dev/controlcenter.yaml
-2026-05-13T02:54:50.5835324Z controlcenter.platform.confluent.io/controlcenter configured
-2026-05-13T02:54:50.5904668Z 
-2026-05-13T02:54:50.5906549Z === Cluster status (immediate post-apply) ===
-2026-05-13T02:54:50.8040618Z NAME                                REPLICAS   READY   STATUS   AGE
-2026-05-13T02:54:50.8041855Z kafka.platform.confluent.io/kafka   0                           8h
-2026-05-13T02:54:50.8042650Z 
-2026-05-13T02:54:50.8043345Z NAME                                                    REPLICAS   READY   STATUS   AGE
-2026-05-13T02:54:50.8043632Z kraftcontroller.platform.confluent.io/kraftcontroller   0                           8h
-2026-05-13T02:54:50.8047963Z 
-2026-05-13T02:54:50.8048810Z NAME                                                  REPLICAS   READY   STATUS   AGE
-2026-05-13T02:54:50.8049067Z schemaregistry.platform.confluent.io/schemaregistry   0                           8h
-2026-05-13T02:54:50.8053417Z 
-2026-05-13T02:54:50.8056197Z NAME                                    REPLICAS   READY   STATUS   AGE
-2026-05-13T02:54:50.8056384Z connect.platform.confluent.io/connect   0                           8h
-2026-05-13T02:54:50.8058392Z 
-2026-05-13T02:54:50.8059371Z NAME                                             REPLICAS   READY   STATUS   AGE
-2026-05-13T02:54:50.8059945Z kafkarestproxy.platform.confluent.io/kafkarest   0                           8h
-2026-05-13T02:54:50.8063504Z 
-2026-05-13T02:54:50.8064166Z NAME                                                REPLICAS   READY   STATUS   AGE
-2026-05-13T02:54:50.8064788Z controlcenter.platform.confluent.io/controlcenter   0                           8h
-2026-05-13T02:54:50.8066269Z 
-2026-05-13T02:54:50.8068101Z NAME                                           ENDPOINT   KAFKACLUSTERID   AGE
-2026-05-13T02:54:50.8069051Z kafkarestclass.platform.confluent.io/default                               8h
-2026-05-13T02:54:50.8119627Z 
-2026-05-13T02:54:50.8120780Z === Pods ===
-2026-05-13T02:54:50.9408156Z No resources found in dah-flink-dev namespace.
-2026-05-13T02:54:50.9453491Z 
-2026-05-13T02:54:50.9454276Z NOTE: the CFK operator takes 10-15 minutes to reconcile a full
-2026-05-13T02:54:50.9454522Z cluster on first install. The pipeline is not waiting beyond apply.
-2026-05-13T02:54:50.9454730Z Monitor convergence with:
-2026-05-13T02:54:50.9455063Z   oc -n dah-flink-dev get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter
-2026-05-13T02:54:50.9455423Z   oc -n dah-flink-dev get pods -l app.kubernetes.io/part-of=confluent-platform
-2026-05-13T02:54:50.9523594Z ##[section]Finishing: Apply Confluent Platform CRs
-
-
-
 5/12/26
-9:56:10.578 PM	
+10:06:25.621 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kafka pod availability
@@ -703,13 +7,13 @@
    msg: apply failed
    name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:56:10.578Z
+   time: 2026-05-13T03:06:25.620Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:56:02.948 PM	
+10:06:19.186 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kRaft controller pod availability
@@ -717,13 +21,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: kafka
    namespace: dah-flink-dev
-   time: 2026-05-13T02:56:02.947Z
+   time: 2026-05-13T03:06:19.186Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:55.578 PM	
+10:06:10.620 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kafka pod availability
@@ -731,13 +35,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:55.577Z
+   time: 2026-05-13T03:06:10.619Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:47.928 PM	
+10:06:04.168 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kRaft controller pod availability
@@ -745,13 +49,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: kafka
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:47.928Z
+   time: 2026-05-13T03:06:04.167Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:40.576 PM	
+10:05:55.618 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kafka pod availability
@@ -759,13 +63,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:40.576Z
+   time: 2026-05-13T03:05:55.618Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:32.904 PM	
+10:05:49.149 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kRaft controller pod availability
@@ -773,13 +77,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: kafka
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:32.903Z
+   time: 2026-05-13T03:05:49.148Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:25.575 PM	
+10:05:40.617 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kafka pod availability
@@ -787,13 +91,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:25.574Z
+   time: 2026-05-13T03:05:40.616Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:17.887 PM	
+10:05:34.131 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kRaft controller pod availability
@@ -801,128 +105,248 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: kafka
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:17.887Z
+   time: 2026-05-13T03:05:34.130Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:13.305 PM	
+10:05:25.617 PM	
 { [-]
    caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <connect> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
+   error: waiting for at-least one kafka pod availability
    level: ERROR
    msg: apply failed
-   name: connect
+   name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:13.305Z
+   time: 2026-05-13T03:05:25.616Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:13.305 PM	
+10:05:19.113 PM	
 { [-]
    caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <connect> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
+   error: waiting for at-least one kRaft controller pod availability
+   level: ERROR
+   msg: apply failed
+   name: kafka
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:05:19.113Z
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:05:19.053 PM	
+{ [-]
+   caller: log/log.go:53
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+   level: ERROR
+   msg: apply failed
+   name: controlcenter
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:05:19.053Z
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:05:19.053 PM	
+{ [-]
+   caller: log/log.go:53
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
    level: ERROR
    msg: resource creation failed
-   name: connect
+   name: controlcenter
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:13.304Z
-   type: *v1.PodDisruptionBudget
+   time: 2026-05-13T03:05:19.053Z
+   type: *v1.StatefulSet
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:12.768 PM	
+10:05:18.592 PM	
 { [-]
    caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <kafkarest> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
    level: ERROR
    msg: apply failed
    name: kafkarest
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:12.767Z
+   time: 2026-05-13T03:05:18.591Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:12.768 PM	
+10:05:18.592 PM	
 { [-]
    caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <kafkarest> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
    level: ERROR
    msg: resource creation failed
    name: kafkarest
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:12.767Z
-   type: *v1.PodDisruptionBudget
+   time: 2026-05-13T03:05:18.591Z
+   type: *v1.StatefulSet
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:10.574 PM	
+10:05:18.489 PM	
 { [-]
    caller: log/log.go:53
-   error: waiting for at-least one kafka pod availability
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
    level: ERROR
    msg: apply failed
-   name: default
+   name: kafkarest
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:10.573Z
+   time: 2026-05-13T03:05:18.488Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:10.186 PM	
+10:05:18.489 PM	
 { [-]
    caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <schemaregistry> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+   level: ERROR
+   msg: resource creation failed
+   name: kafkarest
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:05:18.488Z
+   type: *v1.StatefulSet
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:05:17.947 PM	
+{ [-]
+   caller: log/log.go:53
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+   level: ERROR
+   msg: apply failed
+   name: connect
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:05:17.947Z
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:05:17.947 PM	
+{ [-]
+   caller: log/log.go:53
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+   level: ERROR
+   msg: resource creation failed
+   name: connect
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:05:17.947Z
+   type: *v1.StatefulSet
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:05:17.763 PM	
+{ [-]
+   caller: log/log.go:53
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+   level: ERROR
+   msg: apply failed
+   name: connect
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:05:17.762Z
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:05:17.763 PM	
+{ [-]
+   caller: log/log.go:53
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+   level: ERROR
+   msg: resource creation failed
+   name: connect
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:05:17.762Z
+   type: *v1.StatefulSet
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:05:16.963 PM	
+{ [-]
+   caller: log/log.go:53
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
    level: ERROR
    msg: apply failed
    name: schemaregistry
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:10.185Z
+   time: 2026-05-13T03:05:16.962Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:10.186 PM	
+10:05:16.963 PM	
 { [-]
    caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [pod-disruption-budget] PodDisruptionBudget <schemaregistry> has maxUnavailable of 0, only positive integers are allowed for maxUnavailable
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
    level: ERROR
    msg: resource creation failed
    name: schemaregistry
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:10.185Z
-   type: *v1.PodDisruptionBudget
+   time: 2026-05-13T03:05:16.962Z
+   type: *v1.StatefulSet
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:55:02.854 PM	
+10:05:16.846 PM	
 { [-]
    caller: log/log.go:53
-   error: waiting for at-least one kRaft controller pod availability
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
    level: ERROR
    msg: apply failed
-   name: kafka
+   name: schemaregistry
    namespace: dah-flink-dev
-   time: 2026-05-13T02:55:02.853Z
+   time: 2026-05-13T03:05:16.846Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:54:55.573 PM	
+10:05:16.846 PM	
+{ [-]
+   caller: log/log.go:53
+   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+   level: ERROR
+   msg: resource creation failed
+   name: schemaregistry
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:05:16.846Z
+   type: *v1.StatefulSet
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:05:10.615 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kafka pod availability
@@ -930,112 +354,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:54:55.572Z
+   time: 2026-05-13T03:05:10.615Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:54:50.915 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: apply failed
-   name: controlcenter
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:50.915Z
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:50.915 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: resource creation failed
-   name: controlcenter
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:50.915Z
-   type: *v1.StatefulSet
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:50.808 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: apply failed
-   name: controlcenter
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:50.808Z
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:50.808 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: resource creation failed
-   name: controlcenter
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:50.807Z
-   type: *v1.StatefulSet
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:50.701 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: apply failed
-   name: controlcenter
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:50.700Z
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:50.701 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: resource creation failed
-   name: controlcenter
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:50.700Z
-   type: *v1.StatefulSet
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:47.947 PM	
+10:05:04.096 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kRaft controller pod availability
@@ -1043,126 +368,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: kafka
    namespace: dah-flink-dev
-   time: 2026-05-13T02:54:47.946Z
+   time: 2026-05-13T03:05:04.095Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:54:47.704 PM	
-{ [-]
-   caller: log/log.go:53
-   error: waiting for at-least one kRaft controller pod availability
-   level: ERROR
-   msg: apply failed
-   name: kafka
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:47.703Z
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:47.575 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: apply failed
-   name: kraftcontroller
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:47.575Z
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:47.575 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: resource creation failed
-   name: kraftcontroller
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:47.574Z
-   type: *v1.StatefulSet
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:47.498 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: apply failed
-   name: kraftcontroller
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:47.497Z
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:47.497 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: resource creation failed
-   name: kraftcontroller
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:47.497Z
-   type: *v1.StatefulSet
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:47.364 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: apply failed
-   name: kraftcontroller
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:47.364Z
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:47.364 PM	
-{ [-]
-   caller: log/log.go:53
-   error: admission webhook "validation.gatekeeper.sh" denied the request: [required-workload-labels] Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-[ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-   level: ERROR
-   msg: resource creation failed
-   name: kraftcontroller
-   namespace: dah-flink-dev
-   time: 2026-05-13T02:54:47.364Z
-   type: *v1.StatefulSet
-}
-Show as raw text
-host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
-
-5/12/26
-9:54:40.572 PM	
+10:04:55.614 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kafka pod availability
@@ -1170,13 +382,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:54:40.572Z
+   time: 2026-05-13T03:04:55.614Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:54:32.686 PM	
+10:04:49.079 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kRaft controller pod availability
@@ -1184,13 +396,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: kafka
    namespace: dah-flink-dev
-   time: 2026-05-13T02:54:32.685Z
+   time: 2026-05-13T03:04:49.078Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:54:25.571 PM	
+10:04:40.613 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kafka pod availability
@@ -1198,13 +410,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:54:25.570Z
+   time: 2026-05-13T03:04:40.613Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:54:17.665 PM	
+10:04:34.061 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kRaft controller pod availability
@@ -1212,13 +424,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: kafka
    namespace: dah-flink-dev
-   time: 2026-05-13T02:54:17.664Z
+   time: 2026-05-13T03:04:34.060Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:54:10.570 PM	
+10:04:25.613 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kafka pod availability
@@ -1226,13 +438,13 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: default
    namespace: dah-flink-dev
-   time: 2026-05-13T02:54:10.569Z
+   time: 2026-05-13T03:04:25.612Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
 
 5/12/26
-9:54:02.645 PM	
+10:04:19.038 PM	
 { [-]
    caller: log/log.go:53
    error: waiting for at-least one kRaft controller pod availability
@@ -1240,7 +452,35 @@ host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab6
    msg: apply failed
    name: kafka
    namespace: dah-flink-dev
-   time: 2026-05-13T02:54:02.644Z
+   time: 2026-05-13T03:04:19.037Z
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:04:10.612 PM	
+{ [-]
+   caller: log/log.go:53
+   error: waiting for at-least one kafka pod availability
+   level: ERROR
+   msg: apply failed
+   name: default
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:04:10.611Z
+}
+Show as raw text
+host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
+
+5/12/26
+10:04:04.022 PM	
+{ [-]
+   caller: log/log.go:53
+   error: waiting for at-least one kRaft controller pod availability
+   level: ERROR
+   msg: apply failed
+   name: kafka
+   namespace: dah-flink-dev
+   time: 2026-05-13T03:04:04.021Z
 }
 Show as raw text
 host = dp12055oxc-wpxl-4qhhxsource = /openshift/logs/7ecba483ca4b5e79a0a6d7bdab644aa9fccc6931d63b6b602e64b6ee1cbd9d17/confluent-operator/artifactory.fcbint.net/cao-oci-prod/confluentinc/confluent-operator:0.1351.103/confluent-operator-6d7db7c788-bqdjq/confluent-operator.stderrsourcetype = openshift_logs
