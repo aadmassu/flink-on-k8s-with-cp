@@ -1,208 +1,630 @@
-2026-05-13T01:53:02.4757827Z ##[section]Starting: Diagnostics: dump Secret + CR state before install
-2026-05-13T01:53:02.4767506Z ==============================================================================
-2026-05-13T01:53:02.4767722Z Task         : Bash
-2026-05-13T01:53:02.4767807Z Description  : Run a Bash script on macOS, Linux, or Windows
-2026-05-13T01:53:02.4767904Z Version      : 3.231.4
-2026-05-13T01:53:02.4768016Z Author       : Microsoft Corporation
-2026-05-13T01:53:02.4768094Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
-2026-05-13T01:53:02.4768251Z ==============================================================================
-2026-05-13T01:53:02.7376071Z Generating script.
-2026-05-13T01:53:02.7392281Z ========================== Starting Command Output ===========================
-2026-05-13T01:53:02.7399559Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/513c3999-ac22-4143-8516-f5e20979ef3b.sh
-2026-05-13T01:53:02.7462619Z === Secret: sasl-plain-internal — keys ===
-2026-05-13T01:53:02.7463296Z (expected: kafka-server-listener-internal-plain-users.json)
-2026-05-13T01:53:02.8831495Z ['kafka-server-listener-internal-plain-users.json', 'plain-interbroker.txt']
-2026-05-13T01:53:02.8866944Z 
-2026-05-13T01:53:02.8867902Z === Secret: mds-token-keypair — keys ===
-2026-05-13T01:53:02.8868305Z (expected: ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem'])
-2026-05-13T01:53:03.0152783Z ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem']
-2026-05-13T01:53:03.0188965Z 
-2026-05-13T01:53:03.0189772Z === CR: connect/connect — spec.authentication ===
-2026-05-13T01:53:03.0191083Z (expected: nested authentication.oauth.{secretRef, configuration})
-2026-05-13T01:53:03.1513703Z {
-2026-05-13T01:53:03.1513972Z     "oauth": {
-2026-05-13T01:53:03.1514129Z         "configuration": {
-2026-05-13T01:53:03.1514307Z             "audience": "Confluent,account,api://default",
-2026-05-13T01:53:03.1514529Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
-2026-05-13T01:53:03.1514744Z             "groupsClaimName": "dahDev_groups",
-2026-05-13T01:53:03.1515012Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
-2026-05-13T01:53:03.1515228Z             "scope": "11547.DAH(Dev)",
-2026-05-13T01:53:03.1515396Z             "subClaimName": "sub",
-2026-05-13T01:53:03.1516199Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
-2026-05-13T01:53:03.1516392Z         },
-2026-05-13T01:53:03.1516846Z         "secretRef": "oauth-connect"
-2026-05-13T01:53:03.1516993Z     },
-2026-05-13T01:53:03.1517115Z     "type": "oauth"
-2026-05-13T01:53:03.1517249Z }
-2026-05-13T01:53:03.1560287Z 
-2026-05-13T01:53:03.1560997Z === CR: kafkarestproxy/kafkarest — spec.authentication ===
-2026-05-13T01:53:03.2882277Z (expected: nested authentication.oauth.{secretRef, configuration})
-2026-05-13T01:53:03.2882762Z {
-2026-05-13T01:53:03.2882908Z     "oauth": {
-2026-05-13T01:53:03.2883384Z         "configuration": {
-2026-05-13T01:53:03.2883563Z             "audience": "Confluent,account,api://default",
-2026-05-13T01:53:03.2883839Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
-2026-05-13T01:53:03.2884059Z             "groupsClaimName": "dahDev_groups",
-2026-05-13T01:53:03.2884307Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
-2026-05-13T01:53:03.2884516Z             "scope": "11547.DAH(Dev)",
-2026-05-13T01:53:03.2884680Z             "subClaimName": "sub",
-2026-05-13T01:53:03.2884889Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
-2026-05-13T01:53:03.2885073Z         },
-2026-05-13T01:53:03.2885527Z         "secretRef": "oauth-kafkarest"
-2026-05-13T01:53:03.2885675Z     },
-2026-05-13T01:53:03.2885812Z     "type": "oauth"
-2026-05-13T01:53:03.2885926Z }
-2026-05-13T01:53:03.2930033Z 
-2026-05-13T01:53:03.2931201Z === CR: schemaregistry/schemaregistry — spec.authentication ===
-2026-05-13T01:53:03.2931497Z (expected: nested authentication.oauth.{secretRef, configuration})
-2026-05-13T01:53:03.4149747Z {
-2026-05-13T01:53:03.4149998Z     "oauth": {
-2026-05-13T01:53:03.4150159Z         "configuration": {
-2026-05-13T01:53:03.4150356Z             "audience": "Confluent,account,api://default",
-2026-05-13T01:53:03.4151055Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
-2026-05-13T01:53:03.4151286Z             "groupsClaimName": "dahDev_groups",
-2026-05-13T01:53:03.4151507Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
-2026-05-13T01:53:03.4151719Z             "scope": "11547.DAH(Dev)",
-2026-05-13T01:53:03.4151889Z             "subClaimName": "sub",
-2026-05-13T01:53:03.4152105Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
-2026-05-13T01:53:03.4152297Z         },
-2026-05-13T01:53:03.4152932Z         "secretRef": "oauth-schemaregistry"
-2026-05-13T01:53:03.4153085Z     },
-2026-05-13T01:53:03.4153221Z     "type": "oauth"
-2026-05-13T01:53:03.4153354Z }
-2026-05-13T01:53:03.4209576Z 
-2026-05-13T01:53:03.4211531Z === CR: controlcenter/controlcenter — spec.authentication ===
-2026-05-13T01:53:03.4211826Z (expected: nested authentication.oauth.{secretRef, configuration})
-2026-05-13T01:53:03.5535947Z {
-2026-05-13T01:53:03.5536233Z     "mtls": {
-2026-05-13T01:53:03.5536397Z         "sslClientAuthentication": "requested"
-2026-05-13T01:53:03.5536538Z     },
-2026-05-13T01:53:03.5536671Z     "type": "mtls"
-2026-05-13T01:53:03.5536800Z }
-2026-05-13T01:53:03.5582196Z 
-2026-05-13T01:53:03.5582778Z === Recent Warning events (last 30) ===
-2026-05-13T01:53:03.6940281Z TIME                   REASON                KIND     MSG
-2026-05-13T01:53:03.6946918Z 2026-05-12T23:37:45Z   KeyInSecretRefIssue   <none>   required one of [mds-server-publicKey.pem mdsPublicKey.pem] missing in secretRef [mds-token-keypair] for for mds public key
-2026-05-13T01:53:03.6949937Z 2026-05-12T23:37:48Z   KeyInSecretRefIssue   <none>   required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype plain
-2026-05-13T01:53:03.6951045Z 2026-05-13T01:37:28Z   InputError            <none>   missing inter controller credentials, please configure any one of the following keys kafka-server-listener-replication-plain-interbroker.txt,kafka-server-plain-interbroker.txt,plain-interbroker.txt in secretRef sasl-plain-internal
-2026-05-13T01:53:03.6952878Z 2026-05-13T01:45:37Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T01:53:03.6953885Z 2026-05-13T01:47:05Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T01:53:03.6954859Z 2026-05-13T01:48:40Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T01:53:03.6955819Z 2026-05-13T01:50:16Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T01:53:03.6956721Z 2026-05-13T01:50:28Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T01:53:03.6959728Z 2026-05-13T01:51:15Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T01:53:03.6960418Z 2026-05-13T01:52:24Z   Warning               <none>   waiting for at-least one kRaft controller pod availability
-2026-05-13T01:53:03.6960774Z 2026-05-13T01:52:25Z   Warning               <none>   waiting for at-least one kafka pod availability
-2026-05-13T01:53:03.6961143Z 2026-05-13T01:52:27Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
-2026-05-13T01:53:03.6961615Z 2026-05-13T01:52:29Z   InputError            <none>   plain-interbroker.txt in secretRef sasl-plain-internal: username and password not formatted correctly
-2026-05-13T01:53:03.6962026Z 2026-05-13T01:52:47Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
-2026-05-13T01:53:03.6962480Z 2026-05-13T01:52:47Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
-2026-05-13T01:53:03.6962629Z 
-2026-05-13T01:53:03.6964739Z === CFK CR status conditions ===
-2026-05-13T01:53:03.6965006Z 
-2026-05-13T01:53:03.6965822Z --- kafka ---
-2026-05-13T01:53:03.8187066Z NAME    READY    REPLICAS   PHASE    MSG
-2026-05-13T01:53:03.8187810Z kafka   <none>   <none>     <none>   <none>
-2026-05-13T01:53:03.9431597Z kafka:
-2026-05-13T01:53:03.9432513Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=waiting for at-least one kRaft controller pod availability
-2026-05-13T01:53:03.9478002Z 
-2026-05-13T01:53:03.9478976Z --- kraftcontroller ---
-2026-05-13T01:53:04.0687473Z NAME              READY    REPLICAS   PHASE    MSG
-2026-05-13T01:53:04.0688451Z kraftcontroller   <none>   <none>     <none>   <none>
-2026-05-13T01:53:04.1958003Z kraftcontroller:
-2026-05-13T01:53:04.1958875Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=plain-interbroker.txt in secretRef sasl-plain-internal: username and password not formatted correctly
-2026-05-13T01:53:04.2004604Z 
-2026-05-13T01:53:04.2005137Z --- schemaregistry ---
-2026-05-13T01:53:04.3197050Z NAME             READY    REPLICAS   PHASE    MSG
-2026-05-13T01:53:04.3197312Z schemaregistry   <none>   <none>     <none>   <none>
-2026-05-13T01:53:04.4440673Z schemaregistry:
-2026-05-13T01:53:04.4441477Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=oauthForRest: missing authentication.oauth struct
-2026-05-13T01:53:04.4485106Z 
-2026-05-13T01:53:04.4485854Z --- connect ---
-2026-05-13T01:53:04.5736681Z NAME      READY    REPLICAS   PHASE    MSG
-2026-05-13T01:53:04.5736964Z connect   <none>   <none>     <none>   <none>
-2026-05-13T01:53:04.6959119Z connect:
-2026-05-13T01:53:04.6960395Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=oauthForRest: missing authentication.oauth struct
-2026-05-13T01:53:04.7003978Z 
-2026-05-13T01:53:04.7004878Z --- kafkarestproxy ---
-2026-05-13T01:53:04.8193057Z NAME        READY    REPLICAS   PHASE    MSG
-2026-05-13T01:53:04.8193328Z kafkarest   <none>   <none>     <none>   <none>
-2026-05-13T01:53:04.9431776Z kafkarest:
-2026-05-13T01:53:04.9432632Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=oauthForRest: missing authentication.oauth struct
-2026-05-13T01:53:04.9476960Z 
-2026-05-13T01:53:04.9478039Z --- controlcenter ---
-2026-05-13T01:53:05.0664603Z NAME            READY    REPLICAS   PHASE    MSG
-2026-05-13T01:53:05.0664950Z controlcenter   <none>   <none>     <none>   <none>
-2026-05-13T01:53:05.1947295Z controlcenter:
-2026-05-13T01:53:05.1950372Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=name connect-cluster, oauthForRest: missing authentication.oauth struct
-2026-05-13T01:53:05.1997262Z 
-2026-05-13T01:53:05.1998401Z --- kafkarestclass ---
-2026-05-13T01:53:05.3191159Z NAME      READY    REPLICAS   PHASE    MSG
-2026-05-13T01:53:05.3191453Z default   <none>   <none>     <none>   <none>
-2026-05-13T01:53:05.4538103Z default:
-2026-05-13T01:53:05.4593626Z 
-2026-05-13T01:53:05.4594962Z === Pods (all in namespace) ===
-2026-05-13T01:53:05.5812248Z NAME                                                  READY   STATUS      RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
-2026-05-13T01:53:05.5813461Z busybox                                               0/1     Completed   0          20d   10.40.12.11   dp12055oxc-wpxl-srrn8   <none>           <none>
-2026-05-13T01:53:05.5815316Z confluent-manager-for-apache-flink-64d4d785f8-pxbr7   1/1     Running     0          12d   10.40.12.12   dp12055oxc-wpxl-srrn8   <none>           <none>
-2026-05-13T01:53:05.5856992Z 
-2026-05-13T01:53:05.5857447Z === PVCs ===
-2026-05-13T01:53:05.7107695Z 
-2026-05-13T01:53:05.7108764Z === Full SR CR yaml (looking for unrendered fields) ===
-2026-05-13T01:53:05.8330022Z spec:
-2026-05-13T01:53:05.8330479Z   authentication:
-2026-05-13T01:53:05.8331166Z     oauth:
-2026-05-13T01:53:05.8331383Z       configuration:
-2026-05-13T01:53:05.8331563Z         audience: Confluent,account,api://default
-2026-05-13T01:53:05.8331804Z         expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-2026-05-13T01:53:05.8332052Z         groupsClaimName: dahDev_groups
-2026-05-13T01:53:05.8332265Z         jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-2026-05-13T01:53:05.8332558Z         scope: 11547.DAH(Dev)
-2026-05-13T01:53:05.8332713Z         subClaimName: sub
-2026-05-13T01:53:05.8332920Z         tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-2026-05-13T01:53:05.8333425Z       secretRef: oauth-schemaregistry
-2026-05-13T01:53:05.8333590Z     type: oauth
-2026-05-13T01:53:05.8333715Z   authorization:
-2026-05-13T01:53:05.8333857Z     type: rbac
-2026-05-13T01:53:05.8334001Z   configOverrides:
-2026-05-13T01:53:05.8334140Z     server:
-2026-05-13T01:53:05.8334375Z     - schema.registry.group.id=schema-registry
-2026-05-13T01:53:05.8334610Z     - kafkastore.topic=_schemas
-2026-05-13T01:53:05.8334855Z     - kafkastore.topic.replication.factor=3
-2026-05-13T01:53:05.8335085Z     - inter.instance.protocol=https
-2026-05-13T01:53:05.8336076Z     - confluent.schema.registry.auth.mechanism=JETTY_AUTH
-2026-05-13T01:53:05.8336546Z     - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
-2026-05-13T01:53:05.8336996Z     - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
-2026-05-13T01:53:05.8337219Z   dependencies:
-2026-05-13T01:53:05.8337358Z     kafka:
-2026-05-13T01:53:05.8337484Z       authentication:
-2026-05-13T01:53:05.8337636Z         oauthSettings:
-2026-05-13T01:53:05.8337816Z           scope: 11547.DAH(Dev)
-2026-05-13T01:53:05.8338025Z           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-2026-05-13T01:53:05.8338229Z         type: oauth
-2026-05-13T01:53:05.8338542Z       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
-2026-05-13T01:53:05.8338738Z       tls:
-2026-05-13T01:53:05.8338883Z         enabled: true
-2026-05-13T01:53:05.8339023Z     mds:
-2026-05-13T01:53:05.8339163Z       authentication:
-2026-05-13T01:53:05.8339312Z         type: oauth
-2026-05-13T01:53:05.8339595Z       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
-2026-05-13T01:53:05.8339801Z       tokenKeyPair:
-2026-05-13T01:53:05.8340015Z         secretRef: mds-token-keypair
-2026-05-13T01:53:05.8340171Z   image:
-2026-05-13T01:53:05.8340508Z     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
-2026-05-13T01:53:05.8340961Z     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.59
-2026-05-13T01:53:05.8341192Z   license:
-2026-05-13T01:53:05.8341392Z     secretRef: confluent-license
-2026-05-13T01:53:05.8341855Z   podTemplate:
-2026-05-13T01:53:05.8342076Z     serviceAccountName: flink-operator
-2026-05-13T01:53:05.8342259Z   replicas: 1
-2026-05-13T01:53:05.8342489Z   tls:
-2026-05-13T01:53:05.8342648Z     secretRef: schemaregistry-tls
-2026-05-13T01:53:05.8342786Z status:
-2026-05-13T01:53:05.8342881Z 
-2026-05-13T01:53:05.8343056Z === CFK operator pod logs (last 200 lines, filtered) ===
-2026-05-13T01:53:06.0767404Z (could not locate confluent-operator pod)
-2026-05-13T01:53:06.0767603Z 
-2026-05-13T01:53:06.0767765Z === End of diagnostics ===
-2026-05-13T01:53:06.0846804Z ##[section]Finishing: Diagnostics: dump Secret + CR state before install
+2026-05-13T02:08:47.5704990Z ##[section]Starting: Create prerequisite Opaque Secrets and describe
+2026-05-13T02:08:47.5712893Z ==============================================================================
+2026-05-13T02:08:47.5713091Z Task         : Bash
+2026-05-13T02:08:47.5713151Z Description  : Run a Bash script on macOS, Linux, or Windows
+2026-05-13T02:08:47.5713249Z Version      : 3.231.4
+2026-05-13T02:08:47.5713363Z Author       : Microsoft Corporation
+2026-05-13T02:08:47.5713438Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+2026-05-13T02:08:47.5713591Z ==============================================================================
+2026-05-13T02:08:47.8403865Z Generating script.
+2026-05-13T02:08:47.8423875Z ========================== Starting Command Output ===========================
+2026-05-13T02:08:47.8436804Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/9cbde8ed-f53d-4259-8d99-3ebcce75798b.sh
+2026-05-13T02:08:47.8514582Z === Creating prerequisite Secrets in dah-flink-dev ===
+2026-05-13T02:08:47.8515474Z 
+2026-05-13T02:08:47.8516341Z === confluent-license ===
+2026-05-13T02:08:48.5394530Z secret/confluent-license configured
+2026-05-13T02:08:48.5580006Z 
+2026-05-13T02:08:48.5581333Z === mds-token-keypair ===
+2026-05-13T02:08:49.2182240Z secret/mds-token-keypair configured
+2026-05-13T02:08:49.2322571Z 
+2026-05-13T02:08:49.2323990Z === sasl-plain-internal ===
+2026-05-13T02:08:49.8911794Z secret/sasl-plain-internal configured
+2026-05-13T02:08:49.9025464Z 
+2026-05-13T02:08:49.9026561Z === oauth-broker ===
+2026-05-13T02:08:50.5657404Z secret/oauth-broker configured
+2026-05-13T02:08:50.5724584Z 
+2026-05-13T02:08:50.5725852Z === oauth-schemaregistry ===
+2026-05-13T02:08:51.2467492Z secret/oauth-schemaregistry configured
+2026-05-13T02:08:51.2539373Z 
+2026-05-13T02:08:51.2540441Z === oauth-connect ===
+2026-05-13T02:08:51.8969591Z secret/oauth-connect configured
+2026-05-13T02:08:51.9045418Z 
+2026-05-13T02:08:51.9046717Z === oauth-kafkarest ===
+2026-05-13T02:08:52.5524094Z secret/oauth-kafkarest configured
+2026-05-13T02:08:52.5591205Z 
+2026-05-13T02:08:52.5592295Z === oauth-controlcenter ===
+2026-05-13T02:08:53.2095176Z secret/oauth-controlcenter configured
+2026-05-13T02:08:53.2162790Z 
+2026-05-13T02:08:53.2163834Z === oauth-mds-rest ===
+2026-05-13T02:08:53.8794594Z secret/oauth-mds-rest configured
+2026-05-13T02:08:53.8867537Z 
+2026-05-13T02:08:53.8868620Z === c3-prometheus-basic-auth ===
+2026-05-13T02:08:54.5215802Z secret/c3-prometheus-basic-auth configured
+2026-05-13T02:08:54.5272622Z 
+2026-05-13T02:08:54.5273456Z === c3-alertmanager-basic-auth ===
+2026-05-13T02:08:55.1791877Z secret/c3-alertmanager-basic-auth configured
+2026-05-13T02:08:55.1863258Z 
+2026-05-13T02:08:55.1864221Z === oc describe for every prereq Secret ===
+2026-05-13T02:08:55.1866096Z 
+2026-05-13T02:08:55.1866825Z --- confluent-license ---
+2026-05-13T02:08:55.3218551Z Name:         confluent-license
+2026-05-13T02:08:55.3219084Z Namespace:    dah-flink-dev
+2026-05-13T02:08:55.3219606Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:55.3220123Z               app.kubernetes.io/instance=confluent-license
+2026-05-13T02:08:55.3220496Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:55.3220958Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:55.3221734Z               fcbint.net/app-id=11547
+2026-05-13T02:08:55.3222026Z Annotations:  <none>
+2026-05-13T02:08:55.3222211Z 
+2026-05-13T02:08:55.3222606Z Type:  Opaque
+2026-05-13T02:08:55.3222820Z 
+2026-05-13T02:08:55.3223516Z Data
+2026-05-13T02:08:55.3223737Z ====
+2026-05-13T02:08:55.3223883Z license.txt:  644 bytes
+2026-05-13T02:08:55.3265428Z 
+2026-05-13T02:08:55.3266072Z --- mds-token-keypair ---
+2026-05-13T02:08:55.4621978Z Name:         mds-token-keypair
+2026-05-13T02:08:55.4623456Z Namespace:    dah-flink-dev
+2026-05-13T02:08:55.4623803Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:55.4624082Z               app.kubernetes.io/instance=mds-token-keypair
+2026-05-13T02:08:55.4624354Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:55.4625823Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:55.4626098Z               fcbint.net/app-id=11547
+2026-05-13T02:08:55.4626259Z Annotations:  <none>
+2026-05-13T02:08:55.4626322Z 
+2026-05-13T02:08:55.4626458Z Type:  Opaque
+2026-05-13T02:08:55.4626514Z 
+2026-05-13T02:08:55.4627367Z Data
+2026-05-13T02:08:55.4627536Z ====
+2026-05-13T02:08:55.4627689Z mdsPublicKey.pem:     451 bytes
+2026-05-13T02:08:55.4628058Z mdsTokenKeyPair.pem:  1704 bytes
+2026-05-13T02:08:55.4669460Z 
+2026-05-13T02:08:55.4670052Z --- sasl-plain-internal ---
+2026-05-13T02:08:55.5992684Z Name:         sasl-plain-internal
+2026-05-13T02:08:55.5993214Z Namespace:    dah-flink-dev
+2026-05-13T02:08:55.5993842Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:55.5994401Z               app.kubernetes.io/instance=sasl-plain-internal
+2026-05-13T02:08:55.5995356Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:55.5995742Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:55.5995998Z               fcbint.net/app-id=11547
+2026-05-13T02:08:55.5996160Z Annotations:  <none>
+2026-05-13T02:08:55.5996239Z 
+2026-05-13T02:08:55.5996383Z Type:  Opaque
+2026-05-13T02:08:55.5996445Z 
+2026-05-13T02:08:55.5996568Z Data
+2026-05-13T02:08:55.5996693Z ====
+2026-05-13T02:08:55.5996930Z kafka-server-listener-internal-plain-users.json:  231 bytes
+2026-05-13T02:08:55.5997194Z plain-interbroker.txt:                            37 bytes
+2026-05-13T02:08:55.6040064Z 
+2026-05-13T02:08:55.6040794Z --- oauth-broker ---
+2026-05-13T02:08:55.7296865Z Name:         oauth-broker
+2026-05-13T02:08:55.7297560Z Namespace:    dah-flink-dev
+2026-05-13T02:08:55.7298487Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:55.7299904Z               app.kubernetes.io/instance=oauth-broker
+2026-05-13T02:08:55.7300283Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:55.7300550Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:55.7300835Z               fcbint.net/app-id=11547
+2026-05-13T02:08:55.7300993Z Annotations:  <none>
+2026-05-13T02:08:55.7301055Z 
+2026-05-13T02:08:55.7301188Z Type:  Opaque
+2026-05-13T02:08:55.7301245Z 
+2026-05-13T02:08:55.7301372Z Data
+2026-05-13T02:08:55.7301498Z ====
+2026-05-13T02:08:55.7301638Z clientId:      20 bytes
+2026-05-13T02:08:55.7301792Z clientSecret:  64 bytes
+2026-05-13T02:08:55.7344696Z 
+2026-05-13T02:08:55.7346027Z --- oauth-schemaregistry ---
+2026-05-13T02:08:55.8643651Z Name:         oauth-schemaregistry
+2026-05-13T02:08:55.8644014Z Namespace:    dah-flink-dev
+2026-05-13T02:08:55.8644346Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:55.8644625Z               app.kubernetes.io/instance=oauth-schemaregistry
+2026-05-13T02:08:55.8644924Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:55.8645189Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:55.8645449Z               fcbint.net/app-id=11547
+2026-05-13T02:08:55.8645628Z Annotations:  <none>
+2026-05-13T02:08:55.8645690Z 
+2026-05-13T02:08:55.8645822Z Type:  Opaque
+2026-05-13T02:08:55.8645892Z 
+2026-05-13T02:08:55.8646000Z Data
+2026-05-13T02:08:55.8646128Z ====
+2026-05-13T02:08:55.8646268Z clientId:      20 bytes
+2026-05-13T02:08:55.8646648Z clientSecret:  64 bytes
+2026-05-13T02:08:55.8692058Z 
+2026-05-13T02:08:55.8693114Z --- oauth-connect ---
+2026-05-13T02:08:55.9984258Z Name:         oauth-connect
+2026-05-13T02:08:55.9984551Z Namespace:    dah-flink-dev
+2026-05-13T02:08:55.9984804Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:55.9985089Z               app.kubernetes.io/instance=oauth-connect
+2026-05-13T02:08:55.9985375Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:55.9985666Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:55.9985934Z               fcbint.net/app-id=11547
+2026-05-13T02:08:55.9986093Z Annotations:  <none>
+2026-05-13T02:08:55.9986914Z 
+2026-05-13T02:08:55.9987051Z Type:  Opaque
+2026-05-13T02:08:55.9987107Z 
+2026-05-13T02:08:55.9987228Z Data
+2026-05-13T02:08:55.9993560Z ====
+2026-05-13T02:08:55.9993781Z clientId:      20 bytes
+2026-05-13T02:08:55.9993941Z clientSecret:  64 bytes
+2026-05-13T02:08:56.0033466Z 
+2026-05-13T02:08:56.0034604Z --- oauth-kafkarest ---
+2026-05-13T02:08:56.1310073Z Name:         oauth-kafkarest
+2026-05-13T02:08:56.1315604Z Namespace:    dah-flink-dev
+2026-05-13T02:08:56.1315922Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:56.1316198Z               app.kubernetes.io/instance=oauth-kafkarest
+2026-05-13T02:08:56.1316483Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:56.1316750Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:56.1317029Z               fcbint.net/app-id=11547
+2026-05-13T02:08:56.1317187Z Annotations:  <none>
+2026-05-13T02:08:56.1317249Z 
+2026-05-13T02:08:56.1317379Z Type:  Opaque
+2026-05-13T02:08:56.1317434Z 
+2026-05-13T02:08:56.1317567Z Data
+2026-05-13T02:08:56.1317693Z ====
+2026-05-13T02:08:56.1317830Z clientId:      20 bytes
+2026-05-13T02:08:56.1317982Z clientSecret:  64 bytes
+2026-05-13T02:08:56.1358565Z 
+2026-05-13T02:08:56.1359185Z --- oauth-controlcenter ---
+2026-05-13T02:08:56.2551187Z Name:         oauth-controlcenter
+2026-05-13T02:08:56.2551598Z Namespace:    dah-flink-dev
+2026-05-13T02:08:56.2551855Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:56.2552127Z               app.kubernetes.io/instance=oauth-controlcenter
+2026-05-13T02:08:56.2552631Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:56.2552902Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:56.2553153Z               fcbint.net/app-id=11547
+2026-05-13T02:08:56.2553317Z Annotations:  <none>
+2026-05-13T02:08:56.2554174Z 
+2026-05-13T02:08:56.2554315Z Type:  Opaque
+2026-05-13T02:08:56.2554372Z 
+2026-05-13T02:08:56.2554499Z Data
+2026-05-13T02:08:56.2554624Z ====
+2026-05-13T02:08:56.2554793Z clientSecret:  64 bytes
+2026-05-13T02:08:56.2554942Z clientId:      20 bytes
+2026-05-13T02:08:56.2594530Z 
+2026-05-13T02:08:56.2595198Z --- oauth-mds-rest ---
+2026-05-13T02:08:56.3795147Z Name:         oauth-mds-rest
+2026-05-13T02:08:56.3795812Z Namespace:    dah-flink-dev
+2026-05-13T02:08:56.3796929Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:56.3797332Z               app.kubernetes.io/instance=oauth-mds-rest
+2026-05-13T02:08:56.3797615Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:56.3797895Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:56.3798166Z               fcbint.net/app-id=11547
+2026-05-13T02:08:56.3798338Z Annotations:  <none>
+2026-05-13T02:08:56.3798402Z 
+2026-05-13T02:08:56.3798539Z Type:  Opaque
+2026-05-13T02:08:56.3798629Z 
+2026-05-13T02:08:56.3798756Z Data
+2026-05-13T02:08:56.3798893Z ====
+2026-05-13T02:08:56.3799041Z clientId:      20 bytes
+2026-05-13T02:08:56.3799203Z clientSecret:  64 bytes
+2026-05-13T02:08:56.3840287Z 
+2026-05-13T02:08:56.3841458Z --- c3-prometheus-basic-auth ---
+2026-05-13T02:08:56.5254878Z Name:         c3-prometheus-basic-auth
+2026-05-13T02:08:56.5255195Z Namespace:    dah-flink-dev
+2026-05-13T02:08:56.5255450Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:56.5255739Z               app.kubernetes.io/instance=c3-prometheus-basic-auth
+2026-05-13T02:08:56.5256033Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:56.5256297Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:56.5256528Z               fcbint.net/app-id=11547
+2026-05-13T02:08:56.5256699Z Annotations:  <none>
+2026-05-13T02:08:56.5256775Z 
+2026-05-13T02:08:56.5256908Z Type:  Opaque
+2026-05-13T02:08:56.5256964Z 
+2026-05-13T02:08:56.5257092Z Data
+2026-05-13T02:08:56.5257243Z ====
+2026-05-13T02:08:56.5257380Z password:  8 bytes
+2026-05-13T02:08:56.5257573Z username:  9 bytes
+2026-05-13T02:08:56.5298805Z 
+2026-05-13T02:08:56.5299877Z --- c3-alertmanager-basic-auth ---
+2026-05-13T02:08:56.6605926Z Name:         c3-alertmanager-basic-auth
+2026-05-13T02:08:56.6606269Z Namespace:    dah-flink-dev
+2026-05-13T02:08:56.6606522Z Labels:       app.kubernetes.io/component=cfk-prereq
+2026-05-13T02:08:56.6606816Z               app.kubernetes.io/instance=c3-alertmanager-basic-auth
+2026-05-13T02:08:56.6607100Z               app.kubernetes.io/name=confluent-platform
+2026-05-13T02:08:56.6607362Z               app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:08:56.6607599Z               fcbint.net/app-id=11547
+2026-05-13T02:08:56.6607748Z Annotations:  <none>
+2026-05-13T02:08:56.6607831Z 
+2026-05-13T02:08:56.6607969Z Type:  Opaque
+2026-05-13T02:08:56.6608026Z 
+2026-05-13T02:08:56.6608145Z Data
+2026-05-13T02:08:56.6608282Z ====
+2026-05-13T02:08:56.6608416Z password:  8 bytes
+2026-05-13T02:08:56.6608585Z username:  9 bytes
+2026-05-13T02:08:56.6653542Z 
+2026-05-13T02:08:56.6654515Z === Summary ===
+2026-05-13T02:08:56.9784213Z NAME                         TYPE     DATA   AGE
+2026-05-13T02:08:56.9785773Z confluent-license            Opaque   1      22d
+2026-05-13T02:08:56.9786845Z mds-token-keypair            Opaque   2      8h
+2026-05-13T02:08:56.9787519Z sasl-plain-internal          Opaque   2      8h
+2026-05-13T02:08:56.9788043Z oauth-broker                 Opaque   2      8h
+2026-05-13T02:08:56.9788553Z oauth-schemaregistry         Opaque   2      8h
+2026-05-13T02:08:56.9789064Z oauth-connect                Opaque   2      8h
+2026-05-13T02:08:56.9789567Z oauth-kafkarest              Opaque   2      8h
+2026-05-13T02:08:56.9790165Z oauth-controlcenter          Opaque   2      8h
+2026-05-13T02:08:56.9790672Z oauth-mds-rest               Opaque   2      8h
+2026-05-13T02:08:56.9791242Z c3-prometheus-basic-auth     Opaque   2      8h
+2026-05-13T02:08:56.9791784Z c3-alertmanager-basic-auth   Opaque   2      8h
+2026-05-13T02:08:56.9913628Z ##[section]Finishing: Create prerequisite Opaque Secrets and describe
+
+
+
+2026-05-13T02:09:47.8238272Z ##[section]Starting: Diagnostics: dump Secret + CR state before install
+2026-05-13T02:09:47.8247509Z ==============================================================================
+2026-05-13T02:09:47.8247707Z Task         : Bash
+2026-05-13T02:09:47.8247801Z Description  : Run a Bash script on macOS, Linux, or Windows
+2026-05-13T02:09:47.8248153Z Version      : 3.231.4
+2026-05-13T02:09:47.8248217Z Author       : Microsoft Corporation
+2026-05-13T02:09:47.8248300Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+2026-05-13T02:09:47.8248455Z ==============================================================================
+2026-05-13T02:09:48.0848874Z Generating script.
+2026-05-13T02:09:48.0883492Z ========================== Starting Command Output ===========================
+2026-05-13T02:09:48.0885516Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/c36f6d30-3ffe-4f68-b964-44f6e3d2e37b.sh
+2026-05-13T02:09:48.0973329Z === Secret: sasl-plain-internal — keys ===
+2026-05-13T02:09:48.0974102Z (expected: kafka-server-listener-internal-plain-users.json)
+2026-05-13T02:09:48.2224945Z ['kafka-server-listener-internal-plain-users.json', 'plain-interbroker.txt']
+2026-05-13T02:09:48.2262057Z 
+2026-05-13T02:09:48.2263432Z === Secret: mds-token-keypair — keys ===
+2026-05-13T02:09:48.2264206Z (expected: ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem'])
+2026-05-13T02:09:48.3618144Z ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem']
+2026-05-13T02:09:48.3658095Z 
+2026-05-13T02:09:48.3658938Z === CR: connect/connect — spec.authentication ===
+2026-05-13T02:09:48.3659253Z (expected: nested authentication.oauth.{secretRef, configuration})
+2026-05-13T02:09:48.4925907Z {
+2026-05-13T02:09:48.4926231Z     "oauth": {
+2026-05-13T02:09:48.4926386Z         "configuration": {
+2026-05-13T02:09:48.4926572Z             "audience": "Confluent,account,api://default",
+2026-05-13T02:09:48.4926796Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+2026-05-13T02:09:48.4927007Z             "groupsClaimName": "dahDev_groups",
+2026-05-13T02:09:48.4927259Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+2026-05-13T02:09:48.4927469Z             "scope": "11547.DAH(Dev)",
+2026-05-13T02:09:48.4927620Z             "subClaimName": "sub",
+2026-05-13T02:09:48.4928699Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+2026-05-13T02:09:48.4928890Z         },
+2026-05-13T02:09:48.4929410Z         "secretRef": "oauth-connect"
+2026-05-13T02:09:48.4929576Z     },
+2026-05-13T02:09:48.4929716Z     "type": "oauth"
+2026-05-13T02:09:48.4929852Z }
+2026-05-13T02:09:48.4975144Z 
+2026-05-13T02:09:48.4975897Z === CR: kafkarestproxy/kafkarest — spec.authentication ===
+2026-05-13T02:09:48.4976139Z (expected: nested authentication.oauth.{secretRef, configuration})
+2026-05-13T02:09:48.6321173Z {
+2026-05-13T02:09:48.6321657Z     "oauth": {
+2026-05-13T02:09:48.6322245Z         "configuration": {
+2026-05-13T02:09:48.6322644Z             "audience": "Confluent,account,api://default",
+2026-05-13T02:09:48.6322906Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+2026-05-13T02:09:48.6323118Z             "groupsClaimName": "dahDev_groups",
+2026-05-13T02:09:48.6323340Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+2026-05-13T02:09:48.6323569Z             "scope": "11547.DAH(Dev)",
+2026-05-13T02:09:48.6323732Z             "subClaimName": "sub",
+2026-05-13T02:09:48.6323944Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+2026-05-13T02:09:48.6324134Z         },
+2026-05-13T02:09:48.6324604Z         "secretRef": "oauth-kafkarest"
+2026-05-13T02:09:48.6324752Z     },
+2026-05-13T02:09:48.6325524Z     "type": "oauth"
+2026-05-13T02:09:48.6325660Z }
+2026-05-13T02:09:48.6369826Z 
+2026-05-13T02:09:48.6370482Z === CR: schemaregistry/schemaregistry — spec.authentication ===
+2026-05-13T02:09:48.6370726Z (expected: nested authentication.oauth.{secretRef, configuration})
+2026-05-13T02:09:48.7642217Z {
+2026-05-13T02:09:48.7642585Z     "oauth": {
+2026-05-13T02:09:48.7642733Z         "configuration": {
+2026-05-13T02:09:48.7642910Z             "audience": "Confluent,account,api://default",
+2026-05-13T02:09:48.7643167Z             "expectedIssuer": "https://myapps.firstcitizens.com/oauth2/default",
+2026-05-13T02:09:48.7643366Z             "groupsClaimName": "dahDev_groups",
+2026-05-13T02:09:48.7643588Z             "jwksEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/keys",
+2026-05-13T02:09:48.7643799Z             "scope": "11547.DAH(Dev)",
+2026-05-13T02:09:48.7643965Z             "subClaimName": "sub",
+2026-05-13T02:09:48.7644173Z             "tokenEndpointUri": "https://myapps.firstcitizens.com/oauth2/default/v1/token"
+2026-05-13T02:09:48.7644364Z         },
+2026-05-13T02:09:48.7644823Z         "secretRef": "oauth-schemaregistry"
+2026-05-13T02:09:48.7644980Z     },
+2026-05-13T02:09:48.7645115Z     "type": "oauth"
+2026-05-13T02:09:48.7645247Z }
+2026-05-13T02:09:48.7690052Z 
+2026-05-13T02:09:48.7691209Z === CR: controlcenter/controlcenter — spec.authentication ===
+2026-05-13T02:09:48.7691611Z (expected: nested authentication.oauth.{secretRef, configuration})
+2026-05-13T02:09:48.9039813Z {
+2026-05-13T02:09:48.9040138Z     "mtls": {
+2026-05-13T02:09:48.9040307Z         "sslClientAuthentication": "requested"
+2026-05-13T02:09:48.9040469Z     },
+2026-05-13T02:09:48.9040608Z     "type": "mtls"
+2026-05-13T02:09:48.9040737Z }
+2026-05-13T02:09:48.9093798Z 
+2026-05-13T02:09:48.9094556Z === Recent Warning events (last 30) ===
+2026-05-13T02:09:49.0472079Z TIME                   REASON                KIND     MSG
+2026-05-13T02:09:49.0473428Z 2026-05-12T23:37:45Z   KeyInSecretRefIssue   <none>   required one of [mds-server-publicKey.pem mdsPublicKey.pem] missing in secretRef [mds-token-keypair] for for mds public key
+2026-05-13T02:09:49.0474206Z 2026-05-12T23:37:48Z   KeyInSecretRefIssue   <none>   required at least one of the keys [kafka-server-listener-internal-plain-users.json kafka-server-plain-users.json plain-users.json] in secretRef sasl-plain-internal for authtype plain
+2026-05-13T02:09:49.0475190Z 2026-05-13T01:37:28Z   InputError            <none>   missing inter controller credentials, please configure any one of the following keys kafka-server-listener-replication-plain-interbroker.txt,kafka-server-plain-interbroker.txt,plain-interbroker.txt in secretRef sasl-plain-internal
+2026-05-13T02:09:49.0476761Z 2026-05-13T02:00:15Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T02:09:49.0477702Z 2026-05-13T02:01:02Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T02:09:49.0478601Z 2026-05-13T02:05:36Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T02:09:49.0479212Z 2026-05-13T02:07:25Z   Warning               <none>   waiting for at-least one kafka pod availability
+2026-05-13T02:09:49.0479693Z 2026-05-13T02:07:27Z   Warning               <none>   waiting for at-least one kRaft controller pod availability
+2026-05-13T02:09:49.0480138Z 2026-05-13T02:07:28Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
+2026-05-13T02:09:49.0480680Z 2026-05-13T02:07:30Z   InputError            <none>   plain-interbroker.txt in secretRef sasl-plain-internal: username and password not formatted correctly
+2026-05-13T02:09:49.0481435Z 2026-05-13T02:07:36Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T02:09:49.0482880Z 2026-05-13T02:07:47Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
+2026-05-13T02:09:49.0483472Z 2026-05-13T02:07:48Z   InputError            <none>   oauthForRest: missing authentication.oauth struct
+2026-05-13T02:09:49.0484209Z 2026-05-13T02:08:31Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T02:09:49.0485108Z 2026-05-13T02:08:35Z   WarningAdmission      <none>   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T02:09:49.0485576Z 
+2026-05-13T02:09:49.0485797Z === CFK CR status conditions ===
+2026-05-13T02:09:49.0485946Z 
+2026-05-13T02:09:49.0486164Z --- kafka ---
+2026-05-13T02:09:49.1773609Z NAME    READY    REPLICAS   PHASE    MSG
+2026-05-13T02:09:49.1773984Z kafka   <none>   <none>     <none>   <none>
+2026-05-13T02:09:49.3139390Z kafka:
+2026-05-13T02:09:49.3140166Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=waiting for at-least one kRaft controller pod availability
+2026-05-13T02:09:49.3190005Z 
+2026-05-13T02:09:49.3190744Z --- kraftcontroller ---
+2026-05-13T02:09:49.4446392Z NAME              READY    REPLICAS   PHASE    MSG
+2026-05-13T02:09:49.4446703Z kraftcontroller   <none>   <none>     <none>   <none>
+2026-05-13T02:09:49.5700760Z kraftcontroller:
+2026-05-13T02:09:49.5701523Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=must contain value in format license=<license_value>
+2026-05-13T02:09:49.5747945Z 
+2026-05-13T02:09:49.5749000Z --- schemaregistry ---
+2026-05-13T02:09:49.6969023Z NAME             READY    REPLICAS   PHASE    MSG
+2026-05-13T02:09:49.6970296Z schemaregistry   <none>   <none>     <none>   <none>
+2026-05-13T02:09:49.8256940Z schemaregistry:
+2026-05-13T02:09:49.8257668Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=oauthForRest: missing authentication.oauth struct
+2026-05-13T02:09:49.8306042Z 
+2026-05-13T02:09:49.8306687Z --- connect ---
+2026-05-13T02:09:49.9542609Z NAME      READY    REPLICAS   PHASE    MSG
+2026-05-13T02:09:49.9543845Z connect   <none>   <none>     <none>   <none>
+2026-05-13T02:09:50.0837456Z connect:
+2026-05-13T02:09:50.0839707Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=oauthForRest: missing authentication.oauth struct
+2026-05-13T02:09:50.0887362Z 
+2026-05-13T02:09:50.0888281Z --- kafkarestproxy ---
+2026-05-13T02:09:50.2166436Z NAME        READY    REPLICAS   PHASE    MSG
+2026-05-13T02:09:50.2166735Z kafkarest   <none>   <none>     <none>   <none>
+2026-05-13T02:09:50.3444464Z kafkarest:
+2026-05-13T02:09:50.3445227Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=oauthForRest: missing authentication.oauth struct
+2026-05-13T02:09:50.3492529Z 
+2026-05-13T02:09:50.3493181Z --- controlcenter ---
+2026-05-13T02:09:50.4728053Z NAME            READY    REPLICAS   PHASE    MSG
+2026-05-13T02:09:50.5996368Z controlcenter   <none>   <none>     <none>   <none>
+2026-05-13T02:09:50.5996633Z controlcenter:
+2026-05-13T02:09:50.5997530Z   - type=platform.confluent.io/cluster-ready status=False reason=ApplyFailed message=name connect-cluster, oauthForRest: missing authentication.oauth struct
+2026-05-13T02:09:50.6041155Z 
+2026-05-13T02:09:50.6041801Z --- kafkarestclass ---
+2026-05-13T02:09:50.7240214Z NAME      READY    REPLICAS   PHASE    MSG
+2026-05-13T02:09:50.7241726Z default   <none>   <none>     <none>   <none>
+2026-05-13T02:09:50.8566302Z default:
+2026-05-13T02:09:50.8614925Z 
+2026-05-13T02:09:50.8615619Z === Pods (all in namespace) ===
+2026-05-13T02:09:50.9842521Z NAME                                                  READY   STATUS      RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+2026-05-13T02:09:50.9849336Z busybox                                               0/1     Completed   0          20d   10.40.12.11   dp12055oxc-wpxl-srrn8   <none>           <none>
+2026-05-13T02:09:50.9850145Z confluent-manager-for-apache-flink-64d4d785f8-pxbr7   1/1     Running     0          12d   10.40.12.12   dp12055oxc-wpxl-srrn8   <none>           <none>
+2026-05-13T02:09:50.9893757Z 
+2026-05-13T02:09:50.9894572Z === PVCs ===
+2026-05-13T02:09:51.1178404Z 
+2026-05-13T02:09:51.1179490Z === Full SR CR yaml (looking for unrendered fields) ===
+2026-05-13T02:09:51.2477596Z spec:
+2026-05-13T02:09:51.2477912Z   authentication:
+2026-05-13T02:09:51.2478086Z     oauth:
+2026-05-13T02:09:51.2478230Z       configuration:
+2026-05-13T02:09:51.2478407Z         audience: Confluent,account,api://default
+2026-05-13T02:09:51.2478631Z         expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+2026-05-13T02:09:51.2478851Z         groupsClaimName: dahDev_groups
+2026-05-13T02:09:51.2479073Z         jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+2026-05-13T02:09:51.2479276Z         scope: 11547.DAH(Dev)
+2026-05-13T02:09:51.2479433Z         subClaimName: sub
+2026-05-13T02:09:51.2479624Z         tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+2026-05-13T02:09:51.2480174Z       secretRef: oauth-schemaregistry
+2026-05-13T02:09:51.2480336Z     type: oauth
+2026-05-13T02:09:51.2480479Z   authorization:
+2026-05-13T02:09:51.2480625Z     type: rbac
+2026-05-13T02:09:51.2480769Z   configOverrides:
+2026-05-13T02:09:51.2480907Z     server:
+2026-05-13T02:09:51.2481133Z     - schema.registry.group.id=schema-registry
+2026-05-13T02:09:51.2481371Z     - kafkastore.topic=_schemas
+2026-05-13T02:09:51.2481623Z     - kafkastore.topic.replication.factor=3
+2026-05-13T02:09:51.2481861Z     - inter.instance.protocol=https
+2026-05-13T02:09:51.2482113Z     - confluent.schema.registry.auth.mechanism=JETTY_AUTH
+2026-05-13T02:09:51.2483439Z     - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
+2026-05-13T02:09:51.2483905Z     - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
+2026-05-13T02:09:51.2484122Z   dependencies:
+2026-05-13T02:09:51.2484264Z     kafka:
+2026-05-13T02:09:51.2484412Z       authentication:
+2026-05-13T02:09:51.2484567Z         oauthSettings:
+2026-05-13T02:09:51.2484719Z           scope: 11547.DAH(Dev)
+2026-05-13T02:09:51.2484928Z           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+2026-05-13T02:09:51.2485132Z         type: oauth
+2026-05-13T02:09:51.2485432Z       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+2026-05-13T02:09:51.2485622Z       tls:
+2026-05-13T02:09:51.2485762Z         enabled: true
+2026-05-13T02:09:51.2485897Z     mds:
+2026-05-13T02:09:51.2486068Z       authentication:
+2026-05-13T02:09:51.2486198Z         type: oauth
+2026-05-13T02:09:51.2486519Z       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+2026-05-13T02:09:51.2486720Z       tokenKeyPair:
+2026-05-13T02:09:51.2486935Z         secretRef: mds-token-keypair
+2026-05-13T02:09:51.2487088Z   image:
+2026-05-13T02:09:51.2487433Z     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
+2026-05-13T02:09:51.2487875Z     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.59
+2026-05-13T02:09:51.2488112Z   license:
+2026-05-13T02:09:51.2488318Z     secretRef: confluent-license
+2026-05-13T02:09:51.2488476Z   podTemplate:
+2026-05-13T02:09:51.2488925Z     serviceAccountName: flink-operator
+2026-05-13T02:09:51.2489087Z   replicas: 1
+2026-05-13T02:09:51.2489221Z   tls:
+2026-05-13T02:09:51.2489357Z     secretRef: schemaregistry-tls
+2026-05-13T02:09:51.2489509Z status:
+2026-05-13T02:09:51.2489578Z 
+2026-05-13T02:09:51.2489744Z === CFK operator pod logs (last 200 lines, filtered) ===
+2026-05-13T02:09:51.3779604Z (could not locate confluent-operator pod — searched by image fingerprint)
+2026-05-13T02:09:51.3780571Z Listing all pods across all namespaces to help locate it:
+2026-05-13T02:09:51.5090088Z 
+2026-05-13T02:09:51.5090809Z === End of diagnostics ===
+2026-05-13T02:09:51.5160188Z ##[section]Finishing: Diagnostics: dump Secret + CR state before install
+
+
+
+2026-05-13T02:09:51.5178953Z ##[section]Starting: Pre-flight: verify env folder + prerequisite Secrets
+2026-05-13T02:09:51.5184918Z ==============================================================================
+2026-05-13T02:09:51.5185049Z Task         : Bash
+2026-05-13T02:09:51.5185109Z Description  : Run a Bash script on macOS, Linux, or Windows
+2026-05-13T02:09:51.5185221Z Version      : 3.231.4
+2026-05-13T02:09:51.5185283Z Author       : Microsoft Corporation
+2026-05-13T02:09:51.5185375Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+2026-05-13T02:09:51.5185535Z ==============================================================================
+2026-05-13T02:09:51.6784776Z Generating script.
+2026-05-13T02:09:51.6803359Z ========================== Starting Command Output ===========================
+2026-05-13T02:09:51.6837066Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/f916354a-1d43-404f-899f-2a9ef7089959.sh
+2026-05-13T02:09:51.6870313Z === Git commit ===
+2026-05-13T02:09:51.6891205Z 4f4f4b19d501aa6ef0905bb95a5e64657d51d23a
+2026-05-13T02:09:51.6894315Z 
+2026-05-13T02:09:51.6895188Z === Verifying env folder apps/confluent-platform/dev ===
+2026-05-13T02:09:51.6895894Z OK    kafkarestclass.yaml
+2026-05-13T02:09:51.6896066Z OK    kraftcontroller.yaml
+2026-05-13T02:09:51.6896225Z OK    kafka.yaml
+2026-05-13T02:09:51.6897823Z OK    schemaregistry.yaml
+2026-05-13T02:09:51.6898199Z OK    connect.yaml
+2026-05-13T02:09:51.6898450Z OK    kafkarest.yaml
+2026-05-13T02:09:51.6898620Z OK    controlcenter.yaml
+2026-05-13T02:09:51.6899519Z OK    prereqs/kafka-tls-certificate.yaml
+2026-05-13T02:09:51.6899790Z OK    prereqs/kraftcontroller-tls-certificate.yaml
+2026-05-13T02:09:51.6900069Z OK    prereqs/schemaregistry-tls-certificate.yaml
+2026-05-13T02:09:51.6900321Z OK    prereqs/connect-tls-certificate.yaml
+2026-05-13T02:09:51.6900571Z OK    prereqs/kafkarest-tls-certificate.yaml
+2026-05-13T02:09:51.6900832Z OK    prereqs/controlcenter-tls-certificate.yaml
+2026-05-13T02:09:51.6900919Z 
+2026-05-13T02:09:51.6901089Z === Refusing to apply if any REPLACE_WITH_ marker remains ===
+2026-05-13T02:09:51.6926065Z (no unresolved placeholders)
+2026-05-13T02:09:51.6926170Z 
+2026-05-13T02:09:51.6926503Z === Verifying prerequisite Secrets in dah-flink-dev ===
+2026-05-13T02:09:51.8182349Z OK    confluent-license
+2026-05-13T02:09:51.9525544Z OK    sasl-plain-internal
+2026-05-13T02:09:52.0876435Z OK    mds-token-keypair
+2026-05-13T02:09:52.2145708Z OK    oauth-broker
+2026-05-13T02:09:52.3387204Z OK    oauth-schemaregistry
+2026-05-13T02:09:52.4696019Z OK    oauth-connect
+2026-05-13T02:09:52.5919618Z OK    oauth-kafkarest
+2026-05-13T02:09:52.7179903Z OK    oauth-controlcenter
+2026-05-13T02:09:52.8408520Z OK    oauth-mds-rest
+2026-05-13T02:09:52.9741139Z OK    c3-prometheus-basic-auth
+2026-05-13T02:09:53.0977061Z OK    c3-alertmanager-basic-auth
+2026-05-13T02:09:53.1043679Z ##[section]Finishing: Pre-flight: verify env folder + prerequisite Secrets
+
+
+
+2026-05-13T02:09:53.1060620Z ##[section]Starting: Apply cert-manager Certificates and wait for TLS Secrets
+2026-05-13T02:09:53.1066611Z ==============================================================================
+2026-05-13T02:09:53.1066738Z Task         : Bash
+2026-05-13T02:09:53.1066798Z Description  : Run a Bash script on macOS, Linux, or Windows
+2026-05-13T02:09:53.1066912Z Version      : 3.231.4
+2026-05-13T02:09:53.1066974Z Author       : Microsoft Corporation
+2026-05-13T02:09:53.1067070Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+2026-05-13T02:09:53.1067201Z ==============================================================================
+2026-05-13T02:09:53.3166326Z Generating script.
+2026-05-13T02:09:53.3217874Z ========================== Starting Command Output ===========================
+2026-05-13T02:09:53.3219975Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/3559f026-4b28-406d-90a8-0de78c5c5cb2.sh
+2026-05-13T02:09:53.3283276Z === Applying Certificate CRs ===
+2026-05-13T02:09:53.3283516Z 
+2026-05-13T02:09:53.3284021Z + oc apply -f apps/confluent-platform/dev/prereqs/connect-tls-certificate.yaml
+2026-05-13T02:09:53.9565949Z certificate.cert-manager.io/connect-tls unchanged
+2026-05-13T02:09:53.9636727Z 
+2026-05-13T02:09:53.9638114Z + oc apply -f apps/confluent-platform/dev/prereqs/controlcenter-tls-certificate.yaml
+2026-05-13T02:09:54.6085411Z certificate.cert-manager.io/controlcenter-tls unchanged
+2026-05-13T02:09:54.6153492Z 
+2026-05-13T02:09:54.6154885Z + oc apply -f apps/confluent-platform/dev/prereqs/kafkarest-tls-certificate.yaml
+2026-05-13T02:09:55.2376524Z certificate.cert-manager.io/kafkarest-tls unchanged
+2026-05-13T02:09:55.2440930Z 
+2026-05-13T02:09:55.2442075Z + oc apply -f apps/confluent-platform/dev/prereqs/kafka-tls-certificate.yaml
+2026-05-13T02:09:55.8955554Z certificate.cert-manager.io/kafka-tls unchanged
+2026-05-13T02:09:55.9044939Z 
+2026-05-13T02:09:55.9046768Z + oc apply -f apps/confluent-platform/dev/prereqs/kraftcontroller-tls-certificate.yaml
+2026-05-13T02:09:56.5448982Z certificate.cert-manager.io/kraftcontroller-tls unchanged
+2026-05-13T02:09:56.5517615Z 
+2026-05-13T02:09:56.5518775Z + oc apply -f apps/confluent-platform/dev/prereqs/schemaregistry-tls-certificate.yaml
+2026-05-13T02:09:57.1804563Z certificate.cert-manager.io/schemaregistry-tls unchanged
+2026-05-13T02:09:57.1877100Z 
+2026-05-13T02:09:57.1878280Z === Waiting for Keyfactor to issue all 6 *-tls Secrets ===
+2026-05-13T02:09:57.1878846Z 
+2026-05-13T02:09:57.1879122Z Waiting for secret/kafka-tls...
+2026-05-13T02:09:57.3328309Z   ready after 10s
+2026-05-13T02:09:57.3329308Z 
+2026-05-13T02:09:57.4685691Z Waiting for secret/kraftcontroller-tls...
+2026-05-13T02:09:57.4685953Z   ready after 10s
+2026-05-13T02:09:57.4686024Z 
+2026-05-13T02:09:57.4686248Z Waiting for secret/schemaregistry-tls...
+2026-05-13T02:09:57.6040442Z   ready after 10s
+2026-05-13T02:09:57.6040859Z 
+2026-05-13T02:09:57.6041901Z Waiting for secret/connect-tls...
+2026-05-13T02:09:57.7363266Z   ready after 10s
+2026-05-13T02:09:57.7363420Z 
+2026-05-13T02:09:57.7363927Z Waiting for secret/kafkarest-tls...
+2026-05-13T02:09:57.8680100Z   ready after 10s
+2026-05-13T02:09:57.8680604Z 
+2026-05-13T02:09:57.8681636Z Waiting for secret/controlcenter-tls...
+2026-05-13T02:09:57.9948127Z   ready after 10s
+2026-05-13T02:09:58.0025515Z ##[section]Finishing: Apply cert-manager Certificates and wait for TLS Secrets
+
+
+
+2026-05-13T02:09:58.0043814Z ##[section]Starting: Apply Confluent Platform CRs
+2026-05-13T02:09:58.0050076Z ==============================================================================
+2026-05-13T02:09:58.0050220Z Task         : Bash
+2026-05-13T02:09:58.0050286Z Description  : Run a Bash script on macOS, Linux, or Windows
+2026-05-13T02:09:58.0050399Z Version      : 3.231.4
+2026-05-13T02:09:58.0050463Z Author       : Microsoft Corporation
+2026-05-13T02:09:58.0050553Z Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+2026-05-13T02:09:58.0050664Z ==============================================================================
+2026-05-13T02:09:58.1748372Z Generating script.
+2026-05-13T02:09:58.1763658Z ========================== Starting Command Output ===========================
+2026-05-13T02:09:58.1773622Z [command]/bin//bash /opt/azure_pipelines/_work/_temp/51269fe2-fb08-489f-96d0-a025c1b900ea.sh
+2026-05-13T02:09:58.1831542Z === Apply order (CFK dependency order) ===
+2026-05-13T02:09:58.1833255Z 
+2026-05-13T02:09:58.1835220Z + oc apply -f apps/confluent-platform/dev/kafkarestclass.yaml
+2026-05-13T02:09:58.8513466Z kafkarestclass.platform.confluent.io/default unchanged
+2026-05-13T02:09:58.8585548Z 
+2026-05-13T02:09:58.8586489Z + oc apply -f apps/confluent-platform/dev/kraftcontroller.yaml
+2026-05-13T02:09:59.5255296Z kraftcontroller.platform.confluent.io/kraftcontroller configured
+2026-05-13T02:09:59.5317040Z 
+2026-05-13T02:09:59.5324171Z + oc apply -f apps/confluent-platform/dev/kafka.yaml
+2026-05-13T02:10:00.2309392Z kafka.platform.confluent.io/kafka configured
+2026-05-13T02:10:00.2400831Z 
+2026-05-13T02:10:00.2402293Z + oc apply -f apps/confluent-platform/dev/schemaregistry.yaml
+2026-05-13T02:10:00.9474153Z schemaregistry.platform.confluent.io/schemaregistry configured
+2026-05-13T02:10:00.9541252Z 
+2026-05-13T02:10:00.9542656Z + oc apply -f apps/confluent-platform/dev/connect.yaml
+2026-05-13T02:10:01.7275084Z connect.platform.confluent.io/connect configured
+2026-05-13T02:10:01.7343851Z 
+2026-05-13T02:10:01.7345400Z + oc apply -f apps/confluent-platform/dev/kafkarest.yaml
+2026-05-13T02:10:02.4602711Z kafkarestproxy.platform.confluent.io/kafkarest configured
+2026-05-13T02:10:02.4668548Z 
+2026-05-13T02:10:02.4669813Z + oc apply -f apps/confluent-platform/dev/controlcenter.yaml
+2026-05-13T02:10:03.1576291Z controlcenter.platform.confluent.io/controlcenter configured
+2026-05-13T02:10:03.1650576Z 
+2026-05-13T02:10:03.1651582Z === Cluster status (immediate post-apply) ===
+2026-05-13T02:10:03.3845083Z NAME                                REPLICAS   READY   STATUS   AGE
+2026-05-13T02:10:03.3845401Z kafka.platform.confluent.io/kafka   0                           7h27m
+2026-05-13T02:10:03.3845496Z 
+2026-05-13T02:10:03.3845684Z NAME                                                    REPLICAS   READY   STATUS   AGE
+2026-05-13T02:10:03.3845912Z kraftcontroller.platform.confluent.io/kraftcontroller   0                           7h27m
+2026-05-13T02:10:03.3847542Z 
+2026-05-13T02:10:03.3848714Z NAME                                                  REPLICAS   READY   STATUS   AGE
+2026-05-13T02:10:03.3848983Z schemaregistry.platform.confluent.io/schemaregistry   0                           7h27m
+2026-05-13T02:10:03.3852741Z 
+2026-05-13T02:10:03.3853363Z NAME                                    REPLICAS   READY   STATUS   AGE
+2026-05-13T02:10:03.3853567Z connect.platform.confluent.io/connect   0                           7h27m
+2026-05-13T02:10:03.3856304Z 
+2026-05-13T02:10:03.3858557Z NAME                                             REPLICAS   READY   STATUS   AGE
+2026-05-13T02:10:03.3858771Z kafkarestproxy.platform.confluent.io/kafkarest   0                           7h27m
+2026-05-13T02:10:03.3860298Z 
+2026-05-13T02:10:03.3861749Z NAME                                                REPLICAS   READY   STATUS   AGE
+2026-05-13T02:10:03.3862258Z controlcenter.platform.confluent.io/controlcenter   0                           7h15m
+2026-05-13T02:10:03.3865320Z 
+2026-05-13T02:10:03.3873197Z NAME                                           ENDPOINT   KAFKACLUSTERID   AGE
+2026-05-13T02:10:03.3874119Z kafkarestclass.platform.confluent.io/default                               7h27m
+2026-05-13T02:10:03.3918579Z 
+2026-05-13T02:10:03.3919144Z === Pods ===
+2026-05-13T02:10:03.5203446Z No resources found in dah-flink-dev namespace.
+2026-05-13T02:10:03.5252866Z 
+2026-05-13T02:10:03.5253648Z NOTE: the CFK operator takes 10-15 minutes to reconcile a full
+2026-05-13T02:10:03.5253890Z cluster on first install. The pipeline is not waiting beyond apply.
+2026-05-13T02:10:03.5254075Z Monitor convergence with:
+2026-05-13T02:10:03.5254420Z   oc -n dah-flink-dev get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter
+2026-05-13T02:10:03.5257668Z   oc -n dah-flink-dev get pods -l app.kubernetes.io/part-of=confluent-platform
+2026-05-13T02:10:03.5328223Z ##[section]Finishing: Apply Confluent Platform CRs
