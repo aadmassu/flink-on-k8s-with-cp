@@ -1,3 +1,60 @@
+Uninstall Confluent Platform CRs
+
+View raw log
+Starting: Uninstall Confluent Platform CRs
+==============================================================================
+Task         : Bash
+Description  : Run a Bash script on macOS, Linux, or Windows
+Version      : 3.231.4
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/bash
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/bin//bash /opt/azure_pipelines/_work/_temp/9b1f9cea-23d9-4ac8-832a-2ebcd48d2d9f.sh
+=== Deleting Confluent Platform CRs (reverse dependency order) ===
+
++ oc delete -f apps/confluent-platform/dev/controlcenter.yaml --ignore-not-found --wait=true --timeout=5m
+Error from server (Forbidden): error when deleting "apps/confluent-platform/dev/controlcenter.yaml": admission webhook "cfk-resources.webhooks.platform.confluent.io" denied the request: one or more persistent volumes are in Delete reclaim policy. to allow request set label: confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion
+
++ oc delete -f apps/confluent-platform/dev/kafkarest.yaml --ignore-not-found --wait=true --timeout=5m
+
++ oc delete -f apps/confluent-platform/dev/connect.yaml --ignore-not-found --wait=true --timeout=5m
+
++ oc delete -f apps/confluent-platform/dev/schemaregistry.yaml --ignore-not-found --wait=true --timeout=5m
+
++ oc delete -f apps/confluent-platform/dev/kafka.yaml --ignore-not-found --wait=true --timeout=5m
+
++ oc delete -f apps/confluent-platform/dev/kraftcontroller.yaml --ignore-not-found --wait=true --timeout=5m
+Error from server (Forbidden): error when deleting "apps/confluent-platform/dev/kraftcontroller.yaml": admission webhook "cfk-resources.webhooks.platform.confluent.io" denied the request: one or more persistent volumes are in Delete reclaim policy. to allow request set label: confluent-operator.webhooks.platform.confluent.io/allow-pv-deletion
+
++ oc delete -f apps/confluent-platform/dev/kafkarestclass.yaml --ignore-not-found --wait=true --timeout=5m
+
+=== Deleting cert-manager Certificates (cascades to *-tls Secrets) ===
++ oc delete -f apps/confluent-platform/dev/prereqs/connect-tls-certificate.yaml --ignore-not-found
++ oc delete -f apps/confluent-platform/dev/prereqs/controlcenter-tls-certificate.yaml --ignore-not-found
++ oc delete -f apps/confluent-platform/dev/prereqs/kafkarest-tls-certificate.yaml --ignore-not-found
++ oc delete -f apps/confluent-platform/dev/prereqs/kafka-tls-certificate.yaml --ignore-not-found
++ oc delete -f apps/confluent-platform/dev/prereqs/kraftcontroller-tls-certificate.yaml --ignore-not-found
++ oc delete -f apps/confluent-platform/dev/prereqs/schemaregistry-tls-certificate.yaml --ignore-not-found
+
+=== Remaining Confluent Platform objects ===
+NAME                                                    REPLICAS   READY   STATUS   AGE
+kraftcontroller.platform.confluent.io/kraftcontroller   0                           19h
+
+NAME                                                REPLICAS   READY   STATUS   AGE
+controlcenter.platform.confluent.io/controlcenter   0                           19h
+No resources found in dah-flink-dev namespace.
+
+NOTE: prerequisite Secrets (confluent-license, oauth-*, mds-token-keypair,
+sasl-plain-internal, c3-*-basic-auth) are intentionally preserved. PVCs
+from the Kafka, KRaftController, and ControlCenter StatefulSets persist
+after CR deletion. To delete them too, run the pipeline again with
+action=wipe-pvcs (separate explicit action so this destruction is
+always opt-in).
+Finishing: Uninstall Confluent Platform CRs
+
+
 Wipe orphaned CFK PVCs
 
 View raw log
@@ -11,7 +68,7 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-/bin//bash /opt/azure_pipelines/_work/_temp/73cf1abf-a78d-4e94-831d-f8d6ba8b46a9.sh
+/bin//bash /opt/azure_pipelines/_work/_temp/96ab56e7-5a9b-4eda-a9e3-0879f1be1f29.sh
 === Checking for orphaned CFK PVCs in dah-flink-dev ===
 PVCs to delete:
   - data0-controlcenter-0
@@ -19,19 +76,11 @@ PVCs to delete:
   - data0-kraftcontroller-1
   - data0-kraftcontroller-2
 
-=== Deleting PVCs ===
-+ oc delete pvc/data0-controlcenter-0 -n dah-flink-dev --wait=true --timeout=2m
-persistentvolumeclaim "data0-controlcenter-0" deleted
-+ oc delete pvc/data0-kraftcontroller-0 -n dah-flink-dev --wait=true --timeout=2m
-persistentvolumeclaim "data0-kraftcontroller-0" deleted
-+ oc delete pvc/data0-kraftcontroller-1 -n dah-flink-dev --wait=true --timeout=2m
-persistentvolumeclaim "data0-kraftcontroller-1" deleted
-+ oc delete pvc/data0-kraftcontroller-2 -n dah-flink-dev --wait=true --timeout=2m
-persistentvolumeclaim "data0-kraftcontroller-2" deleted
-
-=== Remaining PVCs in dah-flink-dev ===
-NAME                      STATUS    VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                  VOLUMEATTRIBUTESCLASS   AGE
-data0-controlcenter-0     Bound     pvc-b51847f5-0cab-49bd-b067-77818cdd3148   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 0s
-data0-kraftcontroller-0   Bound     pvc-e4e2c557-9630-4dec-a04b-eb10b2fedc9c   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 0s
-data0-kraftcontroller-1   Pending                                                                        ocs-storagecluster-ceph-rbd   <unset>                 0s
-data0-kraftcontroller-2   Pending                                                                        ocs-storagecluster-ceph-rbd   <unset>                 0s
+ERROR: refusing to wipe PVCs — these CFK CRs still exist:
+  - KRaftController/kraftcontroller
+  - ControlCenter/controlcenter
+While these CRs exist, the operator will recreate any PVC
+we delete within seconds. Run action=uninstall first, then
+re-run wipe-pvcs.
+##[error]Bash exited with code '1'.
+Finishing: Wipe orphaned CFK PVCs
