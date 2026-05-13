@@ -37,7 +37,15 @@ parameters:
     displayName: "Action"
     type: string
     default: install
-    values: [create-prereqs, install, uninstall]
+    # wipe-pvcs: hard-delete the orphaned CFK PVCs (data0-kafka-*,
+    # data0-kraftcontroller-*, data0-controlcenter-*). Intended for the
+    # re-install flow after `uninstall` when the CRs are gone but PVCs
+    # linger. Without a clean wipe, CFK re-creates the StatefulSet
+    # without storageClassName on the vct (it expects to re-bind the
+    # existing PVCs by name), which FCB Gatekeeper's [ceph-storage]
+    # policy rejects ("storage class name <dummy>"). Run AFTER uninstall
+    # and BEFORE install.
+    values: [create-prereqs, install, uninstall, wipe-pvcs]
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -753,7 +761,81 @@ stages:
                   echo "NOTE: prerequisite Secrets (confluent-license, oauth-*, mds-token-keypair,"
                   echo "sasl-plain-internal, c3-*-basic-auth) are intentionally preserved. PVCs"
                   echo "from the Kafka, KRaftController, and ControlCenter StatefulSets persist"
-                  echo "after CR deletion — delete them manually if a true clean wipe is needed."
+                  echo "after CR deletion. To delete them too, run the pipeline again with"
+                  echo "action=wipe-pvcs (separate explicit action so this destruction is"
+                  echo "always opt-in)."
+              env:
+                OC_NS: $(openshift-dev-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+
+          - ${{ if eq(parameters.action, 'wipe-pvcs') }}:
+            - task: Bash@3
+              displayName: "Wipe orphaned CFK PVCs"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  # Why this exists:
+                  # After `uninstall` the CRs and StatefulSets are gone, but
+                  # their PVCs (data0-kafka-*, data0-kraftcontroller-*,
+                  # data0-controlcenter-*) remain on Ceph RBD because CFK's
+                  # default volumeClaimRetentionPolicy is Retain. On the
+                  # NEXT install, CFK detects matching PVC names and
+                  # generates the StatefulSet's volumeClaimTemplate WITHOUT
+                  # storageClassName (assuming PVC reuse). FCB Gatekeeper's
+                  # [ceph-storage] policy then rejects the StatefulSet with
+                  # "storage class name <dummy>". Wiping the PVCs forces a
+                  # fresh PVC creation path, on which CFK does include
+                  # storageClassName from spec.storageClass.name.
+
+                  echo "=== Checking for orphaned CFK PVCs in $OC_NS ==="
+                  # All CFK-managed PVCs follow the pattern data<N>-<sts>-<ordinal>.
+                  # We target the three stateful workloads we know exist.
+                  PVC_PATTERNS=(
+                    'data[0-9]*-kafka-[0-9]*'
+                    'data[0-9]*-kraftcontroller-[0-9]*'
+                    'data[0-9]*-controlcenter-[0-9]*'
+                  )
+                  MATCHED=$(
+                    oc -n "$OC_NS" get pvc -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
+                      | grep -E "^($(IFS='|'; echo "${PVC_PATTERNS[*]}"))$" \
+                      || true
+                  )
+
+                  if [ -z "$MATCHED" ]; then
+                    echo "No matching PVCs found — nothing to delete."
+                    exit 0
+                  fi
+
+                  echo "PVCs to delete:"
+                  echo "$MATCHED" | sed 's/^/  - /'
+
+                  # Refuse to wipe if any of the stateful StatefulSets is still
+                  # around — those should have been removed by `uninstall` first.
+                  # Wiping a PVC that an active StatefulSet still references
+                  # would leave the cluster in a half-deleted state.
+                  REMAINING_STS=$(oc -n "$OC_NS" get sts -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
+                    | grep -E '^(kafka|kraftcontroller|controlcenter)$' \
+                    || true)
+                  if [ -n "$REMAINING_STS" ]; then
+                    echo ""
+                    echo "ERROR: refusing to wipe PVCs — these StatefulSets still exist:"
+                    echo "$REMAINING_STS" | sed 's/^/  - /'
+                    echo "Run the pipeline with action=uninstall first, then re-run wipe-pvcs."
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "=== Deleting PVCs ==="
+                  for pvc in $MATCHED; do
+                    echo "+ oc delete pvc/$pvc -n $OC_NS --wait=true --timeout=2m"
+                    oc -n "$OC_NS" delete pvc "$pvc" --wait=true --timeout=2m || true
+                  done
+
+                  echo ""
+                  echo "=== Remaining PVCs in $OC_NS ==="
+                  oc -n "$OC_NS" get pvc 2>&1 || true
               env:
                 OC_NS: $(openshift-dev-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
