@@ -36,7 +36,10 @@ spec:
   # the single C3 pod always binds to PVC `data-controlcenter-0` on a Ceph
   # RBD PV. C3's RocksDB state under /var/lib/confluent/control-center
   # persists across pod restarts and node migrations.
-  dataVolumeCapacity: 300Gi
+  # TEMPORARY DEV SIZING — pending namespace ResourceQuota increase.
+  # See kafka.yaml for the full quota math. Once Tom raises the quota,
+  # bump this back to 300 GiB (matching the VM C3 disk).
+  dataVolumeCapacity: 1Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — C3 RocksDB state under /var/lib/confluent/control-center
   resources:

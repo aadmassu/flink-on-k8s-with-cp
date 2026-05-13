@@ -36,7 +36,10 @@ spec:
   # bound to a Ceph RBD PV. When the pod restarts the same PVC + PV is
   # re-attached, so the KRaft metadata log (the cluster's source of truth)
   # survives pod and node failures.
-  dataVolumeCapacity: 64Gi
+  # TEMPORARY DEV SIZING — pending namespace ResourceQuota increase.
+  # See kafka.yaml for the full quota math. Once Tom raises the quota,
+  # bump this back to 64 GiB (matching the VM controller disk).
+  dataVolumeCapacity: 1Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — quorum log volume
   resources:

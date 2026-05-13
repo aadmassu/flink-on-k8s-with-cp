@@ -2,14 +2,21 @@
 
 CFK Custom Resources that reproduce the existing dev VM Confluent Platform cluster on OpenShift. Every CR in this folder is authored against the corresponding `.properties` file under [`../cp-confluent/dev/`](../cp-confluent/dev/) — that's the source of truth for parity.
 
-> ⚠️ **Heads-up — broker and controller resources have been scaled down from the VM allocation (2026-05-12).** FCB worker nodes are **16 vCPU / 32 GiB**. The VM cluster ran on dedicated hardware with each broker getting 16 vCPU / 16 GiB and each controller getting 4 vCPU / 4 GiB, but actual utilization is 2% CPU on brokers and 9% on controllers. Carrying VM-sized requests into K8s would leave the broker pods stuck `Pending` because kubelet + OpenShift system daemons reserve ~1–2 vCPU off the top, leaving ~14 allocatable.
+> ⚠️ **Heads-up — broker/controller CPU+memory AND all PVC sizes have been scaled down from the VM allocation.** Two separate constraints drove this:
 >
-> | Component | Old (VM allocation) | **New CFK `request` / `limit`** |
-> |---|---|---|
-> | Broker | 16 vCPU / 16 GiB | **2 / 4 vCPU**, **4 / 8 GiB** |
-> | KRaft controller | 4 vCPU / 4 GiB | **1 / 2 vCPU**, **2 / 2 GiB** |
+> **1. Worker-node fit (2026-05-12)**: FCB worker nodes are **16 vCPU / 32 GiB**. VM brokers got 16 vCPU / 16 GiB and controllers 4 vCPU / 4 GiB at 2%/9% utilization — but carrying those request sizes into K8s leaves the broker pods stuck `Pending` (kubelet reserves ~1–2 vCPU, leaving ~14 allocatable).
 >
-> Full table + per-node co-tenancy math in the [Capacity](#capacity-cfk-cr-settings-vs-vm-source) section below. SR / Connect / REST / C3 unchanged — those VM sizes already fit a 16/32 worker.
+> **2. Namespace ResourceQuota (2026-05-13)**: `dah-flink-dev` has a 10 GiB total `requests.storage` cap. Original VM-sized PVCs (3 × 1 TiB brokers + 3 × 64 GiB controllers + 300 GiB C3 = ~3.5 TiB) exceeded the cap 350×. Until Tom raises the quota, dev PVCs are tightly sized to fit exactly 10 GiB.
+>
+> | Component | Old (VM) | **CFK `request` / `limit`** | **PVC (TEMP, until quota raised)** |
+> |---|---|---|---|
+> | Broker (×3) | 16 vCPU / 16 GiB / 1 TiB | **2 / 4 vCPU**, **4 / 8 GiB** | **2 GiB** (was 1 TiB) |
+> | KRaft ctrlr (×3) | 4 vCPU / 4 GiB / 64 GiB | **1 / 2 vCPU**, **2 / 2 GiB** | **1 GiB** (was 64 GiB) |
+> | C3 | 12 vCPU / 16 GiB / 300 GiB | unchanged | **1 GiB** (was 300 GiB) |
+>
+> Total dev PVC ask: 6 + 3 + 1 = 10 GiB, fits the namespace quota exactly. Bump back to VM-sized PVCs (1 TiB brokers, 64 GiB controllers, 300 GiB C3) the day Tom raises the namespace `requests.storage` quota. CPU/memory limits stay where they are — those are about the 16/32 worker fit, separate from the quota.
+>
+> Full table + per-node co-tenancy math in the [Capacity](#capacity-cfk-cr-settings-vs-vm-source) section below. SR / Connect / REST / C3 CPU+memory unchanged — those VM sizes already fit a 16/32 worker.
 
 ## Target
 
@@ -67,12 +74,12 @@ Run the pipeline twice — `create-prereqs` first, then `install`. CFK reconcile
 
 | Component | CR `requests` | CR `limits` | Disk | VM allocation / utilization |
 |---|---|---|---|---|
-| Broker (×3) | 2 vCPU / 4 Gi | 4 vCPU / 8 Gi | 1 TB | VM 16 vCPU / 16 GiB; actual usage 2% CPU / 20% mem |
-| Controller (×3) | 1 vCPU / 2 Gi | 2 vCPU / 2 Gi | 64 GB | VM 4 vCPU / 4 GiB; 9% utilization (actual ~0.36 vCPU / 0.36 GiB) |
+| Broker (×3) | 2 vCPU / 4 Gi | 4 vCPU / 8 Gi | **2 GiB** (TEMP) | VM 16 vCPU / 16 GiB; actual usage 2% CPU / 20% mem |
+| Controller (×3) | 1 vCPU / 2 Gi | 2 vCPU / 2 Gi | **1 GiB** (TEMP) | VM 4 vCPU / 4 GiB; 9% utilization (actual ~0.36 vCPU / 0.36 GiB) |
 | Schema Registry | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB; stable moderate |
 | REST Proxy | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB |
 | Connect (×2) | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB; moderate |
-| Control Center | 12 vCPU / 16 Gi | 12 vCPU / 16 Gi | 300 GB | VM 12 vCPU / 16 GiB; stable |
+| Control Center | 12 vCPU / 16 Gi | 12 vCPU / 16 Gi | **1 GiB** (TEMP) | VM 12 vCPU / 16 GiB; stable |
 
 **Broker sizing rationale**: FCB worker nodes are **16 vCPU / 32 GiB** (per Tom). The VM had 100% of a 16-vCPU box, but only used 2% CPU and 20% memory. On a K8s node, requesting that full VM allocation makes the broker un-schedulable (kubelet + OpenShift system daemons reserve ~1–2 vCPU). The CR `requests` are sized at ~6× actual dev usage — comfortable headroom — and the `limits` allow the broker to burst when needed without monopolizing a worker.
 
