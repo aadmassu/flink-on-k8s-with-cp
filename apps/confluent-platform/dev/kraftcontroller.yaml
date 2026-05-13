@@ -53,39 +53,27 @@ spec:
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — quorum log volume
 
-  # EXPERIMENT (only on kraftcontroller — kafka & controlcenter are the
-  # control). Our chart-vendored CFK 3.1.1 CRD does NOT define
-  # spec.volumeClaimTemplates at the top level, so K8s' structural schema
-  # would normally prune this block at admission. The hypothesis we're
-  # testing is that FCB's installed CRDs (operator image 0.1351.103, a
-  # slightly newer patch than the .59 chart we vendored) DO expose this
-  # field, in which case CFK will honor it and emit the StatefulSet with
-  # an EXPLICIT storageClassName on the vct — which is what FCB's
-  # [ceph-storage] Gatekeeper constraint requires (it currently rejects
-  # with placeholder `<dummy>` because CFK auto-generates the vct with no
-  # storageClassName).
+  # FAILED EXPERIMENT NOTE — do NOT re-add spec.volumeClaimTemplates here.
   #
-  # vct name MUST match what CFK auto-generates — we observed PVCs named
-  # data0-kraftcontroller-{0,1,2} in earlier runs, so the vct name is
-  # `data0`. No selector.matchLabels because we want CFK's dynamic
-  # provisioning via the Ceph RBD CSI driver to keep working; we're only
-  # forcing the operator to write storageClassName onto the StatefulSet
-  # template, not switching to pre-provisioned PVs.
+  # We previously added an explicit `spec.volumeClaimTemplates` block to
+  # this CR to force CFK to emit `storageClassName: ocs-storagecluster-
+  # ceph-rbd` on the StatefulSet's vct (FCB's [ceph-storage] Gatekeeper
+  # constraint rejects empty storageClassName with the placeholder
+  # `<dummy>`). The field was silently pruned at admission — verified by
+  # dumping the live CR yaml and seeing no `volumeClaimTemplates:`
+  # present, while every other field we set survived. CFK 3.1.1's CRD
+  # doesn't expose this field at the spec root, so K8s structural-schema
+  # pruning strips it.
   #
-  # If this experiment fails (field pruned, vct still empty, same
-  # `<dummy>` rejection), the path forward shifts to either upgrading
-  # CFK CRDs at FCB or asking Tom for the Gatekeeper exemption.
-  # Run order: uninstall → wipe-pvcs → install.
-  volumeClaimTemplates:
-    - metadata:
-        name: data0
-      spec:
-        storageClassName: ocs-storagecluster-ceph-rbd
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
+  # Two real paths forward:
+  #   1. Tushar upgrades FCB's CFK to 3.2.x where spec.volumeClaimTemplates
+  #      is a first-class field — then we add it back and the rejection
+  #      goes away.
+  #   2. Open a Confluent ticket asking why CFK 3.1.x's operator emits
+  #      `storageClassName: ""` on the vct when spec.storageClass.name is
+  #      set on the CR. The actual PVCs CFK pre-creates have the right
+  #      class (verified) — only the StatefulSet vct it generates is
+  #      missing it.
   # Resources MUST live under spec.podTemplate.resources — top-level
   # spec.resources is not in the KRaftController CRD and gets pruned at
   # admission. See schemaregistry.yaml for the full rationale. Sizing
