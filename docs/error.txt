@@ -1,6 +1,14 @@
 
 Admassu, Ayele
 5/13/2026 12:43 PM
-ps -er | grep -i java
+ps -ef | grep -i java
 cp-cont+   11139       1  3 Apr18 ?        18:21:29 java -cp /usr/share/java/acl/*:/usr/share/java/confluent-control-center/*: -Xmx6g -server -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:+CMSScavengeBeforeRemark -XX:+DisableExplicitGC -XX:+IgnoreUnrecognizedVMOptions -Djava.awt.headless=true -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dconfluent.controlcenter.log.dir=/var/log/confluent/control-center -Dlog4j2.configurationFile=file:/etc/confluent-control-center/log4j2-rolling.yaml -Djdk.tls.ephemeralDHKeySize=2048 -Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=* io.confluent.controlcenter.ControlCenter /etc/confluent-control-center/control-center-production.properties
 jxj62-a+  214109  213250  0 13:43 pts/0    00:00:00 grep --color=auto -i java
+
+ps -ef | grep -i java
+
+# Check java.security
+grep -i "jdk.tls.disabledAlgorithms" $JAVA_HOME/conf/security/java.security
+
+# Check whether DES/3DES are disabled
+grep -Ei "3DES|DESede|DES" $JAVA_HOME/conf/security/java.security
