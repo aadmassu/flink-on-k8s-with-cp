@@ -1,66 +1,125 @@
+This is a protected environment, only authorized users are permitted.
 
-ConfluentRolebindingCRinternal-connect-0
+FCB OpenShift
+
+
+
+
+IQE73
+
+Administrator
+Home
+Projects
+Search
+API Explorer
+Events
+Operators
+Installed Operators
+Workloads
+Pods
+Deployments
+StatefulSets
+Secrets
+ConfigMaps
+CronJobs
+Jobs
+DaemonSets
+ReplicaSets
+ReplicationControllers
+HorizontalPodAutoscalers
+PodDisruptionBudgets
+Networking
+Storage
+Builds
+User Management
+Administration
+
+Project: dah-flink-dev
+Events
+Resources
+
+
+All types
+Filter Events by name or message...
+/
+Streaming events...
+Showing 151 events
+Older events are not stored.
+SecretSreencrypt-bundle
 NamespaceNSdah-flink-dev
-May 12, 2026, 10:27 PM
-Generated from confluentrolebinding
-8 times in the last 2 minutes
-kafkarestclass [default] failed to discovery the kafka cluster endpoint
-ConfluentRolebindingCRinternal-connect-1
+May 12, 2026, 10:46 PM
+Generated from gatekeeper-webhook
+7018 times in the last 7 days
+Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+ConfigMapCMfcb-trust-bundle
 NamespaceNSdah-flink-dev
-May 12, 2026, 10:27 PM
-Generated from confluentrolebinding
-8 times in the last 2 minutes
-kafkarestclass [default] failed to discovery the kafka cluster endpoint
-ConfluentRolebindingCRinternal-connect-2
+May 12, 2026, 10:45 PM
+Generated from gatekeeper-webhook
+7082 times in the last 7 days
+Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+SecretSreencrypt-bundle
 NamespaceNSdah-flink-dev
-May 12, 2026, 10:27 PM
-Generated from confluentrolebinding
-8 times in the last 2 minutes
-kafkarestclass [default] failed to discovery the kafka cluster endpoint
-ConfluentRolebindingCRinternal-schemaregistry-0
+May 12, 2026, 10:45 PM
+Generated from gatekeeper-webhook
+12561 times in the last 11 days
+Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+ConfigMapCMfcb-trust-bundle
 NamespaceNSdah-flink-dev
-May 12, 2026, 10:27 PM
-Generated from confluentrolebinding
-8 times in the last 2 minutes
-kafkarestclass [default] failed to discovery the kafka cluster endpoint
-ConfluentRolebindingCRinternal-schemaregistry-1
-NamespaceNSdah-flink-dev
-May 12, 2026, 10:27 PM
-Generated from confluentrolebinding
-8 times in the last 2 minutes
-kafkarestclass [default] failed to discovery the kafka cluster endpoint
-KafkaRestClassKRCdefault
-NamespaceNSdah-flink-dev
-May 12, 2026, 10:27 PM
-Generated from kafkarestclass
-2101 times in the last 8 hours
-waiting for at-least one kafka pod availability
+May 12, 2026, 10:45 PM
+Generated from gatekeeper-webhook
+18146 times in the last 12 days
+Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
 ConfluentRolebindingCRinternal-kafkarest-0
 NamespaceNSdah-flink-dev
-May 12, 2026, 10:27 PM
+May 12, 2026, 10:45 PM
 Generated from confluentrolebinding
-7 times in the last 2 minutes
+61 times in the last 21 minutes
 kafkarestclass [default] failed to discovery the kafka cluster endpoint
 ConfluentRolebindingCRinternal-kafkarest-1
 NamespaceNSdah-flink-dev
-May 12, 2026, 10:27 PM
+May 12, 2026, 10:45 PM
 Generated from confluentrolebinding
-7 times in the last 2 minutes
+61 times in the last 21 minutes
 kafkarestclass [default] failed to discovery the kafka cluster endpoint
+ConfluentRolebindingCRinternal-connect-0
+NamespaceNSdah-flink-dev
+May 12, 2026, 10:45 PM
+Generated from confluentrolebinding
+61 times in the last 21 minutes
+kafkarestclass [default] failed to discovery the kafka cluster endpoint
+ConfluentRolebindingCRinternal-connect-1
+NamespaceNSdah-flink-dev
+May 12, 2026, 10:45 PM
+Generated from confluentrolebinding
+61 times in the last 21 minutes
+kafkarestclass [default] failed to discovery the kafka cluster endpoint
+ConfluentRolebindingCRinternal-connect-2
+NamespaceNSdah-flink-dev
+May 12, 2026, 10:45 PM
+Generated from confluentrolebinding
+61 times in the last 21 minutes
+kafkarestclass [default] failed to discovery the kafka cluster endpoint
+ConfluentRolebindingCRinternal-schemaregistry-0
+NamespaceNSdah-flink-dev
+May 12, 2026, 10:45 PM
+Generated from confluentrolebinding
+61 times in the last 21 minutes
+kafkarestclass [default] failed to discovery the kafka cluster endpoint
+ConfluentRolebindingCRinternal-schemaregistry-1
+NamespaceNSdah-flink-dev
+May 12, 2026, 10:45 PM
+Generated from confluentrolebinding
+61 times in the last 21 minutes
+kafkarestclass [default] failed to discovery the kafka cluster endpoint
+SecretStoreSS11547-d-unx-fp
+NamespaceNSdah-flink-dev
+May 12, 2026, 10:44 PM
+Generated from secret-store
+372 times in the last 1 day
+store validated
 ConfigMapCMfcb-trust-bundle
 NamespaceNSdah-flink-dev
-May 12, 2026, 10:26 PM
+May 12, 2026, 10:42 PM
 Generated from gatekeeper-webhook
-7075 times in the last 7 days
+3986 times in the last 4 days
 Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-StatefulSetSSkafkarest
-NamespaceNSdah-flink-dev
-May 12, 2026, 10:26 PM
-Generated from statefulset-controller
-15 times in the last 2 minutes
-create Pod kafkarest-0 in StatefulSet kafkarest failed error: pods "kafkarest-0" is forbidden: unable to validate against any security context constraint: [provider "anyuid": Forbidden: not usable by user or serviceaccount, provider "arc-pa-redis-dev-scc": Forbidden: not usable by user or serviceaccount, provider restricted-v2: .spec.securityContext.fsGroup: Invalid value: []int64{1001}: 1001 is not an allowed group, provider restricted-v2: .initContainers[0].runAsUser: Invalid value: 1001: must be in the ranges: [1001320000, 1001329999], provider restricted-v2: .containers[0].runAsUser: Invalid value: 1001: must be in the ranges: [1001320000, 1001329999], provider "restricted": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider "selinux-skip-relabeling": Forbidden: not usable by user or serviceaccount, provider "noobaa": Forbidden: not usable by user or serviceaccount, provider "hostmount-anyuid": Forbidden: not usable by user or serviceaccount, provider "aqua-enforcer-agent-scc": Forbidden: not usable by user or serviceaccount, provider "hostmount-anyuid-v2": Forbidden: not usable by user or serviceaccount, provider "machine-api-termination-handler": Forbidden: not usable by user or serviceaccount, provider "ingress-nginx": Forbidden: not usable by user or serviceaccount, provider "hostnetwork-v2": Forbidden: not usable by user or serviceaccount, provider "hostnetwork": Forbidden: not usable by user or serviceaccount, provider "hostaccess": Forbidden: not usable by user or serviceaccount, provider "egress-proxy-fcb-egress-proxy-scc": Forbidden: not usable by user or serviceaccount, provider "rook-ceph": Forbidden: not usable by user or serviceaccount, provider "rook-ceph-csi": Forbidden: not usable by user or serviceaccount, provider "node-exporter": Forbidden: not usable by user or serviceaccount, provider "collectord-fcb-collectord-scc": Forbidden: not usable by user or serviceaccount, provider "privileged": Forbidden: not usable by user or serviceaccount]
-StatefulSetSSconnect
-NamespaceNSdah-flink-dev
-May 12, 2026, 10:26 PM
-Generated from statefulset-controller
-15 times in the last 2 minutes
