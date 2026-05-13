@@ -41,20 +41,17 @@ spec:
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
       authentication:
-        type: oauth
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        subClaimName: sub
-        groupsClaimName: dahDev_groups
-        expectedAudiences:
-          - Confluent
-          - account
-          - api://default
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-kafkarest
         oauthSettings:
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           scope: 11547.DAH(Dev)
-          clientCredentials:
-            secretRef: oauth-kafkarest
+          subClaimName: sub
+          groupsClaimName: dahDev_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
       tls:
         enabled: true
     schemaRegistry:
@@ -63,16 +60,32 @@ spec:
         enabled: true
       authentication:
         type: oauth
-        clientCredentials:
+        oauth:
           secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
       tokenKeyPair:
         secretRef: mds-token-keypair
       authentication:
         type: oauth
-        clientCredentials:
+        oauth:
           secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
 
   # CFK 3.1.1 requires OAuth config nested under authentication.oauth.{secretRef,configuration}
   # — flat fields directly under authentication.* are rejected with

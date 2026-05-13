@@ -242,7 +242,11 @@ stages:
                   printf '{\n  "admin": "%s",\n  "client": "%s",\n  "schema_registry": "%s",\n  "kafka_connect": "%s",\n  "kafka_rest": "%s",\n  "control_center": "%s"\n}\n' \
                     "$SASL_ADMIN" "$SASL_CLIENT" "$SASL_SR" "$SASL_CONNECT" "$SASL_REST" "$SASL_C3" \
                     > "$SASL_JSON_TMP"
-                  printf 'admin:%s\n' "$SASL_ADMIN" > "$SASL_IB_TMP"
+                  # CFK rejected "admin:admin-secret" with "username and password
+                  # not formatted correctly". The accepted format is Java
+                  # properties: two lines, username= and password=. The user
+                  # named here must also be present in the users.json above.
+                  printf 'username=admin\npassword=%s\n' "$SASL_ADMIN" > "$SASL_IB_TMP"
                   echo ""
                   echo "=== sasl-plain-internal ==="
                   oc create secret generic sasl-plain-internal \
@@ -415,14 +419,15 @@ stages:
 
                   echo ""
                   echo "=== CFK operator pod logs (last 200 lines, filtered) ==="
-                  # The operator runs in its own namespace; discover it by label.
-                  OPNS=$(oc get pods -A -l app.kubernetes.io/name=confluent-operator \
-                    --no-headers 2>/dev/null \
-                    | head -1 \
-                    | awk '{print $1}')
-                  OPPOD=$(oc -n "$OPNS" get pods \
-                    -l app.kubernetes.io/name=confluent-operator \
-                    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+                  # The operator runs in its own namespace. Different installs
+                  # label the pod differently — search by image name as the
+                  # most reliable fingerprint (any container image containing
+                  # `confluent-operator`).
+                  OP_LINE=$(oc get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}|{.metadata.name}|{.spec.containers[*].image}{"\n"}{end}' 2>/dev/null \
+                    | grep -E '\|.*confluentinc/confluent-operator' \
+                    | head -1)
+                  OPNS=$(echo "$OP_LINE" | cut -d'|' -f1)
+                  OPPOD=$(echo "$OP_LINE" | cut -d'|' -f2)
                   if [ -n "$OPNS" ] && [ -n "$OPPOD" ]; then
                     echo "Operator: $OPNS/$OPPOD"
                     echo ""
@@ -432,7 +437,9 @@ stages:
                       | tail -60 \
                       || echo "(no matching log lines)"
                   else
-                    echo "(could not locate confluent-operator pod)"
+                    echo "(could not locate confluent-operator pod — searched by image fingerprint)"
+                    echo "Listing all pods across all namespaces to help locate it:"
+                    oc get pods -A 2>/dev/null | grep -iE 'operator|confluent' | head -20
                   fi
 
                   echo ""

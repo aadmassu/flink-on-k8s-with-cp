@@ -42,33 +42,47 @@ spec:
       memory: 4Gi
 
   dependencies:
+    # dependencies.kafka uses SASL OAUTHBEARER to brokers — CRD shape is:
+    #   type: oauthbearer
+    #   oauthbearer.secretRef: <Secret with clientId, clientSecret>
+    #   oauthSettings: { OIDC discovery + claims config }
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
       authentication:
-        type: oauth
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        subClaimName: sub
-        groupsClaimName: dahDev_groups
-        expectedAudiences:
-          - Confluent
-          - account
-          - api://default
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-schemaregistry
         oauthSettings:
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           scope: 11547.DAH(Dev)
-          clientCredentials:
-            secretRef: oauth-schemaregistry
+          subClaimName: sub
+          groupsClaimName: dahDev_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
       tls:
         enabled: true
+    # dependencies.mds uses OAuth client_credentials grant against Okta to get
+    # a bearer token, then presents that token to MDS. CRD shape is:
+    #   type: oauth
+    #   oauth.secretRef: <same Secret as above>
+    #   oauth.configuration: { same OIDC fields, just nested differently }
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
       tokenKeyPair:
         secretRef: mds-token-keypair
       authentication:
         type: oauth
-        clientCredentials:
+        oauth:
           secretRef: oauth-schemaregistry
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
 
   # CFK 3.1.1 requires OAuth config nested under authentication.oauth.{secretRef,configuration}
   # — flat fields directly under authentication.* don't fit the schema.

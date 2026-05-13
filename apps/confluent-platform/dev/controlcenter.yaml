@@ -51,20 +51,17 @@ spec:
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
       authentication:
-        type: oauth
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        subClaimName: sub
-        groupsClaimName: dahDev_groups
-        expectedAudiences:
-          - Confluent
-          - account
-          - api://default
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-controlcenter
         oauthSettings:
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           scope: 11547.DAH(Dev)
-          clientCredentials:
-            secretRef: oauth-controlcenter
+          subClaimName: sub
+          groupsClaimName: dahDev_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
       tls:
         enabled: true
     schemaRegistry:
@@ -73,8 +70,16 @@ spec:
         enabled: true
       authentication:
         type: oauth
-        clientCredentials:
+        oauth:
           secretRef: oauth-controlcenter
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
     connect:
       - name: connect-cluster
         url: https://connect.dah-flink-dev.svc.cluster.local:8083
@@ -82,8 +87,16 @@ spec:
           enabled: true
         authentication:
           type: oauth
-          clientCredentials:
+          oauth:
             secretRef: oauth-controlcenter
+            configuration:
+              audience: "Confluent,account,api://default"
+              expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+              jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+              scope: 11547.DAH(Dev)
+              subClaimName: sub
+              groupsClaimName: dahDev_groups
+              tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
       # OIDC SSO for the C3 UI is delivered through MDS — clients hit C3,
@@ -95,8 +108,16 @@ spec:
         secretRef: mds-token-keypair
       authentication:
         type: oauth
-        clientCredentials:
+        oauth:
           secretRef: oauth-controlcenter
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
     kafkaRestClassRef:
       name: default
       namespace: dah-flink-dev
