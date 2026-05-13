@@ -487,35 +487,30 @@ stages:
                     fi
                   done
 
+                  # Dump the FULL CR yaml for every CFK component — no sed,
+                  # no head, nothing trimmed. The live yaml from the API
+                  # server shows what survived admission (compare against
+                  # the source files in apps/confluent-platform/dev/ to
+                  # spot anything CRD pruning may have dropped).
                   echo ""
-                  echo "=== Full SR CR yaml (looking for unrendered fields) ==="
-                  # If CRD admission silently dropped fields (e.g. clientCredentials
-                  # isn't in the schema), the live YAML shows only what the API
-                  # server accepted — diffing against our source is the way to spot
-                  # missing/renamed fields.
-                  oc -n "$OC_NS" get schemaregistry schemaregistry -o yaml 2>/dev/null \
-                    | sed -n '/^spec:/,/^status:/p' \
-                    | head -120 \
-                    || echo "(SR CR not found)"
-
-                  echo ""
-                  echo "=== Full kraftcontroller CR yaml (volumeClaimTemplates experiment) ==="
-                  # We added spec.volumeClaimTemplates to the kraftcontroller CR
-                  # to test whether FCB's installed CFK CRD honors it. The chart
-                  # we vendored (CFK 3.1.1) doesn't define that field, so the
-                  # API server SHOULD prune it at admission via structural schema
-                  # pruning. But FCB's installed CRDs could be a different build
-                  # (operator at .103 vs chart's .59) — only the live CR yaml can
-                  # tell us whether the field survived. Three outcomes:
-                  #   1. volumeClaimTemplates appears in the dump below → CRD
-                  #      preserved it; if storage class still fails, operator is
-                  #      ignoring the field (open Confluent ticket).
-                  #   2. volumeClaimTemplates absent → CRD pruned it; we need
-                  #      Tushar to upgrade CRDs to a build that exposes the
-                  #      field, or get a Gatekeeper exemption.
-                  oc -n "$OC_NS" get kraftcontroller kraftcontroller -o yaml 2>/dev/null \
-                    | sed -n '/^spec:/,/^status:/p' \
-                    || echo "(kraftcontroller CR not found)"
+                  echo "=== Full CR yaml (kafka, kraftcontroller, controlcenter, schemaregistry, connect, kafkarest, kafkarestclass) ==="
+                  for kind_name in \
+                      "kafka kafka" \
+                      "kraftcontroller kraftcontroller" \
+                      "controlcenter controlcenter" \
+                      "schemaregistry schemaregistry" \
+                      "connect connect" \
+                      "kafkarestproxy kafkarest" \
+                      "kafkarestclass default"; do
+                    kind=${kind_name% *}; name=${kind_name#* }
+                    echo ""
+                    echo "############### $kind/$name ###############"
+                    if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+                      oc -n "$OC_NS" get "$kind" "$name" -o yaml
+                    else
+                      echo "($kind/$name not found in namespace)"
+                    fi
+                  done
 
                   echo ""
                   echo "=== CFK operator pod logs (last 200 lines, filtered) ==="
