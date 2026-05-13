@@ -8,7 +8,7 @@ Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/b
 ==============================================================================
 Generating script.
 ========================== Starting Command Output ===========================
-[command]/bin//bash /opt/azure_pipelines/_work/_temp/aba19b72-e4ce-42a1-91f6-b6d8c3bb237d.sh
+[command]/bin//bash /opt/azure_pipelines/_work/_temp/9c494b04-57ff-4228-bed5-ae3072e76965.sh
 === Secret: sasl-plain-internal — keys ===
 (expected: kafka-server-listener-internal-plain-users.json)
 ['kafka-server-listener-internal-plain-users.json', 'plain-interbroker.txt']
@@ -81,36 +81,36 @@ Generating script.
 }
 
 === Recent Warning events (last 30) ===
-2026-05-13T20:00:31Z   WarningAdmission   StatefulSet            controlcenter               Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for StatefulSet: controlcenter. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
+2026-05-13T20:09:46Z   WarningAdmission   Pod                    schemaregistry-0            Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <schemaregistry> in your <Pod> <schemaregistry-0> has no <startupProbe>
+2026-05-13T20:09:46Z   FailedCreate       StatefulSet            kafkarest                   create Pod kafkarest-0 in StatefulSet kafkarest failed error: pods "kafkarest-0" is forbidden: exceeded quota: compute-resources, requested: limits.cpu=4,requests.cpu=4,requests.memory=4Gi, used: limits.cpu=500m,requests.cpu=100m,requests.memory=512Mi, limited: limits.cpu=2,requests.cpu=1,requests.memory=4Gi
+2026-05-13T20:09:46Z   WarningAdmission   Pod                    kafkarest-0                 Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <kafkarest> in your <Pod> <kafkarest-0> has no <startupProbe>
+2026-05-13T20:10:00Z   FailedAdmission    StatefulSet            kraftcontroller             Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T20:10:00Z   FailedToCreate     KRaftController        kraftcontroller             admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T20:10:05Z   FailedToCreate     ControlCenter          controlcenter               admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
+2026-05-13T20:10:05Z   WarningAdmission   StatefulSet            controlcenter               Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for StatefulSet: controlcenter. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
 Review Documentation:
 * https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
 * https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
-2026-05-13T20:00:31Z   FailedAdmission    StatefulSet            controlcenter               Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
+2026-05-13T20:10:05Z   FailedAdmission    StatefulSet            controlcenter               Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
 Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T20:01:08Z   WarningAdmission   Pod                    connect-0                   Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <connect> in your <Pod> <connect-0> has no <startupProbe>
-2026-05-13T20:01:08Z   FailedCreate       StatefulSet            connect                     create Pod connect-0 in StatefulSet connect failed error: pods "connect-0" is forbidden: exceeded quota: compute-resources, requested: limits.cpu=4,requests.cpu=4,requests.memory=4Gi, used: limits.cpu=500m,requests.cpu=100m,requests.memory=512Mi, limited: limits.cpu=2,requests.cpu=1,requests.memory=4Gi
-2026-05-13T20:01:09Z   WarningAdmission   Pod                    kafkarest-0                 Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: startup, Message: Container <kafkarest> in your <Pod> <kafkarest-0> has no <startupProbe>
-2026-05-13T20:01:09Z   FailedCreate       StatefulSet            kafkarest                   create Pod kafkarest-0 in StatefulSet kafkarest failed error: pods "kafkarest-0" is forbidden: exceeded quota: compute-resources, requested: limits.cpu=4,requests.cpu=4,requests.memory=4Gi, used: limits.cpu=500m,requests.cpu=100m,requests.memory=512Mi, limited: limits.cpu=2,requests.cpu=1,requests.memory=4Gi
-2026-05-13T20:01:48Z   FailedAdmission    StatefulSet            kraftcontroller             Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T20:01:53Z   WarningAdmission   StatefulSet            controlcenter               Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: replica-range, Message: The provided number of replicas is not allowed for StatefulSet: controlcenter. Allowed ranges: {"ranges": [{"max_replicas": 15, "min_replicas": 2}]}
-Review Documentation:
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Deployment+Guidelines+and+Best+Practices
-* https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+StatefulSet+Guidelines+and+Best+Practices
-2026-05-13T20:01:53Z   FailedAdmission    StatefulSet            controlcenter               Admission webhook "validation.gatekeeper.sh" denied request, Constraint: ceph-storage, Message: statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T20:01:53Z   FailedToCreate     ControlCenter          controlcenter               admission webhook "validation.gatekeeper.sh" denied the request: [ceph-storage] statefulset did not specify an allowed and valid storage class name <dummy>. Must be one of [ocs-storagecluster-ceph-rbd, ocs-storagecluster-cephfs]
-Consult Documentation https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Persistent+Volume+Claim+%!P(MISSING)VC%!+(MISSING)Guidelines+and+Best+Practices
-2026-05-13T20:02:19Z   Warning            Kafka                  kafka                       waiting for at-least one kRaft controller pod availability
-2026-05-13T20:02:19Z   WarningAdmission   ConfigMap              fcb-trust-bundle            Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
-2026-05-13T20:02:19Z   Warning            KafkaRestClass         default                     waiting for at-least one kafka pod availability
-2026-05-13T20:02:24Z   FailedToDiscover   ConfluentRolebinding   internal-schemaregistry-1   kafkarestclass [default] failed to discovery the kafka cluster endpoint
-2026-05-13T20:02:24Z   FailedToDiscover   ConfluentRolebinding   internal-schemaregistry-0   kafkarestclass [default] failed to discovery the kafka cluster endpoint
-2026-05-13T20:02:25Z   FailedToDiscover   ConfluentRolebinding   internal-connect-0          kafkarestclass [default] failed to discovery the kafka cluster endpoint
-2026-05-13T20:02:25Z   FailedToDiscover   ConfluentRolebinding   internal-connect-1          kafkarestclass [default] failed to discovery the kafka cluster endpoint
-2026-05-13T20:02:25Z   FailedToDiscover   ConfluentRolebinding   internal-connect-2          kafkarestclass [default] failed to discovery the kafka cluster endpoint
-2026-05-13T20:02:25Z   FailedToDiscover   ConfluentRolebinding   internal-kafkarest-0        kafkarestclass [default] failed to discovery the kafka cluster endpoint
-2026-05-13T20:02:25Z   FailedToDiscover   ConfluentRolebinding   internal-kafkarest-1        kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T20:11:20Z   WarningAdmission   Secret                 reencrypt-bundle            Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T20:12:07Z   WarningAdmission   ConfigMap              fcb-trust-bundle            Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T20:12:55Z   WarningAdmission   ConfigMap              fcb-trust-bundle            Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T20:13:14Z   WarningAdmission   Secret                 reencrypt-bundle            Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T20:14:04Z   FailedToDiscover   ConfluentRolebinding   internal-schemaregistry-1   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T20:14:04Z   FailedToDiscover   ConfluentRolebinding   internal-schemaregistry-0   kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T20:14:04Z   Warning            KafkaRestClass         default                     waiting for at-least one kafka pod availability
+2026-05-13T20:14:05Z   FailedToDiscover   ConfluentRolebinding   internal-connect-2          kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T20:14:05Z   Warning            Kafka                  kafka                       waiting for at-least one kRaft controller pod availability
+2026-05-13T20:14:05Z   FailedToDiscover   ConfluentRolebinding   internal-kafkarest-1        kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T20:14:05Z   FailedToDiscover   ConfluentRolebinding   internal-kafkarest-0        kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T20:14:05Z   FailedToDiscover   ConfluentRolebinding   internal-connect-1          kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T20:14:05Z   FailedToDiscover   ConfluentRolebinding   internal-connect-0          kafkarestclass [default] failed to discovery the kafka cluster endpoint
+2026-05-13T20:15:11Z   WarningAdmission   Secret                 reencrypt-bundle            Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-secret-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
+2026-05-13T20:16:11Z   WarningAdmission   ConfigMap              fcb-trust-bundle            Admission webhook "validation.gatekeeper.sh" raised a warning for this request, Constraint: required-configmap-labels, Message: Please review required metadata: https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata
 
 === CFK CR status conditions ===
 
@@ -172,22 +172,817 @@ busybox                                               0/1     Completed   0     
 confluent-manager-for-apache-flink-64d4d785f8-pxbr7   1/1     Running     0          13d   10.40.12.12   dp12055oxc-wpxl-srrn8   <none>           <none>
 
 === PVCs ===
-NAME                      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                  VOLUMEATTRIBUTESCLASS   AGE     VOLUMEMODE
-data0-controlcenter-0     Bound    pvc-f44c9d88-52d2-4fb7-b1ae-aebc880e7179   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 3m27s   Filesystem
-data0-kraftcontroller-0   Bound    pvc-e8a8d568-3729-4e73-8a26-e9da84591535   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 3m31s   Filesystem
-data0-kraftcontroller-1   Bound    pvc-5e08829c-e0e5-49e4-bd1e-e9347951f4a5   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 3m31s   Filesystem
-data0-kraftcontroller-2   Bound    pvc-bc697bb5-3447-4052-9aec-367ead0bbdfa   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 3m31s   Filesystem
+NAME                      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                  VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
+data0-controlcenter-0     Bound    pvc-f44c9d88-52d2-4fb7-b1ae-aebc880e7179   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 18m   Filesystem
+data0-kraftcontroller-0   Bound    pvc-e8a8d568-3729-4e73-8a26-e9da84591535   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 18m   Filesystem
+data0-kraftcontroller-1   Bound    pvc-5e08829c-e0e5-49e4-bd1e-e9347951f4a5   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 18m   Filesystem
+data0-kraftcontroller-2   Bound    pvc-bc697bb5-3447-4052-9aec-367ead0bbdfa   1Gi        RWO            ocs-storagecluster-ceph-rbd   <unset>                 18m   Filesystem
 
 === StatefulSets in namespace ===
-NAME             READY   AGE     CONTAINERS       IMAGES
-connect          0/2     3m29s   connect          artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.0
-kafkarest        0/1     3m29s   kafkarest        artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.0
-schemaregistry   0/1     3m30s   schemaregistry   artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
+NAME             READY   AGE   CONTAINERS       IMAGES
+connect          0/2     18m   connect          artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.0
+kafkarest        0/1     18m   kafkarest        artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.0
+schemaregistry   0/1     18m   schemaregistry   artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
 
-=== StatefulSet volumeClaimTemplates (storage class debug) ===
---- sts/kraftcontroller ---
---- sts/kafka ---
---- sts/controlcenter ---
+=== Full StatefulSet yaml (kafka, kraftcontroller, controlcenter, schemaregistry, connect, kafkarest) ===
+
+############### sts/kafka ###############
+(sts/kafka not found — likely rejected at admission or not yet created)
+
+############### sts/kraftcontroller ###############
+(sts/kraftcontroller not found — likely rejected at admission or not yet created)
+
+############### sts/controlcenter ###############
+(sts/controlcenter not found — likely rejected at admission or not yet created)
+
+############### sts/schemaregistry ###############
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    platform.confluent.io/cr-name: schemaregistry
+    platform.confluent.io/namespace: dah-flink-dev
+    platform.confluent.io/type: schemaregistry
+  creationTimestamp: "2026-05-13T19:59:04Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/instance: schemaregistry
+    app.kubernetes.io/managed-by: confluent-operator
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/part-of: confluent-platform
+    confluent-platform: "true"
+    cr-name: schemaregistry
+    fcbint.net/app-id: "11547"
+    type: schemaregistry
+  name: schemaregistry
+  namespace: dah-flink-dev
+  ownerReferences:
+  - apiVersion: platform.confluent.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: SchemaRegistry
+    name: schemaregistry
+    uid: 4a17e5d1-1b5e-4b18-9bcb-e7a061e37687
+  resourceVersion: "716342923"
+  uid: 00779b5b-4113-4b5f-818a-27401217e891
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: Parallel
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: schemaregistry
+      clusterId: dah-flink-dev
+      confluent-platform: "true"
+      type: schemaregistry
+  serviceName: schemaregistry
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "7778"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app: schemaregistry
+        app.kubernetes.io/component: schema-registry
+        app.kubernetes.io/instance: schemaregistry
+        app.kubernetes.io/name: schemaregistry
+        app.kubernetes.io/part-of: confluent-platform
+        clusterId: dah-flink-dev
+        confluent-platform: "true"
+        fcbint.net/app-id: "11547"
+        platform.confluent.io/type: schemaregistry
+        type: schemaregistry
+      name: schemaregistry
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - /mnt/config/schemaregistry/bin/run
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: USE_LOG4J2
+          value: "true"
+        image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8081
+          timeoutSeconds: 10
+        name: schemaregistry
+        ports:
+        - containerPort: 8081
+          name: external
+          protocol: TCP
+        - containerPort: 9081
+          name: internal
+          protocol: TCP
+        - containerPort: 7203
+          name: jmx
+          protocol: TCP
+        - containerPort: 7777
+          name: jolokia
+          protocol: TCP
+        - containerPort: 7778
+          name: prometheus
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8081
+          timeoutSeconds: 10
+        resources:
+          limits:
+            cpu: "4"
+            memory: 4Gi
+          requests:
+            cpu: "4"
+            memory: 4Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/confluentinc
+          name: cp-operator-scripts
+        - mountPath: /mnt/sslcerts
+          name: in-ssl-schemaregistry-pkcs12
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/secrets/oauth-schemaregistry
+          name: ref-auth-oauth-schemaregistry
+        - mountPath: /mnt/secrets/cfk-license
+          name: ref-license-cfk-license
+        - mountPath: /mnt/secrets/mds-token-keypair
+          name: ref-token-mds-token-keypair
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - until [ -f /mnt/config/init/template.jsonnet ]; do echo "file not found";
+          sleep 10s; done; /opt/startup.sh
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_CP_TYPE
+          value: schemaregistry
+        image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+        imagePullPolicy: IfNotPresent
+        name: config-init-container
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: flink-operator
+      serviceAccountName: flink-operator
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: cp-operator-scripts
+      - name: in-ssl-schemaregistry-pkcs12
+        secret:
+          defaultMode: 420
+          secretName: schemaregistry-pkcs12
+      - configMap:
+          defaultMode: 420
+          name: schemaregistry-init-config
+        name: init-config-volume
+      - emptyDir:
+          medium: Memory
+        name: pod-shared-workdir
+      - name: ref-auth-oauth-schemaregistry
+        secret:
+          defaultMode: 420
+          secretName: oauth-schemaregistry
+      - name: ref-license-cfk-license
+        secret:
+          defaultMode: 420
+          secretName: cfk-license
+      - name: ref-token-mds-token-keypair
+        secret:
+          defaultMode: 420
+          secretName: mds-token-keypair
+      - configMap:
+          defaultMode: 420
+          name: schemaregistry-shared-config
+        name: shared-config-volume
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+status:
+  availableReplicas: 0
+  collisionCount: 0
+  currentRevision: schemaregistry-cf6696847
+  observedGeneration: 1
+  replicas: 0
+  updateRevision: schemaregistry-cf6696847
+
+############### sts/connect ###############
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    platform.confluent.io/cr-name: connect
+    platform.confluent.io/namespace: dah-flink-dev
+    platform.confluent.io/type: connect
+  creationTimestamp: "2026-05-13T19:59:05Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/component: kafka-connect
+    app.kubernetes.io/instance: connect
+    app.kubernetes.io/managed-by: confluent-operator
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/part-of: confluent-platform
+    confluent-platform: "true"
+    cr-name: connect
+    fcbint.net/app-id: "11547"
+    type: connect
+  name: connect
+  namespace: dah-flink-dev
+  ownerReferences:
+  - apiVersion: platform.confluent.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Connect
+    name: connect
+    uid: 79b4b962-1601-4eb4-9b8d-36ced4cf625a
+  resourceVersion: "716343055"
+  uid: 18c01658-a6cb-448e-988d-3b855eb745f3
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: Parallel
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: connect
+      clusterId: dah-flink-dev
+      confluent-platform: "true"
+      type: connect
+  serviceName: connect
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "7778"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app: connect
+        app.kubernetes.io/component: kafka-connect
+        app.kubernetes.io/instance: connect
+        app.kubernetes.io/name: connect
+        app.kubernetes.io/part-of: confluent-platform
+        clusterId: dah-flink-dev
+        confluent-platform: "true"
+        fcbint.net/app-id: "11547"
+        platform.confluent.io/type: connect
+        type: connect
+      name: connect
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - /mnt/config/connect/bin/run
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: USE_LOG4J2
+          value: "true"
+        image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 20
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8083
+          timeoutSeconds: 30
+        name: connect
+        ports:
+        - containerPort: 8083
+          name: external
+          protocol: TCP
+        - containerPort: 9083
+          name: internal
+          protocol: TCP
+        - containerPort: 7203
+          name: jmx
+          protocol: TCP
+        - containerPort: 7777
+          name: jolokia
+          protocol: TCP
+        - containerPort: 7778
+          name: prometheus
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8083
+          timeoutSeconds: 10
+        resources:
+          limits:
+            cpu: "4"
+            memory: 4Gi
+          requests:
+            cpu: "4"
+            memory: 4Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/confluentinc
+          name: cp-operator-scripts
+        - mountPath: /mnt/sslcerts
+          name: in-ssl-connect-pkcs12
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/secrets/oauth-connect
+          name: ref-auth-oauth-connect
+        - mountPath: /mnt/secrets/cfk-license
+          name: ref-license-cfk-license
+        - mountPath: /mnt/secrets/mds-token-keypair
+          name: ref-token-mds-token-keypair
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - until [ -f /mnt/config/init/template.jsonnet ]; do echo "file not found";
+          sleep 10s; done; /opt/startup.sh
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_CP_TYPE
+          value: connect
+        image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+        imagePullPolicy: IfNotPresent
+        name: config-init-container
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: flink-operator
+      serviceAccountName: flink-operator
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: cp-operator-scripts
+      - name: in-ssl-connect-pkcs12
+        secret:
+          defaultMode: 420
+          secretName: connect-pkcs12
+      - configMap:
+          defaultMode: 420
+          name: connect-init-config
+        name: init-config-volume
+      - emptyDir:
+          medium: Memory
+        name: pod-shared-workdir
+      - name: ref-auth-oauth-connect
+        secret:
+          defaultMode: 420
+          secretName: oauth-connect
+      - name: ref-license-cfk-license
+        secret:
+          defaultMode: 420
+          secretName: cfk-license
+      - name: ref-token-mds-token-keypair
+        secret:
+          defaultMode: 420
+          secretName: mds-token-keypair
+      - configMap:
+          defaultMode: 420
+          name: connect-shared-config
+        name: shared-config-volume
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+status:
+  availableReplicas: 0
+  collisionCount: 0
+  currentRevision: connect-69c6cddf6b
+  observedGeneration: 1
+  replicas: 0
+  updateRevision: connect-69c6cddf6b
+
+############### sts/kafkarest ###############
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    platform.confluent.io/cr-name: kafkarest
+    platform.confluent.io/namespace: dah-flink-dev
+    platform.confluent.io/type: kafkarestproxy
+  creationTimestamp: "2026-05-13T19:59:05Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/component: kafka-rest-proxy
+    app.kubernetes.io/instance: kafkarest
+    app.kubernetes.io/managed-by: confluent-operator
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/part-of: confluent-platform
+    confluent-platform: "true"
+    cr-name: kafkarest
+    fcbint.net/app-id: "11547"
+    type: kafkarestproxy
+  name: kafkarest
+  namespace: dah-flink-dev
+  ownerReferences:
+  - apiVersion: platform.confluent.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: KafkaRestProxy
+    name: kafkarest
+    uid: e338aeb1-4b65-4515-b5db-6546f4f2c16e
+  resourceVersion: "716343112"
+  uid: 0bd11d23-4ebc-4cca-8ecf-e46fd6e17d6a
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: Parallel
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: kafkarest
+      clusterId: dah-flink-dev
+      confluent-platform: "true"
+      type: kafkarest
+  serviceName: kafkarest
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "7778"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app: kafkarest
+        app.kubernetes.io/component: kafka-rest-proxy
+        app.kubernetes.io/instance: kafkarest
+        app.kubernetes.io/name: kafkarest
+        app.kubernetes.io/part-of: confluent-platform
+        clusterId: dah-flink-dev
+        confluent-platform: "true"
+        fcbint.net/app-id: "11547"
+        platform.confluent.io/type: kafkarestproxy
+        type: kafkarest
+      name: kafkarest
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - /mnt/config/kafkarestproxy/bin/run
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: USE_LOG4J2
+          value: "true"
+        image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8082
+          timeoutSeconds: 10
+        name: kafkarest
+        ports:
+        - containerPort: 8082
+          name: external
+          protocol: TCP
+        - containerPort: 7203
+          name: jmx
+          protocol: TCP
+        - containerPort: 7777
+          name: jolokia
+          protocol: TCP
+        - containerPort: 7778
+          name: prometheus
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8082
+          timeoutSeconds: 10
+        resources:
+          limits:
+            cpu: "4"
+            memory: 4Gi
+          requests:
+            cpu: "4"
+            memory: 4Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/confluentinc
+          name: cp-operator-scripts
+        - mountPath: /mnt/sslcerts
+          name: in-ssl-kafkarest-pkcs12
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/secrets/oauth-kafkarest
+          name: ref-auth-oauth-kafkarest
+        - mountPath: /mnt/secrets/cfk-license
+          name: ref-license-cfk-license
+        - mountPath: /mnt/secrets/mds-token-keypair
+          name: ref-token-mds-token-keypair
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - until [ -f /mnt/config/init/template.jsonnet ]; do echo "file not found";
+          sleep 10s; done; /opt/startup.sh
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_CP_TYPE
+          value: kafkarestproxy
+        image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+        imagePullPolicy: IfNotPresent
+        name: config-init-container
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: flink-operator
+      serviceAccountName: flink-operator
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: cp-operator-scripts
+      - name: in-ssl-kafkarest-pkcs12
+        secret:
+          defaultMode: 420
+          secretName: kafkarest-pkcs12
+      - configMap:
+          defaultMode: 420
+          name: kafkarest-init-config
+        name: init-config-volume
+      - emptyDir:
+          medium: Memory
+        name: pod-shared-workdir
+      - name: ref-auth-oauth-kafkarest
+        secret:
+          defaultMode: 420
+          secretName: oauth-kafkarest
+      - name: ref-license-cfk-license
+        secret:
+          defaultMode: 420
+          secretName: cfk-license
+      - name: ref-token-mds-token-keypair
+        secret:
+          defaultMode: 420
+          secretName: mds-token-keypair
+      - configMap:
+          defaultMode: 420
+          name: kafkarest-shared-config
+        name: shared-config-volume
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+status:
+  availableReplicas: 0
+  collisionCount: 0
+  currentRevision: kafkarest-7b84764478
+  observedGeneration: 1
+  replicas: 0
+  updateRevision: kafkarest-7b84764478
 
 === Full SR CR yaml (looking for unrendered fields) ===
 spec:
