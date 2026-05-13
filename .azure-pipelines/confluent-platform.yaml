@@ -165,33 +165,47 @@ stages:
                       | oc apply -f -
                   }
 
-                  # OAuth-style Secret: stores BOTH the simple clientId /
-                  # clientSecret keys (used by the top-level authentication
-                  # blocks in SR / Connect / REST / C3) AND a `bearer.txt`
-                  # file (Java-properties format: `username=<id>\npassword=
-                  # <secret>`). CFK's dependencies.mds.authentication.type=
-                  # oauth resolves internally as auth type "bearer" and
-                  # specifically requires `<component>-client-bearer.txt` or
-                  # `bearer.txt` to be present — the simple key/value pair
-                  # alone isn't sufficient.
+                  # OAuth-style Secret: stores credentials under MULTIPLE key
+                  # names, since CFK 3.1.x's runtime classifies the same Secret
+                  # under different "auth type" labels depending on the consumer:
+                  #
+                  #   clientId / clientSecret  →  simple key/value pair the
+                  #                              top-level authentication.oauth
+                  #                              path reads on first reconcile
+                  #   bearer.txt               →  required by
+                  #                              dependencies.mds.authentication
+                  #                              (operator labels this auth
+                  #                              type "bearer")
+                  #   oauth.txt                →  required by SR/Connect/REST/C3
+                  #                              top-level inbound REST auth
+                  #                              (operator labels this auth
+                  #                              type "basic" because the
+                  #                              JETTY_AUTH mechanism is used)
+                  #
+                  # bearer.txt and oauth.txt have the same content (Java
+                  # properties: `username=<clientId>\npassword=<clientSecret>`)
+                  # — same secret material, two file names the operator looks
+                  # for. Putting both in every oauth-* Secret keeps any future
+                  # auth-path resolution from re-tripping the "missing key" check.
                   apply_oauth_secret() {
                     local name=$1
                     local client_id=$2
                     local client_secret=$3
-                    local bearer_tmp
-                    bearer_tmp=$(mktemp)
+                    local creds_tmp
+                    creds_tmp=$(mktemp)
                     printf 'username=%s\npassword=%s\n' \
-                      "$client_id" "$client_secret" > "$bearer_tmp"
+                      "$client_id" "$client_secret" > "$creds_tmp"
                     echo ""
                     echo "=== $name ==="
                     oc create secret generic "$name" \
                       -n "$OC_NS" --dry-run=client -o yaml \
                       --from-literal=clientId="$client_id" \
                       --from-literal=clientSecret="$client_secret" \
-                      --from-file=bearer.txt="$bearer_tmp" \
+                      --from-file=bearer.txt="$creds_tmp" \
+                      --from-file=oauth.txt="$creds_tmp" \
                       | label_secret "$name" \
                       | oc apply -f -
-                    rm -f "$bearer_tmp"
+                    rm -f "$creds_tmp"
                   }
 
                   echo "=== Creating prerequisite Secrets in $OC_NS ==="
@@ -204,8 +218,10 @@ stages:
                   #      "must contain value in format license=<license_value>")
                   apply_secret_from_literals confluent-license \
                     --from-literal=license.txt="$CONFLUENT_LICENSE"
+                  # CFK 3.1.x looks for key `license.txt` (or `cp-license.txt`)
+                  # whose VALUE has Java-properties shape `license=<jwt>`.
                   apply_secret_from_literals cfk-license \
-                    --from-literal=license="license=$CONFLUENT_LICENSE"
+                    --from-literal=license.txt="license=$CONFLUENT_LICENSE"
 
                   # MDS RSA token keypair. The variable holds the PEM
                   # base64-encoded as a SINGLE LINE — pasting multiline PEM
