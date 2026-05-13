@@ -468,19 +468,23 @@ stages:
                   echo "=== StatefulSets in namespace ==="
                   oc -n "$OC_NS" get sts -o wide 2>/dev/null || echo "(no StatefulSets)"
 
-                  # When Gatekeeper's [ceph-storage] policy rejects with
-                  # "storage class name <dummy>", the actual storageClassName
-                  # on the StatefulSet's vct is empty or unset. Dump the vct
-                  # block from every CFK-owned STS so we can see what the
-                  # operator is actually sending to admission.
+                  # Dump the FULL StatefulSet yaml — no sed, no head, nothing
+                  # trimmed. We need to see the entire manifest CFK is
+                  # producing so we can review the vct AND every other
+                  # field together (storage class, annotations, owner refs,
+                  # spec.template, the whole shape). For kraftcontroller
+                  # and controlcenter the sts likely won't exist (rejected
+                  # at admission), which the dump will surface explicitly.
                   echo ""
-                  echo "=== StatefulSet volumeClaimTemplates (storage class debug) ==="
-                  for sts in kraftcontroller kafka controlcenter; do
-                    echo "--- sts/$sts ---"
-                    oc -n "$OC_NS" get sts "$sts" -o yaml 2>/dev/null \
-                      | sed -n '/volumeClaimTemplates:/,/^  [a-z]/p' \
-                      | head -80 \
-                      || echo "(sts/$sts not found)"
+                  echo "=== Full StatefulSet yaml (kafka, kraftcontroller, controlcenter, schemaregistry, connect, kafkarest) ==="
+                  for sts in kafka kraftcontroller controlcenter schemaregistry connect kafkarest; do
+                    echo ""
+                    echo "############### sts/$sts ###############"
+                    if oc -n "$OC_NS" get sts "$sts" >/dev/null 2>&1; then
+                      oc -n "$OC_NS" get sts "$sts" -o yaml
+                    else
+                      echo "(sts/$sts not found — likely rejected at admission or not yet created)"
+                    fi
                   done
 
                   echo ""
