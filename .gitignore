@@ -34,7 +34,7 @@ images-phase*.txt
 docs/TALKING-POINTS.*
 notes.md
 *.xlsx
-generate_gantt.py
+generate_*gantt*.py
 
 # Temporary
 tmp/
