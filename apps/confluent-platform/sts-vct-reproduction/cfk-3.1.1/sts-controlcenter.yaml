@@ -1,0 +1,252 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    platform.confluent.io/cr-name: controlcenter
+    platform.confluent.io/last-applied: eyJhcGlWZXJzaW9uIjoiYXBwcy92MSIsImtpbmQiOiJTdGF0ZWZ1bFNldCIsIm1ldGFkYXRhIjp7ImFubm90YXRpb25zIjp7InBsYXRmb3JtLmNvbmZsdWVudC5pby9jci1uYW1lIjoiY29udHJvbGNlbnRlciIsInBsYXRmb3JtLmNvbmZsdWVudC5pby9uYW1lc3BhY2UiOiJkYWgtZmxpbmstZGV2IiwicGxhdGZvcm0uY29uZmx1ZW50LmlvL3R5cGUiOiJjb250cm9sY2VudGVyIn0sImxhYmVscyI6eyJhcHAua3ViZXJuZXRlcy5pby9tYW5hZ2VkLWJ5IjoiY29uZmx1ZW50LW9wZXJhdG9yIiwiY29uZmx1ZW50LXBsYXRmb3JtIjoidHJ1ZSIsImNyLW5hbWUiOiJjb250cm9sY2VudGVyIiwidHlwZSI6ImNvbnRyb2xjZW50ZXIifSwibmFtZSI6ImNvbnRyb2xjZW50ZXIiLCJuYW1lc3BhY2UiOiJkYWgtZmxpbmstZGV2Iiwib3duZXJSZWZlcmVuY2VzIjpbeyJhcGlWZXJzaW9uIjoicGxhdGZvcm0uY29uZmx1ZW50LmlvL3YxYmV0YTEiLCJibG9ja093bmVyRGVsZXRpb24iOnRydWUsImNvbnRyb2xsZXIiOnRydWUsImtpbmQiOiJDb250cm9sQ2VudGVyIiwibmFtZSI6ImNvbnRyb2xjZW50ZXIiLCJ1aWQiOiJhYzhlZWRiZC03YmI0LTRiYmItYTgzZS1jODlhMjhkOTNmMzEifV19LCJzcGVjIjp7InBvZE1hbmFnZW1lbnRQb2xpY3kiOiJQYXJhbGxlbCIsInJlcGxpY2FzIjoxLCJzZWxlY3RvciI6eyJtYXRjaExhYmVscyI6eyJhcHAiOiJjb250cm9sY2VudGVyIiwiY2x1c3RlcklkIjoiZGFoLWZsaW5rLWRldiIsImNvbmZsdWVudC1wbGF0Zm9ybSI6InRydWUiLCJ0eXBlIjoiY29udHJvbGNlbnRlciJ9fSwic2VydmljZU5hbWUiOiJjb250cm9sY2VudGVyIiwidGVtcGxhdGUiOnsibWV0YWRhdGEiOnsiYW5ub3RhdGlvbnMiOnsicGxhdGZvcm0uY29uZmx1ZW50LmlvL2NvbmZpZy1yZXZpc2lvbi1oYXNoIjoiMmZiNmJjOWc3NiIsInByb21ldGhldXMuaW8vcG9ydCI6Ijc3NzgiLCJwcm9tZXRoZXVzLmlvL3NjcmFwZSI6InRydWUifSwibGFiZWxzIjp7ImFwcCI6ImNvbnRyb2xjZW50ZXIiLCJjbHVzdGVySWQiOiJkYWgtZmxpbmstZGV2IiwiY29uZmx1ZW50LXBsYXRmb3JtIjoidHJ1ZSIsInBsYXRmb3JtLmNvbmZsdWVudC5pby90eXBlIjoiY29udHJvbGNlbnRlciIsInR5cGUiOiJjb250cm9sY2VudGVyIn0sIm5hbWUiOiJjb250cm9sY2VudGVyIn0sInNwZWMiOnsiYWZmaW5pdHkiOnt9LCJjb250YWluZXJzIjpbeyJhcmdzIjpbIi9tbnQvY29uZmlnL2NvbnRyb2xjZW50ZXIvYmluL3J1biJdLCJjb21tYW5kIjpbIi9iaW4vc2giLCIteGMiXSwiZW52IjpbeyJuYW1lIjoiQ0FBU19QT0RfSUQiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoibWV0YWRhdGEubmFtZSJ9fX0seyJuYW1lIjoiSE9TVF9JUCIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJzdGF0dXMuaG9zdElQIn19fSx7Im5hbWUiOiJQT0RfSVAiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoic3RhdHVzLnBvZElQIn19fSx7Im5hbWUiOiJQT0RfTkFNRSIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJtZXRhZGF0YS5uYW1lIn19fSx7Im5hbWUiOiJQT0RfTkFNRVNQQUNFIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6Im1ldGFkYXRhLm5hbWVzcGFjZSJ9fX0seyJuYW1lIjoiVVNFX0xPRzRKMiIsInZhbHVlIjoidHJ1ZSJ9XSwiaW1hZ2UiOiJkb2NrZXIuaW8vY29uZmx1ZW50aW5jL2NwLWVudGVycHJpc2UtY29udHJvbC1jZW50ZXItbmV4dC1nZW46Mi41LjAiLCJpbWFnZVB1bGxQb2xpY3kiOiJJZk5vdFByZXNlbnQiLCJsaXZlbmVzc1Byb2JlIjp7ImZhaWx1cmVUaHJlc2hvbGQiOjUsImh0dHBHZXQiOnsicGF0aCI6Ii8yLjAvc3RhdHVzL2FwcF9pbmZvIiwicG9ydCI6OTAyMSwic2NoZW1lIjoiSFRUUCJ9LCJpbml0aWFsRGVsYXlTZWNvbmRzIjo2MCwidGltZW91dFNlY29uZHMiOjMwfSwibmFtZSI6ImNvbnRyb2xjZW50ZXIiLCJwb3J0cyI6W3siY29udGFpbmVyUG9ydCI6OTAyMSwibmFtZSI6ImV4dGVybmFsIn0seyJjb250YWluZXJQb3J0Ijo3MjAzLCJuYW1lIjoiam14In0seyJjb250YWluZXJQb3J0Ijo3Nzc3LCJuYW1lIjoiam9sb2tpYSJ9LHsiY29udGFpbmVyUG9ydCI6Nzc3OCwibmFtZSI6InByb21ldGhldXMifV0sInJlYWRpbmVzc1Byb2JlIjp7ImZhaWx1cmVUaHJlc2hvbGQiOjUsImh0dHBHZXQiOnsicGF0aCI6Ii8yLjAvc3RhdHVzL2FwcF9pbmZvIiwicG9ydCI6OTAyMSwic2NoZW1lIjoiSFRUUCJ9LCJpbml0aWFsRGVsYXlTZWNvbmRzIjo2MCwidGltZW91dFNlY29uZHMiOjMwfSwicmVzb3VyY2VzIjp7fSwidm9sdW1lTW91bnRzIjpbeyJtb3VudFBhdGgiOiIvb3B0L2NvbmZsdWVudGluYyIsIm5hbWUiOiJjcC1vcGVyYXRvci1zY3JpcHRzIn0seyJtb3VudFBhdGgiOiIvbW50L2RhdGEvZGF0YTAiLCJuYW1lIjoiZGF0YTAifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL2luaXQiLCJuYW1lIjoiaW5pdC1jb25maWctdm9sdW1lIn0seyJtb3VudFBhdGgiOiIvbW50L2NvbmZpZyIsIm5hbWUiOiJwb2Qtc2hhcmVkLXdvcmtkaXIifSx7Im1vdW50UGF0aCI6Ii9tbnQvc2VjcmV0cy9zYXNsLXBsYWluLWludGVybmFsIiwibmFtZSI6InJlZi1hdXRoLXNhc2wtcGxhaW4taW50ZXJuYWwifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL3NoYXJlZCIsIm5hbWUiOiJzaGFyZWQtY29uZmlnLXZvbHVtZSJ9XX1dLCJpbml0Q29udGFpbmVycyI6W3siYXJncyI6WyJ1bnRpbCBbIC1mIC9tbnQvY29uZmlnL2luaXQvdGVtcGxhdGUuanNvbm5ldCBdOyBkbyBlY2hvIFwiZmlsZSBub3QgZm91bmRcIjsgc2xlZXAgMTBzOyBkb25lOyAvb3B0L3N0YXJ0dXAuc2giXSwiY29tbWFuZCI6WyIvYmluL3NoIiwiLXhjIl0sImVudiI6W3sibmFtZSI6IkNBQVNfUE9EX0lEIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6Im1ldGFkYXRhLm5hbWUifX19LHsibmFtZSI6IkhPU1RfSVAiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoic3RhdHVzLmhvc3RJUCJ9fX0seyJuYW1lIjoiUE9EX0lQIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6InN0YXR1cy5wb2RJUCJ9fX0seyJuYW1lIjoiUE9EX05BTUUiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoibWV0YWRhdGEubmFtZSJ9fX0seyJuYW1lIjoiUE9EX05BTUVTUEFDRSIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJtZXRhZGF0YS5uYW1lc3BhY2UifX19LHsibmFtZSI6Ik9QRVJBVE9SX0NQX1RZUEUiLCJ2YWx1ZSI6ImNvbnRyb2xjZW50ZXIifV0sImltYWdlIjoiZG9ja2VyLmlvL2NvbmZsdWVudGluYy9jb25mbHVlbnQtaW5pdC1jb250YWluZXI6My4xLjIiLCJpbWFnZVB1bGxQb2xpY3kiOiJJZk5vdFByZXNlbnQiLCJuYW1lIjoiY29uZmlnLWluaXQtY29udGFpbmVyIiwicmVzb3VyY2VzIjp7ImxpbWl0cyI6eyJjcHUiOiI1MDBtIiwibWVtb3J5IjoiMUdpIn0sInJlcXVlc3RzIjp7ImNwdSI6IjEwMG0iLCJtZW1vcnkiOiI1MTJNaSJ9fSwidm9sdW1lTW91bnRzIjpbeyJtb3VudFBhdGgiOiIvbW50L2RhdGEvZGF0YTAiLCJuYW1lIjoiZGF0YTAifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL2luaXQiLCJuYW1lIjoiaW5pdC1jb25maWctdm9sdW1lIn0seyJtb3VudFBhdGgiOiIvbW50L2NvbmZpZyIsIm5hbWUiOiJwb2Qtc2hhcmVkLXdvcmtkaXIifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL3NoYXJlZCIsIm5hbWUiOiJzaGFyZWQtY29uZmlnLXZvbHVtZSJ9XX1dLCJzZWN1cml0eUNvbnRleHQiOnt9LCJzZXJ2aWNlQWNjb3VudE5hbWUiOiJmbGluay1vcGVyYXRvciIsInRlcm1pbmF0aW9uR3JhY2VQZXJpb2RTZWNvbmRzIjozMCwidm9sdW1lcyI6W3siZW1wdHlEaXIiOnsibWVkaXVtIjoiTWVtb3J5In0sIm5hbWUiOiJjcC1vcGVyYXRvci1zY3JpcHRzIn0seyJjb25maWdNYXAiOnsibmFtZSI6ImNvbnRyb2xjZW50ZXItaW5pdC1jb25maWcifSwibmFtZSI6ImluaXQtY29uZmlnLXZvbHVtZSJ9LHsiZW1wdHlEaXIiOnsibWVkaXVtIjoiTWVtb3J5In0sIm5hbWUiOiJwb2Qtc2hhcmVkLXdvcmtkaXIifSx7Im5hbWUiOiJyZWYtYXV0aC1zYXNsLXBsYWluLWludGVybmFsIiwic2VjcmV0Ijp7InNlY3JldE5hbWUiOiJzYXNsLXBsYWluLWludGVybmFsIn19LHsiY29uZmlnTWFwIjp7Im5hbWUiOiJjb250cm9sY2VudGVyLXNoYXJlZC1jb25maWcifSwibmFtZSI6InNoYXJlZC1jb25maWctdm9sdW1lIn1dfX0sInVwZGF0ZVN0cmF0ZWd5Ijp7fSwidm9sdW1lQ2xhaW1UZW1wbGF0ZXMiOlt7Im1ldGFkYXRhIjp7Im5hbWUiOiJkYXRhMCJ9LCJzcGVjIjp7ImFjY2Vzc01vZGVzIjpbIlJlYWRXcml0ZU9uY2UiXSwicmVzb3VyY2VzIjp7InJlcXVlc3RzIjp7InN0b3JhZ2UiOiIxR2kifX0sInN0b3JhZ2VDbGFzc05hbWUiOiJkdW1teSJ9LCJzdGF0dXMiOnt9fV19LCJzdGF0dXMiOnsiYXZhaWxhYmxlUmVwbGljYXMiOjAsInJlcGxpY2FzIjowfX0=
+    platform.confluent.io/namespace: dah-flink-dev
+    platform.confluent.io/type: controlcenter
+  creationTimestamp: "2026-05-14T21:42:52Z"
+  generation: 2
+  labels:
+    app.kubernetes.io/managed-by: confluent-operator
+    confluent-platform: "true"
+    cr-name: controlcenter
+    type: controlcenter
+  name: controlcenter
+  namespace: dah-flink-dev
+  ownerReferences:
+  - apiVersion: platform.confluent.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ControlCenter
+    name: controlcenter
+    uid: ac8eedbd-7bb4-4bbb-a83e-c89a28d93f31
+  resourceVersion: "98454"
+  uid: 6c1f8fc5-d75d-47d2-b86b-c40b80704a78
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: Parallel
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: controlcenter
+      clusterId: dah-flink-dev
+      confluent-platform: "true"
+      type: controlcenter
+  serviceName: controlcenter
+  template:
+    metadata:
+      annotations:
+        platform.confluent.io/config-revision-hash: 2fb6bc9g76
+        prometheus.io/port: "7778"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app: controlcenter
+        clusterId: dah-flink-dev
+        confluent-platform: "true"
+        platform.confluent.io/type: controlcenter
+        type: controlcenter
+      name: controlcenter
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - /mnt/config/controlcenter/bin/run
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: USE_LOG4J2
+          value: "true"
+        image: docker.io/confluentinc/cp-enterprise-control-center-next-gen:2.5.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /2.0/status/app_info
+            port: 9021
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        name: controlcenter
+        ports:
+        - containerPort: 9021
+          name: external
+          protocol: TCP
+        - containerPort: 7203
+          name: jmx
+          protocol: TCP
+        - containerPort: 7777
+          name: jolokia
+          protocol: TCP
+        - containerPort: 7778
+          name: prometheus
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /2.0/status/app_info
+            port: 9021
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/confluentinc
+          name: cp-operator-scripts
+        - mountPath: /mnt/data/data0
+          name: data0
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/secrets/sasl-plain-internal
+          name: ref-auth-sasl-plain-internal
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - until [ -f /mnt/config/init/template.jsonnet ]; do echo "file not found";
+          sleep 10s; done; /opt/startup.sh
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_CP_TYPE
+          value: controlcenter
+        image: docker.io/confluentinc/confluent-init-container:3.1.2
+        imagePullPolicy: IfNotPresent
+        name: config-init-container
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/data/data0
+          name: data0
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: flink-operator
+      serviceAccountName: flink-operator
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: cp-operator-scripts
+      - configMap:
+          defaultMode: 420
+          name: controlcenter-init-config
+        name: init-config-volume
+      - emptyDir:
+          medium: Memory
+        name: pod-shared-workdir
+      - name: ref-auth-sasl-plain-internal
+        secret:
+          defaultMode: 420
+          secretName: sasl-plain-internal
+      - configMap:
+          defaultMode: 420
+          name: controlcenter-shared-config
+        name: shared-config-volume
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      creationTimestamp: null
+      name: data0
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: dummy
+      volumeMode: Filesystem
+    status:
+      phase: Pending
+status:
+  availableReplicas: 0
+  collisionCount: 0
+  currentRevision: controlcenter-dbdb98b
+  observedGeneration: 2
+  replicas: 1
+  updateRevision: controlcenter-78cbc4cfbc
+  updatedReplicas: 1

@@ -1,0 +1,232 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    platform.confluent.io/cr-name: schemaregistry
+    platform.confluent.io/last-applied: eyJhcGlWZXJzaW9uIjoiYXBwcy92MSIsImtpbmQiOiJTdGF0ZWZ1bFNldCIsIm1ldGFkYXRhIjp7ImFubm90YXRpb25zIjp7InBsYXRmb3JtLmNvbmZsdWVudC5pby9jci1uYW1lIjoic2NoZW1hcmVnaXN0cnkiLCJwbGF0Zm9ybS5jb25mbHVlbnQuaW8vbmFtZXNwYWNlIjoiZGFoLWZsaW5rLWRldiIsInBsYXRmb3JtLmNvbmZsdWVudC5pby90eXBlIjoic2NoZW1hcmVnaXN0cnkifSwibGFiZWxzIjp7ImFwcC5rdWJlcm5ldGVzLmlvL21hbmFnZWQtYnkiOiJjb25mbHVlbnQtb3BlcmF0b3IiLCJjb25mbHVlbnQtcGxhdGZvcm0iOiJ0cnVlIiwiY3ItbmFtZSI6InNjaGVtYXJlZ2lzdHJ5IiwidHlwZSI6InNjaGVtYXJlZ2lzdHJ5In0sIm5hbWUiOiJzY2hlbWFyZWdpc3RyeSIsIm5hbWVzcGFjZSI6ImRhaC1mbGluay1kZXYiLCJvd25lclJlZmVyZW5jZXMiOlt7ImFwaVZlcnNpb24iOiJwbGF0Zm9ybS5jb25mbHVlbnQuaW8vdjFiZXRhMSIsImJsb2NrT3duZXJEZWxldGlvbiI6dHJ1ZSwiY29udHJvbGxlciI6dHJ1ZSwia2luZCI6IlNjaGVtYVJlZ2lzdHJ5IiwibmFtZSI6InNjaGVtYXJlZ2lzdHJ5IiwidWlkIjoiNmM5ZDdlZjktNTQwZi00NjZiLTk5MTEtZTE2ZGRiNzYyZjUzIn1dfSwic3BlYyI6eyJwb2RNYW5hZ2VtZW50UG9saWN5IjoiUGFyYWxsZWwiLCJyZXBsaWNhcyI6MSwic2VsZWN0b3IiOnsibWF0Y2hMYWJlbHMiOnsiYXBwIjoic2NoZW1hcmVnaXN0cnkiLCJjbHVzdGVySWQiOiJkYWgtZmxpbmstZGV2IiwiY29uZmx1ZW50LXBsYXRmb3JtIjoidHJ1ZSIsInR5cGUiOiJzY2hlbWFyZWdpc3RyeSJ9fSwic2VydmljZU5hbWUiOiJzY2hlbWFyZWdpc3RyeSIsInRlbXBsYXRlIjp7Im1ldGFkYXRhIjp7ImFubm90YXRpb25zIjp7InBsYXRmb3JtLmNvbmZsdWVudC5pby9jb25maWctcmV2aXNpb24taGFzaCI6ImJ0aHQyOGQ2NHQiLCJwcm9tZXRoZXVzLmlvL3BvcnQiOiI3Nzc4IiwicHJvbWV0aGV1cy5pby9zY3JhcGUiOiJ0cnVlIn0sImxhYmVscyI6eyJhcHAiOiJzY2hlbWFyZWdpc3RyeSIsImNsdXN0ZXJJZCI6ImRhaC1mbGluay1kZXYiLCJjb25mbHVlbnQtcGxhdGZvcm0iOiJ0cnVlIiwicGxhdGZvcm0uY29uZmx1ZW50LmlvL3R5cGUiOiJzY2hlbWFyZWdpc3RyeSIsInR5cGUiOiJzY2hlbWFyZWdpc3RyeSJ9LCJuYW1lIjoic2NoZW1hcmVnaXN0cnkifSwic3BlYyI6eyJhZmZpbml0eSI6e30sImNvbnRhaW5lcnMiOlt7ImFyZ3MiOlsiL21udC9jb25maWcvc2NoZW1hcmVnaXN0cnkvYmluL3J1biJdLCJjb21tYW5kIjpbIi9iaW4vc2giLCIteGMiXSwiZW52IjpbeyJuYW1lIjoiQ0FBU19QT0RfSUQiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoibWV0YWRhdGEubmFtZSJ9fX0seyJuYW1lIjoiSE9TVF9JUCIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJzdGF0dXMuaG9zdElQIn19fSx7Im5hbWUiOiJQT0RfSVAiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoic3RhdHVzLnBvZElQIn19fSx7Im5hbWUiOiJQT0RfTkFNRSIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJtZXRhZGF0YS5uYW1lIn19fSx7Im5hbWUiOiJQT0RfTkFNRVNQQUNFIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6Im1ldGFkYXRhLm5hbWVzcGFjZSJ9fX0seyJuYW1lIjoiVVNFX0xPRzRKMiIsInZhbHVlIjoidHJ1ZSJ9XSwiaW1hZ2UiOiJkb2NrZXIuaW8vY29uZmx1ZW50aW5jL2NwLXNjaGVtYS1yZWdpc3RyeTo4LjAuMyIsImltYWdlUHVsbFBvbGljeSI6IklmTm90UHJlc2VudCIsImxpdmVuZXNzUHJvYmUiOnsiaHR0cEdldCI6eyJwYXRoIjoiL3YxL21ldGFkYXRhL2lkIiwicG9ydCI6ODA4MSwic2NoZW1lIjoiSFRUUCJ9LCJpbml0aWFsRGVsYXlTZWNvbmRzIjo2MCwidGltZW91dFNlY29uZHMiOjEwfSwibmFtZSI6InNjaGVtYXJlZ2lzdHJ5IiwicG9ydHMiOlt7ImNvbnRhaW5lclBvcnQiOjgwODEsIm5hbWUiOiJleHRlcm5hbCJ9LHsiY29udGFpbmVyUG9ydCI6NzIwMywibmFtZSI6ImpteCJ9LHsiY29udGFpbmVyUG9ydCI6Nzc3NywibmFtZSI6ImpvbG9raWEifSx7ImNvbnRhaW5lclBvcnQiOjc3NzgsIm5hbWUiOiJwcm9tZXRoZXVzIn1dLCJyZWFkaW5lc3NQcm9iZSI6eyJodHRwR2V0Ijp7InBhdGgiOiIvdjEvbWV0YWRhdGEvaWQiLCJwb3J0Ijo4MDgxLCJzY2hlbWUiOiJIVFRQIn0sImluaXRpYWxEZWxheVNlY29uZHMiOjYwLCJ0aW1lb3V0U2Vjb25kcyI6MTB9LCJyZXNvdXJjZXMiOnt9LCJ2b2x1bWVNb3VudHMiOlt7Im1vdW50UGF0aCI6Ii9vcHQvY29uZmx1ZW50aW5jIiwibmFtZSI6ImNwLW9wZXJhdG9yLXNjcmlwdHMifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL2luaXQiLCJuYW1lIjoiaW5pdC1jb25maWctdm9sdW1lIn0seyJtb3VudFBhdGgiOiIvbW50L2NvbmZpZyIsIm5hbWUiOiJwb2Qtc2hhcmVkLXdvcmtkaXIifSx7Im1vdW50UGF0aCI6Ii9tbnQvc2VjcmV0cy9zYXNsLXBsYWluLWludGVybmFsIiwibmFtZSI6InJlZi1hdXRoLXNhc2wtcGxhaW4taW50ZXJuYWwifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL3NoYXJlZCIsIm5hbWUiOiJzaGFyZWQtY29uZmlnLXZvbHVtZSJ9XX1dLCJpbml0Q29udGFpbmVycyI6W3siYXJncyI6WyJ1bnRpbCBbIC1mIC9tbnQvY29uZmlnL2luaXQvdGVtcGxhdGUuanNvbm5ldCBdOyBkbyBlY2hvIFwiZmlsZSBub3QgZm91bmRcIjsgc2xlZXAgMTBzOyBkb25lOyAvb3B0L3N0YXJ0dXAuc2giXSwiY29tbWFuZCI6WyIvYmluL3NoIiwiLXhjIl0sImVudiI6W3sibmFtZSI6IkNBQVNfUE9EX0lEIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6Im1ldGFkYXRhLm5hbWUifX19LHsibmFtZSI6IkhPU1RfSVAiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoic3RhdHVzLmhvc3RJUCJ9fX0seyJuYW1lIjoiUE9EX0lQIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6InN0YXR1cy5wb2RJUCJ9fX0seyJuYW1lIjoiUE9EX05BTUUiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoibWV0YWRhdGEubmFtZSJ9fX0seyJuYW1lIjoiUE9EX05BTUVTUEFDRSIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJtZXRhZGF0YS5uYW1lc3BhY2UifX19LHsibmFtZSI6Ik9QRVJBVE9SX0NQX1RZUEUiLCJ2YWx1ZSI6InNjaGVtYXJlZ2lzdHJ5In1dLCJpbWFnZSI6ImRvY2tlci5pby9jb25mbHVlbnRpbmMvY29uZmx1ZW50LWluaXQtY29udGFpbmVyOjMuMS4yIiwiaW1hZ2VQdWxsUG9saWN5IjoiSWZOb3RQcmVzZW50IiwibmFtZSI6ImNvbmZpZy1pbml0LWNvbnRhaW5lciIsInJlc291cmNlcyI6eyJsaW1pdHMiOnsiY3B1IjoiNTAwbSIsIm1lbW9yeSI6IjFHaSJ9LCJyZXF1ZXN0cyI6eyJjcHUiOiIxMDBtIiwibWVtb3J5IjoiNTEyTWkifX0sInZvbHVtZU1vdW50cyI6W3sibW91bnRQYXRoIjoiL21udC9jb25maWcvaW5pdCIsIm5hbWUiOiJpbml0LWNvbmZpZy12b2x1bWUifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnIiwibmFtZSI6InBvZC1zaGFyZWQtd29ya2RpciJ9LHsibW91bnRQYXRoIjoiL21udC9jb25maWcvc2hhcmVkIiwibmFtZSI6InNoYXJlZC1jb25maWctdm9sdW1lIn1dfV0sInNlY3VyaXR5Q29udGV4dCI6e30sInNlcnZpY2VBY2NvdW50TmFtZSI6ImZsaW5rLW9wZXJhdG9yIiwidGVybWluYXRpb25HcmFjZVBlcmlvZFNlY29uZHMiOjMwLCJ2b2x1bWVzIjpbeyJlbXB0eURpciI6eyJtZWRpdW0iOiJNZW1vcnkifSwibmFtZSI6ImNwLW9wZXJhdG9yLXNjcmlwdHMifSx7ImNvbmZpZ01hcCI6eyJuYW1lIjoic2NoZW1hcmVnaXN0cnktaW5pdC1jb25maWcifSwibmFtZSI6ImluaXQtY29uZmlnLXZvbHVtZSJ9LHsiZW1wdHlEaXIiOnsibWVkaXVtIjoiTWVtb3J5In0sIm5hbWUiOiJwb2Qtc2hhcmVkLXdvcmtkaXIifSx7Im5hbWUiOiJyZWYtYXV0aC1zYXNsLXBsYWluLWludGVybmFsIiwic2VjcmV0Ijp7InNlY3JldE5hbWUiOiJzYXNsLXBsYWluLWludGVybmFsIn19LHsiY29uZmlnTWFwIjp7Im5hbWUiOiJzY2hlbWFyZWdpc3RyeS1zaGFyZWQtY29uZmlnIn0sIm5hbWUiOiJzaGFyZWQtY29uZmlnLXZvbHVtZSJ9XX19LCJ1cGRhdGVTdHJhdGVneSI6e319LCJzdGF0dXMiOnsiYXZhaWxhYmxlUmVwbGljYXMiOjAsInJlcGxpY2FzIjowfX0=
+    platform.confluent.io/namespace: dah-flink-dev
+    platform.confluent.io/type: schemaregistry
+  creationTimestamp: "2026-05-14T21:42:52Z"
+  generation: 2
+  labels:
+    app.kubernetes.io/managed-by: confluent-operator
+    confluent-platform: "true"
+    cr-name: schemaregistry
+    type: schemaregistry
+  name: schemaregistry
+  namespace: dah-flink-dev
+  ownerReferences:
+  - apiVersion: platform.confluent.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: SchemaRegistry
+    name: schemaregistry
+    uid: 6c9d7ef9-540f-466b-9911-e16ddb762f53
+  resourceVersion: "98479"
+  uid: b4e9977f-09fe-41fe-8c1c-f660d04023ab
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: Parallel
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: schemaregistry
+      clusterId: dah-flink-dev
+      confluent-platform: "true"
+      type: schemaregistry
+  serviceName: schemaregistry
+  template:
+    metadata:
+      annotations:
+        platform.confluent.io/config-revision-hash: btht28d64t
+        prometheus.io/port: "7778"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app: schemaregistry
+        clusterId: dah-flink-dev
+        confluent-platform: "true"
+        platform.confluent.io/type: schemaregistry
+        type: schemaregistry
+      name: schemaregistry
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - /mnt/config/schemaregistry/bin/run
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: USE_LOG4J2
+          value: "true"
+        image: docker.io/confluentinc/cp-schema-registry:8.0.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /v1/metadata/id
+            port: 8081
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        name: schemaregistry
+        ports:
+        - containerPort: 8081
+          name: external
+          protocol: TCP
+        - containerPort: 7203
+          name: jmx
+          protocol: TCP
+        - containerPort: 7777
+          name: jolokia
+          protocol: TCP
+        - containerPort: 7778
+          name: prometheus
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /v1/metadata/id
+            port: 8081
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/confluentinc
+          name: cp-operator-scripts
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/secrets/sasl-plain-internal
+          name: ref-auth-sasl-plain-internal
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - until [ -f /mnt/config/init/template.jsonnet ]; do echo "file not found";
+          sleep 10s; done; /opt/startup.sh
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_CP_TYPE
+          value: schemaregistry
+        image: docker.io/confluentinc/confluent-init-container:3.1.2
+        imagePullPolicy: IfNotPresent
+        name: config-init-container
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: flink-operator
+      serviceAccountName: flink-operator
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: cp-operator-scripts
+      - configMap:
+          defaultMode: 420
+          name: schemaregistry-init-config
+        name: init-config-volume
+      - emptyDir:
+          medium: Memory
+        name: pod-shared-workdir
+      - name: ref-auth-sasl-plain-internal
+        secret:
+          defaultMode: 420
+          secretName: sasl-plain-internal
+      - configMap:
+          defaultMode: 420
+          name: schemaregistry-shared-config
+        name: shared-config-volume
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+status:
+  availableReplicas: 0
+  collisionCount: 0
+  currentRevision: schemaregistry-5b596d6df8
+  observedGeneration: 2
+  replicas: 1
+  updateRevision: schemaregistry-5b859c74c
+  updatedReplicas: 1

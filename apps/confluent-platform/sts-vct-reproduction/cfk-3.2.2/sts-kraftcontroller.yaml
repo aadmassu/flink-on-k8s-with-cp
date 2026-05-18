@@ -1,0 +1,245 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    platform.confluent.io/cr-name: kraftcontroller
+    platform.confluent.io/last-applied: eyJhcGlWZXJzaW9uIjoiYXBwcy92MSIsImtpbmQiOiJTdGF0ZWZ1bFNldCIsIm1ldGFkYXRhIjp7ImFubm90YXRpb25zIjp7InBsYXRmb3JtLmNvbmZsdWVudC5pby9jci1uYW1lIjoia3JhZnRjb250cm9sbGVyIiwicGxhdGZvcm0uY29uZmx1ZW50LmlvL25hbWVzcGFjZSI6ImRhaC1mbGluay1kZXYiLCJwbGF0Zm9ybS5jb25mbHVlbnQuaW8vdHlwZSI6ImtyYWZ0Y29udHJvbGxlciJ9LCJsYWJlbHMiOnsiYXBwLmt1YmVybmV0ZXMuaW8vbWFuYWdlZC1ieSI6ImNvbmZsdWVudC1vcGVyYXRvciIsImNvbmZsdWVudC1wbGF0Zm9ybSI6InRydWUiLCJjci1uYW1lIjoia3JhZnRjb250cm9sbGVyIiwidHlwZSI6ImtyYWZ0Y29udHJvbGxlciJ9LCJuYW1lIjoia3JhZnRjb250cm9sbGVyIiwibmFtZXNwYWNlIjoiZGFoLWZsaW5rLWRldiIsIm93bmVyUmVmZXJlbmNlcyI6W3siYXBpVmVyc2lvbiI6InBsYXRmb3JtLmNvbmZsdWVudC5pby92MWJldGExIiwiYmxvY2tPd25lckRlbGV0aW9uIjp0cnVlLCJjb250cm9sbGVyIjp0cnVlLCJraW5kIjoiS1JhZnRDb250cm9sbGVyIiwibmFtZSI6ImtyYWZ0Y29udHJvbGxlciIsInVpZCI6ImMyMjI2MTY4LWFkNDYtNDFhZS05Y2Y5LWNlYTVjYzkwOWM1MCJ9XX0sInNwZWMiOnsicG9kTWFuYWdlbWVudFBvbGljeSI6IlBhcmFsbGVsIiwicmVwbGljYXMiOjMsInNlbGVjdG9yIjp7Im1hdGNoTGFiZWxzIjp7ImFwcCI6ImtyYWZ0Y29udHJvbGxlciIsImNsdXN0ZXJJZCI6ImRhaC1mbGluay1kZXYiLCJjb25mbHVlbnQtcGxhdGZvcm0iOiJ0cnVlIiwidHlwZSI6ImtyYWZ0Y29udHJvbGxlciJ9fSwic2VydmljZU5hbWUiOiJrcmFmdGNvbnRyb2xsZXIiLCJ0ZW1wbGF0ZSI6eyJtZXRhZGF0YSI6eyJhbm5vdGF0aW9ucyI6eyJwcm9tZXRoZXVzLmlvL3BvcnQiOiI3Nzc4IiwicHJvbWV0aGV1cy5pby9zY3JhcGUiOiJ0cnVlIn0sImxhYmVscyI6eyJhcHAiOiJrcmFmdGNvbnRyb2xsZXIiLCJjbHVzdGVySWQiOiJkYWgtZmxpbmstZGV2IiwiY29uZmx1ZW50LXBsYXRmb3JtIjoidHJ1ZSIsInBsYXRmb3JtLmNvbmZsdWVudC5pby90eXBlIjoia3JhZnRjb250cm9sbGVyIiwidHlwZSI6ImtyYWZ0Y29udHJvbGxlciJ9LCJuYW1lIjoia3JhZnRjb250cm9sbGVyIn0sInNwZWMiOnsiYWZmaW5pdHkiOnt9LCJjb250YWluZXJzIjpbeyJhcmdzIjpbIi9tbnQvY29uZmlnL2thZmthL2Jpbi9ydW4gZmFsc2UgdHJ1ZSJdLCJjb21tYW5kIjpbIi9iaW4vc2giLCIteGMiXSwiZW52IjpbeyJuYW1lIjoiQ0FBU19QT0RfSUQiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoibWV0YWRhdGEubmFtZSJ9fX0seyJuYW1lIjoiSE9TVF9JUCIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJzdGF0dXMuaG9zdElQIn19fSx7Im5hbWUiOiJQT0RfSVAiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoic3RhdHVzLnBvZElQIn19fSx7Im5hbWUiOiJQT0RfTkFNRSIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJtZXRhZGF0YS5uYW1lIn19fSx7Im5hbWUiOiJQT0RfTkFNRVNQQUNFIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6Im1ldGFkYXRhLm5hbWVzcGFjZSJ9fX0seyJuYW1lIjoiVVNFX0xPRzRKMiIsInZhbHVlIjoidHJ1ZSJ9XSwiaW1hZ2UiOiJkb2NrZXIuaW8vY29uZmx1ZW50aW5jL2NwLXNlcnZlcjo4LjIuMCIsImltYWdlUHVsbFBvbGljeSI6IklmTm90UHJlc2VudCIsIm5hbWUiOiJrcmFmdGNvbnRyb2xsZXIiLCJwb3J0cyI6W3siY29udGFpbmVyUG9ydCI6OTA3NCwibmFtZSI6ImNvbnRyb2xsZXIifSx7ImNvbnRhaW5lclBvcnQiOjcyMDMsIm5hbWUiOiJqbXgifSx7ImNvbnRhaW5lclBvcnQiOjc3NzcsIm5hbWUiOiJqb2xva2lhIn0seyJjb250YWluZXJQb3J0Ijo3Nzc4LCJuYW1lIjoicHJvbWV0aGV1cyJ9XSwicmVhZGluZXNzUHJvYmUiOnsiaW5pdGlhbERlbGF5U2Vjb25kcyI6MzAsInRjcFNvY2tldCI6eyJwb3J0Ijo5MDc0fSwidGltZW91dFNlY29uZHMiOjEwfSwicmVzb3VyY2VzIjp7fSwidm9sdW1lTW91bnRzIjpbeyJtb3VudFBhdGgiOiIvb3B0L2NvbmZsdWVudGluYyIsIm5hbWUiOiJjcC1vcGVyYXRvci1zY3JpcHRzIn0seyJtb3VudFBhdGgiOiIvbW50L2RhdGEvZGF0YTAiLCJuYW1lIjoiZGF0YTAifSx7Im1vdW50UGF0aCI6Ii9tbnQvc2VjcmV0cy9rcmFmdGNvbnRyb2xsZXItY29udHJvbGxlci1saXN0ZW5lci1hcGlrZXlzIiwibmFtZSI6ImluLWF1dGgta3JhZnRjb250cm9sbGVyLWNvbnRyb2xsZXItbGlzdGVuZXItYXBpa2V5cyJ9LHsibW91bnRQYXRoIjoiL21udC9jb25maWcvaW5pdCIsIm5hbWUiOiJpbml0LWNvbmZpZy12b2x1bWUifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnIiwibmFtZSI6InBvZC1zaGFyZWQtd29ya2RpciJ9LHsibW91bnRQYXRoIjoiL21udC9zZWNyZXRzL3Nhc2wtcGxhaW4taW50ZXJuYWwiLCJuYW1lIjoicmVmLWF1dGgtc2FzbC1wbGFpbi1pbnRlcm5hbCJ9LHsibW91bnRQYXRoIjoiL21udC9jb25maWcvc2hhcmVkIiwibmFtZSI6InNoYXJlZC1jb25maWctdm9sdW1lIn1dfV0sImluaXRDb250YWluZXJzIjpbeyJhcmdzIjpbInVudGlsIFsgLWYgL21udC9jb25maWcvaW5pdC90ZW1wbGF0ZS5qc29ubmV0IF07IGRvIGVjaG8gXCJmaWxlIG5vdCBmb3VuZFwiOyBzbGVlcCAxMHM7IGRvbmU7IC9vcHQvc3RhcnR1cC5zaCJdLCJjb21tYW5kIjpbIi9iaW4vc2giLCIteGMiXSwiZW52IjpbeyJuYW1lIjoiQ0FBU19QT0RfSUQiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoibWV0YWRhdGEubmFtZSJ9fX0seyJuYW1lIjoiSE9TVF9JUCIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJzdGF0dXMuaG9zdElQIn19fSx7Im5hbWUiOiJQT0RfSVAiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoic3RhdHVzLnBvZElQIn19fSx7Im5hbWUiOiJQT0RfTkFNRSIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJtZXRhZGF0YS5uYW1lIn19fSx7Im5hbWUiOiJQT0RfTkFNRVNQQUNFIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6Im1ldGFkYXRhLm5hbWVzcGFjZSJ9fX0seyJuYW1lIjoiT1BFUkFUT1JfQ1BfVFlQRSIsInZhbHVlIjoia2Fma2EifV0sImltYWdlIjoiZG9ja2VyLmlvL2NvbmZsdWVudGluYy9jb25mbHVlbnQtaW5pdC1jb250YWluZXI6My4yLjIiLCJpbWFnZVB1bGxQb2xpY3kiOiJJZk5vdFByZXNlbnQiLCJuYW1lIjoiY29uZmlnLWluaXQtY29udGFpbmVyIiwicmVzb3VyY2VzIjp7ImxpbWl0cyI6eyJjcHUiOiI1MDBtIiwibWVtb3J5IjoiMUdpIn0sInJlcXVlc3RzIjp7ImNwdSI6IjEwMG0iLCJtZW1vcnkiOiI1MTJNaSJ9fSwidm9sdW1lTW91bnRzIjpbeyJtb3VudFBhdGgiOiIvbW50L2RhdGEvZGF0YTAiLCJuYW1lIjoiZGF0YTAifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL2luaXQiLCJuYW1lIjoiaW5pdC1jb25maWctdm9sdW1lIn0seyJtb3VudFBhdGgiOiIvbW50L2NvbmZpZyIsIm5hbWUiOiJwb2Qtc2hhcmVkLXdvcmtkaXIifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL3NoYXJlZCIsIm5hbWUiOiJzaGFyZWQtY29uZmlnLXZvbHVtZSJ9XX1dLCJzZWN1cml0eUNvbnRleHQiOnt9LCJzZXJ2aWNlQWNjb3VudE5hbWUiOiJmbGluay1vcGVyYXRvciIsInRlcm1pbmF0aW9uR3JhY2VQZXJpb2RTZWNvbmRzIjozMCwidm9sdW1lcyI6W3siZW1wdHlEaXIiOnsibWVkaXVtIjoiTWVtb3J5In0sIm5hbWUiOiJjcC1vcGVyYXRvci1zY3JpcHRzIn0seyJuYW1lIjoiaW4tYXV0aC1rcmFmdGNvbnRyb2xsZXItY29udHJvbGxlci1saXN0ZW5lci1hcGlrZXlzIiwic2VjcmV0Ijp7InNlY3JldE5hbWUiOiJrcmFmdGNvbnRyb2xsZXItY29udHJvbGxlci1saXN0ZW5lci1hcGlrZXlzIn19LHsiY29uZmlnTWFwIjp7Im5hbWUiOiJrcmFmdGNvbnRyb2xsZXItaW5pdC1jb25maWcifSwibmFtZSI6ImluaXQtY29uZmlnLXZvbHVtZSJ9LHsiZW1wdHlEaXIiOnsibWVkaXVtIjoiTWVtb3J5In0sIm5hbWUiOiJwb2Qtc2hhcmVkLXdvcmtkaXIifSx7Im5hbWUiOiJyZWYtYXV0aC1zYXNsLXBsYWluLWludGVybmFsIiwic2VjcmV0Ijp7InNlY3JldE5hbWUiOiJzYXNsLXBsYWluLWludGVybmFsIn19LHsiY29uZmlnTWFwIjp7Im5hbWUiOiJrcmFmdGNvbnRyb2xsZXItc2hhcmVkLWNvbmZpZyJ9LCJuYW1lIjoic2hhcmVkLWNvbmZpZy12b2x1bWUifV19fSwidXBkYXRlU3RyYXRlZ3kiOnsidHlwZSI6IlJvbGxpbmdVcGRhdGUifSwidm9sdW1lQ2xhaW1UZW1wbGF0ZXMiOlt7Im1ldGFkYXRhIjp7Im5hbWUiOiJkYXRhMCJ9LCJzcGVjIjp7ImFjY2Vzc01vZGVzIjpbIlJlYWRXcml0ZU9uY2UiXSwicmVzb3VyY2VzIjp7InJlcXVlc3RzIjp7InN0b3JhZ2UiOiIxR2kifX0sInN0b3JhZ2VDbGFzc05hbWUiOiJkdW1teSJ9LCJzdGF0dXMiOnt9fV19LCJzdGF0dXMiOnsiYXZhaWxhYmxlUmVwbGljYXMiOjAsInJlcGxpY2FzIjowfX0=
+    platform.confluent.io/namespace: dah-flink-dev
+    platform.confluent.io/type: kraftcontroller
+  creationTimestamp: "2026-05-14T21:56:54Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/managed-by: confluent-operator
+    confluent-platform: "true"
+    cr-name: kraftcontroller
+    type: kraftcontroller
+  name: kraftcontroller
+  namespace: dah-flink-dev
+  ownerReferences:
+  - apiVersion: platform.confluent.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: KRaftController
+    name: kraftcontroller
+    uid: c2226168-ad46-41ae-9cf9-cea5cc909c50
+  resourceVersion: "106124"
+  uid: 00b43195-c700-4d95-aeae-f5c143b34c08
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: Parallel
+  replicas: 3
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: kraftcontroller
+      clusterId: dah-flink-dev
+      confluent-platform: "true"
+      type: kraftcontroller
+  serviceName: kraftcontroller
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "7778"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app: kraftcontroller
+        clusterId: dah-flink-dev
+        confluent-platform: "true"
+        platform.confluent.io/type: kraftcontroller
+        type: kraftcontroller
+      name: kraftcontroller
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - /mnt/config/kafka/bin/run false true
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: USE_LOG4J2
+          value: "true"
+        image: docker.io/confluentinc/cp-server:8.2.0
+        imagePullPolicy: IfNotPresent
+        name: kraftcontroller
+        ports:
+        - containerPort: 9074
+          name: controller
+          protocol: TCP
+        - containerPort: 7203
+          name: jmx
+          protocol: TCP
+        - containerPort: 7777
+          name: jolokia
+          protocol: TCP
+        - containerPort: 7778
+          name: prometheus
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 9074
+          timeoutSeconds: 10
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/confluentinc
+          name: cp-operator-scripts
+        - mountPath: /mnt/data/data0
+          name: data0
+        - mountPath: /mnt/secrets/kraftcontroller-controller-listener-apikeys
+          name: in-auth-kraftcontroller-controller-listener-apikeys
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/secrets/sasl-plain-internal
+          name: ref-auth-sasl-plain-internal
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - until [ -f /mnt/config/init/template.jsonnet ]; do echo "file not found";
+          sleep 10s; done; /opt/startup.sh
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_CP_TYPE
+          value: kafka
+        image: docker.io/confluentinc/confluent-init-container:3.2.2
+        imagePullPolicy: IfNotPresent
+        name: config-init-container
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/data/data0
+          name: data0
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: flink-operator
+      serviceAccountName: flink-operator
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: cp-operator-scripts
+      - name: in-auth-kraftcontroller-controller-listener-apikeys
+        secret:
+          defaultMode: 420
+          secretName: kraftcontroller-controller-listener-apikeys
+      - configMap:
+          defaultMode: 420
+          name: kraftcontroller-init-config
+        name: init-config-volume
+      - emptyDir:
+          medium: Memory
+        name: pod-shared-workdir
+      - name: ref-auth-sasl-plain-internal
+        secret:
+          defaultMode: 420
+          secretName: sasl-plain-internal
+      - configMap:
+          defaultMode: 420
+          name: kraftcontroller-shared-config
+        name: shared-config-volume
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      creationTimestamp: null
+      name: data0
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: dummy
+      volumeMode: Filesystem
+    status:
+      phase: Pending
+status:
+  availableReplicas: 3
+  collisionCount: 0
+  currentReplicas: 3
+  currentRevision: kraftcontroller-668cf97b5
+  observedGeneration: 1
+  readyReplicas: 3
+  replicas: 3
+  updateRevision: kraftcontroller-668cf97b5
+  updatedReplicas: 3

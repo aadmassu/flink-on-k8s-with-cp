@@ -1,0 +1,234 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    platform.confluent.io/cr-name: connect
+    platform.confluent.io/last-applied: eyJhcGlWZXJzaW9uIjoiYXBwcy92MSIsImtpbmQiOiJTdGF0ZWZ1bFNldCIsIm1ldGFkYXRhIjp7ImFubm90YXRpb25zIjp7InBsYXRmb3JtLmNvbmZsdWVudC5pby9jci1uYW1lIjoiY29ubmVjdCIsInBsYXRmb3JtLmNvbmZsdWVudC5pby9uYW1lc3BhY2UiOiJkYWgtZmxpbmstZGV2IiwicGxhdGZvcm0uY29uZmx1ZW50LmlvL3R5cGUiOiJjb25uZWN0In0sImxhYmVscyI6eyJhcHAua3ViZXJuZXRlcy5pby9tYW5hZ2VkLWJ5IjoiY29uZmx1ZW50LW9wZXJhdG9yIiwiY29uZmx1ZW50LXBsYXRmb3JtIjoidHJ1ZSIsImNyLW5hbWUiOiJjb25uZWN0IiwidHlwZSI6ImNvbm5lY3QifSwibmFtZSI6ImNvbm5lY3QiLCJuYW1lc3BhY2UiOiJkYWgtZmxpbmstZGV2Iiwib3duZXJSZWZlcmVuY2VzIjpbeyJhcGlWZXJzaW9uIjoicGxhdGZvcm0uY29uZmx1ZW50LmlvL3YxYmV0YTEiLCJibG9ja093bmVyRGVsZXRpb24iOnRydWUsImNvbnRyb2xsZXIiOnRydWUsImtpbmQiOiJDb25uZWN0IiwibmFtZSI6ImNvbm5lY3QiLCJ1aWQiOiJmZTY4Y2M4Ny00OTkyLTQ5ODYtYmFjMS1kYWY1M2QzNTViYTYifV19LCJzcGVjIjp7InBvZE1hbmFnZW1lbnRQb2xpY3kiOiJQYXJhbGxlbCIsInJlcGxpY2FzIjoyLCJzZWxlY3RvciI6eyJtYXRjaExhYmVscyI6eyJhcHAiOiJjb25uZWN0IiwiY2x1c3RlcklkIjoiZGFoLWZsaW5rLWRldiIsImNvbmZsdWVudC1wbGF0Zm9ybSI6InRydWUiLCJ0eXBlIjoiY29ubmVjdCJ9fSwic2VydmljZU5hbWUiOiJjb25uZWN0IiwidGVtcGxhdGUiOnsibWV0YWRhdGEiOnsiYW5ub3RhdGlvbnMiOnsicGxhdGZvcm0uY29uZmx1ZW50LmlvL2NvbmZpZy1yZXZpc2lvbi1oYXNoIjoiaGc2NjY5ZGJnbSIsInByb21ldGhldXMuaW8vcG9ydCI6Ijc3NzgiLCJwcm9tZXRoZXVzLmlvL3NjcmFwZSI6InRydWUifSwibGFiZWxzIjp7ImFwcCI6ImNvbm5lY3QiLCJjbHVzdGVySWQiOiJkYWgtZmxpbmstZGV2IiwiY29uZmx1ZW50LXBsYXRmb3JtIjoidHJ1ZSIsInBsYXRmb3JtLmNvbmZsdWVudC5pby90eXBlIjoiY29ubmVjdCIsInR5cGUiOiJjb25uZWN0In0sIm5hbWUiOiJjb25uZWN0In0sInNwZWMiOnsiYWZmaW5pdHkiOnt9LCJjb250YWluZXJzIjpbeyJhcmdzIjpbIi9tbnQvY29uZmlnL2Nvbm5lY3QvYmluL3J1biJdLCJjb21tYW5kIjpbIi9iaW4vc2giLCIteGMiXSwiZW52IjpbeyJuYW1lIjoiQ0FBU19QT0RfSUQiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoibWV0YWRhdGEubmFtZSJ9fX0seyJuYW1lIjoiSE9TVF9JUCIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJzdGF0dXMuaG9zdElQIn19fSx7Im5hbWUiOiJQT0RfSVAiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoic3RhdHVzLnBvZElQIn19fSx7Im5hbWUiOiJQT0RfTkFNRSIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJtZXRhZGF0YS5uYW1lIn19fSx7Im5hbWUiOiJQT0RfTkFNRVNQQUNFIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6Im1ldGFkYXRhLm5hbWVzcGFjZSJ9fX0seyJuYW1lIjoiVVNFX0xPRzRKMiIsInZhbHVlIjoidHJ1ZSJ9XSwiaW1hZ2UiOiJkb2NrZXIuaW8vY29uZmx1ZW50aW5jL2NwLXNlcnZlci1jb25uZWN0OjguMC4zIiwiaW1hZ2VQdWxsUG9saWN5IjoiSWZOb3RQcmVzZW50IiwibGl2ZW5lc3NQcm9iZSI6eyJmYWlsdXJlVGhyZXNob2xkIjoyMCwiaHR0cEdldCI6eyJwYXRoIjoiL3YxL21ldGFkYXRhL2lkIiwicG9ydCI6ODA4Mywic2NoZW1lIjoiSFRUUCJ9LCJpbml0aWFsRGVsYXlTZWNvbmRzIjoxMjAsInRpbWVvdXRTZWNvbmRzIjozMH0sIm5hbWUiOiJjb25uZWN0IiwicG9ydHMiOlt7ImNvbnRhaW5lclBvcnQiOjgwODMsIm5hbWUiOiJleHRlcm5hbCJ9LHsiY29udGFpbmVyUG9ydCI6NzIwMywibmFtZSI6ImpteCJ9LHsiY29udGFpbmVyUG9ydCI6Nzc3NywibmFtZSI6ImpvbG9raWEifSx7ImNvbnRhaW5lclBvcnQiOjc3NzgsIm5hbWUiOiJwcm9tZXRoZXVzIn1dLCJyZWFkaW5lc3NQcm9iZSI6eyJodHRwR2V0Ijp7InBhdGgiOiIvdjEvbWV0YWRhdGEvaWQiLCJwb3J0Ijo4MDgzLCJzY2hlbWUiOiJIVFRQIn0sImluaXRpYWxEZWxheVNlY29uZHMiOjYwLCJ0aW1lb3V0U2Vjb25kcyI6MTB9LCJyZXNvdXJjZXMiOnt9LCJ2b2x1bWVNb3VudHMiOlt7Im1vdW50UGF0aCI6Ii9vcHQvY29uZmx1ZW50aW5jIiwibmFtZSI6ImNwLW9wZXJhdG9yLXNjcmlwdHMifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL2luaXQiLCJuYW1lIjoiaW5pdC1jb25maWctdm9sdW1lIn0seyJtb3VudFBhdGgiOiIvbW50L2NvbmZpZyIsIm5hbWUiOiJwb2Qtc2hhcmVkLXdvcmtkaXIifSx7Im1vdW50UGF0aCI6Ii9tbnQvc2VjcmV0cy9zYXNsLXBsYWluLWludGVybmFsIiwibmFtZSI6InJlZi1hdXRoLXNhc2wtcGxhaW4taW50ZXJuYWwifSx7Im1vdW50UGF0aCI6Ii9tbnQvY29uZmlnL3NoYXJlZCIsIm5hbWUiOiJzaGFyZWQtY29uZmlnLXZvbHVtZSJ9XX1dLCJpbml0Q29udGFpbmVycyI6W3siYXJncyI6WyJ1bnRpbCBbIC1mIC9tbnQvY29uZmlnL2luaXQvdGVtcGxhdGUuanNvbm5ldCBdOyBkbyBlY2hvIFwiZmlsZSBub3QgZm91bmRcIjsgc2xlZXAgMTBzOyBkb25lOyAvb3B0L3N0YXJ0dXAuc2giXSwiY29tbWFuZCI6WyIvYmluL3NoIiwiLXhjIl0sImVudiI6W3sibmFtZSI6IkNBQVNfUE9EX0lEIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6Im1ldGFkYXRhLm5hbWUifX19LHsibmFtZSI6IkhPU1RfSVAiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoic3RhdHVzLmhvc3RJUCJ9fX0seyJuYW1lIjoiUE9EX0lQIiwidmFsdWVGcm9tIjp7ImZpZWxkUmVmIjp7ImZpZWxkUGF0aCI6InN0YXR1cy5wb2RJUCJ9fX0seyJuYW1lIjoiUE9EX05BTUUiLCJ2YWx1ZUZyb20iOnsiZmllbGRSZWYiOnsiZmllbGRQYXRoIjoibWV0YWRhdGEubmFtZSJ9fX0seyJuYW1lIjoiUE9EX05BTUVTUEFDRSIsInZhbHVlRnJvbSI6eyJmaWVsZFJlZiI6eyJmaWVsZFBhdGgiOiJtZXRhZGF0YS5uYW1lc3BhY2UifX19LHsibmFtZSI6Ik9QRVJBVE9SX0NQX1RZUEUiLCJ2YWx1ZSI6ImNvbm5lY3QifV0sImltYWdlIjoiZG9ja2VyLmlvL2NvbmZsdWVudGluYy9jb25mbHVlbnQtaW5pdC1jb250YWluZXI6My4xLjIiLCJpbWFnZVB1bGxQb2xpY3kiOiJJZk5vdFByZXNlbnQiLCJuYW1lIjoiY29uZmlnLWluaXQtY29udGFpbmVyIiwicmVzb3VyY2VzIjp7ImxpbWl0cyI6eyJjcHUiOiI1MDBtIiwibWVtb3J5IjoiMUdpIn0sInJlcXVlc3RzIjp7ImNwdSI6IjEwMG0iLCJtZW1vcnkiOiI1MTJNaSJ9fSwidm9sdW1lTW91bnRzIjpbeyJtb3VudFBhdGgiOiIvbW50L2NvbmZpZy9pbml0IiwibmFtZSI6ImluaXQtY29uZmlnLXZvbHVtZSJ9LHsibW91bnRQYXRoIjoiL21udC9jb25maWciLCJuYW1lIjoicG9kLXNoYXJlZC13b3JrZGlyIn0seyJtb3VudFBhdGgiOiIvbW50L2NvbmZpZy9zaGFyZWQiLCJuYW1lIjoic2hhcmVkLWNvbmZpZy12b2x1bWUifV19XSwic2VjdXJpdHlDb250ZXh0Ijp7fSwic2VydmljZUFjY291bnROYW1lIjoiZmxpbmstb3BlcmF0b3IiLCJ0ZXJtaW5hdGlvbkdyYWNlUGVyaW9kU2Vjb25kcyI6MzAsInZvbHVtZXMiOlt7ImVtcHR5RGlyIjp7Im1lZGl1bSI6Ik1lbW9yeSJ9LCJuYW1lIjoiY3Atb3BlcmF0b3Itc2NyaXB0cyJ9LHsiY29uZmlnTWFwIjp7Im5hbWUiOiJjb25uZWN0LWluaXQtY29uZmlnIn0sIm5hbWUiOiJpbml0LWNvbmZpZy12b2x1bWUifSx7ImVtcHR5RGlyIjp7Im1lZGl1bSI6Ik1lbW9yeSJ9LCJuYW1lIjoicG9kLXNoYXJlZC13b3JrZGlyIn0seyJuYW1lIjoicmVmLWF1dGgtc2FzbC1wbGFpbi1pbnRlcm5hbCIsInNlY3JldCI6eyJzZWNyZXROYW1lIjoic2FzbC1wbGFpbi1pbnRlcm5hbCJ9fSx7ImNvbmZpZ01hcCI6eyJuYW1lIjoiY29ubmVjdC1zaGFyZWQtY29uZmlnIn0sIm5hbWUiOiJzaGFyZWQtY29uZmlnLXZvbHVtZSJ9XX19LCJ1cGRhdGVTdHJhdGVneSI6e319LCJzdGF0dXMiOnsiYXZhaWxhYmxlUmVwbGljYXMiOjAsInJlcGxpY2FzIjowfX0=
+    platform.confluent.io/namespace: dah-flink-dev
+    platform.confluent.io/type: connect
+  creationTimestamp: "2026-05-14T21:42:52Z"
+  generation: 2
+  labels:
+    app.kubernetes.io/managed-by: confluent-operator
+    confluent-platform: "true"
+    cr-name: connect
+    type: connect
+  name: connect
+  namespace: dah-flink-dev
+  ownerReferences:
+  - apiVersion: platform.confluent.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Connect
+    name: connect
+    uid: fe68cc87-4992-4986-bac1-daf53d355ba6
+  resourceVersion: "99456"
+  uid: 816f1da9-e210-41f1-bd0f-2812112bca03
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: Parallel
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: connect
+      clusterId: dah-flink-dev
+      confluent-platform: "true"
+      type: connect
+  serviceName: connect
+  template:
+    metadata:
+      annotations:
+        platform.confluent.io/config-revision-hash: hg6669dbgm
+        prometheus.io/port: "7778"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app: connect
+        clusterId: dah-flink-dev
+        confluent-platform: "true"
+        platform.confluent.io/type: connect
+        type: connect
+      name: connect
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - /mnt/config/connect/bin/run
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: USE_LOG4J2
+          value: "true"
+        image: docker.io/confluentinc/cp-server-connect:8.0.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 20
+          httpGet:
+            path: /v1/metadata/id
+            port: 8083
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        name: connect
+        ports:
+        - containerPort: 8083
+          name: external
+          protocol: TCP
+        - containerPort: 7203
+          name: jmx
+          protocol: TCP
+        - containerPort: 7777
+          name: jolokia
+          protocol: TCP
+        - containerPort: 7778
+          name: prometheus
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /v1/metadata/id
+            port: 8083
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/confluentinc
+          name: cp-operator-scripts
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/secrets/sasl-plain-internal
+          name: ref-auth-sasl-plain-internal
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - until [ -f /mnt/config/init/template.jsonnet ]; do echo "file not found";
+          sleep 10s; done; /opt/startup.sh
+        command:
+        - /bin/sh
+        - -xc
+        env:
+        - name: CAAS_POD_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_CP_TYPE
+          value: connect
+        image: docker.io/confluentinc/confluent-init-container:3.1.2
+        imagePullPolicy: IfNotPresent
+        name: config-init-container
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/config/init
+          name: init-config-volume
+        - mountPath: /mnt/config
+          name: pod-shared-workdir
+        - mountPath: /mnt/config/shared
+          name: shared-config-volume
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: flink-operator
+      serviceAccountName: flink-operator
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: cp-operator-scripts
+      - configMap:
+          defaultMode: 420
+          name: connect-init-config
+        name: init-config-volume
+      - emptyDir:
+          medium: Memory
+        name: pod-shared-workdir
+      - name: ref-auth-sasl-plain-internal
+        secret:
+          defaultMode: 420
+          secretName: sasl-plain-internal
+      - configMap:
+          defaultMode: 420
+          name: connect-shared-config
+        name: shared-config-volume
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+status:
+  availableReplicas: 2
+  collisionCount: 0
+  currentReplicas: 2
+  currentRevision: connect-7984d5cfd6
+  observedGeneration: 2
+  readyReplicas: 2
+  replicas: 2
+  updateRevision: connect-7984d5cfd6
+  updatedReplicas: 2
