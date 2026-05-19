@@ -47,7 +47,10 @@ helm upgrade --install confluent-cmf charts/confluent-manager-for-apache-flink \
   --wait --timeout 10m
 ```
 
-`url` and `user` come from the env's variable group; the corresponding **password**, **encryption key**, and **license** are created by the pipeline as Kubernetes Secrets (`cmf-db-credentials`, `cmf-encryption-key`, `confluent-license`) before the Helm install runs.
+`url` and `user` come from the env's variable group; the corresponding **password** and **encryption key** are created by the pipeline as Kubernetes Secrets (`cmf-db-credentials`, `cmf-encryption-key`) before the Helm install runs. The **license** Secret (`confluent-license`) source depends on the env:
+
+- **dev** — materialized by an ESO `ExternalSecret` pulling from CyberArk safe `11547_D_KEY_FP` (see `apps/confluent-cmf/dev/externalsecrets/`). The cmf pipeline applies the ExternalSecret and waits for the Secret to materialize before the Helm install.
+- **qa, uat, stg, prd-1, prd-2** — still created by the pipeline from the `<env>-confluent-license` variable group entry. Will migrate to ESO as those CyberArk safes come online.
 
 ## TLS for the CMF REST endpoint
 

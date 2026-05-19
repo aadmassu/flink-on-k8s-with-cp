@@ -118,7 +118,28 @@ stages:
 
                   create_labeled_secret cmf-db-credentials password "$CMF_DB_PWD"
                   create_labeled_secret cmf-encryption-key key "$CMF_ENC_KEY"
-                  create_labeled_secret confluent-license license.txt "$CMF_LICENSE"
+
+                  # confluent-license secret source — DEV migrated to ESO/CyberArk,
+                  # other envs still consume the variable-group value. Once an
+                  # ExternalSecret exists per env, swap each branch over.
+                  if [ "$TARGET_ENV" = "dev" ]; then
+                    echo ""
+                    echo "=== dev — applying ExternalSecret for confluent-license (CyberArk) ==="
+                    oc apply -n "$OC_NS" -f apps/confluent-cmf/dev/externalsecrets/externalsecret-confluent-license.yaml
+
+                    echo "=== Waiting up to 120s for ESO to materialize secret/confluent-license ==="
+                    if ! timeout 120 bash -c 'until oc -n "'"$OC_NS"'" get secret confluent-license >/dev/null 2>&1; do sleep 3; done'; then
+                      echo "ERROR: ExternalSecret confluent-license did not materialize secret/confluent-license within 120s."
+                      echo "Diagnose with:"
+                      echo "  oc -n $OC_NS describe externalsecret confluent-license"
+                      echo "Common causes: wrong CyberArk Address (property), wrong UserName (key),"
+                      echo "or the SecretStore 11547-d-key-fp is in a non-Ready state."
+                      exit 1
+                    fi
+                    echo "secret/confluent-license is present."
+                  else
+                    create_labeled_secret confluent-license license.txt "$CMF_LICENSE"
+                  fi
 
                   echo ""
                   echo "=== Verifying cmf-tls Secret exists ==="
@@ -174,8 +195,18 @@ stages:
                   # cmf-tls is intentionally preserved — owned by cert-manager
                   # via the cmf-tls pipeline. SQL Server data persists.
                   oc -n "$OC_NS" delete secret \
-                    cmf-db-credentials cmf-encryption-key confluent-license \
+                    cmf-db-credentials cmf-encryption-key \
                     --ignore-not-found
+
+                  # confluent-license: in dev the Secret is owned by an ESO
+                  # ExternalSecret (CyberArk-backed). Delete the ExternalSecret
+                  # and ESO cascade-deletes the Secret via ownerReference. In
+                  # other envs the pipeline still owns the Secret directly.
+                  if [ "$TARGET_ENV" = "dev" ]; then
+                    oc -n "$OC_NS" delete externalsecret confluent-license --ignore-not-found
+                  else
+                    oc -n "$OC_NS" delete secret confluent-license --ignore-not-found
+                  fi
 
                   echo ""
                   echo "=== Remaining CMF objects ==="

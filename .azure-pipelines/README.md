@@ -45,7 +45,7 @@ Each environment has a variable group with this naming pattern. All pipelines re
 | `<env>-cmf-sql-server-user` | string | permanent |
 | `<env>-cmf-sql-server-user-password` | secret | **temp — pipeline-managed; moves to CyberArk via ESO** |
 | `<env>-cmf-encryption-key` | secret — AES-GCM, **never rotate** | **temp — pipeline-managed; moves to CyberArk via ESO** |
-| `<env>-confluent-license` | secret (locked) | **temp — pipeline-managed; moves to CyberArk via ESO** |
+| `<env>-confluent-license` | secret (locked) | **dev — superseded by ESO/CyberArk (`apps/confluent-cmf/dev/externalsecrets/`); qa/uat/stg/prd still pipeline-managed pending CyberArk safes** |
 | `<env>-kafka-broker-hosts` | string — comma-separated | permanent |
 | `<env>-kafka-rest-proxy-hosts` | string — comma-separated | permanent |
 | `<env>-schema-registry-hosts` | string — comma-separated | permanent |
