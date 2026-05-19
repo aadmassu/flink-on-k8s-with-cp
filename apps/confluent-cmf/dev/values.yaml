@@ -77,14 +77,13 @@ image:
   # create). Bump only after Confluent ships namespace-scoped support upstream.
   tag: 2.3.0-fcb-preview-2
 
-# Pull from FCB Artifactory using the CyberArk-sourced credential. The
-# `artifactory-pull-secret` Secret is materialized by the ExternalSecret
-# at apps/confluent-cmf/dev/externalsecrets/externalsecret-artifactory-pull-secret.yaml
-# (ESO pulls the password from CyberArk safe 11547_D_KEY_FP). Apply that
-# ExternalSecret before this Helm install so the Secret exists when the
-# pod schedules.
-imagePullSecrets:
-  - name: artifactory-pull-secret
+# NOTE — imagePullSecrets wiring is STAGED but not yet active. Uncomment
+# once the externalsecret-artifactory-pull-secret.yaml ExternalSecret has
+# been applied AND its target Secret `artifactory-pull-secret` has reached
+# SecretSynced=True. Until then the pod relies on the cluster-default pull
+# credential, which is the existing working state.
+# imagePullSecrets:
+#   - name: artifactory-pull-secret
 
 # FCB CMDB Application ID — required on every object by the cluster's
 # Common Metadata admission policy.
