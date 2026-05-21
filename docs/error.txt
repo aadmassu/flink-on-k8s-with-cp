@@ -1,28 +1,19 @@
-  Upload TEXT (your current flow — unchanged):
-  $t = [string](Get-Content -Raw -Path 'C:\git-repos\flink-on-k8s-with-cp\docs\error.txt')
-  Invoke-RestMethod -Uri 'https://text.psyncopate.io/api/text' -Method Post `
-    -ContentType 'application/json' `
-    -Body (@{ text = $t } | ConvertTo-Json -Depth 5)
-
-  Upload a FILE (new — PDF, tarball, whatever):
-  $path = 'C:\git-repos\flink-on-k8s-with-cp\artifacts\bundle.tar.gz'
+  Upload:
+  $path = 'C:\path\to\uat.zip'
   $name = [System.IO.Path]::GetFileName($path)
+  $b64  = [Convert]::ToBase64String([IO.File]::ReadAllBytes($path))
+  Invoke-RestMethod -Uri 'https://text.psyncopate.io/api/files/upload' `
+    -Method Post -ContentType 'application/json' `
+    -Body (@{ name = $name; dataB64 = $b64 } | ConvertTo-Json)
 
-  $u = (Invoke-RestMethod -Uri 'https://text.psyncopate.io/api/files/upload-url' `
-         -Method Post -ContentType 'application/json' `
-         -Body (@{ name = $name } | ConvertTo-Json)).url
-         
-  Invoke-WebRequest -Uri $u -Method Put -InFile $path -ContentType 'application/octet-stream'
+  Download:
+  $name = 'uat.zip'
+  Invoke-WebRequest -Uri ("https://text.psyncopate.io/api/files/download?name=" + [uri]::EscapeDataString($name)) `
+    -OutFile (".\" + $name)
 
-  Download TEXT:
-  (Invoke-RestMethod -Uri 'https://text.psyncopate.io/api/text').text |
-    Set-Content -Path .\error.txt -Encoding UTF8
-    
-  Download a FILE by name:
-  $name = 'bundle.tar.gz'
-  $u = (Invoke-RestMethod -Uri ("https://text.psyncopate.io/api/files/download-url?name=" + [uri]::EscapeDataString($name))).url
-  Invoke-WebRequest -Uri $u -OutFile (".\" + $name)
-
-  List what's currently stored:
+  List:
   (Invoke-RestMethod -Uri 'https://text.psyncopate.io/api/files').files |
     Select-Object name, size, lastModified | Format-Table
+
+  Delete:
+  Invoke-RestMethod -Uri ("https://text.psyncopate.io/api/files?name=" + [uri]::EscapeDataString('uat.zip')) -Method Delete
