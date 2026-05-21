@@ -1,0 +1,138 @@
+---
+# CFK KafkaRestProxy CR — uat (2 replicas, matching VM UAT topology)
+#
+# Sources (apps/confluent-platform/cp-confluent/uat/):
+#   t11547varc-0wjc-rest-proxy-1.properties
+#   t11547varc-amm5-rest-proxy-2.properties
+#
+# Per-VM config carried over:
+#   bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
+#   listeners=https://0.0.0.0:8082
+#   schema.registry.url=https://<sr>:8081
+#   confluent.monitoring.interceptor.topic=_confluent-monitoring
+#   kafka.rest.resource.extension.class=KafkaRestSecurityResourceExtension
+#   OAuth via Okta — issuer/JWKS/audiences/scope per UAT properties
+#   confluent.metadata.bootstrap.server.urls -> MDS endpoint
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaRestProxy
+metadata:
+  name: kafkarest
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/component: kafka-rest-proxy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 2
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  injectLabels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/instance: kafkarest
+    app.kubernetes.io/component: kafka-rest-proxy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-uat.svc.cluster.local:9092
+      authentication:
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-kafkarest
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(UAT)
+          subClaimName: sub
+          groupsClaimName: dahUAT_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-uat.svc.cluster.local:8081
+      tls:
+        enabled: true
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    mds:
+      endpoint: https://kafka.dah-flink-uat.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  authentication:
+    type: oauth
+    oauth:
+      secretRef: oauth-kafkarest
+      configuration:
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        audience: "Confluent,account,api://default"
+        subClaimName: sub
+        groupsClaimName: dahUAT_groups
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        scope: 11547.DAH(UAT)
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: kafkarest-tls
+  license:
+    secretRef: cfk-license
+
+  # With replicas=2, maxUnavailable=1 lets one REST Proxy be evicted
+  # during a voluntary disruption while the other keeps serving.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  configOverrides:
+    server:
+      - kafka.rest.resource.extension.class=io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension
+      - confluent.monitoring.interceptor.topic=_confluent-monitoring
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    resources:
+      requests:
+        cpu: "4"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: kafkarest
+      app.kubernetes.io/instance: kafkarest
+      app.kubernetes.io/component: kafka-rest-proxy
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

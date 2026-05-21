@@ -1,0 +1,42 @@
+---
+# cert-manager Certificate for Control Center next-gen — qa.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: controlcenter-tls
+  namespace: dah-flink-stg
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter-tls
+    app.kubernetes.io/component: control-center
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-STG
+    metadata.command-issuer.keyfactor.com/Description: "Control Center next-gen — REST + Prometheus + AlertManager listeners"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: controlcenter.dah-flink-stg.svc.cluster.local
+  dnsNames:
+    - controlcenter.dah-flink-stg.svc
+    - controlcenter.dah-flink-stg.svc.cluster.local
+    - controlcenter-0.controlcenter.dah-flink-stg.svc.cluster.local
+  duration: 8760h0m0s
+  renewBefore: 360h
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: controlcenter-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: controlcenter
+      app.kubernetes.io/instance: controlcenter-tls
+      app.kubernetes.io/component: control-center
+      fcbint.net/app-id: "11547"

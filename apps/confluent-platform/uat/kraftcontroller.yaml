@@ -1,0 +1,127 @@
+---
+# CFK KRaftController CR — uat (3-node KRaft quorum)
+#
+# Sources (apps/confluent-platform/cp-confluent/uat/):
+#   t11547varc-00c1-controller-1-server.properties  (node.id=1)
+#   t11547varc-zg6u-controller-2-server.properties  (node.id=2)
+#   t11547varc-kprg-controller-3-server.properties  (node.id=3)
+#
+# Per-VM config carried over here:
+#   process.roles=controller
+#   listeners=CONTROLLER://:9093  (SASL_SSL, PLAIN inter-controller)
+#   listener.security.protocol.map=CONTROLLER:SASL_SSL,BROKER:SASL_SSL
+#   log.dirs=/data/kafka
+#   sasl.mechanism.controller.protocol=PLAIN
+#   metric.reporters=TelemetryReporter,ConfluentMetricsReporter
+#   confluent.balancer.enable=true  (SBC)
+#
+# OAuth (Okta) — UAT-specific: scope 11547.DAH(UAT),
+#   groups claim dahUAT_groups (vs dahDev_groups in dev).
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 3
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  # FCB Gatekeeper [required-workload-labels] inspects the auto-generated
+  # StatefulSet (not the CR). injectLabels is CFK's mechanism for pushing
+  # labels into every managed resource — keep aligned with the FCB common-
+  # metadata standard (name, instance, component, part-of, app-id).
+  injectLabels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/instance: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  # CFK turns dataVolumeCapacity + storageClass into a StatefulSet
+  # volumeClaimTemplate. Each controller gets a deterministic PVC named
+  #   data-kraftcontroller-<ordinal>
+  # bound to a Ceph RBD PV. When the pod restarts the same PVC + PV is
+  # re-attached, so the KRaft metadata log (the cluster's source of truth)
+  # survives pod and node failures.
+  # SIZING follows dev's TEMP allocation until the dah-flink-uat namespace
+  # ResourceQuota is confirmed with Tom — bump to 64 GiB (matching the VM
+  # controller disk) once the quota allows.
+  dataVolumeCapacity: 1Gi
+  storageClass:
+    name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — quorum log volume
+
+  # CONTROLLER listener on 9093, SASL_SSL with PLAIN (matches VM).
+  listeners:
+    controller:
+      tls:
+        enabled: true
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+  tls:
+    secretRef: kraftcontroller-tls
+  license:
+    secretRef: cfk-license
+  # Carried over from controller .properties so the cluster keeps the same
+  # internal-topic replication factors and authorizer config as the VM.
+  configOverrides:
+    server:
+      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+      - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+      - super.users=User:admin
+      - confluent.metadata.topic.replication.factor=3
+      - confluent.balancer.topic.replication.factor=3
+      - confluent.license.topic.replication.factor=3
+      - confluent.balancer.enable=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+      - confluent.telemetry.enabled=true
+      - confluent.reporters.telemetry.auto.enable=true
+  podTemplate:
+    serviceAccountName: flink-operator
+    # KRaft controllers handle metadata-log writes only (topic creates,
+    # partition reassignments, leader elections) — they don't process
+    # messages. VM UAT was 4 vCPU / 4 GiB; actual utilization is single-
+    # digit %. The numbers below give ~3x CPU and ~5x memory headroom
+    # while leaving room on the worker for a co-located broker + system
+    # daemons (one broker + one controller fits per 16/32 worker).
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 2Gi
+    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
+    # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
+    # admission. See kafka.yaml for the full rationale.
+    podSecurityContext: {}
+    # podTemplate.labels lands on the Pod template inside the StatefulSet.
+    # injectLabels above only labels the StatefulSet; the FCB Gatekeeper
+    # [required-workload-labels] policy ALSO inspects the Pod at admission.
+    # cfk-role is the custom label used by the anti-affinity rule below.
+    labels:
+      app.kubernetes.io/name: kraftcontroller
+      app.kubernetes.io/instance: kraftcontroller
+      app.kubernetes.io/component: kraft-controller
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
+      cfk-role: kraft-controller
+    # Spread controllers across nodes. The selector matches the cfk-role
+    # label set above, so controllers refuse to schedule on a node that
+    # already has another controller pod. Brokers (cfk-role: kafka-broker)
+    # are *not* matched, so a node may host one broker + one controller.
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                cfk-role: kraft-controller
+            topologyKey: kubernetes.io/hostname

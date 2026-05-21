@@ -249,7 +249,7 @@ stages:
                   # We derive the public key from the private with openssl.
                   MDS_PRIV=$(mktemp)
                   printf '%s' "$MDS_PEM" | base64 -d > "$MDS_PRIV" 2>/dev/null || {
-                    echo "ERROR: dev-mds-token-keypair-pem is not valid base64."
+                    echo "ERROR: $TARGET_ENV-mds-token-keypair-pem is not valid base64."
                     echo "Re-encode the VM /var/ssl/private/tokenKeypair.pem with:"
                     echo "  sudo base64 -w0 /var/ssl/private/tokenKeypair.pem"
                     echo "and paste the single-line output into the variable."

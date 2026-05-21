@@ -1,0 +1,26 @@
+---
+# CFK KafkaRestClass CR — qa.
+#
+# A KafkaRestClass is a connection profile that points components (chiefly
+# Control Center, but also Connect for some admin operations) at the Kafka
+# admin REST endpoint. Without this, C3's Cluster Linking / topic-management
+# views fall back to bootstrap-only admin and don't fully populate.
+#
+# We anchor it to the Kafka CR so the operator derives the MDS endpoint
+# (broker port 8090, the same MDS pattern used in VM CP) and the OAuth/TLS
+# settings automatically.
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaRestClass
+metadata:
+  name: default
+  namespace: dah-flink-stg
+  labels:
+    app.kubernetes.io/name: kafkarestclass
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/component: kafka-rest-class
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  kafkaClusterRef:
+    name: kafka
+    namespace: dah-flink-stg

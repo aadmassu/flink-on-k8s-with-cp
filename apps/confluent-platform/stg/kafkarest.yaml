@@ -1,0 +1,130 @@
+---
+# CFK KafkaRestProxy CR — qa (2 replicas, matching UAT topology)
+#
+# STG has a VM CP analog at FCB, but `cp-confluent/stg/` is not yet populated. Until then, This CR is modelled on the UAT CFK build at
+# apps/confluent-platform/uat/kafkarest.yaml.
+#
+# TODO — see apps/confluent-platform/stg/kafka.yaml for the OAuth-values
+# rationale (UAT scope/groupsClaim reused verbatim until Okta admins
+# confirm STG tenancy).
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaRestProxy
+metadata:
+  name: kafkarest
+  namespace: dah-flink-stg
+  labels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/component: kafka-rest-proxy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 2
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  injectLabels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/instance: kafkarest
+    app.kubernetes.io/component: kafka-rest-proxy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-stg.svc.cluster.local:9092
+      authentication:
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-kafkarest
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+          subClaimName: sub
+          groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-stg.svc.cluster.local:8081
+      tls:
+        enabled: true
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    mds:
+      endpoint: https://kafka.dah-flink-stg.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  authentication:
+    type: oauth
+    oauth:
+      secretRef: oauth-kafkarest
+      configuration:
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        audience: "Confluent,account,api://default"
+        subClaimName: sub
+        groupsClaimName: dahUAT_groups    # TODO: switch to STG groups claim once Okta admins confirm
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        scope: 11547.DAH(UAT)             # TODO: switch to STG scope once Okta admins confirm
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: kafkarest-tls
+  license:
+    secretRef: cfk-license
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  configOverrides:
+    server:
+      - kafka.rest.resource.extension.class=io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension
+      - confluent.monitoring.interceptor.topic=_confluent-monitoring
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    resources:
+      requests:
+        cpu: "4"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: kafkarest
+      app.kubernetes.io/instance: kafkarest
+      app.kubernetes.io/component: kafka-rest-proxy
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

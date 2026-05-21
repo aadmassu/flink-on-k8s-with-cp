@@ -1,0 +1,47 @@
+---
+# cert-manager Certificate for the Kafka brokers — qa.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kafka-tls
+  namespace: dah-flink-qa
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-tls
+    app.kubernetes.io/component: kafka-broker
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
+    metadata.command-issuer.keyfactor.com/Description: "Kafka brokers — internal listeners and MDS"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  # Internal-only SANs. FCB Keyfactor approver-policy allows DNS under
+  # *.svc, *.svc.cluster.local, *.ocp.fcbint.net only. External LB SANs
+  # under kafka.qa.dah.fcbint.net would trip the policy.
+  commonName: kafka.dah-flink-qa.svc.cluster.local
+  dnsNames:
+    - kafka.dah-flink-qa.svc
+    - kafka.dah-flink-qa.svc.cluster.local
+    - kafka-0.kafka.dah-flink-qa.svc.cluster.local
+    - kafka-1.kafka.dah-flink-qa.svc.cluster.local
+    - kafka-2.kafka.dah-flink-qa.svc.cluster.local
+  duration: 8760h0m0s
+  renewBefore: 360h
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: kafka-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/instance: kafka-tls
+      app.kubernetes.io/component: kafka-broker
+      fcbint.net/app-id: "11547"

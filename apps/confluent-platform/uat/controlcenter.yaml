@@ -1,0 +1,180 @@
+---
+# CFK ControlCenter CR — uat (1 replica, matching VM UAT topology)
+#
+# Source: apps/confluent-platform/cp-confluent/uat/t11547varc-mdnp-control-center.properties
+#
+# Per-VM config carried over:
+#   confluent.controlcenter.rest.listeners=https://0.0.0.0:9021
+#   confluent.controlcenter.data.dir=/var/lib/confluent/control-center
+#   confluent.controlcenter.streams.num.stream.threads=12
+#   confluent.controlcenter.command.topic.replication=3
+#   confluent.controlcenter.internal.topics.replication=3
+#   confluent.controlcenter.metrics.topic.replication=3
+#   confluent.controlcenter.monitoring.interceptor.topic.replication=3
+#   bootstrap.servers, schema.registry.url, connect cluster reference -> CFK service DNS
+#   Prometheus enabled (port 9090, basic auth)
+#   AlertManager URL (port 9093, basic auth)
+#   OAuth (Okta) for streams + MDS — scope 11547.DAH(UAT)
+#   confluent.controlcenter.cmf.healthcheck.interval.sec=600000 (CMF noise quieted)
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 1
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  injectLabels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  # SIZING follows dev's TEMP allocation until the dah-flink-uat namespace
+  # ResourceQuota is confirmed with Tom — bump to 300 GiB (matching VM
+  # C3 disk) once the quota allows.
+  dataVolumeCapacity: 1Gi
+  storageClass:
+    name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — C3 RocksDB state under /var/lib/confluent/control-center
+
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-uat.svc.cluster.local:9092
+      authentication:
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-controlcenter
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(UAT)
+          subClaimName: sub
+          groupsClaimName: dahUAT_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-uat.svc.cluster.local:8081
+      tls:
+        enabled: true
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-controlcenter
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    connect:
+      - name: connect-cluster
+        url: https://connect.dah-flink-uat.svc.cluster.local:8083
+        tls:
+          enabled: true
+        authentication:
+          type: oauth
+          oauth:
+            secretRef: oauth-controlcenter
+            configuration:
+              audience: "Confluent,account,api://default"
+              expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+              jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+              scope: 11547.DAH(UAT)
+              subClaimName: sub
+              groupsClaimName: dahUAT_groups
+              tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    mds:
+      endpoint: https://kafka.dah-flink-uat.svc.cluster.local:8090
+      # OIDC SSO for the C3 UI is delivered through MDS — clients hit C3,
+      # get redirected to MDS (which fronts Okta), authenticate, and come
+      # back with an MDS-issued bearer token. CFK mechanism for the VM's
+      # confluent.controlcenter.auth.sso.mode=oidc.
+      ssoProtocol: oidc
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-controlcenter
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    kafkaRestClassRef:
+      name: default
+      namespace: dah-flink-uat
+
+  # CFK 3.1.1's ControlCenter CR only allows basic|ldap|mtls for the
+  # top-level inbound UI auth — `oauth` is not a valid type (unlike Kafka /
+  # SR / Connect / REST, which all do allow oauth top-level). VM C3 uses
+  # BEARER/OIDC, which CFK delivers via dependencies.mds.ssoProtocol=oidc
+  # above. Set mtls/requested here to satisfy the CRD's required `type`
+  # field without forcing a client cert on every UI request — the OIDC
+  # redirect through MDS handles the actual user authentication.
+  authentication:
+    type: mtls
+    mtls:
+      sslClientAuthentication: requested
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: controlcenter-tls
+  license:
+    secretRef: cfk-license
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  # NOTE — Next-gen Prometheus + AlertManager bundle deliberately omitted
+  # for the initial install (see dev for the full rationale). The
+  # c3-prometheus-basic-auth and c3-alertmanager-basic-auth secrets the
+  # pipeline creates remain in place so re-enabling later is a CR-only
+  # change.
+
+  configOverrides:
+    server:
+      - confluent.controlcenter.data.dir=/var/lib/confluent/control-center
+      - confluent.controlcenter.streams.num.stream.threads=12
+      - confluent.controlcenter.command.topic.replication=3
+      - confluent.controlcenter.internal.topics.replication=3
+      - confluent.controlcenter.metrics.topic.replication=3
+      - confluent.controlcenter.monitoring.interceptor.topic.replication=3
+      - confluent.controlcenter.cmf.healthcheck.interval.sec=600000
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    resources:
+      requests:
+        cpu: "12"
+        memory: 16Gi
+      limits:
+        cpu: "12"
+        memory: 16Gi
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: controlcenter
+      app.kubernetes.io/instance: controlcenter
+      app.kubernetes.io/component: control-center
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

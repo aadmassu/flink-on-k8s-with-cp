@@ -1,0 +1,120 @@
+---
+# CFK SchemaRegistry CR — qa (2 replicas, matching UAT topology)
+#
+# STG has a VM CP analog at FCB, but `cp-confluent/stg/` is not yet populated. Until then, This CR is modelled on the UAT CFK build at
+# apps/confluent-platform/uat/schemaregistry.yaml.
+#
+# TODO — confirm with FCB Okta admins whether QA shares the UAT Okta
+# tenant or needs its own. UAT OAuth values are reused verbatim until that
+# confirmation. See apps/confluent-platform/stg/kafka.yaml for the full
+# rationale.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: SchemaRegistry
+metadata:
+  name: schemaregistry
+  namespace: dah-flink-stg
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 2
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  injectLabels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/instance: schemaregistry
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-stg.svc.cluster.local:9092
+      authentication:
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-schemaregistry
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+          subClaimName: sub
+          groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+    mds:
+      endpoint: https://kafka.dah-flink-stg.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-schemaregistry
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  authentication:
+    type: oauth
+    oauth:
+      secretRef: oauth-schemaregistry
+      configuration:
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        audience: "Confluent,account,api://default"
+        subClaimName: sub
+        groupsClaimName: dahUAT_groups    # TODO: switch to STG groups claim once Okta admins confirm
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        scope: 11547.DAH(UAT)             # TODO: switch to STG scope once Okta admins confirm
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: schemaregistry-tls
+  license:
+    secretRef: cfk-license
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  configOverrides:
+    server:
+      - schema.registry.group.id=schema-registry
+      - kafkastore.topic=_schemas
+      - kafkastore.topic.replication.factor=3
+      - inter.instance.protocol=https
+      - confluent.schema.registry.auth.mechanism=JETTY_AUTH
+      - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
+      - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    resources:
+      requests:
+        cpu: "4"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: schemaregistry
+      app.kubernetes.io/instance: schemaregistry
+      app.kubernetes.io/component: schema-registry
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

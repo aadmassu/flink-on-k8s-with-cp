@@ -1,0 +1,91 @@
+---
+# CFK KRaftController CR — qa (3-node KRaft quorum)
+#
+# STG has a VM CP analog at FCB, but `cp-confluent/stg/` is not yet populated in this repo. Until the VM STG `.properties` files are added, This CR is modelled
+# on the UAT CFK build at apps/confluent-platform/uat/ (pending the addition of cp-confluent/stg/ properties)kraftcontroller.yaml,
+# which itself derives from apps/confluent-platform/cp-confluent/uat/.
+#
+# TODO — confirm with FCB Okta admins whether QA shares the UAT Okta
+# tenant or needs its own. If QA needs its own, replace the OAuth values
+# everywhere in this folder:
+#   scope            11547.DAH(UAT)  →  11547.DAH(STG)
+#   groupsClaimName  dahUAT_groups   →  dahSTG_groups
+# Until that confirmation, reuse the UAT values verbatim so the cluster
+# can authenticate against the same Okta application during bring-up.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: dah-flink-stg
+  labels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 3
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  injectLabels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/instance: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  # SIZING follows dev's TEMP allocation until the dah-flink-stg namespace
+  # ResourceQuota is confirmed with Tom — bump to 64 GiB once quota allows.
+  dataVolumeCapacity: 1Gi
+  storageClass:
+    name: ocs-storagecluster-ceph-rbd
+
+  listeners:
+    controller:
+      tls:
+        enabled: true
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+  tls:
+    secretRef: kraftcontroller-tls
+  license:
+    secretRef: cfk-license
+  configOverrides:
+    server:
+      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+      - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+      - super.users=User:admin
+      - confluent.metadata.topic.replication.factor=3
+      - confluent.balancer.topic.replication.factor=3
+      - confluent.license.topic.replication.factor=3
+      - confluent.balancer.enable=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+      - confluent.telemetry.enabled=true
+      - confluent.reporters.telemetry.auto.enable=true
+  podTemplate:
+    serviceAccountName: flink-operator
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 2Gi
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: kraftcontroller
+      app.kubernetes.io/instance: kraftcontroller
+      app.kubernetes.io/component: kraft-controller
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
+      cfk-role: kraft-controller
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                cfk-role: kraft-controller
+            topologyKey: kubernetes.io/hostname

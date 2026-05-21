@@ -1,0 +1,151 @@
+---
+# CFK ControlCenter CR — qa (1 replica, matching UAT topology)
+#
+# STG has a VM CP analog at FCB, but `cp-confluent/stg/` is not yet populated. Until then, This CR is modelled on the UAT CFK build at
+# apps/confluent-platform/uat/controlcenter.yaml.
+#
+# TODO — see apps/confluent-platform/stg/kafka.yaml for the OAuth-values
+# rationale (UAT scope/groupsClaim reused verbatim until Okta admins
+# confirm STG tenancy).
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: dah-flink-stg
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 1
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  injectLabels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  dataVolumeCapacity: 1Gi
+  storageClass:
+    name: ocs-storagecluster-ceph-rbd
+
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-stg.svc.cluster.local:9092
+      authentication:
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-controlcenter
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+          subClaimName: sub
+          groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-stg.svc.cluster.local:8081
+      tls:
+        enabled: true
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-controlcenter
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    connect:
+      - name: connect-cluster
+        url: https://connect.dah-flink-stg.svc.cluster.local:8083
+        tls:
+          enabled: true
+        authentication:
+          type: oauth
+          oauth:
+            secretRef: oauth-controlcenter
+            configuration:
+              audience: "Confluent,account,api://default"
+              expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+              jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+              scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+              subClaimName: sub
+              groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+              tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    mds:
+      endpoint: https://kafka.dah-flink-stg.svc.cluster.local:8090
+      ssoProtocol: oidc
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-controlcenter
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)          # TODO: switch to STG scope once Okta admins confirm
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups  # TODO: switch to STG groups claim once Okta admins confirm
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    kafkaRestClassRef:
+      name: default
+      namespace: dah-flink-stg
+
+  authentication:
+    type: mtls
+    mtls:
+      sslClientAuthentication: requested
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: controlcenter-tls
+  license:
+    secretRef: cfk-license
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  configOverrides:
+    server:
+      - confluent.controlcenter.data.dir=/var/lib/confluent/control-center
+      - confluent.controlcenter.streams.num.stream.threads=12
+      - confluent.controlcenter.command.topic.replication=3
+      - confluent.controlcenter.internal.topics.replication=3
+      - confluent.controlcenter.metrics.topic.replication=3
+      - confluent.controlcenter.monitoring.interceptor.topic.replication=3
+      - confluent.controlcenter.cmf.healthcheck.interval.sec=600000
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    resources:
+      requests:
+        cpu: "12"
+        memory: 16Gi
+      limits:
+        cpu: "12"
+        memory: 16Gi
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: controlcenter
+      app.kubernetes.io/instance: controlcenter
+      app.kubernetes.io/component: control-center
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

@@ -1,0 +1,45 @@
+---
+# cert-manager Certificate for Schema Registry — qa.
+# SANs cover both the round-robin Service DNS and the per-pod DNS for the
+# two-replica HA pair (schemaregistry-0 and schemaregistry-1).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: schemaregistry-tls
+  namespace: dah-flink-stg
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/instance: schemaregistry-tls
+    app.kubernetes.io/component: schema-registry
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-STG
+    metadata.command-issuer.keyfactor.com/Description: "Schema Registry — HTTPS listener"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: schemaregistry.dah-flink-stg.svc.cluster.local
+  dnsNames:
+    - schemaregistry.dah-flink-stg.svc
+    - schemaregistry.dah-flink-stg.svc.cluster.local
+    - schemaregistry-0.schemaregistry.dah-flink-stg.svc.cluster.local
+    - schemaregistry-1.schemaregistry.dah-flink-stg.svc.cluster.local
+  duration: 8760h0m0s
+  renewBefore: 360h
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: schemaregistry-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: schemaregistry
+      app.kubernetes.io/instance: schemaregistry-tls
+      app.kubernetes.io/component: schema-registry
+      fcbint.net/app-id: "11547"

@@ -1,0 +1,44 @@
+---
+# cert-manager Certificate for the KRaft controllers — qa.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kraftcontroller-tls
+  namespace: dah-flink-stg
+  labels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/instance: kraftcontroller-tls
+    app.kubernetes.io/component: kraft-controller
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-STG
+    metadata.command-issuer.keyfactor.com/Description: "KRaft controllers — quorum listener"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: kraftcontroller.dah-flink-stg.svc.cluster.local
+  dnsNames:
+    - kraftcontroller.dah-flink-stg.svc
+    - kraftcontroller.dah-flink-stg.svc.cluster.local
+    - kraftcontroller-0.kraftcontroller.dah-flink-stg.svc.cluster.local
+    - kraftcontroller-1.kraftcontroller.dah-flink-stg.svc.cluster.local
+    - kraftcontroller-2.kraftcontroller.dah-flink-stg.svc.cluster.local
+  duration: 8760h0m0s
+  renewBefore: 360h
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: kraftcontroller-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: kraftcontroller
+      app.kubernetes.io/instance: kraftcontroller-tls
+      app.kubernetes.io/component: kraft-controller
+      fcbint.net/app-id: "11547"

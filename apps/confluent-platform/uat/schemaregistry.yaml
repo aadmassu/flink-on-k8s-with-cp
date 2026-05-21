@@ -1,0 +1,153 @@
+---
+# CFK SchemaRegistry CR — uat (2 replicas, matching VM UAT topology)
+#
+# Sources (apps/confluent-platform/cp-confluent/uat/):
+#   t11547varc-b9eb-schema-registry-1.properties
+#   t11547varc-lntz-schema-registry-2.properties
+#
+# Per-VM config carried over:
+#   listeners=https://0.0.0.0:8081
+#   kafkastore.bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
+#   kafkastore.topic=_schemas, kafkastore.topic.replication.factor=3
+#   confluent.schema.registry.authorizer.class=...rbac.RbacAuthorizer
+#   confluent.schema.registry.auth.mechanism=JETTY_AUTH
+#   OAuth via Okta — issuer myapps.firstcitizens.com/oauth2/default
+#     scope 11547.DAH(UAT), audiences [Confluent, account, api://default]
+#     sub claim sub, groups claim dahUAT_groups
+#   Schema Exporter resource extension enabled (for SR linking)
+#   metadata.encoder.secret=<...> (carry over via Secret)
+#
+# Replica count is 2 to match the VM UAT topology (b9eb + lntz). The two
+# instances form a Schema Registry HA pair backed by the same _schemas
+# Kafka topic; CFK fronts them with a Service that load-balances reads.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: SchemaRegistry
+metadata:
+  name: schemaregistry
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 2
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+  # FCB Gatekeeper [required-workload-labels] inspects the auto-generated
+  # StatefulSet (not the CR). injectLabels is CFK's mechanism for pushing
+  # labels into every managed resource.
+  injectLabels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/instance: schemaregistry
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+
+  dependencies:
+    # dependencies.kafka uses SASL OAUTHBEARER to brokers — CRD shape is:
+    #   type: oauthbearer
+    #   oauthbearer.secretRef: <Secret with clientId, clientSecret>
+    #   oauthSettings: { OIDC discovery + claims config }
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-uat.svc.cluster.local:9092
+      authentication:
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-schemaregistry
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(UAT)
+          subClaimName: sub
+          groupsClaimName: dahUAT_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+    # dependencies.mds uses OAuth client_credentials grant against Okta to get
+    # a bearer token, then presents that token to MDS.
+    mds:
+      endpoint: https://kafka.dah-flink-uat.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-schemaregistry
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(UAT)
+            subClaimName: sub
+            groupsClaimName: dahUAT_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  # CFK 3.1.1 requires OAuth config nested under authentication.oauth.{secretRef,configuration}
+  # — flat fields directly under authentication.* don't fit the schema.
+  authentication:
+    type: oauth
+    oauth:
+      secretRef: oauth-schemaregistry
+      configuration:
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        audience: "Confluent,account,api://default"
+        subClaimName: sub
+        groupsClaimName: dahUAT_groups
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        scope: 11547.DAH(UAT)
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
+
+  tls:
+    secretRef: schemaregistry-tls
+  license:
+    secretRef: cfk-license
+
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. With replicas=2, maxUnavailable=1 lets one SR be
+  # evicted during a voluntary disruption (node drain / rolling update)
+  # while the other keeps serving the REST API.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  # Carry-over for SR linking (Schema Exporter), encoder secret, and the
+  # JETTY_AUTH mechanism the VM cluster uses.
+  configOverrides:
+    server:
+      - schema.registry.group.id=schema-registry
+      - kafkastore.topic=_schemas
+      - kafkastore.topic.replication.factor=3
+      - inter.instance.protocol=https
+      - confluent.schema.registry.auth.mechanism=JETTY_AUTH
+      - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
+      - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    # CRD path for resources — top-level spec.resources is silently dropped.
+    resources:
+      requests:
+        cpu: "4"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
+    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
+    # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
+    # admission. See kafka.yaml for the full rationale.
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: schemaregistry
+      app.kubernetes.io/instance: schemaregistry
+      app.kubernetes.io/component: schema-registry
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
