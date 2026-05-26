@@ -33,12 +33,14 @@ CyberArk responds with `{"Content": "<the-secret>"}`. The SecretStore extracts `
 
 ## Files in this directory
 
-| File | CyberArk UserName | Address | k8s Secret produced | CMF chart wiring | Status |
+| File | CyberArk UserName | Address (URL-encoded) | k8s Secret produced | CMF chart wiring | Status |
 |---|---|---|---|---|---|
-| `externalsecret-confluent-license.yaml` | `dev-confluent-license` | `Digital Analytics Hub` | `confluent-license` (key `license.txt`, content `license=<JWT>`) | `license.secretRef: confluent-license` | **READY** — Tushar confirmed account works |
-| `externalsecret-cmf-db-password.yaml` | `dev-cmf-sql-server-user-password` | `Digital Analytics Hub` | `cmf-db-credentials` (key `password`) | `cmf.database.jdbc.password.kubernetesSecretName: cmf-db-credentials` | **HOLD** — pending Tushar's CyberArk platform fix |
-| `externalsecret-cmf-encryption-key.yaml` | `dev-cmf-encryption-key` | `Digital Analytics Hub` | `cmf-encryption-key` (key `key`) | `encryption.key.kubernetesSecretName: cmf-encryption-key` | **HOLD** — pending Tushar's CyberArk platform fix |
+| `externalsecret-confluent-license.yaml` | `dev-confluent-license` | `Digital%20Analytics%20Hub` | `confluent-license` (key `license.txt`, content `license=<JWT>`) | `license.secretRef: confluent-license` | **READY** — Tushar confirmed account works |
+| `externalsecret-cmf-db-password.yaml` | `dev-cmf-sql-server-user-password` | `Digital%20Analytics%20Hub` | `cmf-db-credentials` (key `password`) | `cmf.database.jdbc.password.kubernetesSecretName: cmf-db-credentials` | **HOLD** — pending Tushar's CyberArk platform fix |
+| `externalsecret-cmf-encryption-key.yaml` | `dev-cmf-encryption-key` | `Digital%20Analytics%20Hub` | `cmf-encryption-key` (key `key`) | `encryption.key.kubernetesSecretName: cmf-encryption-key` | **HOLD** — pending Tushar's CyberArk platform fix |
 | `externalsecret-artifactory-pull-secret.yaml` | `artifactory-svc-user-password` (in different safe `11547_D_UNX_FP`) | TBD | `artifactory-pull-secret` (dockerconfigjson) | `imagePullSecrets` in values.yaml (currently commented out) | **HOLD** — different CyberArk safe; address + username placeholders unresolved |
+
+> The Address values are stored in CyberArk as the literal text **"Digital Analytics Hub"** (with spaces). They appear URL-encoded above because the FCB-owned SecretStore (`11547-d-key-fp`) renders its webhook URL with Go `text/template` literal substitution — no auto-encoding. A raw space in `property` ends up as a literal space in the request URL, Go's `url.Parse` rejects it, and the ExternalSecret status shows the opaque `SecretSyncedError: could not get secret data from provider`. Encoding the spaces as `%20` on our side avoids needing to touch the FCB-managed SecretStore template.
 
 ## Why two are on HOLD
 
