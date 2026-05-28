@@ -33,14 +33,17 @@ CyberArk responds with `{"Content": "<the-secret>"}`. The SecretStore extracts `
 
 ## Files in this directory
 
-| File | CyberArk UserName | Address (URL-encoded) | k8s Secret produced | CMF chart wiring | Status |
+| File | CyberArk UserName | Address | k8s Secret produced | CMF chart wiring | Status |
 |---|---|---|---|---|---|
-| `externalsecret-confluent-license.yaml` | `dev-confluent-license` | `Digital%20Analytics%20Hub` | `confluent-license` (key `license.txt`, content `license=<JWT>`) | `license.secretRef: confluent-license` | **READY** — Tushar confirmed account works |
-| `externalsecret-cmf-db-password.yaml` | `dev-cmf-sql-server-user-password` | `Digital%20Analytics%20Hub` | `cmf-db-credentials` (key `password`) | `cmf.database.jdbc.password.kubernetesSecretName: cmf-db-credentials` | **HOLD** — pending Tushar's CyberArk platform fix |
-| `externalsecret-cmf-encryption-key.yaml` | `dev-cmf-encryption-key` | `Digital%20Analytics%20Hub` | `cmf-encryption-key` (key `key`) | `encryption.key.kubernetesSecretName: cmf-encryption-key` | **HOLD** — pending Tushar's CyberArk platform fix |
-| `externalsecret-artifactory-pull-secret.yaml` | `artifactory-svc-user-password` (in different safe `11547_D_UNX_FP`) | TBD | `artifactory-pull-secret` (dockerconfigjson) | `imagePullSecrets` in values.yaml (currently commented out) | **HOLD** — different CyberArk safe; address + username placeholders unresolved |
+| `externalsecret-confluent-license.yaml` | `"dev-confluent-license"` | `"Digital Analytics Hub"` | `confluent-license` (key `license.txt`, **raw JWT**) | `license.secretRef: confluent-license` | **READY** — confirmed working in DEV |
+| `externalsecret-cmf-db-password.yaml` | `"dev-cmf-sql-server-user-password"` | `"Digital Analytics Hub"` | `cmf-db-credentials` (key `password`) | `cmf.database.jdbc.password.kubernetesSecretName: cmf-db-credentials` | **HOLD** — pending Tushar's CyberArk platform fix |
+| `externalsecret-cmf-encryption-key.yaml` | `"dev-cmf-encryption-key"` | `"Digital Analytics Hub"` | `cmf-encryption-key` (key `key`) | `encryption.key.kubernetesSecretName: cmf-encryption-key` | **HOLD** — pending Tushar's CyberArk platform fix |
 
-> The Address values are stored in CyberArk as the literal text **"Digital Analytics Hub"** (with spaces). They appear URL-encoded above because the FCB-owned SecretStore (`11547-d-key-fp`) renders its webhook URL with Go `text/template` literal substitution — no auto-encoding. A raw space in `property` ends up as a literal space in the request URL, Go's `url.Parse` rejects it, and the ExternalSecret status shows the opaque `SecretSyncedError: could not get secret data from provider`. Encoding the spaces as `%20` on our side avoids needing to touch the FCB-managed SecretStore template.
+### Two things worth knowing about the values above
+
+**1. CMF wants the raw JWT, not the `license=<JWT>` properties shape.** CFK / Confluent Platform Kafka expects the license under `license.txt` in Java-properties form (`license=eyJ…`). CMF rejects that prefix and only accepts the bare JWT. The cmf.yaml pipeline already creates two distinct Secrets for this split — `confluent-license` (raw JWT, for CMF) and `cfk-license` (`license=<JWT>`, for CFK Kafka). The ExternalSecret in this folder produces the CMF-shaped one.
+
+**2. `key` and `property` are plain quoted strings — no URL encoding.** An earlier iteration tried `%20`-encoding the spaces in `Digital Analytics Hub` to work around a presumed Go `url.Parse` rejection of literal spaces; that was a red herring. Go's HTTP client tolerates spaces in the query string and CCP URL-decodes on receipt. Quote both values for YAML hygiene and leave the rest as-is.
 
 ## Why two are on HOLD
 
@@ -67,10 +70,7 @@ oc -n dah-flink-dev describe externalsecret confluent-license  # if SyncError, l
 
 # 3. Verify the materialized Secret has the right content.
 oc -n dah-flink-dev get secret confluent-license -o jsonpath='{.data.license\.txt}' | base64 -d | head -1
-# Expect: license=eyJ...   (CFK's expected format)
-# If the decoded content already begins with `license=` and is followed
-# by another `license=`, CyberArk stored the value with the prefix
-# already — drop the `license=` prefix in the template and re-apply.
+# Expect: eyJ...   (raw JWT — CMF format, no `license=` prefix)
 
 # 4. The cmf.yaml pipeline (action=install, env=dev) now treats this
 #    ExternalSecret as the source of truth — it skips the variable-group
