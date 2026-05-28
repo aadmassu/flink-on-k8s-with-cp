@@ -32,6 +32,9 @@ images-phase*.txt
 
 # Local-only docs, notes, and project planning files
 docs/TALKING-POINTS.*
+docs/*.png
+docs/*.jpg
+docs/*.jpeg
 notes.md
 *.xlsx
 generate_*gantt*.py
