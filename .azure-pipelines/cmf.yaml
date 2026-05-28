@@ -116,50 +116,54 @@ stages:
                       | oc apply -f -
                   }
 
-                  create_labeled_secret cmf-db-credentials password "$CMF_DB_PWD"
-                  create_labeled_secret cmf-encryption-key key "$CMF_ENC_KEY"
-
-                  # confluent-license secret source — DEV migrated to ESO/CyberArk,
-                  # other envs still consume the variable-group value. Once an
-                  # ExternalSecret exists per env, swap each branch over.
-                  if [ "$TARGET_ENV" = "dev" ]; then
+                  # Helper: apply an ESO ExternalSecret, force an immediate re-sync
+                  # (so stale Secret content from a prior variable-group run doesn't
+                  # pass the check), and wait for Ready=True. Used in dev for the
+                  # three CyberArk-backed CMF Secrets (license, DB password,
+                  # encryption key). On timeout, prints the live status block and
+                  # exits 1.
+                  apply_externalsecret_and_wait() {
+                    local name=$1
+                    local file=$2
                     echo ""
-                    echo "=== dev — applying ExternalSecret for confluent-license (CyberArk) ==="
-                    oc apply -n "$OC_NS" -f apps/confluent-cmf/dev/externalsecrets/externalsecret-confluent-license.yaml
-
-                    # Force an immediate re-sync — without this, if a stale
-                    # Secret already exists from the legacy variable-group
-                    # flow, the next check would pass instantly against the
-                    # OLD content. The annotation triggers ESO to refresh
-                    # from CyberArk regardless of refreshInterval.
-                    oc -n "$OC_NS" annotate externalsecret confluent-license \
+                    echo "--- ExternalSecret/$name  (from $file) ---"
+                    oc apply -n "$OC_NS" -f "$file"
+                    oc -n "$OC_NS" annotate externalsecret "$name" \
                       force-sync="$(date +%s)" --overwrite
 
-                    # Wait on the ExternalSecret's status, not just Secret
-                    # existence. status.conditions[type=Ready].status=True
-                    # means ESO successfully fetched from CyberArk and wrote
-                    # the Secret. status.syncedResourceVersion changes on
-                    # every refresh, so we can also tell content was updated.
-                    echo "=== Waiting up to 120s for ExternalSecret confluent-license Ready=True ==="
-                    if ! timeout 120 bash -c "until [ \"\$(oc -n '$OC_NS' get externalsecret confluent-license -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' 2>/dev/null)\" = 'True' ]; do sleep 3; done"; then
-                      echo "ERROR: ExternalSecret confluent-license did not reach Ready=True within 120s."
+                    echo "  waiting up to 120s for Ready=True..."
+                    if ! timeout 120 bash -c "until [ \"\$(oc -n '$OC_NS' get externalsecret '$name' -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' 2>/dev/null)\" = 'True' ]; do sleep 3; done"; then
+                      echo "ERROR: ExternalSecret/$name did not reach Ready=True within 120s."
                       echo ""
-                      echo "Current ExternalSecret status:"
-                      oc -n "$OC_NS" get externalsecret confluent-license -o yaml | sed -n '/^status:/,$p' | head -30
+                      echo "Current status:"
+                      oc -n "$OC_NS" get externalsecret "$name" -o yaml | sed -n '/^status:/,$p' | head -30
                       echo ""
                       echo "Diagnose with:"
-                      echo "  oc -n $OC_NS describe externalsecret confluent-license"
+                      echo "  oc -n $OC_NS describe externalsecret $name"
                       echo "Common causes: wrong CyberArk Address (property), wrong UserName (key),"
                       echo "or the SecretStore 11547-d-key-fp is in a non-Ready state."
                       exit 1
                     fi
-                    echo "ExternalSecret confluent-license is Ready=True."
+                    echo "  ExternalSecret/$name is Ready=True."
+                    oc -n "$OC_NS" get secret "$name" -o jsonpath='    Secret ownerRefs={.metadata.ownerReferences[*].kind}/{.metadata.ownerReferences[*].name}{"\n    Secret resourceVersion="}{.metadata.resourceVersion}{"\n"}'
+                    oc -n "$OC_NS" get externalsecret "$name" -o jsonpath='    ES refreshTime={.status.refreshTime}{"\n    ES syncedResourceVersion="}{.status.syncedResourceVersion}{"\n"}'
+                  }
+
+                  # In dev, all three sensitive CMF Secrets (license, DB password,
+                  # encryption key) come from CyberArk via ESO. In other envs they
+                  # still come from the <env>-openshift-credentials variable group
+                  # until those accounts are onboarded into CyberArk + per-env
+                  # ExternalSecrets are added under apps/confluent-cmf/<env>/.
+                  if [ "$TARGET_ENV" = "dev" ]; then
                     echo ""
-                    echo "Materialized Secret owner + refresh metadata:"
-                    oc -n "$OC_NS" get secret confluent-license -o jsonpath='{"  ownerRefs="}{.metadata.ownerReferences[*].kind}{"/"}{.metadata.ownerReferences[*].name}{"\n  resourceVersion="}{.metadata.resourceVersion}{"\n"}'
-                    oc -n "$OC_NS" get externalsecret confluent-license -o jsonpath='{"  refreshTime="}{.status.refreshTime}{"\n  syncedResourceVersion="}{.status.syncedResourceVersion}{"\n"}'
+                    echo "=== dev — applying ESO ExternalSecrets (CyberArk-backed) ==="
+                    apply_externalsecret_and_wait confluent-license  apps/confluent-cmf/dev/externalsecrets/externalsecret-confluent-license.yaml
+                    apply_externalsecret_and_wait cmf-db-credentials apps/confluent-cmf/dev/externalsecrets/externalsecret-cmf-db-password.yaml
+                    apply_externalsecret_and_wait cmf-encryption-key apps/confluent-cmf/dev/externalsecrets/externalsecret-cmf-encryption-key.yaml
                   else
-                    create_labeled_secret confluent-license license.txt "$CMF_LICENSE"
+                    create_labeled_secret confluent-license  license.txt "$CMF_LICENSE"
+                    create_labeled_secret cmf-db-credentials password    "$CMF_DB_PWD"
+                    create_labeled_secret cmf-encryption-key key         "$CMF_ENC_KEY"
                   fi
 
                   echo ""
@@ -211,23 +215,25 @@ stages:
                   echo "=== Uninstalling Helm release ==="
                   helm uninstall confluent-cmf -n "$OC_NS" --wait --timeout 5m || true
 
-                  echo ""
-                  echo "=== Deleting pipeline-managed secrets ==="
-                  # cmf-tls is intentionally preserved — owned by cert-manager
-                  # via the cmf-tls pipeline. SQL Server data persists.
-                  oc -n "$OC_NS" delete secret \
-                    cmf-db-credentials cmf-encryption-key \
-                    --ignore-not-found
-
-                  # confluent-license: in dev the Secret is owned by an ESO
-                  # ExternalSecret (CyberArk-backed). Delete the ExternalSecret
-                  # and ESO cascade-deletes the Secret via ownerReference. In
-                  # other envs the pipeline still owns the Secret directly.
+                  # In dev all three Secrets (license, db, encryption-key) are
+                  # ESO-managed. Their ExternalSecrets carry deletionPolicy=Retain
+                  # so deleting the ExternalSecret does NOT cascade to the
+                  # underlying Secret — we delete both explicitly. cmf-tls is
+                  # preserved either way (owned by cert-manager via the
+                  # cmf-tls pipeline). SQL Server data persists.
                   if [ "$TARGET_ENV" = "dev" ]; then
-                    oc -n "$OC_NS" delete externalsecret confluent-license --ignore-not-found
-                  else
-                    oc -n "$OC_NS" delete secret confluent-license --ignore-not-found
+                    echo ""
+                    echo "=== Deleting ExternalSecrets (dev — ESO-managed) ==="
+                    oc -n "$OC_NS" delete externalsecret \
+                      confluent-license cmf-db-credentials cmf-encryption-key \
+                      --ignore-not-found
                   fi
+
+                  echo ""
+                  echo "=== Deleting CMF Secrets ==="
+                  oc -n "$OC_NS" delete secret \
+                    confluent-license cmf-db-credentials cmf-encryption-key \
+                    --ignore-not-found
 
                   echo ""
                   echo "=== Remaining CMF objects ==="

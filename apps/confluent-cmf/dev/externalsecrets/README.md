@@ -35,47 +35,29 @@ CyberArk responds with `{"Content": "<the-secret>"}`. The SecretStore extracts `
 
 | File | CyberArk UserName | Address | k8s Secret produced | CMF chart wiring | Status |
 |---|---|---|---|---|---|
-| `externalsecret-confluent-license.yaml` | `"dev-confluent-license"` | `"Digital Analytics Hub"` | `confluent-license` (key `license.txt`, **raw JWT**) | `license.secretRef: confluent-license` | **READY** — confirmed working in DEV |
-| `externalsecret-cmf-db-password.yaml` | `"dev-cmf-sql-server-user-password"` | `"Digital Analytics Hub"` | `cmf-db-credentials` (key `password`) | `cmf.database.jdbc.password.kubernetesSecretName: cmf-db-credentials` | **HOLD** — pending Tushar's CyberArk platform fix |
-| `externalsecret-cmf-encryption-key.yaml` | `"dev-cmf-encryption-key"` | `"Digital Analytics Hub"` | `cmf-encryption-key` (key `key`) | `encryption.key.kubernetesSecretName: cmf-encryption-key` | **HOLD** — pending Tushar's CyberArk platform fix |
+| `externalsecret-confluent-license.yaml` | `"dev-confluent-license"` | `"Digital Analytics Hub"` | `confluent-license` (key `license.txt`, **raw JWT**) | `license.secretRef: confluent-license` | **ACTIVE** |
+| `externalsecret-cmf-db-password.yaml` | `"dev-cmf-sql-server-user-password"` | `"Digital Analytics Hub"` | `cmf-db-credentials` (key `password`) | `cmf.database.jdbc.password.kubernetesSecretName: cmf-db-credentials` | **ACTIVE** |
+| `externalsecret-cmf-encryption-key.yaml` | `"dev-cmf-encryption-key"` | `"Digital Analytics Hub"` | `cmf-encryption-key` (key `key`) | `encryption.key.kubernetesSecretName: cmf-encryption-key` | **ACTIVE** |
 
-### Two things worth knowing about the values above
+**One non-obvious gotcha to know:** CMF wants the license as the **raw JWT** under `license.txt`. CFK / Confluent Platform Kafka wants the Java-properties shape `license=<JWT>` — different format. The cmf.yaml pipeline creates two distinct Secrets to cover the split: `confluent-license` (raw JWT, what this ExternalSecret produces, consumed by CMF) and `cfk-license` (`license=<JWT>` properties shape, created by the pipeline directly, consumed by CFK Kafka). Don't add the `license=` prefix to the template here.
 
-**1. CMF wants the raw JWT, not the `license=<JWT>` properties shape.** CFK / Confluent Platform Kafka expects the license under `license.txt` in Java-properties form (`license=eyJ…`). CMF rejects that prefix and only accepts the bare JWT. The cmf.yaml pipeline already creates two distinct Secrets for this split — `confluent-license` (raw JWT, for CMF) and `cfk-license` (`license=<JWT>`, for CFK Kafka). The ExternalSecret in this folder produces the CMF-shaped one.
+## Apply order — all three ExternalSecrets
 
-**2. `key` and `property` are plain quoted strings — no URL encoding.** An earlier iteration tried `%20`-encoding the spaces in `Digital Analytics Hub` to work around a presumed Go `url.Parse` rejection of literal spaces; that was a red herring. Go's HTTP client tolerates spaces in the query string and CCP URL-decodes on receipt. Quote both values for YAML hygiene and leave the rest as-is.
-
-## Why two are on HOLD
-
-Tushar's CyberArk view shows `dev-cmf-encryption-key` and
-`dev-cmf-sql-server-user-password` are on Platform `UNIX-UNXSSH-...`,
-which the AIM Web Service can't currently fetch from. He's adjusting the
-platform mapping. Once that's in, the two HOLD ExternalSecrets become
-apply-able with no further edits to this directory — but the cmf
-pipeline (`.azure-pipelines/cmf.yaml`) will also need the equivalent
-"dev → ExternalSecret, other envs → variable group" branch we added for
-the license. Flag this when you're ready to flip them.
-
-## Apply order — license only (current state)
+The `cmf.yaml` pipeline (`action=install`, `environment=dev`) applies all three, force-syncs each, and waits up to 120s for each to reach `Ready=True` before running the Helm install. Manual one-off application looks like:
 
 ```bash
-# 1. Apply the ExternalSecret. (The variable-group flow in cmf.yaml is
-#    already gated to skip license creation when env=dev — applying the
-#    ExternalSecret separately is also safe.)
-oc apply -f apps/confluent-cmf/dev/externalsecrets/externalsecret-confluent-license.yaml
+# Apply all three.
+oc apply -n dah-flink-dev -f apps/confluent-cmf/dev/externalsecrets/
 
-# 2. Verify the ExternalSecret reaches SecretSynced=True.
-oc -n dah-flink-dev get externalsecret confluent-license
-oc -n dah-flink-dev describe externalsecret confluent-license  # if SyncError, look here
+# Verify each reached Ready=True.
+oc -n dah-flink-dev get externalsecret \
+  confluent-license cmf-db-credentials cmf-encryption-key
 
-# 3. Verify the materialized Secret has the right content.
+# If any shows SecretSyncedError, describe it for the underlying CCP error.
+oc -n dah-flink-dev describe externalsecret <name>
+
+# Verify materialized Secret content (raw JWT, no `license=` prefix for CMF).
 oc -n dah-flink-dev get secret confluent-license -o jsonpath='{.data.license\.txt}' | base64 -d | head -1
-# Expect: eyJ...   (raw JWT — CMF format, no `license=` prefix)
-
-# 4. The cmf.yaml pipeline (action=install, env=dev) now treats this
-#    ExternalSecret as the source of truth — it skips the variable-group
-#    create_labeled_secret call and waits for the Secret to materialize
-#    before running the Helm install.
 ```
 
 ## Rotation
