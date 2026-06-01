@@ -46,6 +46,17 @@ parameters:
     # policy rejects ("storage class name <dummy>"). Run AFTER uninstall
     # and BEFORE install.
     values: [create-prereqs, install, uninstall, wipe-pvcs]
+  - name: forceFinalizerRemoval
+    displayName: "Uninstall: force-clear finalizers on timeout"
+    type: boolean
+    default: false
+    # Opt-in safety valve for the uninstall action. When `true`, after the
+    # standard `oc delete --wait=true --timeout=5m` loop, any CR that's
+    # still stuck with a deletionTimestamp gets its `metadata.finalizers`
+    # patched to []  — but only when the underlying StatefulSet and Pods
+    # are already gone (the typical Connect-stuck-on-broker-graceful-flush
+    # scenario; runbook/LESSONS_LEARNED.md E3). Leave `false` for normal
+    # operation so a genuine operator bug fails the pipeline loudly.
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -827,6 +838,69 @@ stages:
                     fi
                   done
 
+                  # Optional fallback: if any CR is still stuck with a
+                  # deletionTimestamp AND the operator-managed StatefulSet
+                  # + Pods are already gone, drop its finalizers so the API
+                  # server GCs it. Triggered by the `forceFinalizerRemoval`
+                  # pipeline parameter. See runbook/LESSONS_LEARNED.md E3
+                  # for the canonical case (Connect's graceful-flush call
+                  # hangs when the broker cluster never came up).
+                  # ADO interpolates a `type: boolean` parameter to "True"
+                  # at compile time. Accept the lowercase form too in case
+                  # the variable is ever re-wired from $(var) at runtime.
+                  if [ "$FAIL" -ne 0 ] && { [ "$FORCE_FINALIZER_REMOVAL" = "True" ] || [ "$FORCE_FINALIZER_REMOVAL" = "true" ]; }; then
+                    echo ""
+                    echo "=== forceFinalizerRemoval=true — checking for CRs stuck in Terminating ==="
+                    STUCK=$(oc -n "$OC_NS" get \
+                      kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
+                      -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.kind}{"/"}{.metadata.name}{"\n"}{end}' \
+                      2>/dev/null)
+
+                    if [ -z "$STUCK" ]; then
+                      echo "No CRs with deletionTimestamp set — FAIL was set for another reason; not clearing it."
+                    else
+                      echo "Stuck CRs found:"
+                      echo "$STUCK" | sed 's/^/  /'
+                      CLEARED=0
+                      while IFS=/ read -r kind name; do
+                        [ -z "$kind" ] && continue
+                        # Safety gate: only patch finalizers when there is
+                        # no live StatefulSet / Pod for this instance. If
+                        # there is, the operator is mid-cleanup and we
+                        # could orphan storage / leak PVs by short-circuiting
+                        # it. Better to fail loudly and let a human look.
+                        SS_LEFT=$(oc -n "$OC_NS" get sts \
+                          -l "app.kubernetes.io/instance=$name" \
+                          --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+                        POD_LEFT=$(oc -n "$OC_NS" get pod \
+                          -l "app.kubernetes.io/instance=$name" \
+                          --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+                        if [ "${SS_LEFT:-0}" -gt 0 ] || [ "${POD_LEFT:-0}" -gt 0 ]; then
+                          echo "  SKIP $kind/$name — StatefulSet=$SS_LEFT Pod=$POD_LEFT still present; not safe to short-circuit"
+                          continue
+                        fi
+                        echo "+ oc -n $OC_NS patch $kind $name --type=merge -p '{\"metadata\":{\"finalizers\":[]}}'"
+                        if oc -n "$OC_NS" patch "$kind" "$name" \
+                            --type=merge -p '{"metadata":{"finalizers":[]}}'; then
+                          CLEARED=$((CLEARED+1))
+                        fi
+                      done <<< "$STUCK"
+
+                      # Re-check after the patch sweep.
+                      STILL_STUCK=$(oc -n "$OC_NS" get \
+                        kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
+                        -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.kind}{"/"}{.metadata.name}{"\n"}{end}' \
+                        2>/dev/null | grep -c . || true)
+
+                      if [ "${STILL_STUCK:-0}" -eq 0 ]; then
+                        echo "All stuck CRs cleared after finalizer patch ($CLEARED total). Clearing FAIL."
+                        FAIL=0
+                      else
+                        echo "WARNING: $STILL_STUCK CR(s) still stuck after finalizer patch — investigate manually."
+                      fi
+                    fi
+                  fi
+
                   echo ""
                   echo "=== Deleting cert-manager Certificates (cascades to *-tls Secrets) ==="
                   # Certificates can be force-deleted — no webhook, no risk
@@ -861,11 +935,16 @@ stages:
                     echo "allow-pv-deletion=true before deleting, but the label step only"
                     echo "runs for CRs that exist at the time. If a stale finalizer is"
                     echo "the cause, investigate with: oc -n $OC_NS get <kind>/<name> -o yaml"
+                    echo ""
+                    echo "For the well-known Connect-stuck-on-broker-graceful-flush case"
+                    echo "(see runbook/LESSONS_LEARNED.md E3), re-run this pipeline with"
+                    echo "the forceFinalizerRemoval=true parameter set."
                     exit 1
                   fi
               env:
                 OC_NS: $(openshift-dev-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
+                FORCE_FINALIZER_REMOVAL: ${{ parameters.forceFinalizerRemoval }}
 
           - ${{ if eq(parameters.action, 'wipe-pvcs') }}:
             - task: Bash@3
