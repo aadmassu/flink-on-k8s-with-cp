@@ -32,7 +32,10 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  replicas: 2
+  # TEMP — replicas 2→1 and resources scaled down for the dah-flink-dev
+  # ResourceQuota. Revert to replicas: 2 + 4/4 req+limit when Tom raises
+  # the namespace quota.
+  replicas: 1
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
@@ -202,13 +205,25 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
+    # TEMP sizing — see top-of-file comment.
     resources:
       requests:
-        cpu: "4"
-        memory: 4Gi
+        cpu: "75m"
+        memory: 384Mi
       limits:
-        cpu: "4"
-        memory: 4Gi
+        cpu: "150m"
+        memory: 768Mi
+    probe:
+      liveness:
+        initialDelaySeconds: 90
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.

@@ -26,7 +26,10 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  replicas: 3
+  # TEMP — scaled to 1 controller for the dah-flink-dev ResourceQuota.
+  # Single-controller has NO HA — quorum is technically just itself.
+  # Revert to replicas: 3 when Tom raises the namespace compute quota.
+  replicas: 1
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
@@ -115,13 +118,25 @@ spec:
     # actual usage is ~0.36 vCPU and ~0.36 GiB. The numbers below give
     # ~3x CPU and ~5x memory headroom while freeing ~3 vCPU and 2 GiB
     # per worker for broker / CMF / monitoring co-tenants.
+    # TEMP sizing — see top-of-file comment. Real dev was 1/2 req, 2/2 limit.
     resources:
       requests:
-        cpu: "1"
-        memory: 2Gi
+        cpu: "100m"
+        memory: 384Mi
       limits:
-        cpu: "2"
-        memory: 2Gi
+        cpu: "200m"
+        memory: 512Mi
+    probe:
+      liveness:
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 20
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.

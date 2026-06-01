@@ -28,7 +28,14 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  replicas: 1
+  # TEMP — SUSPENDED (replicas: 0) for the dah-flink-dev ResourceQuota.
+  # Control Center next-gen wants 12 CPU / 16 GiB and no honest reduction
+  # gets it close to the current quota (limits.cpu=2, limits.memory=8Gi).
+  # The StatefulSet exists at 0 replicas so the CR is admitted; no Pod
+  # is created so no quota is consumed. Set replicas: 1 once Tom raises
+  # the namespace quota — the original sizing (12/16 req+limit) is what
+  # the VM C3 ran with.
+  replicas: 0
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:8.1.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103

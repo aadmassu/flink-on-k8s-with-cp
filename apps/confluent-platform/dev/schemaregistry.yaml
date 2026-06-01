@@ -29,6 +29,8 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
+  # TEMP — resources scaled down for the dah-flink-dev ResourceQuota.
+  # Revert sizing to 4/4 req+limit when Tom raises the namespace quota.
   replicas: 1
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
@@ -142,14 +144,25 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # CRD path for resources — top-level spec.resources is silently dropped.
+    # TEMP sizing — see top-of-file comment. Real dev was 4/4 req+limit.
     resources:
       requests:
-        cpu: "4"
-        memory: 4Gi
+        cpu: "75m"
+        memory: 256Mi
       limits:
-        cpu: "4"
-        memory: 4Gi
+        cpu: "150m"
+        memory: 512Mi
+    probe:
+      liveness:
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 20
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.

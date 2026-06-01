@@ -37,7 +37,13 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  replicas: 3
+  # TEMP — scaled down for the dah-flink-dev ResourceQuota (limits.cpu=2,
+  # limits.memory=8Gi, requests.cpu=1, requests.memory=4Gi). Revert to
+  # replicas: 3 + the broker-fit sizing (2/4 req, 4/8 limit) once Tom
+  # raises the namespace compute quota. The cluster-link migration and
+  # any real benchmarking REQUIRE replicas: 3 — this single-broker setup
+  # is smoke-test-only (no RF=3 inter-broker replication possible).
+  replicas: 1
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
@@ -224,13 +230,32 @@ spec:
     # + system 2 = 10 vCPU and ~16 GiB, leaving room on the worker for CMF
     # and other workloads. If broker traffic grows, raise the limits first
     # (heap auto-tunes to ~75% of memory limit).
+    # TEMP sizing — see top-of-file comment. Real dev sizing was
+    # 2/4 req, 4/8 limit. JVM heap at 1.5 Gi limit gets ~1.1 Gi which
+    # is enough to start a single broker for smoke tests, not enough
+    # for any sustained traffic.
     resources:
       requests:
-        cpu: "2"
-        memory: 4Gi
+        cpu: "200m"
+        memory: 768Mi
       limits:
-        cpu: "4"
-        memory: 8Gi
+        cpu: "400m"
+        memory: 1.5Gi
+    # CFK probe overrides (operator-flavored — only liveness + readiness
+    # exposed by the CRD; startupProbe is not in the schema, so the
+    # Gatekeeper `[startup]` warning persists at WARN level until CFK
+    # adds the field. Generous timing accommodates the small heap.)
+    probe:
+      liveness:
+        initialDelaySeconds: 90
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001).
     # OpenShift's restricted-v2 SCC then assigns a UID from this namespace's
     # allocated range (1001320000–1001329999) and adds GID 0 as a supplemental
