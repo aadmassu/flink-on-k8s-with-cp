@@ -316,6 +316,45 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   kraft, nothing comes up. Easy to mistake for a CFK / manifest issue
   because the symptom is "Kafka won't start".
 
+### E3. Connect's finalizer hangs on uninstall when the brokers are unhealthy
+
+* **Symptom**: `Uninstall Confluent Platform CRs` step runs
+  `oc delete -f connect.yaml --wait=true --timeout=5m`. The API
+  reports `"connect" deleted` instantly, but the wait times out after
+  five minutes. Final `oc get connect` still shows the CR with a
+  `deletionTimestamp` set. Other CRs (kafkarest, SR, kafka, kraft,
+  controlcenter, kafkarestclass) all delete clean in the same run.
+* **Root cause**: the CFK operator's Connect-finalizer logic tries to
+  do a graceful cluster shutdown — stop tasks, flush offsets to
+  `connect-cluster-offsets`, leave the consumer group. All of that
+  requires a healthy broker conversation. In a teardown of a
+  cluster where kraft never came up (e.g. the Ceph CSI failure in
+  E2), Kafka was never Ready, so the operator's graceful path hangs
+  until the 5-minute timeout. With Connect at `replicas: 0` there's
+  also no Connect pod for the operator to reach via REST — making
+  even the "find the running cluster and shut it down nicely"
+  alternative impossible.
+* **Fix (immediate, manual)**:
+  ```
+  oc -n dah-flink-<env> patch connect connect \
+    --type=merge -p '{"metadata":{"finalizers":[]}}'
+  ```
+  Force-drops the finalizer; the CR is GC'd within a second.
+  Safe because the underlying StatefulSet and pods are already
+  gone (the operator removed them before getting stuck on the
+  graceful-flush call).
+* **Fix (pipeline)**: add an explicit
+  `force-finalizer-removal: true|false` parameter to
+  `.azure-pipelines/confluent-platform.yaml` so the uninstall step
+  can fall back to patching `metadata.finalizers: []` on a
+  per-CR timeout. Default false; opt-in only, matching the pattern
+  used by `wipe-pvcs`.
+* **Why it matters**: this isn't a CFK bug per se — the operator
+  doing graceful shutdown is the right behavior. It's the
+  combination *broken cluster + uninstall* that gets you. Every
+  CFK component that talks to Kafka during cleanup (Connect is the
+  worst offender, SR is second-worst) can hit a variant of this.
+
 ---
 
 ## F. ResourceQuota / sizing arithmetic

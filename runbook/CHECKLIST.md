@@ -193,6 +193,23 @@ minutes to clear.
       OAuth scope edge cases) recorded in commit messages and CR
       comments — Rick reads these at audit
 
+## 5. Known recovery commands
+
+Quick-reference for problems that have a documented fix in
+`LESSONS_LEARNED.md`. Run only after confirming the symptom matches.
+
+- **Connect CR stuck in `Terminating` after `oc delete`** (E3) — only
+  when the broker cluster was unhealthy at uninstall time, and the
+  pods/StatefulSet are already gone:
+  ```
+  oc -n dah-flink-<env> patch connect connect \
+    --type=merge -p '{"metadata":{"finalizers":[]}}'
+  ```
+- **Same pattern for any other CFK CR stuck in `Terminating`** — verify
+  the underlying StatefulSet/pods are already gone first
+  (`oc -n dah-flink-<env> get sts,pod -l app.kubernetes.io/instance=<name>`),
+  then patch finalizers to `[]` as above with the right kind/name.
+
 ## Escalation contacts
 
 | Issue                                | Owner                                |
