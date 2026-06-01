@@ -32,10 +32,15 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # TEMP — replicas 2→1 and resources scaled down for the dah-flink-dev
-  # ResourceQuota. Revert to replicas: 2 + 4/4 req+limit when Tom raises
-  # the namespace quota.
-  replicas: 1
+  # TEMP — SUSPENDED (replicas: 0) for the dah-flink-dev ResourceQuota.
+  # Every CFK pod claims ~500m CPU (the operator's injected init container
+  # has a ~500m default limit, which becomes the pod-effective limit via
+  # max(init, main); the CFK 3.1.x CRDs do NOT expose an `initContainers`
+  # field for override). With the 2 CPU dev quota, four pods (kraft, kafka,
+  # SR, kafkarest) consume the entire budget; Connect is the lowest-value
+  # of the six during initial smoke-testing, so it's parked at 0 to keep
+  # kafkarest schedulable. Revert to replicas: 2 once Tom raises the quota.
+  replicas: 0
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
