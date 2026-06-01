@@ -40,7 +40,7 @@ spec:
   replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.2
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
   # FCB Gatekeeper [required-workload-labels] checks the *StatefulSet*, not
   # the CR. injectLabels is CFK's mechanism for pushing labels into every
   # managed resource. Keep aligned with the FCB common-metadata standard.
