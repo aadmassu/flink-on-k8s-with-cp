@@ -1,5 +1,5 @@
 apiVersion: v1
-appVersion: 3.1.1
+appVersion: 3.1.2
 description: A Helm chart to deploy Confluent for Kubernetes
 home: https://www.confluent.io/
 keywords:
@@ -13,4 +13,4 @@ maintainers:
 name: confluent-for-kubernetes
 sources:
 - https://docs.confluent.io/current/index.html
-version: 0.1351.59
+version: 0.1351.103
