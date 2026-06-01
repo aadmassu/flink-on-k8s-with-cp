@@ -118,6 +118,15 @@ spec:
   license:
     secretRef: cfk-license
 
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. CFK auto-creates a PDB per workload; for this
+  # single-replica StatefulSet the default lands at 0, which the policy
+  # treats as "blocks drains forever". maxUnavailable=1 makes the
+  # auto-generated PDB drainable.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
   # Embedded MDS (Metadata Service) — VM equivalent is the broker-hosted
   # MDS on port 8090. In CFK, the correct path is spec.services.mds (the
   # earlier `metadataServer:` block was NOT in the CRD schema and got

@@ -90,6 +90,15 @@ spec:
   license:
     secretRef: cfk-license
 
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. CFK auto-creates a PDB per workload; for this
+  # single-replica StatefulSet the default lands at 0, which the policy
+  # treats as "blocks drains forever". maxUnavailable=1 makes the
+  # auto-generated PDB drainable.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
   services:
     mds:
       tokenKeyPair:
