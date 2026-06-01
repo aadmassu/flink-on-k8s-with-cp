@@ -21,8 +21,8 @@ metadata:
 spec:
   replicas: 1
   image:
-    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:8.1.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:2.5.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.2
   injectLabels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/instance: controlcenter

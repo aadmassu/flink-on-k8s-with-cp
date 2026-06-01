@@ -25,8 +25,8 @@ metadata:
 spec:
   replicas: 3
   image:
-    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.2.1
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.2
   injectLabels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/instance: kafka

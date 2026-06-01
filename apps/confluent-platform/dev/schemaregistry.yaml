@@ -33,8 +33,8 @@ spec:
   # Revert sizing to 4/4 req+limit when Tom raises the namespace quota.
   replicas: 1
   image:
-    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:0.1351.103
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.2.1
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.2
   # FCB Gatekeeper [required-workload-labels] inspects the auto-generated
   # StatefulSet (not the CR). injectLabels is CFK's mechanism for pushing
   # labels into every managed resource — keep aligned with the FCB common-
