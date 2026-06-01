@@ -21,7 +21,7 @@ metadata:
 spec:
   replicas: 2
   image:
-    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.2.1
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.2
   injectLabels:
     app.kubernetes.io/name: connect
