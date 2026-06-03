@@ -164,6 +164,45 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   print and then dies — easy to mistake for a missing-config bug
   in the CR.
 
+### A9. `ConfluentMetricsReporter` on the controller retries forever
+
+* **Symptom**: KRaftController boots cleanly (no fatal exit), but the
+  log emits an ERROR every 16-32 seconds from
+  `DynamicMetricsReportersScheduler`:
+  ```
+  Failed to initiate DynamicMetricsReporters. Elapsed time: ... ms,
+    retrying in 32000 ms (Attempt 7).
+  org.apache.kafka.common.config.ConfigException:
+    Missing required configuration "confluent.metrics.reporter.bootstrap.servers"
+    which has no default value.
+  ```
+  Process stays alive (this is a background scheduler, not the main
+  thread) but logs are noisy and Splunk/Dynatrace will alert on the
+  recurring ERROR.
+* **Root cause**: same chicken-and-egg shape as A8. The VM
+  `.properties` we ported in carried:
+  ```
+  metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+  ```
+  `ConfluentMetricsReporter` publishes metrics to a Kafka topic
+  (`_confluent-metrics`) for C3 / SBC to consume. It needs
+  `confluent.metrics.reporter.bootstrap.servers` to know where the
+  broker is. On the *controller*, that endpoint is the broker —
+  which can't come up until the controllers do. The reporter's
+  init keeps failing and the scheduler keeps retrying.
+* **Fix**: drop `ConfluentMetricsReporter` from the controller's
+  `metric.reporters` list. Keep `TelemetryReporter` — it ships
+  directly to Confluent's telemetry endpoint (no broker dependency)
+  and doesn't error. Brokers keep both reporters.
+  ```yaml
+  - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter
+  ```
+* **Why it matters**: not a fatal error, but the controller's logs
+  fill with this every 16-32 seconds indefinitely. Combined with
+  Dynatrace error-rate alerts on the namespace, this triggers
+  noise that masks real failures. Same role-split principle as
+  A8: don't ask the controller to do broker-side things.
+
 ---
 
 ## B. FCB Gatekeeper policies

@@ -97,7 +97,15 @@ spec:
       - confluent.license.topic.replication.factor=3
       - confluent.balancer.enable=true
       - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
-      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+      # ConfluentMetricsReporter publishes broker-side metrics to the
+      # _confluent-metrics topic so C3 / SBC can read them. It needs
+      # confluent.metrics.reporter.bootstrap.servers to know where the
+      # broker is — and on the controller that endpoint is the broker,
+      # which can't come up until the controller does. Same chicken-and-egg
+      # as A8. Strip it from the controller; brokers keep it. TelemetryReporter
+      # stays because it ships directly to Confluent's telemetry endpoint
+      # (no broker dependency). See runbook/LESSONS_LEARNED.md A9.
+      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter
       - confluent.telemetry.enabled=true
       - confluent.reporters.telemetry.auto.enable=true
   podTemplate:
