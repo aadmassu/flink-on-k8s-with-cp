@@ -122,6 +122,48 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   read like a generic "missing label" but identify the SS or the Pod
   specifically; pay attention to which object the policy named.
 
+### A8. KRaftController can't use the `CONFLUENT` RBAC provider
+
+* **Symptom**: kraftcontroller-0 starts, JVM comes up, Kafka config
+  block prints in the log, then the process exits with:
+  ```
+  [ERROR] ProcessTerminatingFaultHandler handleFault -
+    app=kraftcontroller, clusterId=dah-flink-<env>, server=0 -
+    Encountered fatal fault: caught exception
+  org.apache.kafka.common.config.ConfigException:
+    You must specify confluent.metadata.bootstrap.servers to
+    configure the RBAC provider.
+  ```
+  Pod CrashLoopBackOff, the stack never starts.
+* **Root cause**: the original VM controller `.properties` files
+  (which we ported into the CR's `configOverrides`) declared:
+  ```
+  authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+  confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+  ```
+  The `CONFLUENT` provider is the centralized-RBAC provider. It needs
+  `confluent.metadata.bootstrap.servers` to point at an MDS endpoint
+  so it can pull RBAC rules at startup. **MDS is hosted on the
+  brokers (port 8090), not on the controller** — and the brokers
+  can't start until the controllers do. Chicken-and-egg, controller
+  fails fatally.
+* **Fix**: drop the `CONFLUENT` entry from the controller's
+  authorizer providers list; keep only `KRAFT_ACL`, which stores ACLs
+  in the metadata log itself and requires no MDS lookup. **Brokers
+  keep `CONFLUENT,KRAFT_ACL`** — they DO host MDS and DO need
+  centralized RBAC for client-request authorization.
+  ```yaml
+  - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+  - confluent.authorizer.access.rule.providers=KRAFT_ACL
+  ```
+* **Why it matters**: the VM didn't expose this dependency because
+  controllers and brokers were either co-located or had a known MDS
+  endpoint wired up. CFK pod-separates them and the dependency
+  becomes load-bearing on bring-up order. This is the first thing
+  to check when a controller boots cleanly through the Kafka config
+  print and then dies — easy to mistake for a missing-config bug
+  in the CR.
+
 ---
 
 ## B. FCB Gatekeeper policies

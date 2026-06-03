@@ -64,7 +64,14 @@ spec:
   configOverrides:
     server:
       - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
-      - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+      # Controllers do NOT host MDS, so the centralized-RBAC (CONFLUENT)
+      # provider can't bootstrap here — it requires confluent.metadata.bootstrap.servers
+      # to point at an MDS endpoint that doesn't exist until the brokers come up
+      # (and the brokers can't come up until the controllers do). Keep only the
+      # KRAFT_ACL provider on the controller — it stores ACLs in the metadata
+      # log itself, no MDS lookup needed. Brokers continue to use CONFLUENT,KRAFT_ACL.
+      # See runbook/LESSONS_LEARNED.md A8.
+      - confluent.authorizer.access.rule.providers=KRAFT_ACL
       - super.users=User:admin
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
