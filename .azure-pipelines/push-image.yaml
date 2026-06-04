@@ -3,7 +3,7 @@
 # Author:    Ayele Admassu
 # Created:   2026-04-16
 #
-# Variable Group: <env>-openshift-credentials
+# Variable Group: kafka-openshift-credentials-<env>
 #   artifactory-svc-user          — Artifactory service account username
 #   artifactory-svc-user-password — Artifactory service account password (secret)
 
@@ -31,11 +31,11 @@ variables:
     - name: REGISTRY_REPO
       value: camdepositsharedservices-docker-dev
     # Artifactory creds shared across the per-env variable groups; pick dev for nonprod pushes.
-    - group: dev-openshift-credentials
+    - group: kafka-openshift-credentials-dev
   - ${{ if eq(parameters.artifactoryRepo, 'prd') }}:
     - name: REGISTRY_REPO
       value: camdepositsharedservices-docker-prod
-    - group: prd-openshift-credentials
+    - group: kafka-openshift-credentials-prd
 
 stages:
   - stage: PushImage

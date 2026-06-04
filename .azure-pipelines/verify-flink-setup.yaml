@@ -10,7 +10,7 @@
 # Author:    Ayele Admassu
 # Created:   2026-04-29
 #
-# Variable Group: <env>-openshift-credentials
+# Variable Group: kafka-openshift-credentials-<env>
 #
 # DESIGN NOTE — pipeline never aborts on a failed step.
 #   Every step uses `condition: always()` and explicitly exits 0 after
@@ -27,16 +27,18 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, uat, prd]
+    values: [dev, qa, uat, prd, dr]
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
-    - group: dev-openshift-credentials
+    - group: kafka-openshift-credentials-dev
   - ${{ if eq(parameters.environment, 'qa') }}:
-    - group: qa-openshift-credentials
+    - group: kafka-openshift-credentials-qa
   - ${{ if eq(parameters.environment, 'uat') }}:
-    - group: uat-openshift-credentials
+    - group: kafka-openshift-credentials-uat
   - ${{ if eq(parameters.environment, 'prd') }}:
-    - group: prd-openshift-credentials
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
   - name: RESULT_DIR
     value: /tmp/verify-results
 
@@ -165,7 +167,7 @@ stages:
                 echo "$RESULT" > "$RESULT_DIR/$STEP"
                 exit 0
             env:
-              OC_API: $(openshift-dev-api)
+              OC_API: $(openshift-api)
               OC_USER: $(openshift-service-account-name)
               OC_PWD: $(openshift-service-account-pwd)
               OC_NS: dah-flink-${{ parameters.environment }}

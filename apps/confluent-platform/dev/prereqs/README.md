@@ -21,9 +21,9 @@ The six Certificate CRs each request a Keyfactor-issued cert and land a Secret w
 
 ## Non-TLS Secrets — pipeline-created (temporary)
 
-Eleven Opaque Secrets the CFK CRs reference for OAuth, SASL, license, MDS token signing, and Control Center basic auth. **CyberArk via ESO is the target**; until that's wired up, the `confluent-platform` pipeline `action: create-prereqs` creates them from secret variables in the `<env>-openshift-credentials` variable group.
+Eleven Opaque Secrets the CFK CRs reference for OAuth, SASL, license, MDS token signing, and Control Center basic auth. **CyberArk via ESO is the target**; until that's wired up, the `confluent-platform` pipeline `action: create-prereqs` creates them from secret variables in the `kafka-openshift-credentials-<env>` variable group.
 
-| Secret | Keys | Source variable(s) (in `<env>-openshift-credentials`) |
+| Secret | Keys | Source variable(s) (in `kafka-openshift-credentials-<env>`) |
 |---|---|---|
 | `confluent-license` | `license.txt` | `<env>-confluent-license` |
 | `mds-token-keypair` | `mdsTokenKeyPair.pem` | `<env>-mds-token-keypair-pem` |

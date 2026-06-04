@@ -3,13 +3,13 @@
 # Author:    Ayele Admassu
 # Created:   2026-04-17
 #
-# Variable Group: <env>-openshift-credentials
+# Variable Group: kafka-openshift-credentials-<env>
 #   artifactory-svc-user            — Artifactory service account username
 #   artifactory-svc-user-password   — Artifactory service account password (secret)
 #   openshift-service-account-name  — service account username
 #   openshift-service-account-pwd   — service account password (secret)
-#   openshift-dev-api               — OpenShift API server URL
-#   openshift-dev-namespace         — target namespace
+#   openshift-api               — OpenShift API server URL
+#   openshift-namespace         — target namespace
 #   <env>-cmf-sql-server-jdbc-url   — SQL Server hostname
 #   <env>-kafka-broker-hosts        — comma-separated Kafka broker hostnames
 #   <env>-schema-registry-hosts     — comma-separated Schema Registry hostnames
@@ -23,16 +23,18 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, uat, prd]
+    values: [dev, qa, uat, prd, dr]
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
-    - group: dev-openshift-credentials
+    - group: kafka-openshift-credentials-dev
   - ${{ if eq(parameters.environment, 'qa') }}:
-    - group: qa-openshift-credentials
+    - group: kafka-openshift-credentials-qa
   - ${{ if eq(parameters.environment, 'uat') }}:
-    - group: uat-openshift-credentials
+    - group: kafka-openshift-credentials-uat
   - ${{ if eq(parameters.environment, 'prd') }}:
-    - group: prd-openshift-credentials
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
 
 stages:
   - stage: ConnectivityTest
@@ -63,10 +65,10 @@ stages:
                 oc whoami
                 oc project "$OC_NS"
             env:
-              OC_API: $(openshift-dev-api)
+              OC_API: $(openshift-api)
               OC_USER: $(openshift-service-account-name)
               OC_PWD: $(openshift-service-account-pwd)
-              OC_NS: $(openshift-dev-namespace)
+              OC_NS: $(openshift-namespace)
 
           - task: Bash@3
             displayName: "RBAC: flink-operator SA can-i checks"
@@ -99,7 +101,7 @@ stages:
                 run_check "list flinkdeployments.flink.apache.org" \
                           list flinkdeployments.flink.apache.org
             env:
-              OC_NS: $(openshift-dev-namespace)
+              OC_NS: $(openshift-namespace)
 
           - task: Bash@3
             displayName: "Pull, tag, and push busybox"
@@ -211,7 +213,7 @@ stages:
                 echo "=== Pod status ==="
                 oc get pod busybox -n "$OC_NS" -o wide
             env:
-              OC_NS: $(openshift-dev-namespace)
+              OC_NS: $(openshift-namespace)
 
           - task: Bash@3
             displayName: "DNS Resolution Test"
@@ -260,7 +262,7 @@ stages:
                 echo ""
                 echo "=== DNS resolution test complete ==="
             env:
-              OC_NS: $(openshift-dev-namespace)
+              OC_NS: $(openshift-namespace)
               DB_HOST: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
               KAFKA_BROKERS: $(${{ parameters.environment }}-kafka-broker-hosts)
               SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
@@ -320,7 +322,7 @@ stages:
                 echo ""
                 echo "=== Connectivity test complete ==="
             env:
-              OC_NS: $(openshift-dev-namespace)
+              OC_NS: $(openshift-namespace)
               DB_HOST: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
               KAFKA_BROKERS: $(${{ parameters.environment }}-kafka-broker-hosts)
               SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)

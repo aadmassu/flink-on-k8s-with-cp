@@ -3,11 +3,11 @@
 # Author:    Ayele Admassu
 # Created:   2026-04-09
 #
-# Variable Group: <env>-openshift-credentials
+# Variable Group: kafka-openshift-credentials-<env>
 #   openshift-service-account-name  — service account username
 #   openshift-service-account-pwd   — service account password (secret)
-#   openshift-dev-namespace         — target namespace
-#   openshift-dev-api               — OpenShift API server URL
+#   openshift-namespace         — target namespace
+#   openshift-api               — OpenShift API server URL
 
 trigger: none
 
@@ -16,7 +16,7 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, uat, prd]
+    values: [dev, qa, uat, prd, dr]
   - name: action
     displayName: "Action"
     type: string
@@ -24,13 +24,15 @@ parameters:
     values: [install, uninstall]
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
-    - group: dev-openshift-credentials
+    - group: kafka-openshift-credentials-dev
   - ${{ if eq(parameters.environment, 'qa') }}:
-    - group: qa-openshift-credentials
+    - group: kafka-openshift-credentials-qa
   - ${{ if eq(parameters.environment, 'uat') }}:
-    - group: uat-openshift-credentials
+    - group: kafka-openshift-credentials-uat
   - ${{ if eq(parameters.environment, 'prd') }}:
-    - group: prd-openshift-credentials
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
 
 stages:
   - stage: CMF
@@ -65,7 +67,7 @@ stages:
                 echo "=== Switching to namespace $OC_NS ==="
                 oc project "$OC_NS"
             env:
-              OC_API: $(openshift-dev-api)
+              OC_API: $(openshift-api)
               OC_USER: $(openshift-service-account-name)
               OC_PWD: $(openshift-service-account-pwd)
               OC_NS: dah-flink-${{ parameters.environment }}
@@ -151,7 +153,7 @@ stages:
 
                   # In dev, all three sensitive CMF Secrets (license, DB password,
                   # encryption key) come from CyberArk via ESO. In other envs they
-                  # still come from the <env>-openshift-credentials variable group
+                  # still come from the kafka-openshift-credentials-<env> variable group
                   # until those accounts are onboarded into CyberArk + per-env
                   # ExternalSecrets are added under apps/confluent-cmf/<env>/.
                   if [ "$TARGET_ENV" = "dev" ]; then

@@ -45,7 +45,7 @@ openshift-prereqs/<env>/manifests/
 | uat | `dah-flink-uat` |
 | prd | `dah-flink-prd` |
 
-Each environment has its own `<env>-openshift-credentials` variable group in Azure DevOps holding cluster API URL, service account credentials, SQL Server JDBC URL, Kafka broker hostnames, NetApp S3 endpoint, encryption key, and Confluent license.
+Each environment has its own `kafka-openshift-credentials-<env>` variable group in Azure DevOps holding cluster API URL, service account credentials, SQL Server JDBC URL, Kafka broker hostnames, NetApp S3 endpoint, encryption key, and Confluent license.
 
 ## Deployment order
 
@@ -66,4 +66,4 @@ For a new environment:
 - All container images are pulled from `artifactory.fcbint.net/camdepositsharedservices-docker-dev/`.
 - CMF state lives in an external SQL Server (FCB DBA team provisions the database per env); for envs where the DB isn't ready yet, CMF runs with `database.type: local` (SQLite on ephemeral pod storage) for short-term validation only.
 - Flink checkpoints/savepoints target the on-prem NetApp S3 bucket per env.
-- Secrets pulled from the `<env>-openshift-credentials` Azure DevOps variable group today; **target state is ESO + CyberArk** (FCB's standard).
+- Secrets pulled from the `kafka-openshift-credentials-<env>` Azure DevOps variable group today; **target state is ESO + CyberArk** (FCB's standard).

@@ -59,7 +59,7 @@ CFK CRs live at the root for clear grouping. The `prereqs/` subfolder holds the 
 
 Run the pipeline twice — `create-prereqs` first, then `install`. CFK reconciles in dependency order itself, but the pipeline applies in this sequence so any failure attributes to the right component:
 
-1. **`create-prereqs` action** — pipeline creates the 11 non-TLS Opaque Secrets from `<env>-openshift-credentials` variable group entries. See [`prereqs/README.md`](prereqs/README.md) for the variable mapping.
+1. **`create-prereqs` action** — pipeline creates the 11 non-TLS Opaque Secrets from `kafka-openshift-credentials-<env>` variable group entries. See [`prereqs/README.md`](prereqs/README.md) for the variable mapping.
 2. **`install` action**:
    1. Apply the six TLS `Certificate` CRs under `prereqs/`. Pipeline waits up to 10 min per cert for Keyfactor to materialize each `*-tls` Secret.
    2. `kafkarestclass.yaml` — connection profile referenced by Connect + ControlCenter.

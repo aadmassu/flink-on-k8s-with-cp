@@ -463,7 +463,7 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 * **Root cause**: C3 dev was initially copied from UAT sizing.
 * **Fix**: C3 dev is suspended (`replicas: 0`) until quota allows. When
   it comes back, size to 2 CPU / 4 Gi for dev smoke testing — full
-  12/16 sizing is for stg/prd only.
+  12/16 sizing is for uat/prd/dr only.
 * **Why it matters**: C3 RocksDB state is heavy, but in dev we don't
   need long retention.
 

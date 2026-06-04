@@ -1,6 +1,6 @@
 # Azure DevOps Pipelines
 
-The pipelines in this folder operate against FCB's on-prem OpenShift, deploying CMF and registering Flink resources against the existing VM Kafka cluster. Each pipeline takes an `environment` parameter (`dev`, `qa`, `uat`, `prd`) and loads the corresponding `<env>-openshift-credentials` variable group.
+The pipelines in this folder operate against FCB's on-prem OpenShift, deploying CMF and registering Flink resources against the existing VM Kafka cluster. Each pipeline takes an `environment` parameter (`dev`, `qa`, `uat`, `prd`) and loads the corresponding `kafka-openshift-credentials-<env>` variable group.
 
 ## Pipelines
 
@@ -15,9 +15,9 @@ The pipelines in this folder operate against FCB's on-prem OpenShift, deploying 
 
 > **Flink applications (`FlinkApplication` CRs) are not deployed from this repo.** Each Flink job ships from its own repo (job source code, container image build, deploy manifests, and CI/CD pipeline). This repo provisions the platform — CMF, the Flink Environment, and the Kafka Catalog/Database — that those job pipelines deploy into. The first such job is `aep-rate-limit-job`.
 
-## Variable group: `<env>-openshift-credentials`
+## Variable group: `kafka-openshift-credentials-<env>`
 
-Each environment has a variable group with this naming pattern. All pipelines reference variables generically (`$(openshift-dev-api)`, `$(openshift-service-account-name)`, `$(<env>-cmf-sql-server-jdbc-url)`, etc.) so changing the `environment` parameter swaps the entire backing variable set.
+Each environment has a variable group with this naming pattern. All pipelines reference variables generically (`$(openshift-api)`, `$(openshift-service-account-name)`, `$(<env>-cmf-sql-server-jdbc-url)`, etc.) so changing the `environment` parameter swaps the entire backing variable set.
 
 ### Cluster + namespace
 
@@ -25,8 +25,8 @@ Each environment has a variable group with this naming pattern. All pipelines re
 
 | Name | Type | Example | Lifecycle |
 |------|------|---------|-----------|
-| `openshift-dev-api` | string | `https://api.dv-p.ocp.fcbint.net:6443` (per-env value) | permanent |
-| `openshift-dev-namespace` | string | `dah-flink-dev` (per-env value) | permanent |
+| `openshift-api` | string | `https://api.dv-p.ocp.fcbint.net:6443` (per-env value) | permanent |
+| `openshift-namespace` | string | `dah-flink-dev` (per-env value) | permanent |
 | `openshift-service-account-name` | string | per-env service account | permanent |
 | `openshift-service-account-pwd` | secret | service account password | **temp — pipeline-managed; moves to CyberArk via ESO** |
 

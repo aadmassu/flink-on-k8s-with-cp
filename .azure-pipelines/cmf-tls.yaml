@@ -4,11 +4,11 @@
 # Author:    Ayele Admassu
 # Created:   2026-04-29
 #
-# Variable Group: <env>-openshift-credentials
+# Variable Group: kafka-openshift-credentials-<env>
 #   openshift-service-account-name  — service account username
 #   openshift-service-account-pwd   — service account password (secret)
-#   openshift-dev-api               — OpenShift API server URL
-#   openshift-dev-namespace         — target namespace (dah-flink-<env>)
+#   openshift-api               — OpenShift API server URL
+#   openshift-namespace         — target namespace (dah-flink-<env>)
 #
 # Manifest applied: apps/confluent-cmf/<env>/cmf-tls-certificate.yaml
 #
@@ -22,16 +22,18 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, uat, prd]
+    values: [dev, qa, uat, prd, dr]
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
-    - group: dev-openshift-credentials
+    - group: kafka-openshift-credentials-dev
   - ${{ if eq(parameters.environment, 'qa') }}:
-    - group: qa-openshift-credentials
+    - group: kafka-openshift-credentials-qa
   - ${{ if eq(parameters.environment, 'uat') }}:
-    - group: uat-openshift-credentials
+    - group: kafka-openshift-credentials-uat
   - ${{ if eq(parameters.environment, 'prd') }}:
-    - group: prd-openshift-credentials
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
 
 stages:
   - stage: CmfTls
@@ -59,7 +61,7 @@ stages:
                 oc whoami
                 oc project "$OC_NS"
             env:
-              OC_API: $(openshift-dev-api)
+              OC_API: $(openshift-api)
               OC_USER: $(openshift-service-account-name)
               OC_PWD: $(openshift-service-account-pwd)
               OC_NS: dah-flink-${{ parameters.environment }}

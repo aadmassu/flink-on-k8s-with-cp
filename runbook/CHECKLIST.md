@@ -1,8 +1,8 @@
 # CFK / CMF Per-Environment Deploy Checklist
 
-Use this checklist for every env promotion (dev → qa → uat → stg → prd-1
-→ prd-2). Copy the relevant section into a SNOW ticket or working notes;
-tick items off as you go.
+Use this checklist for every env promotion (dev → qa → uat → prd → dr).
+Copy the relevant section into a SNOW ticket or working notes; tick
+items off as you go.
 
 Living document. When `LESSONS_LEARNED.md` gains a new entry that implies
 a new pre-flight check, add the corresponding line item here.

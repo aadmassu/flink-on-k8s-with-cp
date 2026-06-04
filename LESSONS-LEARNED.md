@@ -228,7 +228,7 @@ The CMF/Flink stack consumes the existing FCB VM Kafka cluster as a black box. T
 Based on all of the above, the per-env playbook:
 
 1. **Pre-reqs in place by Container Platforms (Tom)**: namespace `dah-flink-<env>`, `flink-operator` SA + Role + RoleBinding via `fcb-security` chart, `cmf-env-sa-dah-flink-<env>` pre-created, `restricted-v2` SCC bindings.
-2. **Variable group on FCB Azure DevOps**: `<env>-openshift-credentials` populated, secret entries marked. Confluent license JWT locked.
+2. **Variable group on FCB Azure DevOps**: `kafka-openshift-credentials-<env>` populated, secret entries marked. Confluent license JWT locked.
 3. **DBA team (SNOW)**: SQL Server database for CMF, env-specific service principal, JDBC URL. (For environments not yet on jdbc, fallback to `database.type: local` is documented in QA values as a stopgap.)
 4. **Storage team (SNOW)**: NetApp S3 bucket per env (`velocity-flink-app-<env>`) + per-env S3 URL.
 5. **Apply `apps/confluent-cmf/<env>/cmf-tls-certificate.yaml`** via `cmf-tls` pipeline. Verify Certificate `Ready=True`, Secret has `tls.crt` + `tls.key` + `ca.crt`.

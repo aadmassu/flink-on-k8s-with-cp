@@ -44,11 +44,10 @@ Both halves use **lowercase** folder names. PRD splits into `prd-1` (active) and
 | `dev` | `dah-flink-dev` | dev VM CP cluster | reference populated; CFK CRs TBD |
 | `qa` | `dah-flink-qa` | *(no VM QA)* | CFK-only env; CFK CRs TBD |
 | `uat` | `dah-flink-uat` | uat VM CP cluster | reference TBD; CFK CRs TBD |
-| `stg` | `dah-flink-stg` | stg VM CP cluster | reference TBD; CFK CRs TBD |
-| `prd-1` | `dah-flink-prd` (active half) | prd active VM CP | reference TBD; CFK CRs TBD |
-| `prd-2` | `dah-flink-prd` (passive half) | prd passive VM CP | reference TBD; CFK CRs TBD |
+| `prd` | `dah-flink-prd` | prd VM CP cluster | reference TBD; CFK CRs TBD |
+| `dr` | `dah-flink-dr` | DR VM CP cluster | reference TBD; CFK CRs TBD |
 
-Both `prd-1` and `prd-2` land in the same OpenShift namespace today — the split is logical, mirroring the VM PRD active+passive pair, not a separate namespace.
+`prd` and `dr` live on separate OpenShift clusters (active site and disaster-recovery site respectively); they each have their own variable group (`kafka-openshift-credentials-prd` and `kafka-openshift-credentials-dr`).
 
 ## Migration plan reminder
 

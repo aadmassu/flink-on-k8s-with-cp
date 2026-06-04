@@ -6,11 +6,11 @@
 # Author:    Ayele Admassu
 # Created:   2026-05-12
 #
-# Variable Group: <env>-openshift-credentials
+# Variable Group: kafka-openshift-credentials-<env>
 #   openshift-service-account-name  — service account username
 #   openshift-service-account-pwd   — service account password (secret)
-#   openshift-dev-api               — OpenShift API server URL
-#   openshift-dev-namespace         — target namespace (dah-flink-<env>)
+#   openshift-api               — OpenShift API server URL
+#   openshift-namespace         — target namespace (dah-flink-<env>)
 #
 # Prerequisite Secrets in the target namespace (created out-of-band; today
 # pipeline-managed by a separate process, eventually CyberArk via ESO):
@@ -32,7 +32,7 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, uat, stg, prd-1, prd-2]
+    values: [dev, qa, uat, prd, dr]
   - name: action
     displayName: "Action"
     type: string
@@ -60,19 +60,15 @@ parameters:
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
-    - group: dev-openshift-credentials
+    - group: kafka-openshift-credentials-dev
   - ${{ if eq(parameters.environment, 'qa') }}:
-    - group: qa-openshift-credentials
+    - group: kafka-openshift-credentials-qa
   - ${{ if eq(parameters.environment, 'uat') }}:
-    - group: uat-openshift-credentials
-  - ${{ if eq(parameters.environment, 'stg') }}:
-    - group: stg-openshift-credentials
-  # prd-1 and prd-2 land in the same dah-flink-prd namespace (logical halves
-  # of the active+passive PRD pair) — they share the prd OpenShift creds.
-  - ${{ if eq(parameters.environment, 'prd-1') }}:
-    - group: prd-openshift-credentials
-  - ${{ if eq(parameters.environment, 'prd-2') }}:
-    - group: prd-openshift-credentials
+    - group: kafka-openshift-credentials-uat
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
 
 stages:
   - stage: ConfluentPlatform
@@ -107,10 +103,10 @@ stages:
                 echo "=== Switching to namespace $OC_NS ==="
                 oc project "$OC_NS"
             env:
-              OC_API: $(openshift-dev-api)
+              OC_API: $(openshift-api)
               OC_USER: $(openshift-service-account-name)
               OC_PWD: $(openshift-service-account-pwd)
-              OC_NS: $(openshift-dev-namespace)
+              OC_NS: $(openshift-namespace)
 
           - ${{ if eq(parameters.action, 'create-prereqs') }}:
             - task: Bash@3
@@ -376,7 +372,7 @@ stages:
                       oauth-kafkarest oauth-controlcenter oauth-mds-rest \
                       c3-prometheus-basic-auth c3-alertmanager-basic-auth
               env:
-                OC_NS: $(openshift-dev-namespace)
+                OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
                 CONFLUENT_LICENSE: $(${{ parameters.environment }}-confluent-license)
                 MDS_PEM: $(${{ parameters.environment }}-mds-token-keypair-pem)
@@ -587,7 +583,7 @@ stages:
                   # Always succeed so install proceeds to its own pre-flight.
                   exit 0
               env:
-                OC_NS: $(openshift-dev-namespace)
+                OC_NS: $(openshift-namespace)
 
             - task: Bash@3
               displayName: "Pre-flight: verify env folder + prerequisite Secrets"
@@ -675,7 +671,7 @@ stages:
                     exit 1
                   fi
               env:
-                OC_NS: $(openshift-dev-namespace)
+                OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
@@ -726,7 +722,7 @@ stages:
                     done
                   done
               env:
-                OC_NS: $(openshift-dev-namespace)
+                OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
@@ -773,7 +769,7 @@ stages:
                   echo "  oc -n $OC_NS get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter"
                   echo "  oc -n $OC_NS get pods -l app.kubernetes.io/part-of=confluent-platform"
               env:
-                OC_NS: $(openshift-dev-namespace)
+                OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
 
           - ${{ if eq(parameters.action, 'uninstall') }}:
@@ -942,7 +938,7 @@ stages:
                     exit 1
                   fi
               env:
-                OC_NS: $(openshift-dev-namespace)
+                OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
                 FORCE_FINALIZER_REMOVAL: ${{ parameters.forceFinalizerRemoval }}
 
@@ -1035,5 +1031,5 @@ stages:
                   echo "=== Remaining PVCs in $OC_NS ==="
                   oc -n "$OC_NS" get pvc 2>&1 || true
               env:
-                OC_NS: $(openshift-dev-namespace)
+                OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
