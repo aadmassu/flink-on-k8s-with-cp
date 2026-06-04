@@ -2,7 +2,15 @@
 # Confluent Manager for Apache Flink (CMF) values - prd
 
 cmf:
-  # Disable production SQL guardrails in dev (allows DDL without confirmation)
+  # Single-tenant CMF per env — only watch its own namespace. Pairs with
+  # `namespaced: true` below so the chart emits Role/RoleBinding instead of
+  # ClusterRole/ClusterRoleBinding (FCB's pipeline SA isn't cluster-scoped).
+  k8s:
+    watchNamespaces:
+      - dah-flink-prd
+
+  # `production: true` enables CMF's SQL guardrails (DDL requires confirmation
+  # prompts). prd onward.
   sql:
     production: true
 
@@ -79,11 +87,39 @@ mountedVolumes:
       mountPath: /etc/cmf/tls
       readOnly: true
 
+# Carry the FCB common-metadata onto every chart resource. The chart's
+# cmf.labels helper natively appends `.Values.additionalLabels`, so this
+# satisfies the [required-workload-labels] Gatekeeper constraint without
+# any chart edits.
+additionalLabels:
+  fcbint.net/app-id: "11547"
+
+# Pairs with cmf.k8s.watchNamespaces above — emit Role/RoleBinding scoped
+# to dah-flink-prd instead of ClusterRole/ClusterRoleBinding.
+namespaced: true
+
+# RBAC and ServiceAccount are pre-created in dah-flink-prd by FCB's
+# fcb-security ArgoCD chart (see openshift-prereqs/prd/manifests/ for our
+# parallel template). The chart consumes the existing `flink-operator` SA;
+# do not let Helm try to create either — the pipeline SA in upper envs
+# doesn't have create permission on SA/Role/RoleBinding anyway.
+rbac: false
+serviceAccount:
+  create: false
+  name: flink-operator
+
 # Suppress the chart's hardcoded podSecurityContext (fsGroup: 1001,
 # runAsUser: 1001). On OpenShift, SCC assigns UIDs from the namespace's
 # allowed range at admission — fixed UIDs trip restricted-v2 SCC validation.
 podSecurity:
   enabled: false
+
+# CMF state lives in the external SQL Server above, not on a local PVC.
+# Setting create: false also avoids the [ceph-storage] Gatekeeper denial
+# the chart's default PVC triggers (no storageClassName → falls back to
+# "default", which FCB rejects).
+persistence:
+  create: false
 
 # CPU and memory for the CMF pod
 resources:
