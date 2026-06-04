@@ -203,6 +203,79 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   noise that masks real failures. Same role-split principle as
   A8: don't ask the controller to do broker-side things.
 
+### A10. CFK operator needs cluster-scoped `update`/`patch` on `persistentvolumes`
+
+* **Symptom**: kraftcontroller (or any CFK CR with a PVC-backed
+  StatefulSet) reports `status.conditions` with
+  `type: platform.confluent.io/cluster-ready` stuck at `False` and
+  `reason: ApplyFailed` carrying a message like:
+  ```
+  persistentvolumes "pvc-<uid>" is forbidden: User
+  "system:serviceaccount:confluent-operator:confluent" cannot update
+  resource "persistentvolumes" in API group "" at the cluster scope
+  ```
+  Downstream effect: the Kafka CR waits on kraft's `cluster-ready`
+  before creating the broker StatefulSet, so the broker pod never
+  gets created even though the controller pod is `1/1 Running`.
+* **Root cause**: CFK 3.1.2 (operator build `0.1351.103`) updates
+  the backing PV after PVC binding — typically to add ownership
+  labels and adjust reclaim policy as part of CFK's data-loss
+  protection housekeeping. PVs are cluster-scoped, so this requires
+  cluster-level RBAC. The ClusterRole shipped with the older
+  `0.1351.59` operator chart (the version vendored in this repo)
+  doesn't grant `update`/`patch` on `persistentvolumes`; when
+  Container Platforms upgraded the operator binary, they didn't
+  refresh the ClusterRole alongside.
+* **Fix**: Container Platforms adds to the `confluent-operator`
+  ClusterRole:
+  ```yaml
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  ```
+  `get/list/watch` are usually already present; the new verbs are
+  `update` and `patch`. After the ClusterRole is applied, the
+  operator re-reconciles within ~30-60s and `cluster-ready` flips
+  to True automatically. No restart needed on our side.
+* **Why it matters**: this is owned by FCB Container Platforms, not
+  by us — but the symptom appears in our CRs and our namespace,
+  so it's easy to spend hours looking at CR-side configuration
+  before realizing the operator itself lacks the permission. The
+  pod-Ready-but-CR-not-Ready split is the diagnostic signal: when
+  `statefulset-available=True` and `resources-ready=True` but
+  `cluster-ready=False`, look at the message on the `cluster-ready`
+  condition.
+
+### A11. CFK emits `storageClassName: dummy` on every StatefulSet vct — intentional
+
+* **Symptom**: every CFK-managed StatefulSet (Kafka, KRaftController,
+  ControlCenter) shows `spec.volumeClaimTemplates[0].spec.storageClassName:
+  dummy` in `oc get sts -o yaml`, regardless of what
+  `spec.storageClass.name` is set to on the corresponding CR. FCB
+  Gatekeeper `[ceph-storage]` constraint initially denied the
+  StatefulSet with *"storage class name `<dummy>`"*.
+* **Root cause**: not a bug. Confirmed with Confluent product
+  engineers — CFK 3.1.x and 3.2.x both emit `dummy` as a sentinel
+  in the auto-generated StatefulSet's `volumeClaimTemplate`. The
+  real storage class is applied to each PVC through a separate
+  operator code path after the StatefulSet is created. The `dummy`
+  sentinel is intentionally distinct from any real storage class
+  so nothing accidentally provisions storage against the wrong
+  class during StatefulSet reconcile. Upgrading the operator
+  doesn't change this; it's load-bearing CFK behavior.
+* **Fix**: FCB relaxed the Gatekeeper `[ceph-storage]` policy to
+  permit `storageClassName: dummy` on CFK-managed StatefulSets
+  specifically. **Manifest-side: no change needed** — the
+  `spec.storageClass.name: ocs-storagecluster-ceph-rbd` on the CR
+  is correct as-is, and the PVCs that actually get provisioned
+  reference that real class.
+* **Why it matters**: easy to mistake for a misconfiguration on
+  the CR ("we set the wrong storage class") and start hunting for
+  a CFK CRD field that doesn't exist. It's not a config problem;
+  it's the design. If a future CFK version stops emitting `dummy`
+  and starts using the real class on the vct, the policy exception
+  becomes harmless but unused — no harm in leaving it.
+
 ---
 
 ## B. FCB Gatekeeper policies
