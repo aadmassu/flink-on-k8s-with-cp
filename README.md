@@ -54,6 +54,14 @@ Each environment has its own `kafka-openshift-credentials-<env>` variable group 
 For a new environment:
 
 1. **FCB Container Platforms team** creates the namespace `dah-flink-<env>`, applies `openshift-prereqs/<env>/manifests/flink-sa-role-rolebinding.yaml`, and ensures the Flink Kubernetes Operator's RBAC binds the `flink-operator` SA in that namespace (handled by the `fcb-security` ArgoCD chart).
+
+   > **⚠ Verify before step 4 (cmf install).** `fcb-security` has its own change-management approval lifecycle; pull requests against it can sit pending for hours or days. Confirm the pre-creation actually landed in the target namespace before kicking off the `cmf` pipeline:
+   >
+   > ```
+   > oc -n dah-flink-<env> get sa flink-operator cmf-env-sa-dah-flink-<env>
+   > ```
+   >
+   > Both rows must come back. The CMF Helm chart is configured with `serviceAccount.create: false` + `rbac: false`, so without the pre-creation in place the install will pass admission but the pod will fail to schedule with `serviceaccount "flink-operator" not found`.
 2. Run `connectivity-test.yaml` from inside the namespace — verifies the pod can reach VM Kafka brokers, Schema Registry, REST Proxy, NetApp S3, and SQL Server.
 3. Run `cmf-tls.yaml` — applies the cert-manager `Certificate`, waits for Keyfactor approval, produces `secret/cmf-tls` (`tls.crt`, `tls.key`, `ca.crt`).
 4. Run `cmf.yaml` — installs CMF via Helm. Pre-flights `secret/cmf-tls`, then mounts it into the pod for HTTPS on the REST endpoint. Other secrets (DB password, encryption key, license) come from the ADO variable group today; ESO+CyberArk integration is the target state (separate branch).
