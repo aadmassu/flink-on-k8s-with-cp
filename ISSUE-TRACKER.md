@@ -15,7 +15,7 @@ This is the action-item view. For technical root-cause writeups on closed issues
 
 ## 1. Secret management — ESO + CyberArk integration
 
-**Scope:** All envs. **Owner:** FCB Security (CyberArk safe admins), Walter / Tushar (safe contents), Tom (cluster-side ESO).
+**Scope:** All envs. **Owner:** FCB Security (CyberArk safe admins), Tushar (safe contents), Container team (cluster-side ESO).
 
 DEV is fully integrated and CMF is running against CyberArk-sourced secrets — no longer a FLINK+CFK blocker. Remaining items are housekeeping plus the corresponding request for upper envs.
 
@@ -23,12 +23,12 @@ DEV is fully integrated and CMF is running against CyberArk-sourced secrets — 
 |---|---|---|---|
 | 1.1 | CLOSED | `dev-confluent-license` secret wasn't syncing to OpenShift | Resolved. Root cause was format mismatch — CMF wants the raw JWT, CFK wants `license=<JWT>` properties shape (`runbook/LESSONS_LEARNED.md` C1) |
 | 1.2 | CLOSED | `dev-artifactory-svc-user-password` and `dev-db-user-password` missing from CyberArk Key safe | Added |
-| 1.3 | OPEN | Cleanup — remove duplicate keys from the Linux safe | Housekeeping. Not a blocker. Walter / Tushar |
+| 1.3 | OPEN | Cleanup — remove duplicate keys from the Linux safe | Housekeeping. Not a blocker. Tushar |
 | 1.4 | OPEN | Submit CyberArk request for QA + UAT (PRD + DR to follow as we promote) | **Blocks QA + UAT enablement.** SNOW ticket pending submission |
 
 ## 2. CFK on OpenShift — admission policy + operator RBAC
 
-**Scope:** All envs. **Owner:** Container Platforms (Tom / Rick).
+**Scope:** All envs. **Owner:** Container team.
 
 DEV has been unblocked through Gatekeeper policy relaxations and operator-side ClusterRole adjustments. The same fixes need to be applied to QA / UAT / PRD / DR clusters as we promote.
 
@@ -37,11 +37,11 @@ DEV has been unblocked through Gatekeeper policy relaxations and operator-side C
 | 2.1 | CLOSED (DEV) | Gatekeeper `[ceph-storage]` constraint denying CFK StatefulSets that emit `storageClassName: dummy` on the volumeClaimTemplate | Policy relaxed in DEV. CFK 3.1.x/3.2.x both emit `dummy` intentionally as a sentinel; the real storage class is applied to PVCs through a separate operator code path. See `runbook/LESSONS_LEARNED.md` A11 |
 | 2.2 | OPEN | CFK operator ServiceAccount (`confluent-operator/confluent`) lacks `update` + `patch` on cluster-scoped `persistentvolumes` | Without this, kraft and any PVC-backed CR report `cluster-ready=False` even when the pod is healthy — and Kafka never reconciles because it waits on kraft. Fix is a ClusterRole patch (one rule, two verbs). See `runbook/LESSONS_LEARNED.md` A10 |
 | 2.3 | OPEN | Mirror 2.1 + 2.2 onto QA / UAT / PRD / DR clusters as part of each env's provisioning ticket | Tracker for the upper-env CFK rollout. Without these policy + RBAC changes in place ahead of CFK install, the symptoms in DEV will repeat verbatim |
-| 2.4 | OPEN | DEV namespace ResourceQuota increase | Current 2 CPU / 8 Gi only fits ~4 of the 6 CFK pods. Every pod claims ~500m via the operator-injected init container (`runbook/LESSONS_LEARNED.md` A3). Tom to raise to ≥6 CPU / ≥24 Gi so we can bring Connect + ControlCenter back from `replicas: 0` |
+| 2.4 | OPEN | DEV namespace ResourceQuota increase | Current 2 CPU / 8 Gi only fits ~4 of the 6 CFK pods. Every pod claims ~500m via the operator-injected init container (`runbook/LESSONS_LEARNED.md` A3). Container team to raise to ≥6 CPU / ≥24 Gi so we can bring Connect + ControlCenter back from `replicas: 0` |
 
 ## 3. Flink Kubernetes Operator — Deployment-level label propagation
 
-**Scope:** DEV (Flink job deployment). **Owner:** Asmerom (engineering side), Rick / Container Platforms (operator / Kyverno side).
+**Scope:** DEV (Flink job deployment). **Owner:** Asmerom (engineering side), Container team (operator / Kyverno side).
 
 | ID | Status | Issue | Notes |
 |---|---|---|---|
@@ -49,7 +49,7 @@ DEV has been unblocked through Gatekeeper policy relaxations and operator-side C
 
 ## 4. Upper-environment rollout (UAT → PRD → DR)
 
-**Scope:** UAT first, then PRD, then DR. **Owner:** Ayele (manifests), Container Platforms (RBAC pre-creation), DBA team (SQL Server provisioning).
+**Scope:** UAT first, then PRD, then DR. **Owner:** Ayele (manifests), Container team (RBAC pre-creation), DBA team (SQL Server provisioning).
 
 The env-stack refactor dropped `stg` and split the old `prd-1`/`prd-2` into separate `prd` / `dr` clusters. DEV is the reference for the per-env playbook in [`LESSONS-LEARNED.md` § Recommended sequence](LESSONS-LEARNED.md#recommended-sequence-for-qa--uat--prd-rollout).
 
@@ -57,7 +57,7 @@ The env-stack refactor dropped `stg` and split the old `prd-1`/`prd-2` into sepa
 |---|---|---|---|
 | 4.1 | CLOSED | CFK Custom Resources weren't visible on the OpenShift console for the upper-env cluster | Fixed by Maha. Historical reference; was specific to the cluster's console view, not a CFK or manifest issue |
 | 4.2 | OPEN | UAT CMF Helm install hit 5 admission errors at once (`serviceaccounts/roles/rolebindings is forbidden`, `[ceph-storage]` PVC denial, `[required-workload-labels]`) | Chart-suppression overrides added to `apps/confluent-cmf/uat/values.yaml` + `apps/confluent-cmf/prd/values.yaml` to match the dev/qa pattern. See `LESSONS-LEARNED.md` B4 |
-| 4.3 | OPEN | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-uat` | Pending Container Platforms change-management approval. Required before the next CMF install attempt can succeed — the chart-suppression overrides in 4.2 mean the install will admit cleanly, but the CMF pod will fail to schedule with `serviceaccount "flink-operator" not found` until this lands. Pre-flight check: `oc -n dah-flink-uat get sa flink-operator cmf-env-sa-dah-flink-uat` |
+| 4.3 | OPEN | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-uat` | Pending Container team change-management approval. Required before the next CMF install attempt can succeed — the chart-suppression overrides in 4.2 mean the install will admit cleanly, but the CMF pod will fail to schedule with `serviceaccount "flink-operator" not found` until this lands. Pre-flight check: `oc -n dah-flink-uat get sa flink-operator cmf-env-sa-dah-flink-uat` |
 
 ---
 
