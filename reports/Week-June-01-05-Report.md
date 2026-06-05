@@ -33,7 +33,3 @@ Report period: June 1 – June 5, 2026.
 - **Submit the still-to-be-created RITMs**: upper-env mirror items 2.2 (admission policy), 2.4 (operator PV RBAC), 2.6 (ResourceQuota), 3.3 (`fcb-security` for PRD); plus housekeeping 1.5 / 1.6 (stale CyberArk key cleanup).
 - **Resume Flink Operator label-propagation debugging** (tracker 3.1) once RITM1080156 lands and Rick has the cluster-level admission-mutation policy in place.
 - **Once DEV is fully green** (all 6 CFK pods up, CMF connected, Flink job-deploy unblocked), formally start the UAT promotion using `runbook/CHECKLIST.md`.
-
----
-
-*Generated 2026-06-05 from the daily conversation log, `ISSUE-TRACKER.md` state, and the week's git history. Week range per the "Revised Gantt" tab in `docs/Flink_K8s_CP_Gantt_Chart`.*
