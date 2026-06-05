@@ -46,13 +46,13 @@ DEV has been unblocked through Gatekeeper policy relaxations and operator-side C
 
 ## TRACK 3: Flink on OpenShift
 
-**Scope:** All Flink-stack rollout issues — Flink Kubernetes Operator behavior, CMF Helm install, Flink job deployment. **Owner:** Asmerom (engineering side), Ayu (manifests / chart values), Container team (operator / RBAC / Kyverno side).
+**Scope:** All Flink-stack rollout issues — Flink Kubernetes Operator behavior, CMF Helm install, Flink job deployment. **Owner:** Asmerom (engineering side), Ayu (manifests / chart values), Container team (operator / RBAC side).
 
 Covers both the DEV operator label-propagation blocker and the upper-env CMF rollout (chart-suppression overrides + the `fcb-security` RBAC pre-creation gate).
 
 | ID | Status | Owner | Issue | Notes | RITM |
 |---|---|---|---|---|---|
-| 3.1 | OPEN / BLOCKER | Container team | Enable debug logging on the Flink Kubernetes Operator to diagnose why FCB common-metadata labels aren't propagating to the Deployment that the operator creates | **Blocking Asmerom's job-development work.** FCB Gatekeeper `[required-workload-labels]` denies the Deployment because the operator doesn't expose a Deployment-level label override — Pod labels propagate fine, Deployment labels don't. Likely needs a Kyverno mutation policy added at the cluster level (or an upstream operator fix). See `runbook/LESSONS_LEARNED.md` G1 | RITM1080156 |
+| 3.1 | OPEN / BLOCKER | Container team | Enable debug logging on the Flink Kubernetes Operator to diagnose why FCB common-metadata labels aren't propagating to the Deployment that the operator creates | **Blocking Asmerom's job-development work.** FCB Gatekeeper `[required-workload-labels]` denies the Deployment because the operator doesn't expose a Deployment-level label override — Pod labels propagate fine, Deployment labels don't. Likely needs a cluster-level admission-mutation policy added (or an upstream operator fix). See `runbook/LESSONS_LEARNED.md` G1 | RITM1080156 |
 | 3.2 | OPEN / BLOCKER | Container team | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-uat` | Pending Container team change-management approval. The chart-suppression overrides already in `apps/confluent-cmf/{uat,prd}/values.yaml` (see `LESSONS-LEARNED.md` B4) mean the next install attempt will admit cleanly, but the CMF pod will fail to schedule with `serviceaccount "flink-operator" not found` until this lands. Pre-flight check: `oc -n dah-flink-uat get sa flink-operator cmf-env-sa-dah-flink-uat` | RITM1050600 |
 | 3.3 | OPEN | Container team | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-prd` | Repeats 3.2 on the PRD cluster. Pre-flight check before CMF install: `oc -n dah-flink-prd get sa flink-operator cmf-env-sa-dah-flink-prd` | Yet to be created |
 
