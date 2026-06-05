@@ -24,7 +24,7 @@ DEV is fully integrated and CMF is running against CyberArk-sourced secrets — 
 | 1.1 | CLOSED | Ayu | `dev-confluent-license` secret wasn't syncing to OpenShift | Resolved. Root cause was format mismatch — CMF wants the raw JWT, CFK wants `license=<JWT>` properties shape (`runbook/LESSONS_LEARNED.md` C1) |
 | 1.2 | CLOSED | FCB Security | `dev-artifactory-svc-user-password` and `dev-db-user-password` missing from CyberArk Key safe | Added |
 | 1.3 | OPEN | Tushar | Cleanup — remove duplicate keys from the Linux safe | Housekeeping. Not a blocker. Tushar |
-| 1.4 | OPEN | Ayu | Submit CyberArk request for QA + UAT (PRD + DR to follow as we promote) | **Blocks QA + UAT enablement.** SNOW ticket pending submission |
+| 1.4 | OPEN | Tushar | Submit CyberArk request for QA + UAT (PRD + DR to follow as we promote) | **Blocks QA + UAT enablement.** SNOW ticket pending submission |
 
 ## 2. CFK on OpenShift — admission policy + operator RBAC
 
