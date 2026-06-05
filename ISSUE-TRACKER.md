@@ -36,7 +36,7 @@ DEV has been unblocked through Gatekeeper policy relaxations and operator-side C
 
 | ID | Status | Owner | Issue | Notes | RITM |
 |---|---|---|---|---|---|
-| 2.1 | CLOSED (DEV) | Container team | Gatekeeper `[ceph-storage]` constraint denying CFK StatefulSets that emit `storageClassName: dummy` on the volumeClaimTemplate | Rick updated DEV Cluster Admission Policy. See `runbook/LESSONS_LEARNED.md` A11 for root cause | — |
+| 2.1 | CLOSED (DEV) | Container team | Gatekeeper `[ceph-storage]` constraint denying CFK StatefulSets that emit `storageClassName: dummy` on the volumeClaimTemplate | Rick updated DEV Cluster Admission Policy. See `runbook/LESSONS_LEARNED.md` A11 for root cause | RITM1076878 |
 | 2.2 | OPEN | Container team | Apply the same admission policy update from 2.1 to the QA, UAT, and PRD clusters | Repeats Rick's DEV change on the upper-env clusters. DR scope to be discussed separately | Yet to be created |
 | 2.3 | OPEN | Container team | CFK operator ServiceAccount (`confluent-operator/confluent`) lacks `update` + `patch` on cluster-scoped `persistentvolumes` | Without this, kraft and any PVC-backed CR report `cluster-ready=False` even when the pod is healthy — and Kafka never reconciles because it waits on kraft. Fix is a ClusterRole patch (one rule, two verbs). See `runbook/LESSONS_LEARNED.md` A10 | — |
 | 2.4 | OPEN | Container team | Mirror 2.3 (operator PV RBAC) onto QA / UAT / PRD / DR clusters as part of each env's provisioning ticket | Tracker for the upper-env operator-RBAC rollout. Without it in place ahead of CFK install, the cluster-ready False symptom from DEV will repeat verbatim | — |
