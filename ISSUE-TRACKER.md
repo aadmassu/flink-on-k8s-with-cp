@@ -24,7 +24,7 @@ DEV is fully integrated and CMF is running against CyberArk-sourced secrets — 
 | 1.1 | CLOSED | Ayu | `dev-confluent-license` secret wasn't syncing to OpenShift | Resolved. Root cause was format mismatch — CMF wants the raw JWT, CFK wants `license=<JWT>` properties shape (`runbook/LESSONS_LEARNED.md` C1) | — |
 | 1.2 | CLOSED | FCB Security | `dev-artifactory-svc-user-password` and `dev-db-user-password` missing from CyberArk Key safe | Added | — |
 | 1.3 | CLOSED | Tushar | Cleanup — remove duplicate keys from the Linux safe | Duplicates removed | — |
-| 1.4 | OPEN | Tushar | Submit CyberArk request for QA + UAT (PRD + DR to follow as we promote) | **Blocks QA + UAT enablement.** SNOW ticket pending submission | — |
+| 1.4 | OPEN | Tushar | Add per-env CMF secrets to CyberArk for QA + UAT + PRD (DR to follow as we promote). Three secrets per env:<br>• `qa-cmf-encryption-key`, `qa-cmf-sql-server-user-password`, `qa-confluent-license`<br>• `uat-cmf-encryption-key`, `uat-cmf-sql-server-user-password`, `uat-confluent-license`<br>• `prd-cmf-encryption-key`, `prd-cmf-sql-server-user-password`, `prd-confluent-license` | **Blocks QA + UAT + PRD enablement.** Awaiting CyberArk fulfillment of the RITMs | QA: RITM1085071<br>UAT: RITM1085692<br>PRD: RITM1085693 |
 | 1.5 | OPEN | Tushar | Delete stale `dev_confluent_key` from the `11547_D_KEY_FP` safe | Specific stale key to remove (not a duplicate — an obsolete entry from earlier iterations) | — |
 | 1.6 | OPEN | Tushar | Delete stale `artifactory-svc-user-password` from the `11547_D_UNIX_FP` safe | Specific stale key to remove from the Unix safe | — |
 
