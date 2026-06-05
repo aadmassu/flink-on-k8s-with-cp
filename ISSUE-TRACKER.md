@@ -21,10 +21,10 @@ DEV is fully integrated and CMF is running against CyberArk-sourced secrets — 
 
 | ID | Status | Owner | Issue | Notes |
 |---|---|---|---|---|
-| 1.1 | CLOSED | Ayele | `dev-confluent-license` secret wasn't syncing to OpenShift | Resolved. Root cause was format mismatch — CMF wants the raw JWT, CFK wants `license=<JWT>` properties shape (`runbook/LESSONS_LEARNED.md` C1) |
+| 1.1 | CLOSED | Ayu | `dev-confluent-license` secret wasn't syncing to OpenShift | Resolved. Root cause was format mismatch — CMF wants the raw JWT, CFK wants `license=<JWT>` properties shape (`runbook/LESSONS_LEARNED.md` C1) |
 | 1.2 | CLOSED | FCB Security | `dev-artifactory-svc-user-password` and `dev-db-user-password` missing from CyberArk Key safe | Added |
 | 1.3 | OPEN | Tushar | Cleanup — remove duplicate keys from the Linux safe | Housekeeping. Not a blocker. Tushar |
-| 1.4 | OPEN | Ayele | Submit CyberArk request for QA + UAT (PRD + DR to follow as we promote) | **Blocks QA + UAT enablement.** SNOW ticket pending submission |
+| 1.4 | OPEN | Ayu | Submit CyberArk request for QA + UAT (PRD + DR to follow as we promote) | **Blocks QA + UAT enablement.** SNOW ticket pending submission |
 
 ## 2. CFK on OpenShift — admission policy + operator RBAC
 
@@ -49,14 +49,14 @@ DEV has been unblocked through Gatekeeper policy relaxations and operator-side C
 
 ## 4. Upper-environment rollout (UAT → PRD → DR)
 
-**Scope:** UAT first, then PRD, then DR. **Owner:** Ayele (manifests), Container team (RBAC pre-creation), DBA team (SQL Server provisioning).
+**Scope:** UAT first, then PRD, then DR. **Owner:** Ayu (manifests), Container team (RBAC pre-creation), DBA team (SQL Server provisioning).
 
 The env-stack refactor dropped `stg` and split the old `prd-1`/`prd-2` into separate `prd` / `dr` clusters. DEV is the reference for the per-env playbook in [`LESSONS-LEARNED.md` § Recommended sequence](LESSONS-LEARNED.md#recommended-sequence-for-qa--uat--prd-rollout).
 
 | ID | Status | Owner | Issue | Notes |
 |---|---|---|---|---|
 | 4.1 | CLOSED | Maha | CFK Custom Resources weren't visible on the OpenShift console for the upper-env cluster | Fixed by Maha. Historical reference; was specific to the cluster's console view, not a CFK or manifest issue |
-| 4.2 | OPEN | Ayele | UAT CMF Helm install hit 5 admission errors at once (`serviceaccounts/roles/rolebindings is forbidden`, `[ceph-storage]` PVC denial, `[required-workload-labels]`) | Chart-suppression overrides added to `apps/confluent-cmf/uat/values.yaml` + `apps/confluent-cmf/prd/values.yaml` to match the dev/qa pattern. See `LESSONS-LEARNED.md` B4 |
+| 4.2 | OPEN | Ayu | UAT CMF Helm install hit 5 admission errors at once (`serviceaccounts/roles/rolebindings is forbidden`, `[ceph-storage]` PVC denial, `[required-workload-labels]`) | Chart-suppression overrides added to `apps/confluent-cmf/uat/values.yaml` + `apps/confluent-cmf/prd/values.yaml` to match the dev/qa pattern. See `LESSONS-LEARNED.md` B4 |
 | 4.3 | OPEN | Container team | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-uat` | Pending Container team change-management approval. Required before the next CMF install attempt can succeed — the chart-suppression overrides in 4.2 mean the install will admit cleanly, but the CMF pod will fail to schedule with `serviceaccount "flink-operator" not found` until this lands. Pre-flight check: `oc -n dah-flink-uat get sa flink-operator cmf-env-sa-dah-flink-uat` |
 
 ---
