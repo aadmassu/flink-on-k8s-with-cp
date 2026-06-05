@@ -552,9 +552,10 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 * **Root cause**: the Apache Flink K8s Operator does not expose a
   Deployment-level label override; `podTemplate.labels` only lands on
   the Pod inside the Deployment.
-* **Fix**: escalation only — request a Kyverno mutation policy from
-  Rick that adds FCB common-metadata labels to FlinkDeployment-managed
-  Deployments at admission time. No manifest-side fix exists.
+* **Fix**: escalation only — request a cluster-level
+  admission-mutation policy from Container team that adds FCB
+  common-metadata labels to FlinkDeployment-managed Deployments at
+  admission time. No manifest-side fix exists.
 * **Why it matters**: contrast with CFK's `injectLabels`, which *does*
   solve this for CFK. Flink K8s Operator lacks the equivalent.
 
