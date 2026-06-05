@@ -19,12 +19,14 @@ This is the action-item view. For technical root-cause writeups on closed issues
 
 DEV is fully integrated and CMF is running against CyberArk-sourced secrets — no longer a FLINK+CFK blocker. Remaining items are housekeeping plus the corresponding request for upper envs.
 
-| ID | Status | Owner | Issue | Notes |
-|---|---|---|---|---|
-| 1.1 | CLOSED | Ayu | `dev-confluent-license` secret wasn't syncing to OpenShift | Resolved. Root cause was format mismatch — CMF wants the raw JWT, CFK wants `license=<JWT>` properties shape (`runbook/LESSONS_LEARNED.md` C1) |
-| 1.2 | CLOSED | FCB Security | `dev-artifactory-svc-user-password` and `dev-db-user-password` missing from CyberArk Key safe | Added |
-| 1.3 | OPEN | Tushar | Cleanup — remove duplicate keys from the Linux safe | Housekeeping. Not a blocker. Tushar |
-| 1.4 | OPEN | Tushar | Submit CyberArk request for QA + UAT (PRD + DR to follow as we promote) | **Blocks QA + UAT enablement.** SNOW ticket pending submission |
+| ID | Status | Owner | Issue | Notes | RITM |
+|---|---|---|---|---|---|
+| 1.1 | CLOSED | Ayu | `dev-confluent-license` secret wasn't syncing to OpenShift | Resolved. Root cause was format mismatch — CMF wants the raw JWT, CFK wants `license=<JWT>` properties shape (`runbook/LESSONS_LEARNED.md` C1) | — |
+| 1.2 | CLOSED | FCB Security | `dev-artifactory-svc-user-password` and `dev-db-user-password` missing from CyberArk Key safe | Added | — |
+| 1.3 | CLOSED | Tushar | Cleanup — remove duplicate keys from the Linux safe | Duplicates removed | — |
+| 1.4 | OPEN | Tushar | Submit CyberArk request for QA + UAT (PRD + DR to follow as we promote) | **Blocks QA + UAT enablement.** SNOW ticket pending submission | — |
+| 1.5 | OPEN | Tushar | Delete stale `dev_confluent_key` from the `11547_D_KEY_FP` safe | Specific stale key to remove (not a duplicate — an obsolete entry from earlier iterations) | — |
+| 1.6 | OPEN | Tushar | Delete stale `artifactory-svc-user-password` from the `11547_D_UNIX_FP` safe | Specific stale key to remove from the Unix safe | — |
 
 ## 2. CFK on OpenShift — admission policy + operator RBAC
 
@@ -32,20 +34,20 @@ DEV is fully integrated and CMF is running against CyberArk-sourced secrets — 
 
 DEV has been unblocked through Gatekeeper policy relaxations and operator-side ClusterRole adjustments. The same fixes need to be applied to QA / UAT / PRD / DR clusters as we promote.
 
-| ID | Status | Owner | Issue | Notes |
-|---|---|---|---|---|
-| 2.1 | CLOSED (DEV) | Container team | Gatekeeper `[ceph-storage]` constraint denying CFK StatefulSets that emit `storageClassName: dummy` on the volumeClaimTemplate | Policy relaxed in DEV. CFK 3.1.x/3.2.x both emit `dummy` intentionally as a sentinel; the real storage class is applied to PVCs through a separate operator code path. See `runbook/LESSONS_LEARNED.md` A11 |
-| 2.2 | OPEN | Container team | CFK operator ServiceAccount (`confluent-operator/confluent`) lacks `update` + `patch` on cluster-scoped `persistentvolumes` | Without this, kraft and any PVC-backed CR report `cluster-ready=False` even when the pod is healthy — and Kafka never reconciles because it waits on kraft. Fix is a ClusterRole patch (one rule, two verbs). See `runbook/LESSONS_LEARNED.md` A10 |
-| 2.3 | OPEN | Container team | Mirror 2.1 + 2.2 onto QA / UAT / PRD / DR clusters as part of each env's provisioning ticket | Tracker for the upper-env CFK rollout. Without these policy + RBAC changes in place ahead of CFK install, the symptoms in DEV will repeat verbatim |
-| 2.4 | OPEN | Container team | DEV namespace ResourceQuota increase | Current 2 CPU / 8 Gi only fits ~4 of the 6 CFK pods. Every pod claims ~500m via the operator-injected init container (`runbook/LESSONS_LEARNED.md` A3). Container team to raise to ≥6 CPU / ≥24 Gi so we can bring Connect + ControlCenter back from `replicas: 0` |
+| ID | Status | Owner | Issue | Notes | RITM |
+|---|---|---|---|---|---|
+| 2.1 | CLOSED (DEV) | Container team | Gatekeeper `[ceph-storage]` constraint denying CFK StatefulSets that emit `storageClassName: dummy` on the volumeClaimTemplate | Policy relaxed in DEV. CFK 3.1.x/3.2.x both emit `dummy` intentionally as a sentinel; the real storage class is applied to PVCs through a separate operator code path. See `runbook/LESSONS_LEARNED.md` A11 | — |
+| 2.2 | OPEN | Container team | CFK operator ServiceAccount (`confluent-operator/confluent`) lacks `update` + `patch` on cluster-scoped `persistentvolumes` | Without this, kraft and any PVC-backed CR report `cluster-ready=False` even when the pod is healthy — and Kafka never reconciles because it waits on kraft. Fix is a ClusterRole patch (one rule, two verbs). See `runbook/LESSONS_LEARNED.md` A10 | — |
+| 2.3 | OPEN | Container team | Mirror 2.1 + 2.2 onto QA / UAT / PRD / DR clusters as part of each env's provisioning ticket | Tracker for the upper-env CFK rollout. Without these policy + RBAC changes in place ahead of CFK install, the symptoms in DEV will repeat verbatim | — |
+| 2.4 | OPEN | Container team | DEV namespace ResourceQuota increase | Current 2 CPU / 8 Gi only fits ~4 of the 6 CFK pods. Every pod claims ~500m via the operator-injected init container (`runbook/LESSONS_LEARNED.md` A3). Container team to raise to ≥6 CPU / ≥24 Gi so we can bring Connect + ControlCenter back from `replicas: 0` | — |
 
 ## 3. Flink Kubernetes Operator — Deployment-level label propagation
 
 **Scope:** DEV (Flink job deployment). **Owner:** Asmerom (engineering side), Container team (operator / Kyverno side).
 
-| ID | Status | Owner | Issue | Notes |
-|---|---|---|---|---|
-| 3.1 | BLOCKER | Container team | Enable debug logging on the Flink Kubernetes Operator to diagnose why FCB common-metadata labels aren't propagating to the Deployment that the operator creates | **Blocking Asmerom's job-development work.** FCB Gatekeeper `[required-workload-labels]` denies the Deployment because the operator doesn't expose a Deployment-level label override — Pod labels propagate fine, Deployment labels don't. Likely needs a Kyverno mutation policy added at the cluster level (or an upstream operator fix). See `runbook/LESSONS_LEARNED.md` G1 |
+| ID | Status | Owner | Issue | Notes | RITM |
+|---|---|---|---|---|---|
+| 3.1 | BLOCKER | Container team | Enable debug logging on the Flink Kubernetes Operator to diagnose why FCB common-metadata labels aren't propagating to the Deployment that the operator creates | **Blocking Asmerom's job-development work.** FCB Gatekeeper `[required-workload-labels]` denies the Deployment because the operator doesn't expose a Deployment-level label override — Pod labels propagate fine, Deployment labels don't. Likely needs a Kyverno mutation policy added at the cluster level (or an upstream operator fix). See `runbook/LESSONS_LEARNED.md` G1 | — |
 
 ## 4. Upper-environment rollout (UAT → PRD → DR)
 
@@ -53,11 +55,11 @@ DEV has been unblocked through Gatekeeper policy relaxations and operator-side C
 
 The env-stack refactor dropped `stg` and split the old `prd-1`/`prd-2` into separate `prd` / `dr` clusters. DEV is the reference for the per-env playbook in [`LESSONS-LEARNED.md` § Recommended sequence](LESSONS-LEARNED.md#recommended-sequence-for-qa--uat--prd-rollout).
 
-| ID | Status | Owner | Issue | Notes |
-|---|---|---|---|---|
-| 4.1 | CLOSED | Maha | CFK Custom Resources weren't visible on the OpenShift console for the upper-env cluster | Fixed by Maha. Historical reference; was specific to the cluster's console view, not a CFK or manifest issue |
-| 4.2 | OPEN | Ayu | UAT CMF Helm install hit 5 admission errors at once (`serviceaccounts/roles/rolebindings is forbidden`, `[ceph-storage]` PVC denial, `[required-workload-labels]`) | Chart-suppression overrides added to `apps/confluent-cmf/uat/values.yaml` + `apps/confluent-cmf/prd/values.yaml` to match the dev/qa pattern. See `LESSONS-LEARNED.md` B4 |
-| 4.3 | OPEN | Container team | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-uat` | Pending Container team change-management approval. Required before the next CMF install attempt can succeed — the chart-suppression overrides in 4.2 mean the install will admit cleanly, but the CMF pod will fail to schedule with `serviceaccount "flink-operator" not found` until this lands. Pre-flight check: `oc -n dah-flink-uat get sa flink-operator cmf-env-sa-dah-flink-uat` |
+| ID | Status | Owner | Issue | Notes | RITM |
+|---|---|---|---|---|---|
+| 4.1 | CLOSED | Maha | CFK Custom Resources weren't visible on the OpenShift console for the upper-env cluster | Fixed by Maha. Historical reference; was specific to the cluster's console view, not a CFK or manifest issue | — |
+| 4.2 | OPEN | Ayu | UAT CMF Helm install hit 5 admission errors at once (`serviceaccounts/roles/rolebindings is forbidden`, `[ceph-storage]` PVC denial, `[required-workload-labels]`) | Chart-suppression overrides added to `apps/confluent-cmf/uat/values.yaml` + `apps/confluent-cmf/prd/values.yaml` to match the dev/qa pattern. See `LESSONS-LEARNED.md` B4 | — |
+| 4.3 | OPEN | Container team | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-uat` | Pending Container team change-management approval. Required before the next CMF install attempt can succeed — the chart-suppression overrides in 4.2 mean the install will admit cleanly, but the CMF pod will fail to schedule with `serviceaccount "flink-operator" not found` until this lands. Pre-flight check: `oc -n dah-flink-uat get sa flink-operator cmf-env-sa-dah-flink-uat` | — |
 
 ---
 
