@@ -9,7 +9,6 @@ Report period: June 1 – June 5, 2026.
 - **CFK operator missing `update` + `patch` on cluster-scoped `persistentvolumes`** (RITM1093307, Container team) — kraft and any PVC-backed CR report `cluster-ready=False` even when pods are healthy, so Kafka never reconciles. See `ISSUE-TRACKER.md` 2.3 / runbook A10.
 - **`fcb-security` ArgoCD chart hasn't applied the per-env SA/Role/RoleBinding to `dah-flink-uat`** (RITM1050600, Container team) — UAT CMF install will admit cleanly but the pod will fail to schedule with `serviceaccount "flink-operator" not found` until this lands. Tracker 3.2.
 - **DEV namespace ResourceQuota too tight at 2 CPU / 8 Gi** (RITM1079670, Container team) — only fits ~4 of the 6 CFK pods because every pod claims ~500m via the operator-injected init container; Connect + ControlCenter parked at `replicas: 0`. Tracker 2.5 / runbook A3.
-- **Flink Operator label-propagation issue** (RITM1080156, Container team) — FCB Gatekeeper `[required-workload-labels]` denies the Deployment because the operator doesn't expose a Deployment-level label override. **Blocking Asmerom's job-development work.** Tracker 3.1 / runbook G1.
 - **CyberArk safes don't yet hold the per-env CMF secrets for QA / UAT / PRD** (QA: RITM1085071, UAT: RITM1085692, PRD: RITM1085693, Tushar) — blocks all three upper-env CMF deploys until fulfillment. Tracker 1.4.
 
 ## Accomplishments
@@ -24,6 +23,10 @@ Report period: June 1 – June 5, 2026.
 - **Added `forceFinalizerRemoval` opt-in to the `confluent-platform` pipeline** — recovers stuck Connect CR after a broken-cluster uninstall; runbook E3.
 - **Documented the `fcb-security` pre-creation gate** — README.md + LESSONS-LEARNED.md now carry a pre-flight `oc get sa flink-operator cmf-env-sa-dah-flink-<env>` check before the `cmf` pipeline runs in any upper env, so this trap doesn't repeat for QA/PRD/DR.
 - **Tushar submitted RITMs for the stale CyberArk key cleanups** — `RITM1097456` for `dev_confluent_key` in `11547_D_KEY_FP` (tracker 1.5) and `RITM1097457` for `artifactory-svc-user-password` in `11547_D_UNIX_FP` (tracker 1.6). All Track 1 open items now have a SNOW ticket attached.
+- **Restructured ISSUE-TRACKER.md into three tracks** (TRACK 1: Secret management, TRACK 2: CFK on OpenShift, TRACK 2 / Flink on OpenShift) with an Owner column and a RITM column. Most outstanding asks now carry SNOW tickets (`RITM1076878` 2.1, `RITM1093307` 2.3, `RITM1079670` 2.5, `RITM1080156` 3.1, `RITM1050600` 3.2); the still-to-submit ones are explicitly flagged.
+- **Closed tracker 3.1 — Container team enabled DEBUG logging on the Flink Operator** (`logger.operator.level = DEBUG` under `defaultConfiguration.log4j-operator.properties`); operator pod restarted to pick up the new ConfigMap. RITM1080156 delivered. Asmerom can now capture DEBUG logs and diagnose the underlying Deployment-label propagation root cause.
+- **Authored REST Proxy vs native client comparison docs** (`rest-proxy-vs-native-producer.md`, `rest-proxy-vs-native-consumer.md`) — design-review references covering transport, batching, compression, EOS / transactions, schema validation, partitioning, networking, and the practical caveats around browser / FaaS / multi-replica REST Proxy deployments. Iterated each through Kafka-specialist review rounds before finalizing.
+- **Drafted justification request to the Confluent SE (Gabry)** for the CFK operator ClusterRole exception (`get`/`list`/`watch`/`update`/`patch` on `persistentvolumes` at cluster scope) — required by FCB Container Platforms before any cluster-scope grant; uses the same precedent path that got the `storageClassName: dummy` exception approved.
 
 ## Next Week Action Items
 
@@ -32,5 +35,6 @@ Report period: June 1 – June 5, 2026.
 - **Wait for RITM1079670** (DEV ResourceQuota raise to ≥6 CPU / ≥24 Gi); once landed, revert the `replicas: 0` on Connect + ControlCenter in dev values and re-run install.
 - **Track fulfillment of the three CyberArk RITMs** (1085071 / 1085692 / 1085693); once the per-env CMF secrets land in CyberArk, QA + UAT + PRD CMF deploys are unblocked.
 - **Submit the still-to-be-created RITMs**: upper-env mirror items 2.2 (admission policy), 2.4 (operator PV RBAC), 2.6 (ResourceQuota), and 3.3 (`fcb-security` for PRD).
-- **Resume Flink Operator label-propagation debugging** (tracker 3.1) once RITM1080156 lands and Rick has the cluster-level admission-mutation policy in place.
+- **Asmerom to capture Flink Operator DEBUG logs and triage the Deployment-label-propagation root cause** now that DEBUG output is enabled (tracker 3.1 closed). Surface the actual cause to Container team so the right admission-mutation policy or upstream operator fix can be scoped.
+- **Track Gabry's response** to the ClusterRole-exception justification ask (PV `update`/`patch`), then hand the resulting writeup to Container team to unblock tracker 2.3 / RITM1093307.
 - **Once DEV is fully green** (all 6 CFK pods up, CMF connected, Flink job-deploy unblocked), formally start the UAT promotion using `runbook/CHECKLIST.md`.
