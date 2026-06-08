@@ -2,7 +2,7 @@
 
 Companion doc to [`rest-proxy-vs-native-producer.md`](rest-proxy-vs-native-producer.md), this time from the consumer side. Two ways a consumer reaches Kafka:
 
-1. **REST Proxy (HTTP)** — the consumer is an HTTP client. REST Proxy maintains a server-side **consumer instance** (a stateful object) that the HTTP client polls via repeated `GET` requests.
+1. **REST Proxy (HTTP)** — the consumer is an HTTP client. REST Proxy maintains a server-side **consumer instance** (an ephemeral stateful object that participates in the consumer group on the HTTP client's behalf) that the HTTP client polls via repeated `GET` requests.
 2. **Native Kafka protocol** — the consumer is a Kafka client (`KafkaConsumer`, librdkafka, Confluent.Kafka, etc.) that maintains its own group membership and prefetch buffer, fetching directly from brokers.
 
 The shapes are more different on the consume side than on the produce side, because consuming is fundamentally stateful — partition assignments, offsets, heartbeats, rebalances all have to live somewhere.
@@ -37,9 +37,10 @@ REST Proxy is essentially "your consumer state lives at the proxy and you talk t
 | **State location** | Server-side — REST Proxy holds the consumer instance, group membership, current offsets, prefetch buffer | Client-side — the `KafkaConsumer` object owns all state in-process |
 | **Consumer lifecycle** | Explicit: `POST /consumers/<group>` creates an instance, `DELETE /consumers/.../instances/<id>` tears it down. Instance reaped on `consumer.request.timeout.ms` if not polled | Tied to the `KafkaConsumer` object's life — created, used, closed |
 | **Poll model** | HTTP request-response pull: `GET .../records?timeout=...&max_bytes=...` returns whatever the proxy's prefetch buffer holds | Continuous in-process poll loop: `consumer.poll(Duration)` returns batched records the client already prefetched |
-| **Heartbeats** | Handled inside REST Proxy on the client's behalf — as long as the client polls within the timeout, the proxy keeps the group membership alive | Handled by the native client's background thread (`heartbeat.interval.ms`) |
+| **Heartbeats** | Handled by REST Proxy's internal consumer. Group membership stays alive only while the consumer instance remains active and continues to be polled within configured timeouts (`session.timeout.ms`, `consumer.request.timeout.ms`) | Handled by the native client's background thread (`heartbeat.interval.ms`) |
 | **Group rebalancing** | Happens server-side. Client only sees the resulting partition reassignment reflected in subsequent record sets; no rebalance callback exposed | Client-visible via `ConsumerRebalanceListener` callbacks — `onPartitionsRevoked` / `onPartitionsAssigned` enable state cleanup, flushing, etc. |
-| **Cooperative rebalancing** | Depends on REST Proxy version — older versions only support eager rebalancing; newer versions inherit the configured `partition.assignment.strategy` from the proxy producer | Supported via `CooperativeStickyAssignor` |
+| **Cooperative rebalancing** | Depends on REST Proxy version — older versions only support eager rebalancing; newer versions inherit the configured `partition.assignment.strategy` from REST Proxy's internal consumer configuration | Supported via `CooperativeStickyAssignor` |
+| **Rebalance callbacks** | Not exposed to the HTTP client — no `onPartitionsRevoked` / `onPartitionsAssigned` hooks on the proxy side | First-class via `ConsumerRebalanceListener` (`onPartitionsRevoked` / `onPartitionsAssigned`) — enables state cleanup, flushing, partition-aware buffering |
 | **Offset commits** | `POST .../offsets` for manual commits; `auto.commit.enable=true` for auto-commit. Granularity is per partition | `commitSync()` / `commitAsync()` with arbitrary per-partition `(topic, partition, offset)` tuples; `enable.auto.commit=true` for auto-commit |
 | **Seek / position control** | `POST .../positions` (v3) supports seeking to specific offsets, beginning, or end. v2 has weaker support | `seek(partition, offset)`, `seekToBeginning(partitions)`, `seekToEnd(partitions)` |
 | **Pause / resume** | Not exposed | `pause(partitions)` / `resume(partitions)` — partition-level flow control |
@@ -47,12 +48,12 @@ REST Proxy is essentially "your consumer state lives at the proxy and you talk t
 | **Read isolation (EOS)** | Set via `isolation.level=read_committed` on the consumer-instance create call — REST Proxy passes it through to its internal consumer | `isolation.level=read_committed` skips uncommitted records from transactional producers |
 | **Deserialization / schema validation** | Built-in via `Accept: application/vnd.kafka.avro.v2+json` (or JSON Schema / Protobuf variants); REST Proxy deserializes against Schema Registry and returns JSON | Schema Registry deserializer (`KafkaAvroDeserializer` / `KafkaProtobufDeserializer`) on the client; SR roundtrip cached locally |
 | **Throughput** | Typically several times lower than a native consumer — and can be an order-of-magnitude gap in high-volume workloads. Limited by HTTP poll cadence, JSON response framing, and the proxy hop. Actual ratio depends on record size, batching, and `fetch.max.bytes` | Highest — continuous prefetch, binary records, batched fetch |
-| **Latency to first record** | Higher — HTTP setup + (instance create on first poll) + proxy fetch + serialization to JSON | Lower — client already has prefetched records when `poll()` is called |
+| **Latency to first record** | Higher — HTTP setup, consumer-instance creation (when not already in place; typically an explicit `POST /consumers/<group>` rather than implicit on first poll), proxy fetch, and JSON serialization | Lower — client already has prefetched records when `poll()` is called |
 | **Required client library** | Any HTTP client (`curl`, `fetch`, `requests`, etc.) | Confluent / Apache Kafka client lib for the target language |
 | **Browser / mobile support** | Yes | No |
 | **Polyglot support** | Universal | Limited to languages with maintained Kafka clients |
 | **Concurrency model** | Each consumer instance is one logical group member. Concurrent consumption requires the application to orchestrate multiple instances itself | Standard thread-per-consumer or single-threaded poll-and-dispatch pattern; rich documentation |
-| **Network exposure** | One REST Proxy URL behind a service / ingress | Producer must reach the broker endpoints returned through metadata discovery — typically all brokers participating in the cluster |
+| **Network exposure** | One REST Proxy URL behind a service / ingress | Consumer must reach the broker endpoints returned through metadata discovery — typically all brokers participating in the cluster |
 | **Private networking requirements** | Only the REST Proxy endpoint must be reachable | Consumer must reach all broker endpoints advertised by cluster metadata (Private Link / Transit Gateway / DNS abstractions can hide topology but the underlying requirement remains) |
 | **Authentication (client → endpoint)** | HTTP: Basic auth, OAuth bearer, mTLS | Kafka protocol: SASL/PLAIN, SASL/OAUTHBEARER, SASL/SCRAM, mTLS |
 | **Authorization (broker enforcement)** | ACLs/RBAC enforced at the broker against either the REST Proxy's identity or the caller's identity (if impersonation is configured); also enforced at REST Proxy layer for HTTP-level controls | ACLs/RBAC enforced at the broker against the client's authenticated principal |
@@ -87,7 +88,7 @@ REST Proxy is essentially "your consumer state lives at the proxy and you talk t
 - **Limited seek API in older REST Proxy versions.** v2 has weak seek support; v3 is better but still less flexible than `KafkaConsumer.seek()`.
 - **No consumer interceptors.** Forget monitoring interceptors, lineage capture, custom deserializers, or anything that depends on the consumer's request/response pipeline.
 - **Concurrency is the application's problem.** Want parallel consumption? You orchestrate multiple HTTP consumer instances yourself — there's no in-proxy fan-out.
-- **Multi-replica REST Proxy adds session affinity concerns.** The consumer instance lives on one proxy replica. A load balancer that doesn't pin requests to the same backend will break the consumer. Sticky sessions or per-replica DNS are common workarounds.
+- **Multi-replica REST Proxy adds session affinity concerns.** The consumer instance lives on one proxy replica. A load balancer that doesn't pin requests to the same backend will break the consumer. Some deployments mitigate this by routing clients directly to a specific proxy instance or by storing consumer state externally; sticky sessions or per-replica DNS are common workarounds.
 - **Two hops, three places to debug.** Failure can be at the HTTP client, REST Proxy, or broker layer — harder to triage than a direct client-broker exchange.
 - **Heartbeat semantics are different.** The proxy heartbeats on your behalf as long as you poll, but if your poll cadence is slower than `session.timeout.ms`, you'll be evicted from the group without the proxy doing anything wrong.
 - **Cooperative rebalancing support varies by REST Proxy version.** Some older versions only do eager rebalancing, meaning every assignment change pauses all consumption.
@@ -124,15 +125,23 @@ REST Proxy is essentially "your consumer state lives at the proxy and you talk t
 |---|---|
 | Browser / mobile / WebApp consuming events | REST Proxy |
 | Webhook-style consumer where the receiver wakes up on a schedule, fetches a batch, processes, then disappears | REST Proxy |
-| FaaS / serverless consumer with low message rate | REST Proxy |
+| FaaS / serverless consumer with low message rate, where polling is acceptable | REST Proxy (see practical caveat below) |
 | Legacy / third-party app that can poll HTTP but has no Kafka client | REST Proxy |
 | Cross-org consumer where you don't want to expose broker topology | REST Proxy |
 | High-throughput streaming consumer (Connect, Streams, Flink, dedicated services) | Native |
-| Read-process-write requiring `read_committed` and offset commits within a transaction | Native |
+| Read-process-write requiring transactional offset commits or end-to-end exactly-once semantics (`read_committed` alone is available through REST Proxy; what forces native is the transactional `sendOffsetsToTransaction` step) | Native |
 | Consumer that needs `pause()`/`resume()` / explicit seek / rebalance listeners | Native |
 | Tight end-to-end latency budget (single-digit ms) | Native |
 | Workload requiring rebalance-aware state management | Native |
 | Workload requiring rich consumer-side metrics (lag per partition, etc.) for SLO/SLI | Native |
+
+## Practical caveats
+
+A few things the decision matrix glosses over:
+
+- **Browser / mobile access** is "yes" in the table, but production deployments still hit CORS, OAuth/JWT validation, long-poll behavior of intermediaries, and corporate proxy / WAF policies. Treat it as "possible when the REST Proxy is exposed appropriately and CORS / auth policies permit it" rather than free.
+- **REST Proxy is convenient for FaaS, but Kafka isn't naturally pull-friendly for serverless.** A short-lived function that wakes up, polls, and dies pays the cost of consumer-instance creation / teardown (or sticks to a hot instance and inherits all the affinity concerns from Cons). For sporadic event-driven workloads, the more durable pattern is often **Kafka → Connect → SQS / PubSub / EventBridge → FaaS trigger** — push instead of poll, and the function reacts to records rather than chasing them.
+- **REST Proxy state is ephemeral; committed offsets are not.** A REST Proxy restart loses the consumer instance, but `__consumer_offsets` survives — the application needs to recreate the instance and resume from the committed position, not start over from earliest.
 
 ## Hybrid pattern
 
