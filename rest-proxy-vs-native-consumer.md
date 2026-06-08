@@ -35,9 +35,9 @@ REST Proxy is essentially "your consumer state lives at the proxy and you talk t
 |---|---|---|
 | **Transport** | HTTP/1.1 (HTTP/2 in newer REST Proxy versions) | TCP, Kafka binary protocol |
 | **State location** | Server-side — REST Proxy holds the consumer instance, group membership, current offsets, prefetch buffer | Client-side — the `KafkaConsumer` object owns all state in-process |
-| **Consumer lifecycle** | Explicit: `POST /consumers/<group>` creates an instance, `DELETE /consumers/.../instances/<id>` tears it down. Instance reaped on `consumer.request.timeout.ms` if not polled | Tied to the `KafkaConsumer` object's life — created, used, closed |
+| **Consumer lifecycle** | Explicit: `POST /consumers/<group>` creates an instance, `DELETE /consumers/.../instances/<id>` tears it down. Instance is eventually reaped if not polled within the configured consumer-instance timeout | Tied to the `KafkaConsumer` object's life — created, used, closed |
 | **Poll model** | HTTP request-response pull: `GET .../records?timeout=...&max_bytes=...` returns whatever the proxy's prefetch buffer holds | Continuous in-process poll loop: `consumer.poll(Duration)` returns batched records the client already prefetched |
-| **Heartbeats** | Handled by REST Proxy's internal consumer. Group membership stays alive only while the consumer instance remains active and continues to be polled within configured timeouts (`session.timeout.ms`, `consumer.request.timeout.ms`) | Handled by the native client's background thread (`heartbeat.interval.ms`) |
+| **Heartbeats** | Handled by REST Proxy's internal consumer. Group membership stays alive only while the consumer instance remains active and continues to be polled within the configured REST Proxy and Kafka consumer timeouts (exact names have varied across REST Proxy versions) | Handled by the native client's background thread (`heartbeat.interval.ms`) |
 | **Group rebalancing** | Happens server-side. Client only sees the resulting partition reassignment reflected in subsequent record sets; no rebalance callback exposed | Client-visible via `ConsumerRebalanceListener` callbacks — `onPartitionsRevoked` / `onPartitionsAssigned` enable state cleanup, flushing, etc. |
 | **Cooperative rebalancing** | Depends on REST Proxy version — older versions only support eager rebalancing; newer versions inherit the configured `partition.assignment.strategy` from REST Proxy's internal consumer configuration | Supported via `CooperativeStickyAssignor` |
 | **Rebalance callbacks** | Not exposed to the HTTP client — no `onPartitionsRevoked` / `onPartitionsAssigned` hooks on the proxy side | First-class via `ConsumerRebalanceListener` (`onPartitionsRevoked` / `onPartitionsAssigned`) — enables state cleanup, flushing, partition-aware buffering |
@@ -82,7 +82,7 @@ REST Proxy is essentially "your consumer state lives at the proxy and you talk t
 
 - **Throughput typically several times lower than native**, with HTTP framing, JSON encoding, and the extra proxy hop as the main contributors. Can reach an order-of-magnitude gap in high-volume workloads; actual ratio depends on record size, batching, and prefetch behavior.
 - **Higher latency to first record** because of HTTP setup, optional instance create on cold poll, and JSON serialization on the way out.
-- **Stateful consumer instance is a footgun.** If the HTTP client pauses longer than `consumer.request.timeout.ms`, the proxy reaps the instance, the group sees a member drop, a rebalance happens, and the client has to recreate the instance on next poll.
+- **Stateful consumer instance is a footgun.** If the HTTP client pauses longer than the configured consumer-instance timeout, the proxy reaps the instance, the group sees a member disappear, a rebalance is triggered, and ownership of partitions may move to different consumers before the instance is recreated.
 - **No rebalance callbacks exposed.** The client can't run cleanup / flush logic when partitions are revoked. State that's local to the HTTP-client process needs out-of-band invalidation when assignments shift.
 - **Limited flow control.** No `pause()` / `resume()` to selectively stop fetching from a partition while processing back-pressures.
 - **Limited seek API in older REST Proxy versions.** v2 has weak seek support; v3 is better but still less flexible than `KafkaConsumer.seek()`.
@@ -90,7 +90,7 @@ REST Proxy is essentially "your consumer state lives at the proxy and you talk t
 - **Concurrency is the application's problem.** Want parallel consumption? You orchestrate multiple HTTP consumer instances yourself — there's no in-proxy fan-out.
 - **Multi-replica REST Proxy adds session affinity concerns.** The consumer instance lives on one proxy replica. A load balancer that doesn't pin requests to the same backend will break the consumer. Some deployments mitigate this by routing clients directly to a specific proxy instance or by storing consumer state externally; sticky sessions or per-replica DNS are common workarounds.
 - **Two hops, three places to debug.** Failure can be at the HTTP client, REST Proxy, or broker layer — harder to triage than a direct client-broker exchange.
-- **Heartbeat semantics are different.** The proxy heartbeats on your behalf as long as you poll, but if your poll cadence is slower than `session.timeout.ms`, you'll be evicted from the group without the proxy doing anything wrong.
+- **Heartbeat semantics are different.** The proxy heartbeats on your behalf as long as you poll, but if the consumer instance isn't polled frequently enough to satisfy the configured REST Proxy and Kafka consumer timeouts, it can be removed from the group without the proxy doing anything wrong.
 - **Cooperative rebalancing support varies by REST Proxy version.** Some older versions only do eager rebalancing, meaning every assignment change pauses all consumption.
 
 ## Native Consumer — Pros and Cons
@@ -150,4 +150,4 @@ Same shape as on the producer side, it's common to mix both:
 - **Native** for the backbone services that turn events into derived data — stream processors, sink connectors, anything throughput- or latency-sensitive.
 - **REST Proxy** for the edges — browser dashboards subscribing to a tail of events, third-party SaaS pollers, FaaS triggers that just want a recent batch, ad-hoc smoke tests.
 
-The proxy is a *bridge* into the cluster, not a *replacement* for native consumers. Treat throughput-sensitive consumers as native and lifestyle consumers (FaaS, webhook poll, browser tail) as REST. The two patterns coexist cleanly because they're talking to the same brokers in the end.
+The proxy is a *bridge* into the cluster, not a *replacement* for native consumers. Treat throughput-sensitive consumers as native and edge consumers (FaaS, webhook poll, browser tail) as REST. The two patterns coexist cleanly because they're talking to the same brokers in the end.
