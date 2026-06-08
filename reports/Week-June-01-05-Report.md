@@ -23,6 +23,7 @@ Report period: June 1 – June 5, 2026.
 - **Created `runbook/` (`LESSONS_LEARNED.md`, `CHECKLIST.md`) and `ISSUE-TRACKER.md`** — living root-cause documentation (sections A–H, 11+ entries) plus a 3-track cross-team action-item tracker (Secret management, CFK on OpenShift, Flink on OpenShift) with RITM column and clear owner conventions.
 - **Added `forceFinalizerRemoval` opt-in to the `confluent-platform` pipeline** — recovers stuck Connect CR after a broken-cluster uninstall; runbook E3.
 - **Documented the `fcb-security` pre-creation gate** — README.md + LESSONS-LEARNED.md now carry a pre-flight `oc get sa flink-operator cmf-env-sa-dah-flink-<env>` check before the `cmf` pipeline runs in any upper env, so this trap doesn't repeat for QA/PRD/DR.
+- **Tushar submitted RITMs for the stale CyberArk key cleanups** — `RITM1097456` for `dev_confluent_key` in `11547_D_KEY_FP` (tracker 1.5) and `RITM1097457` for `artifactory-svc-user-password` in `11547_D_UNIX_FP` (tracker 1.6). All Track 1 open items now have a SNOW ticket attached.
 
 ## Next Week Action Items
 
@@ -30,6 +31,6 @@ Report period: June 1 – June 5, 2026.
 - **Wait for RITM1050600** (`fcb-security` applies SA/Role/RoleBinding to `dah-flink-uat`); once landed, re-run the UAT CMF install pipeline.
 - **Wait for RITM1079670** (DEV ResourceQuota raise to ≥6 CPU / ≥24 Gi); once landed, revert the `replicas: 0` on Connect + ControlCenter in dev values and re-run install.
 - **Track fulfillment of the three CyberArk RITMs** (1085071 / 1085692 / 1085693); once the per-env CMF secrets land in CyberArk, QA + UAT + PRD CMF deploys are unblocked.
-- **Submit the still-to-be-created RITMs**: upper-env mirror items 2.2 (admission policy), 2.4 (operator PV RBAC), 2.6 (ResourceQuota), 3.3 (`fcb-security` for PRD); plus housekeeping 1.5 / 1.6 (stale CyberArk key cleanup).
+- **Submit the still-to-be-created RITMs**: upper-env mirror items 2.2 (admission policy), 2.4 (operator PV RBAC), 2.6 (ResourceQuota), and 3.3 (`fcb-security` for PRD).
 - **Resume Flink Operator label-propagation debugging** (tracker 3.1) once RITM1080156 lands and Rick has the cluster-level admission-mutation policy in place.
 - **Once DEV is fully green** (all 6 CFK pods up, CMF connected, Flink job-deploy unblocked), formally start the UAT promotion using `runbook/CHECKLIST.md`.
