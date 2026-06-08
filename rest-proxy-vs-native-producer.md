@@ -25,20 +25,21 @@ Path 1 adds a hop (extra latency + extra failure point) but enables anything tha
 | **Required client library** | Any HTTP client (`curl`, `fetch`, `requests`, etc.) | Confluent / Apache Kafka client lib for the target language |
 | **Browser / mobile support** | Yes | No (browsers can't open raw TCP) |
 | **Polyglot support** | Universal (anything that does HTTP) | Limited to languages with maintained Kafka clients |
-| **Network exposure** | One REST Proxy URL behind a service / ingress | Connectivity to *all* brokers required (bootstrap returns broker addresses) |
+| **Network exposure** | One REST Proxy URL behind a service / ingress | Producer must reach the broker endpoints returned through metadata discovery — typically all brokers participating in the cluster |
+| **Private networking requirements** | Only the REST Proxy endpoint must be reachable | Producer must reach all broker endpoints advertised by cluster metadata (Private Link / Transit Gateway / DNS abstractions can hide topology but the underlying requirement remains) |
 | **Batching control** | Multi-record HTTP request body; proxy's internal producer batches via `kafka-rest.properties` (proxy-wide) | Per-producer `linger.ms` + `batch.size` + `buffer.memory`; full client-side control |
 | **Compression** | Set instance-wide via `compression.type` in `kafka-rest.properties`; no per-request override | Per-producer `compression.type` (`none`/`gzip`/`snappy`/`lz4`/`zstd`); can vary per producer |
 | **Exactly-Once Semantics / Transactions** | **Not supported** — no `begin/commit/abort` API; each HTTP POST is a standalone produce | **Supported** — `enable.idempotence=true`, `transactional.id`, `beginTransaction()` / `commitTransaction()` |
-| **Idempotent producer** | Internal proxy producer *can* enable it, but HTTP retries from the client can still duplicate (no end-to-end ack-correlation) | `enable.idempotence=true` gives per-producer-session deduplication end-to-end |
+| **Idempotent producer** | Internal proxy producer *can* enable it, but cannot provide end-to-end producer idempotence — HTTP clients have no transactional or producer-session awareness | `enable.idempotence=true` gives per-producer-session deduplication end-to-end |
 | **Async send** | v3 `/records` async produce endpoint; otherwise HTTP request-response | `producer.send(record, callback)` returns a `Future`; fully async |
 | **Backpressure** | HTTP 5xx + client-side retry; no buffer-based throttling | `buffer.memory` cap + `max.block.ms`; producer blocks when full |
 | **Schema validation** | Built-in via `application/vnd.kafka.avro.v2+json` (and JSON Schema / Protobuf variants); proxy validates payload against Schema Registry before producing | Schema Registry serializer (`KafkaAvroSerializer` / `KafkaProtobufSerializer`) on the client; same SR roundtrip |
-| **Partition selection** | Key-based routing (proxy computes `hash(key)` against cached metadata); cannot explicitly target a partition number per record | Full control — set `partition` on `ProducerRecord`, or supply a custom `Partitioner` |
+| **Partition selection** | Explicit partition targeting supported via `/topics/<topic>/partitions/<n>/records`; key-based hash routing on `/topics/<topic>/records`. No custom-partitioner extensibility | Full control — set `partition` on `ProducerRecord`, or supply a custom `Partitioner` |
 | **Per-record headers** | Yes (v2/v3 `records[].headers`) | Yes (`ProducerRecord.headers()`) |
-| **Per-record ordering** | Per-key ordering holds **only if** the same client sends records sequentially to one REST Proxy instance and that proxy uses one underlying producer | Per-key ordering with idempotence enabled (or `max.in.flight.requests.per.connection=1` on legacy clients) |
+| **Per-record ordering** | Maintaining strict per-key ordering across retries, load-balancer routing, concurrent clients, and multiple REST Proxy instances is harder than with a single idempotent native producer | Per-key ordering with idempotence enabled (or `max.in.flight.requests.per.connection=1` on legacy clients) |
 | **Authentication (client → endpoint)** | HTTP: Basic auth, OAuth bearer, mTLS — easy for service-to-service over standard ingress | Kafka protocol: SASL/PLAIN, SASL/OAUTHBEARER, SASL/SCRAM, mTLS — needs Kafka-aware client config |
 | **Authorization (broker enforcement)** | ACL/RBAC enforced both at REST Proxy (auth) and at the broker (via the proxy's identity, or the caller's identity if the proxy is configured to impersonate) | ACL/RBAC enforced at the broker against the client's authenticated principal |
-| **Throughput** | Roughly an order of magnitude lower than native (HTTP framing + JSON parsing + proxy hop) | Highest — direct binary protocol, batched, compressed |
+| **Throughput** | Typically several times lower than a native producer — and can reach an order-of-magnitude gap in high-volume workloads. Actual ratio depends heavily on message size, batching, serialization format, REST Proxy version, and network conditions | Highest — direct binary protocol, batched, compressed |
 | **Latency** | Higher — HTTP round-trip + proxy serialize/deserialize + broker | Lowest — single Kafka roundtrip |
 | **Operational footprint** | Adds REST Proxy as a service to deploy, monitor, scale, and harden | One fewer service in the path; brokers are the only thing to operate |
 | **Failure surface** | Producer ↔ Proxy *and* Proxy ↔ Broker | Producer ↔ Broker only |
@@ -56,22 +57,22 @@ Path 1 adds a hop (extra latency + extra failure point) but enables anything tha
 - **Browser / mobile reachable.** Native clients can't speak Kafka from a browser; REST Proxy can.
 - **Schema validation built into the content type.** Sending `application/vnd.kafka.avro.v2+json` makes Schema Registry enforcement automatic at the proxy boundary.
 - **Authentication uses standard web mechanisms.** OAuth bearer tokens, mTLS at the ingress, basic auth — all familiar to web/API teams.
-- **Serverless-friendly.** Functions that wake up, fire one event, and die don't pay for Kafka producer initialization cost (no metadata fetch, no broker connection setup).
+- **Often simpler for low-volume serverless workloads.** Functions can send events using standard HTTPS without embedding Kafka client libraries or maintaining broker connections. They still pay for HTTP setup (auth, TLS handshake) per invocation, but skip the Kafka client warmup (metadata fetch, broker connection pooling) and library footprint.
 - **Centralized policy enforcement.** Egress controls, rate limits, audit logs, payload scanning can all live at the proxy layer.
 - **Smaller blast radius for client misbehavior.** A misconfigured native client could spam brokers directly; REST Proxy can be metered / throttled at the HTTP layer.
 
 ### Cons
 
-- **~10× lower throughput** than native, mostly from HTTP overhead and the extra proxy hop.
+- **Throughput typically several times lower than native**, mostly from HTTP framing, JSON serialization, and the extra proxy hop. Can reach an order-of-magnitude gap in high-volume workloads, though the exact ratio depends on message size, batching, and serialization format.
 - **Higher per-message latency.** Two network hops (client → proxy → broker) plus HTTP/JSON parsing.
 - **No EOS / transactions.** Hard stop for read-process-write patterns that need atomicity between offset commit and produce.
 - **No per-request linger/batch control.** Client can pack many records into a POST body, but proxy-instance-wide `kafka-rest.properties` is the only knob for the internal producer.
 - **Compression is server-side configured**, not per-producer or per-batch.
-- **Cannot pick a partition explicitly** — key-based hashing only.
+- **Limited partitioning flexibility.** Explicit partition targeting is supported via `/topics/<topic>/partitions/<n>/records`, but custom partitioners and advanced partitioning strategies (sticky, geo-aware, etc.) are not.
 - **REST Proxy itself becomes a tier to operate.** SPOF unless HA'd; another set of dashboards, alerts, scaling decisions.
 - **No producer interceptors.** Forget custom partitioners, lineage interceptors, side-channel metrics.
-- **HTTP retries are not idempotent end-to-end.** A timed-out POST that succeeded server-side will get re-sent by a retrying client → duplicate. Mitigation requires application-level idempotency keys.
-- **Per-key ordering is fragile across multiple REST Proxy replicas** unless the client pins to a specific replica or accepts reordering risk.
+- **No end-to-end producer idempotence.** REST Proxy can use an idempotent producer internally, but it cannot provide end-to-end idempotence because HTTP clients have no transactional or producer-session awareness. A timed-out POST that succeeded server-side will get re-sent by a retrying client → duplicate. Mitigation requires application-level idempotency keys.
+- **Maintaining strict per-key ordering is harder** than with a single idempotent native producer — retries, load-balancer routing across REST Proxy instances, concurrent clients, and failures mid-request all complicate the guarantee.
 - **Slower to debug.** Failure can be at the HTTP layer (client), the proxy layer, or the broker layer — three places to look.
 
 ## Native Producer (Kafka Protocol) — Pros and Cons
@@ -93,7 +94,7 @@ Path 1 adds a hop (extra latency + extra failure point) but enables anything tha
 
 - **Requires a maintained Kafka client library** in the producer's language; some languages have weaker support than others.
 - **Not reachable from browsers / mobile WebViews** (TCP only).
-- **Firewall / network complexity.** Producer must reach every broker, not just one endpoint. Bootstrap servers return broker addresses; if any are unreachable, partitions hosted there are unavailable to this producer.
+- **Firewall / network complexity.** Producers must be able to reach the broker endpoints returned through metadata discovery — typically connectivity to all brokers participating in the cluster. If any are unreachable, partitions hosted on those brokers are unavailable to this producer. Modern networking constructs (Private Link, Transit Gateway, DNS abstractions, Confluent networking) can hide topology but typically don't eliminate the underlying requirement.
 - **Heavier client footprint.** The Java producer in particular drags in significant memory and CPU baseline; not ideal for ultra-light serverless functions.
 - **Steeper learning curve.** New users have to internalize `acks`, `linger.ms`, `enable.idempotence`, `max.in.flight`, partition affinity, consumer groups, offset commits, etc. before they're productive.
 - **Configuration sprawl.** Dozens of producer settings; getting them wrong (e.g. `acks=0`) silently weakens delivery guarantees.
