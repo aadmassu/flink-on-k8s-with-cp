@@ -4,18 +4,18 @@
   "flinkApplicationDefaults": {
     "spec": {
       "flinkConfiguration": {
-        "taskmanager.numberOfTaskSlots": "2"
+        "taskmanager.numberOfTaskSlots": "1"
       },
       "jobManager": {
         "resource": {
-          "memory": "4000m",
-          "cpu": 1
+          "memory": "1024m",
+          "cpu": 0.5
         }
       },
       "taskManager": {
         "resource": {
-          "memory": "4000m",
-          "cpu": 1
+          "memory": "1024m",
+          "cpu": 0.5
         }
       }
     }
@@ -25,7 +25,7 @@
       "flinkVersion": "v2_1",
       "image": "artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-flink:2.1.1-cp1-java21",
       "flinkConfiguration": {
-        "taskmanager.numberOfTaskSlots": "2"
+        "taskmanager.numberOfTaskSlots": "1"
       }
     }
   }
