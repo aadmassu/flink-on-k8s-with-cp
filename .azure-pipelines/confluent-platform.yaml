@@ -519,6 +519,33 @@ stages:
                     fi
                   done
 
+                  # Focused conditions table — flattens each CR's
+                  # status.conditions into a one-line-per-condition view so
+                  # the cluster-ready / resources-ready / statefulset-available
+                  # truth is scannable without grepping the full yaml. Same
+                  # data as in the full-CR dump above, just easier to read.
+                  echo ""
+                  echo "=== CR status.conditions (focus: cluster-ready) ==="
+                  for kind_name in \
+                      "kraftcontroller kraftcontroller" \
+                      "kafka kafka" \
+                      "schemaregistry schemaregistry" \
+                      "connect connect" \
+                      "kafkarestproxy kafkarest" \
+                      "controlcenter controlcenter"; do
+                    kind=${kind_name% *}; name=${kind_name#* }
+                    echo ""
+                    echo "--- $kind/$name ---"
+                    if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+                      printf "%-12s %-50s %-10s %-25s %s\n" "NAME" "TYPE" "STATUS" "REASON" "MESSAGE"
+                      oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{range .status.conditions[*]}{.type}{"\t"}{.status}{"\t"}{.reason}{"\t"}{.message}{"\n"}{end}' 2>&1 \
+                        | awk -v name="$name" -F '\t' 'NF>=3 {printf "%-12s %-50s %-10s %-25s %s\n", name, $1, $2, $3, $4}' \
+                        || echo "(no conditions array)"
+                    else
+                      echo "($kind/$name not found)"
+                    fi
+                  done
+
                   # `oc explain` returns the CRD SCHEMA as the API server
                   # sees it on THIS cluster — independent of any applied
                   # CR. Use it as ground truth for whether a field exists

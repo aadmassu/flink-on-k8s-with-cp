@@ -37,13 +37,15 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # TEMP — scaled down for the dah-flink-dev ResourceQuota (limits.cpu=2,
-  # limits.memory=8Gi, requests.cpu=1, requests.memory=4Gi). Revert to
-  # replicas: 3 + the broker-fit sizing (2/4 req, 4/8 limit) once Tom
-  # raises the namespace compute quota. The cluster-link migration and
-  # any real benchmarking REQUIRE replicas: 3 — this single-broker setup
-  # is smoke-test-only (no RF=3 inter-broker replication possible).
-  replicas: 1
+  # 3-broker cluster — enables RF=3 inter-broker replication and minimum-
+  # viable cluster-link migration testing. CPU + memory portion of the
+  # dev ResourceQuota was raised; storage is now the tight resource
+  # (100 GiB cap per dev quota's storage piece; see tracker 2.5). At
+  # 10 Gi per broker × 3 = 30 Gi, this leaves headroom for the kraft
+  # controllers (3 × 1 Gi = 3 Gi) + controlcenter + flink-state-bearing
+  # jobs within the 100 Gi budget. Bump dataVolumeCapacity once Container
+  # team grants the storage raise toward the ~1.272 TB workbook target.
+  replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
@@ -70,17 +72,19 @@ spec:
   # Do NOT enable any "recreate-on-restart" knob — CFK doesn't expose one
   # for this volume, and adding one would forfeit the deterministic
   # PVC↔broker.id binding.
-  # TEMPORARY DEV SIZING — pending namespace ResourceQuota increase.
-  # The dah-flink-dev namespace currently caps `requests.storage` at 10 GiB
-  # total, shared across 3 brokers + 3 controllers + 1 C3 = 7 PVCs. We
-  # give brokers 2 GiB each (6 GiB total), controllers 1 GiB each (3 GiB),
-  # C3 1 GiB = exactly 10 GiB. Adequate for dev's ~2% utilization (VM
-  # actual broker usage is ~3 GiB) but NOT representative of production.
-  # When Tom raises the namespace quota, bump back to:
+  # Frugal dev sizing under the 100 GiB namespace storage quota:
+  #   Kafka brokers:   10 Gi × 3   = 30 Gi
+  #   KRaft controllers: 1 Gi × 3  =  3 Gi
+  #   ControlCenter:    1 Gi × 1   =  1 Gi (when re-enabled)
+  #   Headroom for Flink job state and any future PVCs: ~66 Gi
+  # Adequate for dev smoke testing — VM broker actual usage is ~3 GiB at
+  # ~2% utilization, so 10 Gi is generous. NOT representative of prod.
+  # When Container team grants the storage raise toward the ~1.272 TB
+  # workbook target (tracker 2.5 remainder), bump back toward VM-equivalent:
   #   Kafka broker:     1 TiB  (matching VM; +3 TiB planned → 4 TiB)
   #   KRaft controller: 64 GiB
   #   Control Center:   300 GiB
-  dataVolumeCapacity: 2Gi
+  dataVolumeCapacity: 10Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — best write throughput for log dirs
   # Resources MUST live under spec.podTemplate.resources — top-level
