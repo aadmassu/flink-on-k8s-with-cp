@@ -100,14 +100,30 @@ spec:
       # ConfluentMetricsReporter publishes broker-side metrics to the
       # _confluent-metrics topic so C3 / SBC can read them. It needs
       # confluent.metrics.reporter.bootstrap.servers to know where the
-      # broker is — and on the controller that endpoint is the broker,
-      # which can't come up until the controller does. Same chicken-and-egg
-      # as A8. Strip it from the controller; brokers keep it. TelemetryReporter
-      # stays because it ships directly to Confluent's telemetry endpoint
-      # (no broker dependency). See runbook/LESSONS_LEARNED.md A9.
-      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter
-      - confluent.telemetry.enabled=true
-      - confluent.reporters.telemetry.auto.enable=true
+      # broker is — chicken-and-egg with the controller. Strip it from the
+      # controller (brokers keep it). See runbook/LESSONS_LEARNED.md A9.
+      #
+      # TelemetryReporter was kept after A9 because it ships directly to
+      # Confluent's hosted telemetry endpoint without needing a broker.
+      # However it requires Confluent telemetry API credentials, which
+      # FCB hasn't provisioned — without them the reporter logs an ERROR
+      # at startup ("API Key/Secret are missing for the exporter '_confluent'")
+      # and stays inert. Removed here for log cleanliness. Re-enable
+      # (with credentials) when Confluent telemetry is set up at FCB —
+      # see project memory `project_fcb_telemetry_audit_reenable_later`.
+      #
+      # No `metric.reporters` override → falls back to the operator default
+      # (no reporters on the controller). Brokers retain their own reporter
+      # config independently.
+      #
+      # Audit log provider is disabled here for the same chicken-and-egg
+      # reason — it publishes audit events to a Kafka topic and needs
+      # `confluent.security.event.logger.exporter.kafka.bootstrap.servers`
+      # to find the broker, which doesn't exist until controllers are up.
+      # The provider's startup failure is non-fatal (one-shot ERROR at
+      # boot) but pollutes logs. Brokers (which host the audit topic) keep
+      # the audit logger enabled. See runbook/LESSONS_LEARNED.md A12.
+      - confluent.security.event.logger.enable=false
   podTemplate:
     serviceAccountName: flink-operator
     # KRaft controllers handle metadata-log writes only (topic creates,

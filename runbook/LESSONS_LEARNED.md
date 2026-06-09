@@ -276,6 +276,49 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   and starts using the real class on the vct, the policy exception
   becomes harmless but unused — no harm in leaving it.
 
+### A12. KRaftController audit log provider fails to start at boot
+
+* **Symptom**: kraftcontroller pod boots cleanly, `KafkaRaftServer
+  started` line appears, controller serves as quorum leader fine —
+  but a single ERROR pollutes the log right before the "started"
+  line:
+  ```
+  ERROR audit-init-1 ConfluentAuditLogProvider lambda$start$0 -
+    Audit log provider could not be started
+  org.apache.kafka.common.config.ConfigException: Missing required
+    property confluent.security.event.logger.exporter.kafka.bootstrap.servers.
+  ```
+  Non-fatal — the audit subsystem stays disabled for the lifetime
+  of the process; the controller keeps serving normally. But the
+  ERROR shows up on every restart, and Splunk/Dynatrace error-rate
+  alerts on the namespace can fire on it.
+* **Root cause**: same chicken-and-egg as A8 (RBAC provider) and
+  A9 (ConfluentMetricsReporter). The audit log provider publishes
+  authentication / authorization / RBAC events to a Kafka topic
+  (`confluent-audit-log-events`) and needs
+  `confluent.security.event.logger.exporter.kafka.bootstrap.servers`
+  to find the broker. On the controller, that endpoint is the
+  broker — which can't come up until the controller does.
+* **Fix**: disable the audit log provider on the controller
+  specifically (brokers keep it — they host the audit topic and
+  don't have the chicken-and-egg). Add to the kraftcontroller's
+  `configOverrides.server`:
+  ```yaml
+  - confluent.security.event.logger.enable=false
+  ```
+  Applied across dev/qa/uat as of 2026-06-09. Re-enable on the
+  controller only if FCB security team asks for controller-side
+  audit events specifically — usually they only care about events
+  flowing through the brokers.
+* **Why it matters**: third instance of the same role-split pattern
+  (A8 = RBAC, A9 = metrics, A12 = audit). When a controller-side
+  Confluent subsystem fails to start at boot citing a missing
+  broker bootstrap, the answer is almost always "this is broker-
+  side functionality, disable it on the controller." Don't try to
+  configure a placeholder bootstrap server pointing at the not-
+  yet-running broker; that just delays the failure to first-poll
+  rather than first-init.
+
 ---
 
 ## B. FCB Gatekeeper policies

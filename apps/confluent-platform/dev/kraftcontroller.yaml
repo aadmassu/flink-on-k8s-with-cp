@@ -26,10 +26,13 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # TEMP — scaled to 1 controller for the dah-flink-dev ResourceQuota.
-  # Single-controller has NO HA — quorum is technically just itself.
-  # Revert to replicas: 3 when Tom raises the namespace compute quota.
-  replicas: 1
+  # 3-controller KRaft quorum — HA-safe (tolerates one controller loss).
+  # Storage is the tight resource, not CPU: 3 controllers × 1 Gi vct each
+  # = 3 Gi of the 100 GiB namespace storage cap, comfortably within budget.
+  # CPU + memory pressure is now the main constraint shaped by 2.5; if it
+  # surfaces, drop back to replicas: 1 temporarily — single-controller is
+  # NOT HA-safe but works for dev smoke testing.
+  replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
@@ -49,9 +52,10 @@ spec:
   # bound to a Ceph RBD PV. When the pod restarts the same PVC + PV is
   # re-attached, so the KRaft metadata log (the cluster's source of truth)
   # survives pod and node failures.
-  # TEMPORARY DEV SIZING — pending namespace ResourceQuota increase.
-  # See kafka.yaml for the full quota math. Once Tom raises the quota,
-  # bump this back to 64 GiB (matching the VM controller disk).
+  # Frugal dev sizing — 1 Gi per controller × 3 replicas = 3 Gi of the
+  # current 100 GiB dev storage quota. KRaft metadata log fits comfortably
+  # at this size; bump only if controllers actually OOM the volume. VM
+  # controllers ran at 64 Gi but were dramatically over-provisioned.
   dataVolumeCapacity: 1Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — quorum log volume
@@ -126,14 +130,30 @@ spec:
       # ConfluentMetricsReporter publishes broker-side metrics to the
       # _confluent-metrics topic so C3 / SBC can read them. It needs
       # confluent.metrics.reporter.bootstrap.servers to know where the
-      # broker is — and on the controller that endpoint is the broker,
-      # which can't come up until the controller does. Same chicken-and-egg
-      # as A8. Strip it from the controller; brokers keep it. TelemetryReporter
-      # stays because it ships directly to Confluent's telemetry endpoint
-      # (no broker dependency). See runbook/LESSONS_LEARNED.md A9.
-      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter
-      - confluent.telemetry.enabled=true
-      - confluent.reporters.telemetry.auto.enable=true
+      # broker is — chicken-and-egg with the controller. Strip it from the
+      # controller (brokers keep it). See runbook/LESSONS_LEARNED.md A9.
+      #
+      # TelemetryReporter was kept after A9 because it ships directly to
+      # Confluent's hosted telemetry endpoint without needing a broker.
+      # However it requires Confluent telemetry API credentials, which
+      # FCB hasn't provisioned — without them the reporter logs an ERROR
+      # at startup ("API Key/Secret are missing for the exporter '_confluent'")
+      # and stays inert. Removed here for log cleanliness. Re-enable
+      # (with credentials) when Confluent telemetry is set up at FCB —
+      # see project memory `project_fcb_telemetry_audit_reenable_later`.
+      #
+      # No `metric.reporters` override → falls back to the operator default
+      # (no reporters on the controller). Brokers retain their own reporter
+      # config independently.
+      #
+      # Audit log provider is disabled here for the same chicken-and-egg
+      # reason — it publishes audit events to a Kafka topic and needs
+      # `confluent.security.event.logger.exporter.kafka.bootstrap.servers`
+      # to find the broker, which doesn't exist until controllers are up.
+      # The provider's startup failure is non-fatal (one-shot ERROR at
+      # boot) but pollutes logs. Brokers (which host the audit topic) keep
+      # the audit logger enabled. See runbook/LESSONS_LEARNED.md A12.
+      - confluent.security.event.logger.enable=false
   podTemplate:
     serviceAccountName: flink-operator
     # KRaft controllers handle metadata-log writes only (topic creates,
