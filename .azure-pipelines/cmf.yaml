@@ -202,6 +202,45 @@ stages:
                 CMF_ENC_KEY: $(${{ parameters.environment }}-cmf-encryption-key)
                 CMF_LICENSE: $(${{ parameters.environment }}-confluent-license)
 
+            - task: Bash@3
+              displayName: "Apply CMF UI Ingress (Certificate + Ingress)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  ENV_DIR="apps/confluent-cmf/$TARGET_ENV"
+
+                  # Two files, applied in order: Certificate first (Keyfactor
+                  # signs over ~minutes), then Ingress (consumes the Secret).
+                  # HAProxy router serves 503 for the host until the cert
+                  # Secret materializes — that's fine; the Ingress can land
+                  # immediately and the route flips Ready when cert-manager
+                  # finishes. We don't block the pipeline waiting for the
+                  # cert here because the manifests exist whether or not the
+                  # cert is signed yet; a follow-up run will materialize it.
+                  #
+                  # Both files only get applied if they exist in the env
+                  # directory (dev has them as of today; qa/uat/prd/dr will
+                  # be added per-env when those envs are ready to expose
+                  # CMF). See docs/OpenShift Ingress.pdf for the FCB pattern.
+                  for f in cmf-ingress-tls-certificate.yaml cmf-ingress.yaml; do
+                    if [ -f "$ENV_DIR/$f" ]; then
+                      echo ""
+                      echo "+ oc apply -f $ENV_DIR/$f"
+                      oc apply -f "$ENV_DIR/$f"
+                    else
+                      echo "(skip $f — not present in $ENV_DIR yet)"
+                    fi
+                  done
+
+                  echo ""
+                  echo "=== CMF Ingress status ==="
+                  oc get ingress -n "$OC_NS" -l app.kubernetes.io/part-of=confluent-manager-for-flink 2>&1 || true
+              env:
+                OC_NS: dah-flink-${{ parameters.environment }}
+                TARGET_ENV: ${{ parameters.environment }}
+
           - ${{ if eq(parameters.action, 'uninstall') }}:
             - task: Bash@3
               displayName: "Uninstall CMF"

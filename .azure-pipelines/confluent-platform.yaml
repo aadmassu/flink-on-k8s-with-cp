@@ -931,9 +931,16 @@ stages:
                   done
 
                   echo ""
-                  echo "=== Waiting for Keyfactor to issue all 6 *-tls Secrets ==="
+                  echo "=== Waiting for Keyfactor to issue all *-tls Secrets ==="
                   # Each cert may take a couple of minutes (approver-policy +
                   # Keyfactor RTT). Cap at 10 minutes total per secret.
+                  # Backend serving certs (6) + Ingress edge certs (5; broker
+                  # MDS, SR, Connect, REST, C3). Two distinct cert sets
+                  # because they cover different DNS names: backend covers
+                  # *.dah-flink-<env>.svc.cluster.local, edge covers the
+                  # public *.apps.<env-cluster>.ocp.fcbint.net host. See
+                  # docs/OpenShift Ingress.pdf and apps/confluent-platform/
+                  # <env>/ingress/.
                   TLS_SECRETS=(
                     kafka-tls
                     kraftcontroller-tls
@@ -941,6 +948,11 @@ stages:
                     connect-tls
                     kafkarest-tls
                     controlcenter-tls
+                    kafka-mds-ingress-tls
+                    schemaregistry-ingress-tls
+                    connect-ingress-tls
+                    kafkarest-ingress-tls
+                    controlcenter-ingress-tls
                   )
                   for s in "${TLS_SECRETS[@]}"; do
                     echo ""
@@ -1181,6 +1193,88 @@ stages:
                 TARGET_ENV: ${{ parameters.environment }}
                 APPLY_ALL: ${{ parameters.applyAll }}
                 APPLY_KRAFT_CONTROLLER: ${{ parameters.applyKRaftController }}
+                APPLY_KAFKA: ${{ parameters.applyKafka }}
+                APPLY_SCHEMA_REGISTRY: ${{ parameters.applySchemaRegistry }}
+                APPLY_CONNECT: ${{ parameters.applyConnect }}
+                APPLY_KAFKA_REST_PROXY: ${{ parameters.applyKafkaRestProxy }}
+                APPLY_CONTROL_CENTER: ${{ parameters.applyControlCenter }}
+
+            - task: Bash@3
+              displayName: "Apply public Ingresses (per-component, gated by checkboxes)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+
+                  # Same gating model as the CR apply step above — "All" master
+                  # overrides individual flags; otherwise honour each checkbox.
+                  # See apps/confluent-platform/<env>/ingress/ for the file set
+                  # and docs/OpenShift Ingress.pdf for the FCB pattern these
+                  # follow (ingressClassName=openshift-core-zone, reencrypt
+                  # termination, cert-manager-issued Secret via spec.tls.secretName).
+                  #
+                  # Ingress for a component is applied only when that component
+                  # itself is in scope. Applying the Ingress without its backend
+                  # CR isn't dangerous (HAProxy just returns 503 until the
+                  # Service exists) but it's noisy and the wait gates above
+                  # already ensure the CR is healthy before we get here.
+                  is_true() { [ "$1" = "True" ]; }
+
+                  APPLY_ALL=${APPLY_ALL:-True}
+                  if is_true "$APPLY_ALL"; then
+                    APPLY_KAFKA=True
+                    APPLY_SR=True
+                    APPLY_CONNECT=True
+                    APPLY_KREST=True
+                    APPLY_C3=True
+                  else
+                    APPLY_KAFKA=${APPLY_KAFKA:-False}
+                    APPLY_SR=${APPLY_SCHEMA_REGISTRY:-False}
+                    APPLY_CONNECT=${APPLY_CONNECT:-False}
+                    APPLY_KREST=${APPLY_KAFKA_REST_PROXY:-False}
+                    APPLY_C3=${APPLY_CONTROL_CENTER:-False}
+                  fi
+
+                  apply_if() {
+                    local flag=$1
+                    local file=$2
+                    local label=$3
+                    if is_true "$flag"; then
+                      if [ -f "$ENV_DIR/ingress/$file" ]; then
+                        echo ""
+                        echo "+ oc apply -f $ENV_DIR/ingress/$file"
+                        oc apply -f "$ENV_DIR/ingress/$file"
+                      else
+                        echo "(skip $label — $ENV_DIR/ingress/$file not present in this env yet)"
+                      fi
+                    else
+                      echo "($label Ingress skipped — checkbox off)"
+                    fi
+                  }
+
+                  echo "=== Apply Ingress CRs (one per CFK component UI/REST) ==="
+                  apply_if "$APPLY_KAFKA"   kafka-mds-ingress.yaml      "Kafka MDS"
+                  apply_if "$APPLY_SR"      schemaregistry-ingress.yaml "Schema Registry"
+                  apply_if "$APPLY_CONNECT" connect-ingress.yaml        "Kafka Connect"
+                  apply_if "$APPLY_KREST"   kafkarest-ingress.yaml      "Kafka REST Proxy"
+                  apply_if "$APPLY_C3"      controlcenter-ingress.yaml  "Control Center"
+
+                  echo ""
+                  echo "=== Ingress status ==="
+                  oc get ingress -n "$OC_NS" 2>&1 || true
+
+                  echo ""
+                  echo "NOTE: public hostnames follow the Container Team's"
+                  echo "Internal-OCP pattern from docs/OpenShift Ingress.pdf:"
+                  echo "  <component>.apps.<env-cluster>.ocp.fcbint.net"
+                  echo "DNS is automatic via the cluster wildcard for dev/qa;"
+                  echo "UAT/PRD add Floating-DNS CNAMEs per the PDF."
+              env:
+                OC_NS: $(openshift-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+                APPLY_ALL: ${{ parameters.applyAll }}
                 APPLY_KAFKA: ${{ parameters.applyKafka }}
                 APPLY_SCHEMA_REGISTRY: ${{ parameters.applySchemaRegistry }}
                 APPLY_CONNECT: ${{ parameters.applyConnect }}

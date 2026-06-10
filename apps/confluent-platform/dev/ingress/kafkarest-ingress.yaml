@@ -1,0 +1,34 @@
+---
+# Ingress exposing Kafka REST Proxy publicly — dev.
+# Backend serves HTTPS on 8082 with kafkarest-tls → reencrypt.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kafkarest
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/instance: kafkarest
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    route.openshift.io/termination: reencrypt
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+    - host: kafkarest.apps.dv-p.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: kafkarest
+                port:
+                  number: 8082
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - kafkarest.apps.dv-p.ocp.fcbint.net
+      secretName: kafkarest-ingress-tls
