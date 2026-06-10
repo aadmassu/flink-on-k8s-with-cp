@@ -10,9 +10,6 @@ The six **cert-manager Certificate CRs** that produce the `*-tls`
 Secrets have moved to [`../cert-manager/`](../cert-manager/). See that
 README for the TLS side.
 
-The `precreated-pvcs/` subdirectory here is an unrelated experimental
-artifact (untracked) — see its own README for status.
-
 ## Non-TLS Secrets — pipeline-created (temporary)
 
 Eleven Opaque Secrets the CFK CRs reference for OAuth, SASL, license, MDS token signing, and Control Center basic auth. **CyberArk via ESO is the target**; until that's wired up, the `confluent-platform` pipeline `action: create-prereqs` creates them from secret variables in the `kafka-openshift-credentials-<env>` variable group.
