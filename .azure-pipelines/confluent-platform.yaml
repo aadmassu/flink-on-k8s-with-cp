@@ -82,6 +82,65 @@ parameters:
     # scenario; runbook/LESSONS_LEARNED.md E3). Leave `false` for normal
     # operation so a genuine operator bug fails the pipeline loudly.
 
+  # ----------------------------------------------------------------------
+  # Install: per-component checkboxes
+  # ----------------------------------------------------------------------
+  # When action=install, these select which Confluent Platform components
+  # are applied. ALL DEFAULT TO TRUE so a plain "install" run behaves
+  # exactly as before — applies the whole stack in dependency order.
+  #
+  # For upgrades or targeted re-apply, uncheck the components you don't
+  # want to touch. The pipeline still phases the apply correctly:
+  #   - If applyKraftController OR applyKafka is checked, the pipeline
+  #     waits for kraftcontroller cluster-ready before continuing.
+  #   - If applyKafka OR any phase 2 component (SR / Connect / REST / C3)
+  #     is checked, the pipeline waits for kafka cluster-ready before
+  #     applying any phase 2 component.
+  # This means a "Schema Registry only" upgrade still confirms Kafka is
+  # healthy before it touches SR — SR never gets restarted against a
+  # broken broker.
+  #
+  # Cluster-upgrade order (Confluent recommended): KRaft Controller →
+  # Kafka Broker → Schema Registry / Connect / REST Proxy → Control
+  # Center. Run the pipeline multiple times, each with the next stage
+  # checked, instead of a big-bang re-apply.
+  #
+  # These parameters are IGNORED when action != install.
+
+  - name: applyKRaftController
+    displayName: "Install: KRaft Controller"
+    type: boolean
+    default: true
+
+  - name: applyKafka
+    displayName: "Install: Kafka Broker"
+    type: boolean
+    default: true
+    # When true, also applies kafkarestclass.yaml (the KafkaRestClass CR
+    # the broker advertises, referenced by Control Center). KafkaRestClass
+    # is a config CR with no pods of its own — not exposed as a separate
+    # checkbox.
+
+  - name: applySchemaRegistry
+    displayName: "Install: Schema Registry"
+    type: boolean
+    default: true
+
+  - name: applyConnect
+    displayName: "Install: Kafka Connect"
+    type: boolean
+    default: true
+
+  - name: applyKafkaRestProxy
+    displayName: "Install: Kafka REST Proxy"
+    type: boolean
+    default: true
+
+  - name: applyControlCenter
+    displayName: "Install: Control Center"
+    type: boolean
+    default: true
+
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: kafka-openshift-credentials-dev
@@ -894,6 +953,40 @@ stages:
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
+                  # Per-component selectors — passed from pipeline parameters
+                  # via env. ADO serializes a boolean parameter as the literal
+                  # string "True" or "False" (capitalized), so compare against
+                  # that exact form. Default in the parameter declarations is
+                  # `true` for every component, so a plain "install" run with
+                  # nothing unchecked applies the entire stack — current
+                  # behavior preserved.
+                  APPLY_KRAFT=${APPLY_KRAFT_CONTROLLER:-True}
+                  APPLY_KAFKA=${APPLY_KAFKA:-True}
+                  APPLY_SR=${APPLY_SCHEMA_REGISTRY:-True}
+                  APPLY_CONNECT=${APPLY_CONNECT:-True}
+                  APPLY_KREST=${APPLY_KAFKA_REST_PROXY:-True}
+                  APPLY_C3=${APPLY_CONTROL_CENTER:-True}
+
+                  is_true() { [ "$1" = "True" ]; }
+
+                  echo "=== Components selected for this install run ==="
+                  printf "  %-22s %s\n" "KRaft Controller"  "$APPLY_KRAFT"
+                  printf "  %-22s %s\n" "Kafka Broker"      "$APPLY_KAFKA"
+                  printf "  %-22s %s\n" "Schema Registry"   "$APPLY_SR"
+                  printf "  %-22s %s\n" "Kafka Connect"     "$APPLY_CONNECT"
+                  printf "  %-22s %s\n" "Kafka REST Proxy"  "$APPLY_KREST"
+                  printf "  %-22s %s\n" "Control Center"    "$APPLY_C3"
+                  echo ""
+
+                  if ! is_true "$APPLY_KRAFT" && ! is_true "$APPLY_KAFKA" \
+                     && ! is_true "$APPLY_SR" && ! is_true "$APPLY_CONNECT" \
+                     && ! is_true "$APPLY_KREST" && ! is_true "$APPLY_C3"; then
+                    echo "ERROR: no components selected — every component checkbox is off."
+                    echo "Check at least one Install: <component> box on the pipeline run dialog,"
+                    echo "or use the defaults (all checked) for a full install."
+                    exit 1
+                  fi
+
                   # Why this is phased:
                   # CFK applies CRs independently and the operator reconciles
                   # them in parallel. If we apply schemaregistry / connect /
@@ -962,35 +1055,78 @@ stages:
                   }
 
                   echo "=== Phase 1: KRaftController + Kafka ==="
-                  PHASE1=(
-                    kafkarestclass.yaml
-                    kraftcontroller.yaml
-                    kafka.yaml
-                  )
-                  for f in "${PHASE1[@]}"; do
+                  if is_true "$APPLY_KRAFT"; then
                     echo ""
-                    echo "+ oc apply -f $ENV_DIR/$f"
-                    oc apply -f "$ENV_DIR/$f"
-                  done
+                    echo "+ oc apply -f $ENV_DIR/kraftcontroller.yaml"
+                    oc apply -f "$ENV_DIR/kraftcontroller.yaml"
+                  else
+                    echo "(KRaft Controller skipped — checkbox off)"
+                  fi
+                  if is_true "$APPLY_KAFKA"; then
+                    # kafkarestclass.yaml is config-only (no pods), bundled
+                    # with Kafka because the Kafka CR advertises it.
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/kafkarestclass.yaml"
+                    oc apply -f "$ENV_DIR/kafkarestclass.yaml"
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/kafka.yaml"
+                    oc apply -f "$ENV_DIR/kafka.yaml"
+                  else
+                    echo "(Kafka Broker skipped — checkbox off; kafkarestclass.yaml also not applied)"
+                  fi
 
-                  # KRaftController first — Kafka can't go ready until its
-                  # controllers can serve metadata.
-                  wait_for_cr_ready kraftcontroller kraftcontroller 900
-                  wait_for_cr_ready kafka kafka 900
+                  # KRaftController readiness gate. Needed if we just applied
+                  # it (verify the new spec converged) OR if we're about to
+                  # apply Kafka (Kafka can't go ready until its controllers
+                  # can serve metadata). Skipped when the user is upgrading
+                  # only a phase 2 component — kraft is assumed already
+                  # healthy and the kafka wait below would catch it anyway.
+                  if is_true "$APPLY_KRAFT" || is_true "$APPLY_KAFKA"; then
+                    wait_for_cr_ready kraftcontroller kraftcontroller 900
+                  fi
+
+                  # Kafka readiness gate. Needed before ANY phase 2 component
+                  # gets applied — same gotcha as runbook A14: SR/Connect/
+                  # REST/C3 pods that start against an unready Kafka go into
+                  # CrashLoopBackOff before brokers open. Wait even when the
+                  # user is "only upgrading SR" so SR's pod restart lands on
+                  # a healthy broker, not a sick one.
+                  if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
+                     || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
+                     || is_true "$APPLY_C3"; then
+                    wait_for_cr_ready kafka kafka 900
+                  fi
 
                   echo ""
                   echo "=== Phase 2: Schema Registry, Connect, REST Proxy, Control Center ==="
-                  PHASE2=(
-                    schemaregistry.yaml
-                    connect.yaml
-                    kafkarest.yaml
-                    controlcenter.yaml
-                  )
-                  for f in "${PHASE2[@]}"; do
+                  if is_true "$APPLY_SR"; then
                     echo ""
-                    echo "+ oc apply -f $ENV_DIR/$f"
-                    oc apply -f "$ENV_DIR/$f"
-                  done
+                    echo "+ oc apply -f $ENV_DIR/schemaregistry.yaml"
+                    oc apply -f "$ENV_DIR/schemaregistry.yaml"
+                  else
+                    echo "(Schema Registry skipped — checkbox off)"
+                  fi
+                  if is_true "$APPLY_CONNECT"; then
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/connect.yaml"
+                    oc apply -f "$ENV_DIR/connect.yaml"
+                  else
+                    echo "(Kafka Connect skipped — checkbox off)"
+                  fi
+                  if is_true "$APPLY_KREST"; then
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/kafkarest.yaml"
+                    oc apply -f "$ENV_DIR/kafkarest.yaml"
+                  else
+                    echo "(Kafka REST Proxy skipped — checkbox off)"
+                  fi
+                  if is_true "$APPLY_C3"; then
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/controlcenter.yaml"
+                    oc apply -f "$ENV_DIR/controlcenter.yaml"
+                  else
+                    echo "(Control Center skipped — checkbox off)"
+                  fi
 
                   echo ""
                   echo "=== Cluster status (immediate post-apply) ==="
@@ -1009,6 +1145,12 @@ stages:
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
+                APPLY_KRAFT_CONTROLLER: ${{ parameters.applyKRaftController }}
+                APPLY_KAFKA: ${{ parameters.applyKafka }}
+                APPLY_SCHEMA_REGISTRY: ${{ parameters.applySchemaRegistry }}
+                APPLY_CONNECT: ${{ parameters.applyConnect }}
+                APPLY_KAFKA_REST_PROXY: ${{ parameters.applyKafkaRestProxy }}
+                APPLY_CONTROL_CENTER: ${{ parameters.applyControlCenter }}
 
           - ${{ if eq(parameters.action, 'uninstall') }}:
             - task: Bash@3

@@ -153,6 +153,16 @@ minutes to clear. The `confluent-platform.yaml` pipeline encodes the
 phased order below — these checkboxes mirror what the pipeline does
 so a manual recovery follows the same shape.
 
+> **Targeted upgrades**: the install action exposes per-component
+> checkboxes (KRaft Controller / Kafka Broker / Schema Registry /
+> Kafka Connect / Kafka REST Proxy / Control Center). All default
+> to checked — a plain install run applies everything as before.
+> For a cluster upgrade, run the pipeline once per stage with only
+> the components for that stage checked: kraft first, then kafka,
+> then SR/Connect/REST in parallel, then C3. The pipeline still
+> enforces the readiness gates between stages even when only one
+> downstream component is selected.
+
 1. [ ] All ExternalSecrets — wait for every one to report `Ready=True`
 2. [ ] TLS secrets (KeyFactor cert-manager Certificates) — wait for
        `Ready=True` on the underlying Secret
