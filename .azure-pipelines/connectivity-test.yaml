@@ -15,6 +15,10 @@
 #   <env>-schema-registry-hosts     — comma-separated Schema Registry hostnames
 #   <env>-kafka-rest-proxy-hosts    — comma-separated Kafka REST Proxy hostnames
 #   <env>-net-app-s3-url            — NetApp S3 endpoint URL
+#   kafka-oauthbearer-token-endpoint-url — Okta OAuth token endpoint (full URL).
+#                                          Same value across all envs today;
+#                                          per-env so a future tenant migration
+#                                          rolls forward env-by-env.
 
 trigger: none
 
@@ -259,13 +263,16 @@ stages:
                 S3_HOST=$(echo "$S3_URL" | sed -E 's|^https?://||; s|/.*$||')
                 test_dns "$S3_HOST" "NetApp S3"
 
-                # Okta tenant — same across all envs (per VM .properties files).
-                # Hardcoded rather than a variable-group entry because the value
-                # is invariant; the OAuth scope / audience / client ID change per
-                # env but the host doesn't.
+                # Okta tenant — host extracted from the OAuth token endpoint
+                # URL the brokers / SR / Connect / REST / C3 / Flink jobs all
+                # post to. Variable lives in kafka-openshift-credentials-<env>
+                # as `kafka-oauthbearer-token-endpoint-url` (same value across
+                # envs today, but per-env so a future tenant migration can be
+                # rolled forward env-by-env without code change).
                 echo ""
-                echo "=== Okta (myapps.firstcitizens.com) ==="
-                test_dns "myapps.firstcitizens.com" "Okta tenant"
+                echo "=== Okta (OAuth token endpoint host) ==="
+                OKTA_HOST=$(echo "$OAUTH_TOKEN_URL" | sed -E 's|^https?://||; s|/.*$||')
+                test_dns "$OKTA_HOST" "Okta tenant"
 
                 echo ""
                 echo "=== DNS resolution test complete ==="
@@ -276,6 +283,7 @@ stages:
               SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
               REST_PROXY_HOSTS: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
               S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
+              OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
 
           - task: Bash@3
             displayName: "Connectivity Test"
@@ -327,17 +335,23 @@ stages:
                 S3_HOST=$(echo "$S3_URL" | sed -E 's|^https?://||; s|/.*$||')
                 test_connection "$S3_HOST" 443 "NetApp S3 (HTTPS)"
 
-                # Okta token endpoint — same host across all envs. CFK brokers,
-                # SR, Connect, REST, C3 and Flink jobs ALL need this reachable
-                # to fetch OAuth tokens. Today's aep-rate-limit-job failure
-                # was a `Connection timed out` against this exact host on 443,
-                # so the test serves as a fast pre-check before any rollout.
-                # An end-to-end token fetch test (HTTPS handshake + JWKS GET)
-                # belongs in a separate verify-* pipeline once the trust-store
-                # work lands — connectivity-test stays scope-bounded to L4.
+                # Okta token endpoint — CFK brokers, SR, Connect, REST, C3 and
+                # Flink jobs ALL post here for OAuth tokens. Today's
+                # aep-rate-limit-job failure was a `Connection timed out`
+                # against this exact host on 443, so the test serves as a fast
+                # pre-check before any rollout. Host extracted from the full
+                # URL variable (`kafka-oauthbearer-token-endpoint-url` in
+                # kafka-openshift-credentials-<env>); we only need host:443
+                # here, but parameterizing on the same variable the apps use
+                # means there's only one place to update if the tenant ever
+                # moves. An end-to-end token fetch test (HTTPS handshake +
+                # JWKS GET) belongs in a separate verify-* pipeline once the
+                # trust-store work lands — connectivity-test stays scope-
+                # bounded to L4.
                 echo ""
-                echo "=== Okta (myapps.firstcitizens.com) ==="
-                test_connection "myapps.firstcitizens.com" 443 "Okta tenant (HTTPS)"
+                echo "=== Okta (OAuth token endpoint host) ==="
+                OKTA_HOST=$(echo "$OAUTH_TOKEN_URL" | sed -E 's|^https?://||; s|/.*$||')
+                test_connection "$OKTA_HOST" 443 "Okta tenant (HTTPS)"
 
                 echo ""
                 echo "=== Connectivity test complete ==="
@@ -348,3 +362,4 @@ stages:
               SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
               REST_PROXY_HOSTS: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
               S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
+              OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
