@@ -319,6 +319,72 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   yet-running broker; that just delays the failure to first-poll
   rather than first-init.
 
+### A13. Prereq Secret stuck in Terminating after uninstall blocks next install
+
+* **Symptom**: a fresh `action=install` run fails to bring up the
+  CFK stack. The kraftcontroller (or another stack CR) reports:
+  ```
+  type: platform.confluent.io/cluster-ready
+  status: 'False'
+  reason: ApplyFailed
+  message: 'Secret "cfk-license" is invalid: metadata.finalizers:
+    Forbidden: no new finalizers can be added if the object is being
+    deleted, found new finalizers []string{
+      "secret.finalizers.platform.confluent.io/kraftcontroller-kraftcontroller"
+    }'
+  ```
+  `oc get secret cfk-license -o yaml` shows the Secret with a
+  `deletionTimestamp` set but still present in the namespace, with
+  a single `secret.finalizers.platform.confluent.io/<cr>-<cr>`
+  finalizer (referencing whichever CR last claimed it — Connect in
+  the dev case captured 2026-06-09).
+* **Root cause**: the previous `action=uninstall` deleted a CFK CR
+  that had been registered as an **owner** of the Secret (via
+  `metadata.ownerReferences`). Kubernetes garbage collection saw
+  the owner go away and queued the Secret for deletion (set its
+  `deletionTimestamp`). The CFK operator's cleanup step — which
+  should remove its own `secret.finalizers.platform.confluent.io/...`
+  finalizer from the Secret before the deletion can finalize —
+  didn't complete (operator crashed mid-reconcile, lost the watch,
+  or just didn't get scheduled before the next install began). The
+  Secret is now "dead but not gone": API returns it, the API
+  server's gc'er is waiting on the finalizer, and the next
+  install's reconcile that tries to ADD its own finalizer to track
+  Secret dependency gets rejected — Kubernetes hard rule: **no new
+  finalizers may be added once `deletionTimestamp` is set.**
+* **Fix**: drop the lingering finalizer so the Secret completes
+  deletion, then re-create it fresh via `action=create-prereqs`.
+  The pipeline now ships a dedicated action for this — kafka team
+  has no shell access, so it's pipeline-driven:
+  ```
+  confluent-platform.yaml  action: clear-stuck-prereq-finalizers
+  ```
+  This action finds every Secret in the namespace with a
+  `deletionTimestamp` set and patches its `metadata.finalizers` to
+  `[]` (uses `oc patch ... --type=json -p '[{"op":"remove","path":"/metadata/finalizers"}]'`).
+  Nothing live is touched — only Secrets the gc'er already wants
+  gone. Sequence to recover: `clear-stuck-prereq-finalizers`
+  → `create-prereqs` → `install`.
+* **Why it matters**: the kraftcontroller log line ("Secret X is
+  invalid: metadata.finalizers: Forbidden: no new finalizers...")
+  is buried inside the CR's `status.conditions.message` field
+  and easy to miss when scrolling raw `oc get -o yaml` output. The
+  diagnostic step now flags any Secret with `deletionTimestamp` at
+  the TOP of the dump (under `=== Pre-flight: Secrets stuck in
+  Terminating? ===`), so the next person hits this in seconds
+  instead of an hour. The license content itself was fine — same
+  base64-encoded JWT survives across the delete/recreate cycle.
+* **Why this happens at all (design observation)**: a shared prereq
+  Secret like `cfk-license` carrying an `ownerReferences` to a
+  single CR (e.g. Connect) is fragile — deleting that CR cascades
+  to the Secret, breaking every OTHER CR that also references it.
+  This appears to be how the CFK operator wires up Secret
+  dependencies at FCB's version, and we don't control it. The
+  defensive posture is to assume any uninstall *might* strand
+  prereq Secrets, run `clear-stuck-prereq-finalizers` defensively
+  between uninstall and the next install, and never count on the
+  uninstall pipeline's own finalizer-cleanup being complete.
+
 ---
 
 ## B. FCB Gatekeeper policies

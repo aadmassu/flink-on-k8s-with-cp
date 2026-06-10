@@ -45,7 +45,20 @@ parameters:
     # existing PVCs by name), which FCB Gatekeeper's [ceph-storage]
     # policy rejects ("storage class name <dummy>"). Run AFTER uninstall
     # and BEFORE install.
-    values: [create-prereqs, install, uninstall, wipe-pvcs]
+    #
+    # clear-stuck-prereq-finalizers: recover from a stuck prereq Secret
+    # left in Terminating state after an uninstall. Cascade-delete via
+    # ownerReferences plus a CFK-stamped finalizer
+    # (`secret.finalizers.platform.confluent.io/<cr>-<cr>`) can leave a
+    # Secret with a deletionTimestamp set but not actually finalize.
+    # The next install attempt's reconcile then fails with
+    # "Secret X is invalid: metadata.finalizers: Forbidden: no new
+    # finalizers can be added if the object is being deleted". This
+    # action finds every Secret in the namespace that carries a
+    # deletionTimestamp and patches its finalizers to []. The Secret
+    # then completes deletion; the next `create-prereqs` re-creates it
+    # fresh. See runbook/LESSONS_LEARNED.md A13.
+    values: [create-prereqs, install, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers]
   - name: forceFinalizerRemoval
     displayName: "Uninstall: force-clear finalizers on timeout"
     type: boolean
@@ -409,6 +422,31 @@ stages:
                   # just log state. set +e so a missing CR or secret prints
                   # an error line but doesn't abort the pipeline.
                   set +e
+
+                  # FIRST PASS: any Secret stuck in Terminating state will
+                  # block the next install reconcile with a "no new
+                  # finalizers can be added if the object is being deleted"
+                  # error from the API server. Surface it at the TOP of
+                  # the diagnostic output so it's the first thing seen,
+                  # rather than buried 1300+ lines down in a CR condition
+                  # message. See runbook/LESSONS_LEARNED.md A13 and
+                  # action=clear-stuck-prereq-finalizers for the recovery.
+                  echo "=== Pre-flight: Secrets stuck in Terminating? ==="
+                  STUCK_SECRETS=$(oc -n "$OC_NS" get secrets \
+                    -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\t"}{.metadata.deletionTimestamp}{"\t"}{.metadata.finalizers}{"\n"}{end}' \
+                    2>/dev/null)
+                  if [ -z "$STUCK_SECRETS" ]; then
+                    echo "OK — no Secrets in $OC_NS carry a deletionTimestamp."
+                  else
+                    echo "WARNING — the following Secrets are stuck in Terminating:"
+                    printf "%-40s %-25s %s\n" "NAME" "deletionTimestamp" "finalizers"
+                    echo "$STUCK_SECRETS" | awk -F '\t' 'NF>=3 {printf "%-40s %-25s %s\n", $1, $2, $3}'
+                    echo ""
+                    echo "The next install reconcile will fail trying to add new finalizers to these."
+                    echo "Recovery: re-run this pipeline with action=clear-stuck-prereq-finalizers,"
+                    echo "then action=create-prereqs to re-provision, then action=install."
+                  fi
+                  echo ""
 
                   echo "=== Secret: sasl-plain-internal — keys ==="
                   echo "(expected: kafka-server-listener-internal-plain-users.json)"
@@ -1057,6 +1095,117 @@ stages:
                   echo ""
                   echo "=== Remaining PVCs in $OC_NS ==="
                   oc -n "$OC_NS" get pvc 2>&1 || true
+              env:
+                OC_NS: $(openshift-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+
+          - ${{ if eq(parameters.action, 'clear-stuck-prereq-finalizers') }}:
+            - task: Bash@3
+              displayName: "Clear finalizers on Secrets stuck in Terminating"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  # Why this exists:
+                  # After an uninstall, a prereq Secret can be left in
+                  # Terminating state — deletionTimestamp is set (because
+                  # K8s gc'd it via an ownerReferences cascade when its
+                  # owning CR was deleted), but a CFK-stamped finalizer
+                  # (`secret.finalizers.platform.confluent.io/<cr>-<cr>`)
+                  # is still on it, blocking the actual deletion. The next
+                  # install reconcile then fails with:
+                  #   Secret "<name>" is invalid: metadata.finalizers:
+                  #   Forbidden: no new finalizers can be added if the
+                  #   object is being deleted, found new finalizers
+                  #   []string{"secret.finalizers.platform.confluent.io/<cr>-<cr>"}
+                  # See runbook/LESSONS_LEARNED.md A13 for full diagnostic
+                  # walk-through (cfk-license on 2026-06-09 was the first
+                  # case captured in dah-flink-dev).
+                  #
+                  # This action finds every Secret in the namespace with
+                  # a deletionTimestamp set and patches its finalizers to
+                  # []. The Secret then completes its already-in-progress
+                  # deletion; nothing live is touched. Re-run create-prereqs
+                  # afterward to re-provision the Secrets fresh.
+
+                  echo "=== Scanning $OC_NS for Secrets stuck in Terminating ==="
+                  # A Secret is "stuck Terminating" iff metadata.deletionTimestamp
+                  # is set. List names + finalizers so the log shows what's
+                  # about to be cleared.
+                  STUCK=$(oc -n "$OC_NS" get secrets \
+                    -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\n"}{end}' \
+                    2>/dev/null)
+
+                  if [ -z "$STUCK" ]; then
+                    echo "No Secrets in $OC_NS have a deletionTimestamp set — nothing to clear."
+                    echo "(If you came here expecting stuck Secrets, double-check the namespace via the openshift-namespace variable group entry.)"
+                    exit 0
+                  fi
+
+                  echo ""
+                  echo "Found stuck Secrets:"
+                  while IFS= read -r sec; do
+                    [ -z "$sec" ] && continue
+                    DT=$(oc -n "$OC_NS" get secret "$sec" -o jsonpath='{.metadata.deletionTimestamp}' 2>/dev/null)
+                    FZ=$(oc -n "$OC_NS" get secret "$sec" -o jsonpath='{.metadata.finalizers}' 2>/dev/null)
+                    echo "  $sec  (deletionTimestamp=$DT  finalizers=$FZ)"
+                  done <<< "$STUCK"
+
+                  echo ""
+                  echo "=== Patching each to drop all finalizers ==="
+                  CLEARED=0
+                  FAILED=0
+                  while IFS= read -r sec; do
+                    [ -z "$sec" ] && continue
+                    echo ""
+                    echo "+ oc -n $OC_NS patch secret $sec --type=json -p '[{\"op\":\"remove\",\"path\":\"/metadata/finalizers\"}]'"
+                    if oc -n "$OC_NS" patch secret "$sec" \
+                        --type=json -p '[{"op":"remove","path":"/metadata/finalizers"}]' 2>&1; then
+                      CLEARED=$((CLEARED+1))
+                    else
+                      # Already-no-finalizers case returns a non-zero "remove from empty array"
+                      # error — try the merge-style null patch as a fallback before declaring failure.
+                      if oc -n "$OC_NS" patch secret "$sec" --type=merge \
+                          -p '{"metadata":{"finalizers":null}}' 2>&1; then
+                        CLEARED=$((CLEARED+1))
+                      else
+                        echo "FAIL: could not patch finalizers on $sec"
+                        FAILED=$((FAILED+1))
+                      fi
+                    fi
+                  done <<< "$STUCK"
+
+                  # Give the API server a moment to GC the cleared Secrets.
+                  sleep 2
+
+                  echo ""
+                  echo "=== Verification: any Secrets still stuck? ==="
+                  STILL=$(oc -n "$OC_NS" get secrets \
+                    -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\n"}{end}' \
+                    2>/dev/null)
+                  if [ -z "$STILL" ]; then
+                    echo "Clean — no Secrets carry a deletionTimestamp anymore."
+                  else
+                    echo "Some Secrets still report deletionTimestamp (may finalize on next API server tick):"
+                    echo "$STILL" | sed 's/^/  /'
+                  fi
+
+                  echo ""
+                  echo "=== Summary ==="
+                  echo "  Cleared: $CLEARED"
+                  echo "  Failed:  $FAILED"
+                  echo ""
+                  echo "Next steps:"
+                  echo "  1. Re-run this pipeline with action=create-prereqs to re-provision the Secrets."
+                  echo "  2. Then action=install to bring the CFK stack back."
+                  echo ""
+                  echo "If anything failed above, the affected Secret may have a non-Confluent finalizer"
+                  echo "blocking removal — investigate with: oc -n $OC_NS get secret <name> -o yaml"
+
+                  if [ "$FAILED" -ne 0 ]; then
+                    exit 1
+                  fi
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
