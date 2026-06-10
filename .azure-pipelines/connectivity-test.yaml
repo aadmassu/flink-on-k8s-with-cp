@@ -226,13 +226,36 @@ stages:
               script: |
                 set -uo pipefail
 
+                # busybox nslookup walks every entry in resolv.conf's search
+                # path. If ANY single attempt returns NXDOMAIN it exits 1,
+                # even when another search-domain variant returned a valid
+                # answer. So we ignore the exit code and check for an
+                # "Address:" line in the output instead — exactly one of
+                # those means the host was resolved.
                 test_dns() {
                   local host=$1
                   local label=$2
                   echo ""
                   echo "--- $label: $host ---"
-                  oc exec busybox -n "$OC_NS" -- nslookup "$host" 2>&1 || echo "FAIL: DNS lookup failed for $host"
+                  local out
+                  out=$(oc exec busybox -n "$OC_NS" -- nslookup "$host" 2>&1)
+                  echo "$out"
+                  # The first "Address:" line is the DNS server itself
+                  # (e.g. 10.245.0.10:53). A second one means a real
+                  # resolution happened. Count and act accordingly.
+                  if [ "$(echo "$out" | grep -c '^Address')" -ge 2 ]; then
+                    echo "OK: DNS resolved $host"
+                  else
+                    echo "FAIL: DNS lookup failed for $host"
+                  fi
                 }
+
+                # Some variable-group entries carry a host:port string
+                # (Confluent bootstrap.servers format — e.g.
+                # `d11547varc-pgm8.fcpd.fcbint.net:9094`). nslookup chokes
+                # on that. Strip the port for DNS / TCP probes — the test
+                # passes the port explicitly below.
+                strip_port() { echo "${1%%:*}"; }
 
                 echo "=== SQL Server ==="
                 test_dns "$DB_HOST" "SQL Server"
@@ -241,7 +264,7 @@ stages:
                 echo "=== Kafka Brokers ==="
                 IFS=',' read -ra BROKERS <<< "$KAFKA_BROKERS"
                 for broker in "${BROKERS[@]}"; do
-                  test_dns "$broker" "Kafka broker"
+                  test_dns "$(strip_port "$broker")" "Kafka broker"
                 done
 
                 echo ""
@@ -305,6 +328,12 @@ stages:
                   fi
                 }
 
+                # See DNS step for context — some variable-group entries
+                # carry a host:port suffix (Confluent bootstrap.servers
+                # format). Strip it; the test passes the actual port we
+                # want to probe explicitly below.
+                strip_port() { echo "${1%%:*}"; }
+
                 echo "=== SQL Server ==="
                 test_connection "$DB_HOST" 3085 "SQL Server"
 
@@ -312,8 +341,9 @@ stages:
                 echo "=== Kafka Brokers ==="
                 IFS=',' read -ra BROKERS <<< "$KAFKA_BROKERS"
                 for broker in "${BROKERS[@]}"; do
-                  test_connection "$broker" 9092 "Kafka broker (plaintext)"
-                  test_connection "$broker" 9094 "Kafka broker (TLS)"
+                  broker_host=$(strip_port "$broker")
+                  test_connection "$broker_host" 9092 "Kafka broker (plaintext)"
+                  test_connection "$broker_host" 9094 "Kafka broker (TLS)"
                 done
 
                 echo ""
