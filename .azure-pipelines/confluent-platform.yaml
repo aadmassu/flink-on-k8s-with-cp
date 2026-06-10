@@ -886,7 +886,7 @@ stages:
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
-              displayName: "Apply Confluent Platform CRs"
+              displayName: "Apply Confluent Platform CRs (phased — wait for Kafka before SR/Connect/REST/C3)"
               inputs:
                 targetType: inline
                 script: |
@@ -894,20 +894,99 @@ stages:
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
-                  echo "=== Apply order (CFK dependency order) ==="
-                  # CFK reconciles in dependency order, but applying in the
-                  # right sequence makes failures easier to attribute to the
-                  # right component.
-                  APPLY_ORDER=(
+                  # Why this is phased:
+                  # CFK applies CRs independently and the operator reconciles
+                  # them in parallel. If we apply schemaregistry / connect /
+                  # kafkarest / controlcenter at the same time as kafka, their
+                  # pods start while Kafka brokers are still booting and they
+                  # immediately try to talk to a non-existent bootstrap.
+                  # Schema Registry in particular crashes after its
+                  # kafkastore.init.timeout.ms (~60s by default), gets
+                  # restarted, and goes into CrashLoopBackOff — which the next
+                  # diagnostic dump then reports as "SR is broken" when really
+                  # it just started too soon. Pod-level fix would be an
+                  # initContainer that waits on the broker port, but CFK 3.1.x
+                  # CRDs don't allow initContainer overrides (runbook A3).
+                  # So we gate at the pipeline level: apply the controller +
+                  # Kafka first, wait for cluster-ready on both, THEN apply
+                  # the dependent CRs.
+                  #
+                  # cluster-ready condition: CFK 3.x publishes
+                  # `platform.confluent.io/cluster-ready` on each CR's
+                  # status.conditions array. status=True means the CR's
+                  # underlying resources are healthy and ready to take
+                  # traffic. We poll for that string explicitly rather than
+                  # using `oc wait`, because the slash in the condition type
+                  # name doesn't always survive `oc wait`'s parser.
+
+                  wait_for_cr_ready() {
+                    local kind=$1
+                    local name=$2
+                    local timeout=$3
+                    local elapsed=0
+                    local step=10
+
+                    echo ""
+                    echo "=== Waiting up to ${timeout}s for $kind/$name to report cluster-ready ==="
+                    while [ "$elapsed" -lt "$timeout" ]; do
+                      local status
+                      status=$(oc -n "$OC_NS" get "$kind" "$name" \
+                        -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status}' \
+                        2>/dev/null)
+                      if [ "$status" = "True" ]; then
+                        echo "  $kind/$name cluster-ready=True after ${elapsed}s."
+                        return 0
+                      fi
+
+                      # Heartbeat every 60s — show what's holding the CR up
+                      # so the pipeline log is useful when watching live.
+                      if [ "$elapsed" -gt 0 ] && [ $((elapsed % 60)) -eq 0 ]; then
+                        echo "  ${elapsed}s elapsed, $kind/$name not yet ready. Current conditions:"
+                        oc -n "$OC_NS" get "$kind" "$name" \
+                          -o jsonpath='{range .status.conditions[*]}    {.type}={.status} ({.reason}: {.message}){"\n"}{end}' \
+                          2>/dev/null
+                      fi
+                      sleep "$step"
+                      elapsed=$((elapsed + step))
+                    done
+
+                    echo ""
+                    echo "ERROR: $kind/$name did not reach cluster-ready=True within ${timeout}s."
+                    echo "Final conditions:"
+                    oc -n "$OC_NS" get "$kind" "$name" \
+                      -o jsonpath='{range .status.conditions[*]}    {.type}={.status} ({.reason}: {.message}){"\n"}{end}' \
+                      2>/dev/null
+                    echo ""
+                    echo "Investigate before applying the dependent CRs (SR / Connect / REST / C3)."
+                    return 1
+                  }
+
+                  echo "=== Phase 1: KRaftController + Kafka ==="
+                  PHASE1=(
                     kafkarestclass.yaml
                     kraftcontroller.yaml
                     kafka.yaml
+                  )
+                  for f in "${PHASE1[@]}"; do
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/$f"
+                    oc apply -f "$ENV_DIR/$f"
+                  done
+
+                  # KRaftController first — Kafka can't go ready until its
+                  # controllers can serve metadata.
+                  wait_for_cr_ready kraftcontroller kraftcontroller 900
+                  wait_for_cr_ready kafka kafka 900
+
+                  echo ""
+                  echo "=== Phase 2: Schema Registry, Connect, REST Proxy, Control Center ==="
+                  PHASE2=(
                     schemaregistry.yaml
                     connect.yaml
                     kafkarest.yaml
                     controlcenter.yaml
                   )
-                  for f in "${APPLY_ORDER[@]}"; do
+                  for f in "${PHASE2[@]}"; do
                     echo ""
                     echo "+ oc apply -f $ENV_DIR/$f"
                     oc apply -f "$ENV_DIR/$f"
@@ -923,9 +1002,8 @@ stages:
                   oc get pods -n "$OC_NS" -l app.kubernetes.io/part-of=confluent-platform 2>&1 || true
 
                   echo ""
-                  echo "NOTE: the CFK operator takes 10-15 minutes to reconcile a full"
-                  echo "cluster on first install. The pipeline is not waiting beyond apply."
-                  echo "Monitor convergence with:"
+                  echo "NOTE: Phase 2 CRs (SR / Connect / REST / C3) typically take an"
+                  echo "additional 3-8 minutes to converge after this step exits. Monitor:"
                   echo "  oc -n $OC_NS get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter"
                   echo "  oc -n $OC_NS get pods -l app.kubernetes.io/part-of=confluent-platform"
               env:
