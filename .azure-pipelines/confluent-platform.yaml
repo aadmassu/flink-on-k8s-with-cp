@@ -58,7 +58,18 @@ parameters:
     # deletionTimestamp and patches its finalizers to []. The Secret
     # then completes deletion; the next `create-prereqs` re-creates it
     # fresh. See runbook/LESSONS_LEARNED.md A13.
-    values: [create-prereqs, install, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers]
+    #
+    # diagnostics: run the install-side diagnostic dump in isolation,
+    # without going on to apply Certificates or CFK CRs. Surfaces
+    # ESO-managed Secret inventory, Secrets stuck in Terminating, the
+    # full CR + StatefulSet yaml, recent Warning events, CR status
+    # conditions, `oc explain` against the live CRD schema, and the
+    # last 200 lines of the operator log filtered for errors. Useful
+    # for triaging without touching cluster state — `set +e` and a
+    # trailing `exit 0` mean it never fails the pipeline. Same step
+    # body that runs at the top of action=install; this just lets you
+    # invoke it standalone.
+    values: [create-prereqs, install, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers, diagnostics]
   - name: forceFinalizerRemoval
     displayName: "Uninstall: force-clear finalizers on timeout"
     type: boolean
@@ -473,9 +484,11 @@ stages:
                 C3_ALERT_USER: $(${{ parameters.environment }}-c3-alertmanager-username)
                 C3_ALERT_PWD: $(${{ parameters.environment }}-c3-alertmanager-password)
 
-          - ${{ if eq(parameters.action, 'install') }}:
+          # Diagnostic dump runs both standalone (action=diagnostics) and as
+          # the first step of action=install. Same step body in both cases.
+          - ${{ if or(eq(parameters.action, 'install'), eq(parameters.action, 'diagnostics')) }}:
             - task: Bash@3
-              displayName: "Diagnostics: dump Secret + CR state before install"
+              displayName: "Diagnostics: dump Secret + CR state"
               inputs:
                 targetType: inline
                 script: |
@@ -730,6 +743,7 @@ stages:
               env:
                 OC_NS: $(openshift-namespace)
 
+          - ${{ if eq(parameters.action, 'install') }}:
             - task: Bash@3
               displayName: "Pre-flight: verify env folder + prerequisite Secrets"
               inputs:
