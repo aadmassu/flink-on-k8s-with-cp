@@ -724,6 +724,48 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   env.
 * **Why it matters**: saves hours of looking in the wrong place.
 
+### H4. Don't embed multi-line `python3 -c "..."` inside a YAML `script: |` block
+
+* **Symptom**: a pipeline action that shells out to a few lines of
+  Python crashes immediately on the first python line with
+  `IndentationError: unexpected indent`, even though the script
+  "looks" properly indented in the YAML. Subsequent dependent
+  python calls then hit `json.decoder.JSONDecodeError: Expecting
+  value: line 2 column 1 (char 1)` because the upstream output is
+  empty. The action reports `Failed: N Secret(s)` and patches that
+  should have rendered like `'{"metadata":{"finalizers":[...]}}'`
+  arrive at the API server as `'{"metadata":{"finalizers":}}'` and
+  get rejected with `error decoding patch: invalid character '}'`.
+* **Root cause**: YAML `script: |` preserves indentation inside the
+  block literally. When the script does
+  ```bash
+  X=$(python3 -c "
+                    import json, sys
+                    ...
+                    ")
+  ```
+  the `import` line is passed to python with the YAML block's
+  18-space indent baked into the string. Python sees that as an
+  invalid indent at module top level and bails.
+* **Fix**: collapse the python to a single line and pipe input via
+  stdin. Two birds with one stone — no indentation surface, and
+  no risk of shell-quoting accidents if a value contains a special
+  character:
+  ```bash
+  X=$(printf '%s' "$INPUT_JSON" \
+    | python3 -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps(...))')
+  ```
+  If the logic genuinely needs multiple statements, separate them
+  with `;` and keep the whole thing on one line. For anything
+  beyond ~3 statements, write a small `.py` helper in `tools/` and
+  call it from the YAML instead.
+* **Why it matters**: this failure mode is silent in the worst
+  way — the python error is buried, and what surfaces is a
+  downstream `oc patch` rejecting malformed JSON, which looks
+  like an `oc` problem and sends the next person down the wrong
+  trail. Caught 2026-06-10 in `clear-stuck-prereq-finalizers`;
+  fixed in the same commit as this entry.
+
 ---
 
 ## How to add an entry here

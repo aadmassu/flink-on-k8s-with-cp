@@ -1268,16 +1268,15 @@ stages:
                     fi
 
                     # Filter out CFK-stamped finalizers; preserve everything else.
-                    FILTERED_JSON=$(python3 -c "
-                    import json, sys
-                    cur = json.loads('''$CURRENT_JSON''')
-                    keep = [f for f in cur if not f.startswith('secret.finalizers.platform.confluent.io/')]
-                    drop = [f for f in cur if f.startswith('secret.finalizers.platform.confluent.io/')]
-                    print(json.dumps({'keep': keep, 'drop': drop}))
-                    ")
+                    # The python is a single line so YAML's preserved indentation
+                    # inside `script: |` doesn't make python choke with
+                    # IndentationError. JSON is piped via stdin instead of
+                    # interpolated into the source string — safer against shell
+                    # quoting if a finalizer ever contains a special character.
+                    FILTERED_JSON=$(printf '%s' "$CURRENT_JSON" | python3 -c 'import json,sys; cur=json.load(sys.stdin); pfx="secret.finalizers.platform.confluent.io/"; print(json.dumps({"keep":[f for f in cur if not f.startswith(pfx)], "drop":[f for f in cur if f.startswith(pfx)]}))')
 
-                    KEEP=$(echo "$FILTERED_JSON" | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['keep']))")
-                    DROP=$(echo "$FILTERED_JSON" | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['drop']))")
+                    KEEP=$(printf '%s' "$FILTERED_JSON" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["keep"]))')
+                    DROP=$(printf '%s' "$FILTERED_JSON" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["drop"]))')
 
                     echo ""
                     echo "  $sec"
