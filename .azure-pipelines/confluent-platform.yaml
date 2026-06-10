@@ -174,10 +174,10 @@ variables:
     - group: kafka-openshift-credentials-dr
 
 stages:
-  - stage: ConfluentPlatform
+  - stage: ManageCFK
     displayName: "Confluent Platform ${{ parameters.action }} (${{ parameters.environment }})"
     jobs:
-      - job: ConfluentPlatform
+      - job: ManageCFK
         pool: DevOpsLinux
         steps:
           - checkout: self
