@@ -352,19 +352,39 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   install's reconcile that tries to ADD its own finalizer to track
   Secret dependency gets rejected — Kubernetes hard rule: **no new
   finalizers may be added once `deletionTimestamp` is set.**
-* **Fix**: drop the lingering finalizer so the Secret completes
+* **Fix**: drop the lingering CFK finalizer so the Secret completes
   deletion, then re-create it fresh via `action=create-prereqs`.
-  The pipeline now ships a dedicated action for this — kafka team
-  has no shell access, so it's pipeline-driven:
+  The pipeline ships a dedicated action — kafka team has no shell
+  access, so it's pipeline-driven:
   ```
   confluent-platform.yaml  action: clear-stuck-prereq-finalizers
   ```
   This action finds every Secret in the namespace with a
-  `deletionTimestamp` set and patches its `metadata.finalizers` to
-  `[]` (uses `oc patch ... --type=json -p '[{"op":"remove","path":"/metadata/finalizers"}]'`).
-  Nothing live is touched — only Secrets the gc'er already wants
-  gone. Sequence to recover: `clear-stuck-prereq-finalizers`
-  → `create-prereqs` → `install`.
+  `deletionTimestamp` set and **selectively removes only the
+  CFK-stamped finalizers** matching `secret.finalizers.platform.confluent.io/*`.
+  Any non-CFK finalizers on the Secret (notably ESO's
+  `external-secrets.io/finalizer` on ESO-managed Secrets like
+  `confluent-license`, `cmf-encryption-key`, `cmf-db-credentials`
+  at FCB) are **preserved** — the patch sets `finalizers` to the
+  filtered list, not to `[]`. Sequence to recover for a
+  pipeline-managed Secret: `clear-stuck-prereq-finalizers`
+  → `create-prereqs` → `install`. For an ESO-managed Secret that
+  somehow ends up stuck, see **ESO-safety** below — the action
+  will report the Secret as "still held by foreign finalizers"
+  and skip it, refusing to damage ESO bookkeeping.
+
+* **ESO-safety constraint**: at FCB, three CMF-side Secrets are
+  managed by External Secrets Operator from CyberArk —
+  `confluent-license`, `cmf-encryption-key`, `cmf-db-credentials`.
+  Never manually clear ESO's finalizers. If an ESO-managed Secret
+  is stuck Terminating, the correct path is: delete the
+  ExternalSecret CR that targets it, let ESO complete its own
+  cleanup (removes its finalizer cleanly), then re-apply the
+  ExternalSecret to trigger ESO to re-fetch from CyberArk and
+  recreate the Secret. The diagnostic step now prints an
+  "**ESO-managed Secrets in <namespace>**" inventory at the top so
+  the boundary between pipeline-owned and ESO-owned Secrets is
+  visible at a glance.
 * **Why it matters**: the kraftcontroller log line ("Secret X is
   invalid: metadata.finalizers: Forbidden: no new finalizers...")
   is buried inside the CR's `status.conditions.message` field

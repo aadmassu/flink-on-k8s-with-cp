@@ -423,7 +423,26 @@ stages:
                   # an error line but doesn't abort the pipeline.
                   set +e
 
-                  # FIRST PASS: any Secret stuck in Terminating state will
+                  # FIRST PASS — ESO-managed Secrets inventory. Lists every
+                  # ExternalSecret CR's target Secret name so the rest of
+                  # the diagnostic output makes clear which Secrets the
+                  # pipeline owns vs which ESO owns. At FCB the ESO-managed
+                  # set is (as of 2026-06-09): confluent-license,
+                  # cmf-encryption-key, cmf-db-credentials — but this scans
+                  # the live cluster rather than hardcoding, so the list
+                  # stays accurate as more ExternalSecrets are added.
+                  echo "=== ESO-managed Secrets in $OC_NS (do not manually create or finalizer-clear) ==="
+                  ESO_LIST=$(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
+                    -o jsonpath='{range .items[*]}{.spec.target.name}{"\t(from ExternalSecret "}{.metadata.name}{", store "}{.spec.secretStoreRef.name}{")\n"}{end}' \
+                    2>/dev/null)
+                  if [ -z "$ESO_LIST" ]; then
+                    echo "  (no ExternalSecrets in namespace, or external-secrets CRD missing)"
+                  else
+                    echo "$ESO_LIST" | awk -F '\t' 'NF>=2 {printf "  %-40s %s\n", $1, $2}'
+                  fi
+                  echo ""
+
+                  # SECOND PASS: any Secret stuck in Terminating state will
                   # block the next install reconcile with a "no new
                   # finalizers can be added if the object is being deleted"
                   # error from the API server. Surface it at the TOP of
@@ -1101,7 +1120,7 @@ stages:
 
           - ${{ if eq(parameters.action, 'clear-stuck-prereq-finalizers') }}:
             - task: Bash@3
-              displayName: "Clear finalizers on Secrets stuck in Terminating"
+              displayName: "Clear CFK finalizers on Secrets stuck in Terminating (ESO-safe)"
               inputs:
                 targetType: inline
                 script: |
@@ -1119,20 +1138,33 @@ stages:
                   #   Forbidden: no new finalizers can be added if the
                   #   object is being deleted, found new finalizers
                   #   []string{"secret.finalizers.platform.confluent.io/<cr>-<cr>"}
-                  # See runbook/LESSONS_LEARNED.md A13 for full diagnostic
-                  # walk-through (cfk-license on 2026-06-09 was the first
-                  # case captured in dah-flink-dev).
+                  # See runbook/LESSONS_LEARNED.md A13.
                   #
-                  # This action finds every Secret in the namespace with
-                  # a deletionTimestamp set and patches its finalizers to
-                  # []. The Secret then completes its already-in-progress
-                  # deletion; nothing live is touched. Re-run create-prereqs
-                  # afterward to re-provision the Secrets fresh.
+                  # ESO-SAFETY: at FCB, three CMF-side Secrets are managed
+                  # by ESO from CyberArk — confluent-license, cmf-encryption-key,
+                  # cmf-db-credentials. ESO places its own finalizer
+                  # (external-secrets.io/finalizer) on the Secrets it owns.
+                  # This action MUST NOT remove ESO's finalizer, only the
+                  # CFK-stamped ones. We do this by reading the current
+                  # finalizers array, filtering OUT only items matching
+                  # `secret.finalizers.platform.confluent.io/*`, and writing
+                  # the surviving array back. If the surviving array is
+                  # empty (only CFK finalizers were present), the Secret
+                  # finalizes; if non-CFK finalizers remain (ESO etc.),
+                  # the Secret stays Terminating until whoever owns those
+                  # finalizers removes them — which is the correct
+                  # behavior, since damaging external-secrets bookkeeping
+                  # would break ESO's recreate-from-CyberArk logic.
+
+                  echo "=== ESO-managed Secrets in $OC_NS (preserved by this action) ==="
+                  oc -n "$OC_NS" get externalsecrets.external-secrets.io \
+                    -o jsonpath='{range .items[*]}{.spec.target.name}{"\t(from ExternalSecret "}{.metadata.name}{")\n"}{end}' \
+                    2>/dev/null \
+                    | awk -F '\t' 'NF>=2 {printf "  %-40s %s\n", $1, $2}' \
+                    || echo "  (no ExternalSecrets found in namespace, or CRD missing)"
+                  echo ""
 
                   echo "=== Scanning $OC_NS for Secrets stuck in Terminating ==="
-                  # A Secret is "stuck Terminating" iff metadata.deletionTimestamp
-                  # is set. List names + finalizers so the log shows what's
-                  # about to be cleared.
                   STUCK=$(oc -n "$OC_NS" get secrets \
                     -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\n"}{end}' \
                     2>/dev/null)
@@ -1144,64 +1176,115 @@ stages:
                   fi
 
                   echo ""
-                  echo "Found stuck Secrets:"
+                  echo "Found stuck Secrets (current finalizers shown):"
                   while IFS= read -r sec; do
                     [ -z "$sec" ] && continue
                     DT=$(oc -n "$OC_NS" get secret "$sec" -o jsonpath='{.metadata.deletionTimestamp}' 2>/dev/null)
                     FZ=$(oc -n "$OC_NS" get secret "$sec" -o jsonpath='{.metadata.finalizers}' 2>/dev/null)
-                    echo "  $sec  (deletionTimestamp=$DT  finalizers=$FZ)"
+                    echo "  $sec  (deletionTimestamp=$DT)"
+                    echo "    finalizers: $FZ"
                   done <<< "$STUCK"
 
                   echo ""
-                  echo "=== Patching each to drop all finalizers ==="
+                  echo "=== Selectively removing only secret.finalizers.platform.confluent.io/* finalizers ==="
                   CLEARED=0
+                  SKIPPED=0
                   FAILED=0
                   while IFS= read -r sec; do
                     [ -z "$sec" ] && continue
+
+                    # Read current finalizers as JSON. python3 is used because
+                    # FCB's pipeline image ships it (same as create-prereqs
+                    # already relies on) and jq is not guaranteed.
+                    CURRENT_JSON=$(oc -n "$OC_NS" get secret "$sec" \
+                      -o jsonpath='{.metadata.finalizers}' 2>/dev/null)
+
+                    if [ -z "$CURRENT_JSON" ] || [ "$CURRENT_JSON" = "<no value>" ]; then
+                      echo ""
+                      echo "  $sec — no finalizers field present; API server will GC on next tick"
+                      SKIPPED=$((SKIPPED+1))
+                      continue
+                    fi
+
+                    # Filter out CFK-stamped finalizers; preserve everything else.
+                    FILTERED_JSON=$(python3 -c "
+                    import json, sys
+                    cur = json.loads('''$CURRENT_JSON''')
+                    keep = [f for f in cur if not f.startswith('secret.finalizers.platform.confluent.io/')]
+                    drop = [f for f in cur if f.startswith('secret.finalizers.platform.confluent.io/')]
+                    print(json.dumps({'keep': keep, 'drop': drop}))
+                    ")
+
+                    KEEP=$(echo "$FILTERED_JSON" | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['keep']))")
+                    DROP=$(echo "$FILTERED_JSON" | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['drop']))")
+
                     echo ""
-                    echo "+ oc -n $OC_NS patch secret $sec --type=json -p '[{\"op\":\"remove\",\"path\":\"/metadata/finalizers\"}]'"
-                    if oc -n "$OC_NS" patch secret "$sec" \
-                        --type=json -p '[{"op":"remove","path":"/metadata/finalizers"}]' 2>&1; then
-                      CLEARED=$((CLEARED+1))
-                    else
-                      # Already-no-finalizers case returns a non-zero "remove from empty array"
-                      # error — try the merge-style null patch as a fallback before declaring failure.
+                    echo "  $sec"
+                    echo "    dropping CFK finalizers: $DROP"
+                    echo "    preserving foreign finalizers (ESO / other): $KEEP"
+
+                    if [ "$DROP" = "[]" ]; then
+                      echo "    no CFK finalizers to remove — skipping. If this Secret is still stuck"
+                      echo "    Terminating, an ESO/other controller's finalizer is blocking it; ask"
+                      echo "    that controller's owner to investigate."
+                      SKIPPED=$((SKIPPED+1))
+                      continue
+                    fi
+
+                    # Patch the finalizers array to the filtered list.
+                    if [ "$KEEP" = "[]" ]; then
+                      # Empty array — use merge patch with null to fully clear.
+                      echo "    + oc patch secret $sec --type=merge -p '{\"metadata\":{\"finalizers\":null}}'"
                       if oc -n "$OC_NS" patch secret "$sec" --type=merge \
                           -p '{"metadata":{"finalizers":null}}' 2>&1; then
                         CLEARED=$((CLEARED+1))
                       else
-                        echo "FAIL: could not patch finalizers on $sec"
+                        echo "    FAIL: could not patch $sec"
+                        FAILED=$((FAILED+1))
+                      fi
+                    else
+                      # Non-empty filtered array — replace with the KEEP list.
+                      echo "    + oc patch secret $sec --type=merge -p '{\"metadata\":{\"finalizers\":$KEEP}}'"
+                      if oc -n "$OC_NS" patch secret "$sec" --type=merge \
+                          -p "{\"metadata\":{\"finalizers\":$KEEP}}" 2>&1; then
+                        CLEARED=$((CLEARED+1))
+                      else
+                        echo "    FAIL: could not patch $sec"
                         FAILED=$((FAILED+1))
                       fi
                     fi
                   done <<< "$STUCK"
 
-                  # Give the API server a moment to GC the cleared Secrets.
                   sleep 2
 
                   echo ""
                   echo "=== Verification: any Secrets still stuck? ==="
                   STILL=$(oc -n "$OC_NS" get secrets \
-                    -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\n"}{end}' \
+                    -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\t"}{.metadata.finalizers}{"\n"}{end}' \
                     2>/dev/null)
                   if [ -z "$STILL" ]; then
                     echo "Clean — no Secrets carry a deletionTimestamp anymore."
                   else
-                    echo "Some Secrets still report deletionTimestamp (may finalize on next API server tick):"
-                    echo "$STILL" | sed 's/^/  /'
+                    echo "Some Secrets still report deletionTimestamp (likely held by non-CFK finalizers):"
+                    echo "$STILL" | awk -F '\t' '{printf "  %-40s %s\n", $1, $2}'
                   fi
 
                   echo ""
                   echo "=== Summary ==="
-                  echo "  Cleared: $CLEARED"
-                  echo "  Failed:  $FAILED"
+                  echo "  CFK finalizers cleared on: $CLEARED Secret(s)"
+                  echo "  Skipped (no CFK fz to remove): $SKIPPED Secret(s)"
+                  echo "  Failed: $FAILED Secret(s)"
                   echo ""
                   echo "Next steps:"
-                  echo "  1. Re-run this pipeline with action=create-prereqs to re-provision the Secrets."
+                  echo "  1. For Secrets cleared above: re-run action=create-prereqs to re-provision"
+                  echo "     (skipping any ESO-managed names — those will be re-synced from CyberArk by ESO)."
                   echo "  2. Then action=install to bring the CFK stack back."
                   echo ""
-                  echo "If anything failed above, the affected Secret may have a non-Confluent finalizer"
-                  echo "blocking removal — investigate with: oc -n $OC_NS get secret <name> -o yaml"
+                  echo "If anything is still stuck Terminating after this run, it's held by a non-CFK"
+                  echo "finalizer (most likely ESO's external-secrets.io/finalizer). DO NOT manually"
+                  echo "remove ESO finalizers — that would corrupt ESO's reconciliation state. Instead,"
+                  echo "delete the ExternalSecret CR that targets the stuck Secret, let ESO clean up,"
+                  echo "and re-apply the ExternalSecret to recreate the Secret from CyberArk."
 
                   if [ "$FAILED" -ne 0 ]; then
                     exit 1
