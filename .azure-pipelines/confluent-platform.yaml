@@ -18,7 +18,7 @@
 #   oauth-broker, oauth-schemaregistry, oauth-connect, oauth-kafkarest,
 #   oauth-controlcenter, oauth-mds-rest, c3-prometheus-basic-auth,
 #   c3-alertmanager-basic-auth.
-# Pre-flight aborts if any are missing — see apps/confluent-platform/<env>/00-prereq-secrets.md.
+# Pre-flight aborts if any are missing — see apps/confluent-platform/<env>/prereqs/README.md.
 #
 # The six *-tls Secrets (kafka-tls, kraftcontroller-tls, schemaregistry-tls,
 # connect-tls, kafkarest-tls, controlcenter-tls) are *not* prerequisites;
@@ -812,7 +812,8 @@ stages:
                   if [ "$missing_secrets" -gt 0 ]; then
                     echo ""
                     echo "ERROR: $missing_secrets required Secret(s) missing in $OC_NS."
-                    echo "See $ENV_DIR/00-prereq-secrets.md for the full list and creation pattern."
+                    echo "See $ENV_DIR/prereqs/README.md for the full list and creation pattern,"
+                    echo "then run this pipeline with action=create-prereqs to (re)populate."
                     exit 1
                   fi
               env:
