@@ -259,6 +259,14 @@ stages:
                 S3_HOST=$(echo "$S3_URL" | sed -E 's|^https?://||; s|/.*$||')
                 test_dns "$S3_HOST" "NetApp S3"
 
+                # Okta tenant — same across all envs (per VM .properties files).
+                # Hardcoded rather than a variable-group entry because the value
+                # is invariant; the OAuth scope / audience / client ID change per
+                # env but the host doesn't.
+                echo ""
+                echo "=== Okta (myapps.firstcitizens.com) ==="
+                test_dns "myapps.firstcitizens.com" "Okta tenant"
+
                 echo ""
                 echo "=== DNS resolution test complete ==="
             env:
@@ -318,6 +326,18 @@ stages:
                 echo "=== NetApp S3 ==="
                 S3_HOST=$(echo "$S3_URL" | sed -E 's|^https?://||; s|/.*$||')
                 test_connection "$S3_HOST" 443 "NetApp S3 (HTTPS)"
+
+                # Okta token endpoint — same host across all envs. CFK brokers,
+                # SR, Connect, REST, C3 and Flink jobs ALL need this reachable
+                # to fetch OAuth tokens. Today's aep-rate-limit-job failure
+                # was a `Connection timed out` against this exact host on 443,
+                # so the test serves as a fast pre-check before any rollout.
+                # An end-to-end token fetch test (HTTPS handshake + JWKS GET)
+                # belongs in a separate verify-* pipeline once the trust-store
+                # work lands — connectivity-test stays scope-bounded to L4.
+                echo ""
+                echo "=== Okta (myapps.firstcitizens.com) ==="
+                test_connection "myapps.firstcitizens.com" 443 "Okta tenant (HTTPS)"
 
                 echo ""
                 echo "=== Connectivity test complete ==="
