@@ -1,0 +1,51 @@
+---
+# Ingress exposing the CMF management UI publicly — dev.
+#
+# Backend is `cmf-service` (created by the Helm release) on port 443. CMF
+# inside the pod serves HTTPS on container port 8080 with the existing
+# `cmf-tls` Secret as its serving cert — so the data path is:
+#
+#   browser  --HTTPS (cmf-ingress-tls)-->  HAProxy router
+#            --HTTPS (cmf-tls)-->  cmf-service:443  -->  pod:8080
+#
+# Both legs are HTTPS, which is exactly what `reencrypt` termination is for.
+# The PDF (docs/OpenShift Ingress.pdf) explicitly recommends reencrypt as the
+# annotation default when the backend is HTTPS.
+#
+# Dev has no OAuth in front of CMF today (cmf.authentication is not set in
+# values.yaml). When UAT+ enables OAuth per FCB data-protection standard,
+# the same Ingress shape still works — Spring Boot inside the pod handles
+# token validation on the backend; the Ingress just transports HTTPS.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cmf-ui
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/instance: cmf-ui
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-manager-for-flink
+    fcbint.net/app-id: "11547"
+  annotations:
+    # Backend is HTTPS — reencrypt at the router instead of the default edge.
+    # See docs/OpenShift Ingress.pdf "Ingress Example" — recommended pattern.
+    route.openshift.io/termination: reencrypt
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+    - host: cmf.apps.dv-p.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: cmf-service
+                port:
+                  number: 443
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - cmf.apps.dv-p.ocp.fcbint.net
+      secretName: cmf-ingress-tls
