@@ -405,6 +405,64 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   between uninstall and the next install, and never count on the
   uninstall pipeline's own finalizer-cleanup being complete.
 
+### A14. Schema Registry CrashLoopBackOff when applied alongside Kafka — race against broker boot
+
+* **Symptom**: a fresh install applies all CFK CRs and within a
+  minute or two `schemaregistry-0` (and often `connect-0` /
+  `kafkarest-0` / `controlcenter-0`) is in `CrashLoopBackOff`. SR
+  pod logs end with something like:
+  ```
+  ERROR Error starting the schema registry
+  io.confluent.kafka.schemaregistry.exceptions.SchemaRegistryInitializationException:
+    Error initializing kafka store while initializing schema registry
+    Caused by: org.apache.kafka.common.errors.TimeoutException:
+      Timed out waiting for a node assignment.
+  ```
+  Each restart of the SR pod fires another ~60s wait and another
+  crash. The Kafka brokers come up eventually but SR is now stuck in
+  exponential-backoff and may take an extra 10-20 minutes to
+  recover on its own.
+* **Root cause**: `oc apply` returns the instant a CR is admitted —
+  it does NOT wait for the CR's pods to be running, let alone
+  ready. The CFK operator then reconciles every CR in parallel.
+  So at t+0 the operator creates StatefulSets for kraftcontroller,
+  kafka, schemaregistry, connect, kafkarest, and controlcenter
+  simultaneously. The Kafka brokers take 1-3 minutes to elect a
+  controller and open the bootstrap listener. The SR pod, started
+  at the same time, has `kafkastore.init.timeout.ms` defaulting to
+  ~60s; it hits that window before brokers are reachable, exits
+  non-zero, k8s restarts it, repeat.
+* **Fix**: gate the apply at the pipeline level. The install action
+  in `.azure-pipelines/confluent-platform.yaml` is now phased:
+  ```
+  Phase 1: oc apply kafkarestclass + kraftcontroller + kafka
+  Wait:    up to 15 min for kraftcontroller to report cluster-ready
+  Wait:    up to 15 min for kafka to report cluster-ready
+  Phase 2: oc apply schemaregistry + connect + kafkarest + controlcenter
+  ```
+  The wait polls
+  `.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status`
+  every 10s with a 60s heartbeat that dumps the current condition
+  table so the log is useful when watching live. Phase 2 doesn't
+  fire until both upstream CRs are healthy, so dependent pods are
+  never created against an unready Kafka.
+* **Why we couldn't do this at the pod level**: the obvious fix is
+  an `initContainer` on the SR StatefulSet that runs
+  `until nc -z kafka.dah-flink-<env>.svc 9092; do sleep 2; done`
+  before the main container starts. CFK 3.1.x CRDs don't expose
+  `podTemplate.initContainers` (runbook A3 — same shape as the
+  startupProbe and other podTemplate omissions). Until the bank
+  upgrades the operator to a version that allows it, pipeline-side
+  gating is the only lever.
+* **If the wait legitimately times out (15 min)**: don't bump the
+  timeout reflexively. The usual root causes are (a) the brokers
+  can't reach kraftcontroller (network or RBAC), (b) OAuth /
+  bootstrap-listener config is wrong on the broker, (c) cluster is
+  out of resources and pods are stuck Pending — the diagnostic
+  dump (`action=diagnostics`) shows which. Fix the upstream issue;
+  the 15 min ceiling is generous for a working install and a
+  conservative ceiling for a broken one.
+
 ---
 
 ## B. FCB Gatekeeper policies

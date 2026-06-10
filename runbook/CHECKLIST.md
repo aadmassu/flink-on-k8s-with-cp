@@ -149,17 +149,37 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
 
 CFK does its own dependency wiring through the operator, but applying
 in a sane order avoids transient "X waiting for Y" loops that take
-minutes to clear.
+minutes to clear. The `confluent-platform.yaml` pipeline encodes the
+phased order below — these checkboxes mirror what the pipeline does
+so a manual recovery follows the same shape.
 
 1. [ ] All ExternalSecrets — wait for every one to report `Ready=True`
 2. [ ] TLS secrets (KeyFactor cert-manager Certificates) — wait for
        `Ready=True` on the underlying Secret
-3. [ ] `kraftcontroller.yaml`
-4. [ ] `kafka.yaml`
-5. [ ] `kafkarestclass.yaml`
-6. [ ] `schemaregistry.yaml`
-7. [ ] `connect.yaml` and `kafkarest.yaml` (can be parallel)
-8. [ ] `controlcenter.yaml`
+
+**Phase 1 — apply, then wait for cluster-ready before phase 2:**
+
+3. [ ] `kafkarestclass.yaml`
+4. [ ] `kraftcontroller.yaml`
+5. [ ] `kafka.yaml`
+6. [ ] Wait for `kraftcontroller/kraftcontroller` to report
+       `platform.confluent.io/cluster-ready=True`
+       (up to ~15 min; pipeline polls every 10s)
+7. [ ] Wait for `kafka/kafka` to report
+       `platform.confluent.io/cluster-ready=True`
+       (up to ~15 min)
+
+> **Why the wait gate**: Schema Registry and other dependent pods
+> hit `kafkastore.init.timeout.ms` (~60s) before Kafka brokers
+> reach Ready and go into `CrashLoopBackOff`. Pod-level
+> `initContainer` would fix this but CFK 3.1.x CRDs don't expose
+> one. See `LESSONS_LEARNED.md` A14.
+
+**Phase 2 — Kafka is up, dependents can come up safely:**
+
+8. [ ] `schemaregistry.yaml`
+9. [ ] `connect.yaml` and `kafkarest.yaml` (can be parallel)
+10. [ ] `controlcenter.yaml`
 
 ## 3. Post-deploy verification
 
