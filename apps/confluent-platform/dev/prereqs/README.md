@@ -1,23 +1,17 @@
-# Prerequisites — dev CFK CP
+# Prerequisites — dev CFK CP (non-TLS)
 
-Everything in this folder is a **supporting prerequisite** for the CFK Custom Resources one level up. Nothing here is a Confluent Platform CR itself; it's the TLS material and the bag of Opaque Secrets the CRs depend on.
+Documents the **non-TLS Opaque Secrets** the CFK Custom Resources one
+level up depend on — license, MDS token keypair, OAuth client creds,
+SASL passwords, Control Center basic auth. None of these are manifest-
+based; they're created by the `confluent-platform.yaml` pipeline
+`action=create-prereqs`.
 
-## What's here
+The six **cert-manager Certificate CRs** that produce the `*-tls`
+Secrets have moved to [`../cert-manager/`](../cert-manager/). See that
+README for the TLS side.
 
-```
-prereqs/
-├── README.md  (this file)
-├── kafka-tls-certificate.yaml           # cert-manager Certificate, lands secret/kafka-tls
-├── kraftcontroller-tls-certificate.yaml # cert-manager Certificate, lands secret/kraftcontroller-tls
-├── schemaregistry-tls-certificate.yaml  # cert-manager Certificate, lands secret/schemaregistry-tls
-├── connect-tls-certificate.yaml         # cert-manager Certificate, lands secret/connect-tls
-├── kafkarest-tls-certificate.yaml       # cert-manager Certificate, lands secret/kafkarest-tls
-└── controlcenter-tls-certificate.yaml   # cert-manager Certificate, lands secret/controlcenter-tls
-```
-
-## TLS Secrets — managed by cert-manager
-
-The six Certificate CRs each request a Keyfactor-issued cert and land a Secret with `tls.crt` / `tls.key` / `ca.crt`. Same pattern used by [`apps/confluent-cmf/dev/cmf-tls-certificate.yaml`](../../../confluent-cmf/dev/cmf-tls-certificate.yaml). The pipeline applies them as part of the `install` action — no manual `oc apply` needed.
+The `precreated-pvcs/` subdirectory here is an unrelated experimental
+artifact (untracked) — see its own README for status.
 
 ## Non-TLS Secrets — pipeline-created (temporary)
 

@@ -1,19 +1,14 @@
-# Prerequisites — qa CFK CP
+# Prerequisites — qa CFK CP (non-TLS)
 
-Same prereq pattern as dev and uat; only the env-suffixed names change. See the [dev prereqs README](../../dev/prereqs/README.md) for the full design rationale (TLS Secrets via cert-manager, 11 Opaque Secrets sourced from the variable group, MDS keypair encoding, etc.).
+Same non-TLS prereq pattern as dev and uat; only the env-suffixed names
+change. See the [dev prereqs README](../../dev/prereqs/README.md) for the
+full design rationale (11 Opaque Secrets sourced from the variable
+group, MDS keypair encoding, etc.).
 
-## What's here
-
-```
-prereqs/
-├── README.md  (this file)
-├── kafka-tls-certificate.yaml           # cert-manager Certificate, lands secret/kafka-tls
-├── kraftcontroller-tls-certificate.yaml # cert-manager Certificate, lands secret/kraftcontroller-tls
-├── schemaregistry-tls-certificate.yaml  # cert-manager Certificate, lands secret/schemaregistry-tls  (SANs for 2 replicas)
-├── connect-tls-certificate.yaml         # cert-manager Certificate, lands secret/connect-tls
-├── kafkarest-tls-certificate.yaml       # cert-manager Certificate, lands secret/kafkarest-tls       (SANs for 2 replicas)
-└── controlcenter-tls-certificate.yaml   # cert-manager Certificate, lands secret/controlcenter-tls
-```
+The six **cert-manager Certificate CRs** that produce the `*-tls`
+Secrets have moved to [`../cert-manager/`](../cert-manager/). See that
+README for the TLS side (including the 2-replica SAN setup on the
+Schema Registry and Kafka REST Proxy certs).
 
 ## Differences from dev / uat
 

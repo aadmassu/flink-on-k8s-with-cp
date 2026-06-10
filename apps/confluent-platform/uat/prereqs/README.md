@@ -1,25 +1,16 @@
-# Prerequisites — uat CFK CP
+# Prerequisites — uat CFK CP (non-TLS)
 
-Everything in this folder is a **supporting prerequisite** for the CFK Custom Resources one level up. Nothing here is a Confluent Platform CR itself; it's the TLS material and the bag of Opaque Secrets the CRs depend on.
+Documents the **non-TLS Opaque Secrets** the CFK Custom Resources one
+level up depend on — license, MDS token keypair, OAuth client creds,
+SASL passwords, Control Center basic auth. None of these are manifest-
+based; they're created by the `confluent-platform.yaml` pipeline
+`action=create-prereqs`.
 
-## What's here
-
-```
-prereqs/
-├── README.md  (this file)
-├── kafka-tls-certificate.yaml           # cert-manager Certificate, lands secret/kafka-tls
-├── kraftcontroller-tls-certificate.yaml # cert-manager Certificate, lands secret/kraftcontroller-tls
-├── schemaregistry-tls-certificate.yaml  # cert-manager Certificate, lands secret/schemaregistry-tls  (SANs for 2 replicas)
-├── connect-tls-certificate.yaml         # cert-manager Certificate, lands secret/connect-tls
-├── kafkarest-tls-certificate.yaml       # cert-manager Certificate, lands secret/kafkarest-tls       (SANs for 2 replicas)
-└── controlcenter-tls-certificate.yaml   # cert-manager Certificate, lands secret/controlcenter-tls
-```
-
-## TLS Secrets — managed by cert-manager
-
-The six Certificate CRs each request a Keyfactor-issued cert and land a Secret with `tls.crt` / `tls.key` / `ca.crt`. Same pattern used by [`apps/confluent-cmf/`](../../../confluent-cmf/) for the CMF TLS cert. The pipeline applies them as part of the `install` action — no manual `oc apply` needed.
-
-The Schema Registry and Kafka REST Proxy certs each carry **two per-pod SANs** (`<name>-0…`, `<name>-1…`) because the UAT topology runs **two replicas** of each (matching the VM UAT cluster).
+The six **cert-manager Certificate CRs** that produce the `*-tls`
+Secrets have moved to [`../cert-manager/`](../cert-manager/). See that
+README for the TLS side (including the 2-replica SAN setup on the
+Schema Registry and Kafka REST Proxy certs that matches the VM UAT
+topology).
 
 ## Non-TLS Secrets — pipeline-created (temporary)
 

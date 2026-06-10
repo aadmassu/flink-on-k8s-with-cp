@@ -752,12 +752,12 @@ stages:
                     connect.yaml
                     kafkarest.yaml
                     controlcenter.yaml
-                    prereqs/kafka-tls-certificate.yaml
-                    prereqs/kraftcontroller-tls-certificate.yaml
-                    prereqs/schemaregistry-tls-certificate.yaml
-                    prereqs/connect-tls-certificate.yaml
-                    prereqs/kafkarest-tls-certificate.yaml
-                    prereqs/controlcenter-tls-certificate.yaml
+                    cert-manager/kafka-tls-certificate.yaml
+                    cert-manager/kraftcontroller-tls-certificate.yaml
+                    cert-manager/schemaregistry-tls-certificate.yaml
+                    cert-manager/connect-tls-certificate.yaml
+                    cert-manager/kafkarest-tls-certificate.yaml
+                    cert-manager/controlcenter-tls-certificate.yaml
                   )
                   missing_files=0
                   for f in "${REQUIRED_FILES[@]}"; do
@@ -829,7 +829,7 @@ stages:
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
                   echo "=== Applying Certificate CRs ==="
-                  for cert in "$ENV_DIR"/prereqs/*-tls-certificate.yaml; do
+                  for cert in "$ENV_DIR"/cert-manager/*-tls-certificate.yaml; do
                     echo ""
                     echo "+ oc apply -f $cert"
                     oc apply -f "$cert"
@@ -1047,7 +1047,7 @@ stages:
                   # Certificates can be force-deleted — no webhook, no risk
                   # of data loss. Keep `|| true` here so a missing file or
                   # already-deleted resource doesn't fail the step.
-                  for cert in "$ENV_DIR"/prereqs/*-tls-certificate.yaml; do
+                  for cert in "$ENV_DIR"/cert-manager/*-tls-certificate.yaml; do
                     if [ -f "$cert" ]; then
                       echo "+ oc delete -f $cert --ignore-not-found"
                       oc delete -f "$cert" --ignore-not-found || true
