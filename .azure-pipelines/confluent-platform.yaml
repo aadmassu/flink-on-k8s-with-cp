@@ -36,7 +36,7 @@ parameters:
   - name: action
     displayName: "Action"
     type: string
-    default: install
+    default: install-or-update
     # wipe-pvcs: hard-delete the orphaned CFK PVCs (data0-kafka-*,
     # data0-kraftcontroller-*, data0-controlcenter-*). Intended for the
     # re-install flow after `uninstall` when the CRs are gone but PVCs
@@ -59,6 +59,12 @@ parameters:
     # then completes deletion; the next `create-prereqs` re-creates it
     # fresh. See runbook/LESSONS_LEARNED.md A13.
     #
+    # install-or-update: `oc apply` against the env's CFK CR manifests.
+    # `apply` is idempotent — same action does the initial install AND
+    # subsequent updates / upgrades. Use the per-component checkboxes
+    # below to scope which components get re-applied; "All" (default)
+    # applies the whole stack.
+    #
     # diagnostics: run the install-side diagnostic dump in isolation,
     # without going on to apply Certificates or CFK CRs. Surfaces
     # ESO-managed Secret inventory, Secrets stuck in Terminating, the
@@ -67,9 +73,9 @@ parameters:
     # last 200 lines of the operator log filtered for errors. Useful
     # for triaging without touching cluster state — `set +e` and a
     # trailing `exit 0` mean it never fails the pipeline. Same step
-    # body that runs at the top of action=install; this just lets you
-    # invoke it standalone.
-    values: [create-prereqs, install, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers, diagnostics]
+    # body that runs at the top of action=install-or-update; this just
+    # lets you invoke it standalone.
+    values: [create-prereqs, install-or-update, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers, diagnostics]
   - name: forceFinalizerRemoval
     displayName: "Uninstall: force-clear finalizers on timeout"
     type: boolean
@@ -83,63 +89,77 @@ parameters:
     # operation so a genuine operator bug fails the pipeline loudly.
 
   # ----------------------------------------------------------------------
-  # Install: per-component checkboxes
+  # install-or-update: which components to apply
   # ----------------------------------------------------------------------
-  # When action=install, these select which Confluent Platform components
-  # are applied. ALL DEFAULT TO TRUE so a plain "install" run behaves
-  # exactly as before — applies the whole stack in dependency order.
+  # When action=install-or-update, "All" (default checked) applies the
+  # whole stack in dependency order — same as a full first-time install.
   #
-  # For upgrades or targeted re-apply, uncheck the components you don't
-  # want to touch. The pipeline still phases the apply correctly:
-  #   - If applyKraftController OR applyKafka is checked, the pipeline
+  # For a targeted upgrade or partial re-apply, UNCHECK "All" and check
+  # only the components you want to touch. Component checkboxes default
+  # to unchecked because they're additive opt-ins on top of "All".
+  #
+  # Selection logic:
+  #   - "All" checked → apply every component in order (component
+  #     checkboxes are ignored).
+  #   - "All" unchecked → apply only the components you've checked
+  #     individually. At least one must be checked; otherwise the
+  #     pipeline errors out with a helpful message.
+  #
+  # The phased apply still applies in either case:
+  #   - If KRaft Controller OR Kafka Broker is in scope, the pipeline
   #     waits for kraftcontroller cluster-ready before continuing.
-  #   - If applyKafka OR any phase 2 component (SR / Connect / REST / C3)
-  #     is checked, the pipeline waits for kafka cluster-ready before
-  #     applying any phase 2 component.
+  #   - If Kafka Broker OR any phase 2 component (SR / Connect / REST
+  #     Proxy / Control Center) is in scope, the pipeline waits for
+  #     kafka cluster-ready before applying any phase 2 component.
   # This means a "Schema Registry only" upgrade still confirms Kafka is
   # healthy before it touches SR — SR never gets restarted against a
-  # broken broker.
+  # broken broker (runbook A14).
   #
   # Cluster-upgrade order (Confluent recommended): KRaft Controller →
-  # Kafka Broker → Schema Registry / Connect / REST Proxy → Control
-  # Center. Run the pipeline multiple times, each with the next stage
-  # checked, instead of a big-bang re-apply.
+  # Kafka Broker → Schema Registry / Kafka Connect / Kafka REST Proxy →
+  # Control Center. Run the pipeline once per stage with "All" unchecked
+  # and only the stage's component(s) checked.
   #
-  # These parameters are IGNORED when action != install.
+  # These parameters are IGNORED when action != install-or-update.
+
+  - name: applyAll
+    displayName: "All"
+    type: boolean
+    default: true
 
   - name: applyKRaftController
-    displayName: "Install: KRaft Controller"
+    displayName: "KRaft Controller"
     type: boolean
-    default: true
+    default: false
 
   - name: applyKafka
-    displayName: "Install: Kafka Broker"
+    displayName: "Kafka Broker"
     type: boolean
-    default: true
-    # When true, also applies kafkarestclass.yaml (the KafkaRestClass CR
-    # the broker advertises, referenced by Control Center). KafkaRestClass
-    # is a config CR with no pods of its own — not exposed as a separate
-    # checkbox.
+    default: false
+    # When checked (or when "All" is checked), also applies
+    # kafkarestclass.yaml — a config CR with no pods that the broker
+    # advertises, referenced by Control Center. Not exposed as a
+    # separate checkbox.
 
   - name: applySchemaRegistry
-    displayName: "Install: Schema Registry"
+    displayName: "Schema Registry"
     type: boolean
-    default: true
+    default: false
 
   - name: applyConnect
-    displayName: "Install: Kafka Connect"
+    displayName: "Kafka Connect"
     type: boolean
-    default: true
+    default: false
 
   - name: applyKafkaRestProxy
-    displayName: "Install: Kafka REST Proxy"
+    displayName: "Kafka REST Proxy"
     type: boolean
-    default: true
+    default: false
 
   - name: applyControlCenter
-    displayName: "Install: Control Center"
+    displayName: "Control Center"
     type: boolean
-    default: true
+    default: false
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -544,8 +564,9 @@ stages:
                 C3_ALERT_PWD: $(${{ parameters.environment }}-c3-alertmanager-password)
 
           # Diagnostic dump runs both standalone (action=diagnostics) and as
-          # the first step of action=install. Same step body in both cases.
-          - ${{ if or(eq(parameters.action, 'install'), eq(parameters.action, 'diagnostics')) }}:
+          # the first step of action=install-or-update. Same step body in
+          # both cases.
+          - ${{ if or(eq(parameters.action, 'install-or-update'), eq(parameters.action, 'diagnostics')) }}:
             - task: Bash@3
               displayName: "Diagnostics: dump Secret + CR state"
               inputs:
@@ -596,7 +617,7 @@ stages:
                     echo ""
                     echo "The next install reconcile will fail trying to add new finalizers to these."
                     echo "Recovery: re-run this pipeline with action=clear-stuck-prereq-finalizers,"
-                    echo "then action=create-prereqs to re-provision, then action=install."
+                    echo "then action=create-prereqs to re-provision, then action=install-or-update."
                   fi
                   echo ""
 
@@ -802,7 +823,7 @@ stages:
               env:
                 OC_NS: $(openshift-namespace)
 
-          - ${{ if eq(parameters.action, 'install') }}:
+          - ${{ if eq(parameters.action, 'install-or-update') }}:
             - task: Bash@3
               displayName: "Pre-flight: verify env folder + prerequisite Secrets"
               inputs:
@@ -953,37 +974,50 @@ stages:
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
-                  # Per-component selectors — passed from pipeline parameters
+                  # Component selectors — passed from pipeline parameters
                   # via env. ADO serializes a boolean parameter as the literal
                   # string "True" or "False" (capitalized), so compare against
-                  # that exact form. Default in the parameter declarations is
-                  # `true` for every component, so a plain "install" run with
-                  # nothing unchecked applies the entire stack — current
-                  # behavior preserved.
-                  APPLY_KRAFT=${APPLY_KRAFT_CONTROLLER:-True}
-                  APPLY_KAFKA=${APPLY_KAFKA:-True}
-                  APPLY_SR=${APPLY_SCHEMA_REGISTRY:-True}
-                  APPLY_CONNECT=${APPLY_CONNECT:-True}
-                  APPLY_KREST=${APPLY_KAFKA_REST_PROXY:-True}
-                  APPLY_C3=${APPLY_CONTROL_CENTER:-True}
-
+                  # that exact form.
+                  #
+                  # When the "All" checkbox is on (default), every component
+                  # is in scope and the individual checkboxes are ignored.
+                  # When "All" is off, scope is the union of whatever
+                  # individual components were checked.
                   is_true() { [ "$1" = "True" ]; }
 
-                  echo "=== Components selected for this install run ==="
-                  printf "  %-22s %s\n" "KRaft Controller"  "$APPLY_KRAFT"
-                  printf "  %-22s %s\n" "Kafka Broker"      "$APPLY_KAFKA"
-                  printf "  %-22s %s\n" "Schema Registry"   "$APPLY_SR"
-                  printf "  %-22s %s\n" "Kafka Connect"     "$APPLY_CONNECT"
-                  printf "  %-22s %s\n" "Kafka REST Proxy"  "$APPLY_KREST"
-                  printf "  %-22s %s\n" "Control Center"    "$APPLY_C3"
+                  APPLY_ALL=${APPLY_ALL:-True}
+                  if is_true "$APPLY_ALL"; then
+                    APPLY_KRAFT=True
+                    APPLY_KAFKA=True
+                    APPLY_SR=True
+                    APPLY_CONNECT=True
+                    APPLY_KREST=True
+                    APPLY_C3=True
+                  else
+                    APPLY_KRAFT=${APPLY_KRAFT_CONTROLLER:-False}
+                    APPLY_KAFKA=${APPLY_KAFKA:-False}
+                    APPLY_SR=${APPLY_SCHEMA_REGISTRY:-False}
+                    APPLY_CONNECT=${APPLY_CONNECT:-False}
+                    APPLY_KREST=${APPLY_KAFKA_REST_PROXY:-False}
+                    APPLY_C3=${APPLY_CONTROL_CENTER:-False}
+                  fi
+
+                  echo "=== Components in scope for this install-or-update run ==="
+                  printf "  %-22s %s\n" "All (master switch)" "$APPLY_ALL"
+                  printf "  %-22s %s\n" "KRaft Controller"    "$APPLY_KRAFT"
+                  printf "  %-22s %s\n" "Kafka Broker"        "$APPLY_KAFKA"
+                  printf "  %-22s %s\n" "Schema Registry"     "$APPLY_SR"
+                  printf "  %-22s %s\n" "Kafka Connect"       "$APPLY_CONNECT"
+                  printf "  %-22s %s\n" "Kafka REST Proxy"    "$APPLY_KREST"
+                  printf "  %-22s %s\n" "Control Center"      "$APPLY_C3"
                   echo ""
 
                   if ! is_true "$APPLY_KRAFT" && ! is_true "$APPLY_KAFKA" \
                      && ! is_true "$APPLY_SR" && ! is_true "$APPLY_CONNECT" \
                      && ! is_true "$APPLY_KREST" && ! is_true "$APPLY_C3"; then
-                    echo "ERROR: no components selected — every component checkbox is off."
-                    echo "Check at least one Install: <component> box on the pipeline run dialog,"
-                    echo "or use the defaults (all checked) for a full install."
+                    echo "ERROR: no components in scope — 'All' is off AND every individual"
+                    echo "component checkbox is off. Either check 'All' for a full install,"
+                    echo "or check at least one individual component for a targeted upgrade."
                     exit 1
                   fi
 
@@ -1145,6 +1179,7 @@ stages:
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
+                APPLY_ALL: ${{ parameters.applyAll }}
                 APPLY_KRAFT_CONTROLLER: ${{ parameters.applyKRaftController }}
                 APPLY_KAFKA: ${{ parameters.applyKafka }}
                 APPLY_SCHEMA_REGISTRY: ${{ parameters.applySchemaRegistry }}
@@ -1573,7 +1608,7 @@ stages:
                   echo "Next steps:"
                   echo "  1. For Secrets cleared above: re-run action=create-prereqs to re-provision"
                   echo "     (skipping any ESO-managed names — those will be re-synced from CyberArk by ESO)."
-                  echo "  2. Then action=install to bring the CFK stack back."
+                  echo "  2. Then action=install-or-update to bring the CFK stack back."
                   echo ""
                   echo "If anything is still stuck Terminating after this run, it's held by a non-CFK"
                   echo "finalizer (most likely ESO's external-secrets.io/finalizer). DO NOT manually"

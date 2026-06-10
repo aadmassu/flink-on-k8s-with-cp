@@ -321,7 +321,7 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 
 ### A13. Prereq Secret stuck in Terminating after uninstall blocks next install
 
-* **Symptom**: a fresh `action=install` run fails to bring up the
+* **Symptom**: a fresh `action=install-or-update` run fails to bring up the
   CFK stack. The kraftcontroller (or another stack CR) reports:
   ```
   type: platform.confluent.io/cluster-ready
