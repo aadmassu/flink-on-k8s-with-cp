@@ -170,10 +170,51 @@ stages:
                       fcbint.net/app-id=11547
                   }
 
+                  # ESO-safety: snapshot the set of Secret names owned by an
+                  # External Secrets Operator ExternalSecret CR in this
+                  # namespace. As of 2026-06-09 this is { confluent-license,
+                  # cmf-encryption-key, cmf-db-credentials } at FCB, but we
+                  # read it from the live cluster so future ExternalSecrets
+                  # (e.g. the artifactory-user-password one) are picked up
+                  # automatically without code changes.
+                  #
+                  # If create-prereqs ran `oc create secret generic` on an
+                  # ESO-managed name, the apply would overwrite ESO's Secret
+                  # content; ESO would then re-sync from CyberArk on its next
+                  # reconcile interval, flapping the value back. To avoid
+                  # the flap (and the operator confusion it causes), we skip
+                  # the create entirely for ESO-owned names.
+                  echo ""
+                  echo "=== Snapshotting ESO-managed Secret names in $OC_NS ==="
+                  ESO_OWNED_NAMES=$(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
+                    -o jsonpath='{range .items[*]}{.spec.target.name}{"\n"}{end}' \
+                    2>/dev/null)
+                  if [ -z "$ESO_OWNED_NAMES" ]; then
+                    echo "  (no ExternalSecrets in namespace, or external-secrets CRD missing)"
+                  else
+                    echo "$ESO_OWNED_NAMES" | sed 's/^/  - /'
+                  fi
+
+                  # Returns 0 (true) if $1 is an ESO-managed Secret name in
+                  # this namespace, non-zero otherwise. Uses `grep -qxF` for
+                  # exact full-line, fixed-string matching — no regex
+                  # surprises if a Secret name ever contains a metacharacter.
+                  is_eso_managed() {
+                    local name=$1
+                    [ -n "$ESO_OWNED_NAMES" ] && \
+                      grep -qxF "$name" <<< "$ESO_OWNED_NAMES"
+                  }
+
                   apply_secret_from_literals() {
                     local name=$1; shift
                     echo ""
                     echo "=== $name ==="
+                    if is_eso_managed "$name"; then
+                      echo "  SKIPPED — ESO-owned (ExternalSecret targets this name)."
+                      echo "  External Secrets Operator will reconcile its value from CyberArk."
+                      echo "  If you need to refresh, edit the corresponding ExternalSecret CR."
+                      return 0
+                    fi
                     oc create secret generic "$name" \
                       -n "$OC_NS" --dry-run=client -o yaml "$@" \
                       | label_secret "$name" \
@@ -186,6 +227,10 @@ stages:
                     local file=$3
                     echo ""
                     echo "=== $name ==="
+                    if is_eso_managed "$name"; then
+                      echo "  SKIPPED — ESO-owned (ExternalSecret targets this name)."
+                      return 0
+                    fi
                     oc create secret generic "$name" \
                       -n "$OC_NS" --dry-run=client -o yaml \
                       --from-file="$key=$file" \
@@ -220,6 +265,12 @@ stages:
                     local name=$1
                     local client_id=$2
                     local client_secret=$3
+                    echo ""
+                    echo "=== $name ==="
+                    if is_eso_managed "$name"; then
+                      echo "  SKIPPED — ESO-owned (ExternalSecret targets this name)."
+                      return 0
+                    fi
                     local bearer_tmp oauth_tmp
                     bearer_tmp=$(mktemp)
                     oauth_tmp=$(mktemp)
@@ -227,8 +278,6 @@ stages:
                       "$client_id" "$client_secret" > "$bearer_tmp"
                     printf 'clientId=%s\nclientSecret=%s\n' \
                       "$client_id" "$client_secret" > "$oauth_tmp"
-                    echo ""
-                    echo "=== $name ==="
                     oc create secret generic "$name" \
                       -n "$OC_NS" --dry-run=client -o yaml \
                       --from-literal=clientId="$client_id" \
@@ -267,6 +316,11 @@ stages:
                   #   mdsPublicKey.pem    — the public key, used by SR /
                   #                         Connect / REST / C3 to validate
                   # We derive the public key from the private with openssl.
+                  if is_eso_managed mds-token-keypair; then
+                    echo ""
+                    echo "=== mds-token-keypair ==="
+                    echo "  SKIPPED — ESO-owned (ExternalSecret targets this name)."
+                  else
                   MDS_PRIV=$(mktemp)
                   printf '%s' "$MDS_PEM" | base64 -d > "$MDS_PRIV" 2>/dev/null || {
                     echo "ERROR: $TARGET_ENV-mds-token-keypair-pem is not valid base64."
@@ -299,6 +353,7 @@ stages:
                     | label_secret mds-token-keypair \
                     | oc apply -f -
                   rm -f "$MDS_PRIV" "$MDS_PUB"
+                  fi
 
                   # SASL PLAIN — CFK expects TWO files in the same Secret:
                   #
@@ -321,6 +376,11 @@ stages:
                   #
                   # Both files are written into one apply_secret_from_files
                   # call so they land as the two data keys of the same Secret.
+                  if is_eso_managed sasl-plain-internal; then
+                    echo ""
+                    echo "=== sasl-plain-internal ==="
+                    echo "  SKIPPED — ESO-owned (ExternalSecret targets this name)."
+                  else
                   SASL_JSON_TMP=$(mktemp)
                   SASL_IB_TMP=$(mktemp)
                   printf '{\n  "admin": "%s",\n  "client": "%s",\n  "schema_registry": "%s",\n  "kafka_connect": "%s",\n  "kafka_rest": "%s",\n  "control_center": "%s"\n}\n' \
@@ -340,6 +400,7 @@ stages:
                     | label_secret sasl-plain-internal \
                     | oc apply -f -
                   rm -f "$SASL_JSON_TMP" "$SASL_IB_TMP"
+                  fi
 
                   # OAuth client credentials — one Secret per component, each
                   # with clientId/clientSecret AND bearer.txt (see helper above).
