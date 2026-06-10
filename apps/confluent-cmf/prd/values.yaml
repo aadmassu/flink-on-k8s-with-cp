@@ -87,6 +87,32 @@ mountedVolumes:
       mountPath: /etc/cmf/tls
       readOnly: true
 
+# Application-level encryption of CMF catalog rows. CMF encrypts
+# sensitive columns (credentials, secret-set values) BEFORE writing
+# to the SQL Server, so even a DBA with raw table access can't read
+# the cleartext. Enabled from UAT onward per FCB's data-protection
+# standard — dev intentionally uses the same plumbing for parity
+# but FCB has signed off on the JDBC-only encrypt=true posture for
+# dev. The key lives in Secret `cmf-encryption-key`; rotating it
+# would corrupt every existing encrypted row, so the corresponding
+# CyberArk account MUST be locked for rotation.
+encryption:
+  key:
+    kubernetesSecretName: cmf-encryption-key
+    kubernetesSecretProperty: key
+
+license:
+  secretRef: confluent-license
+
+image:
+  # Pulled from FCB Artifactory mirror (cluster has no Docker Hub egress).
+  repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc
+  name: cp-cmf
+  # Custom Confluent build with namespace-scoped RBAC support (the upstream
+  # 2.3.0 chart hard-codes ClusterRole/ClusterRoleBinding which our SA can't
+  # create). Bump only after Confluent ships namespace-scoped support upstream.
+  tag: 2.3.0-fcb-preview-2
+
 # Carry the FCB common-metadata onto every chart resource. The chart's
 # cmf.labels helper natively appends `.Values.additionalLabels`, so this
 # satisfies the [required-workload-labels] Gatekeeper constraint without
