@@ -1,7 +1,11 @@
-# Firewall Request — CFK + Flink native ports
+# Inbound Firewall Requests — CFK + Flink native ports
 
-Single source of truth for the inbound-firewall-rule asks needed to expose the
-CFK + Flink + CMF stack on OpenShift to non-pod-network clients.
+Single source of truth for the **inbound** firewall-rule asks needed to expose
+the CFK + Flink + CMF stack on OpenShift to non-pod-network clients
+(producers, consumers, browser/admin access, cluster-link source brokers).
+
+Companion: [OUTBOUND-FIREWALL-REQUESTS.md](OUTBOUND-FIREWALL-REQUESTS.md) lists
+the egress destinations the same pods need to reach.
 
 ## Rule of thumb
 
@@ -83,6 +87,6 @@ is a separate piece of work and may involve:
 - OpenShift Routes with TLS passthrough
 - An external HAProxy / F5 perimeter proxy
 
-Tracker 2.10 in `ISSUE-TRACKER.md` is the consolidated action item; the
+Tracker 2.10 in [`../ISSUE-TRACKER.md`](../ISSUE-TRACKER.md) is the consolidated action item; the
 implementation choice (and any associated standards exceptions) is documented
 there and confirmed with Container team before each env's CFK install.
