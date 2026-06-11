@@ -2,7 +2,7 @@
 
 Cross-team action items for the CFK + CMF + Flink rollout on FCB OpenShift. Each entry names the **scope** (which env/component), the **owner**, and the **current state**.
 
-This is the action-item view. For technical root-cause writeups on closed issues, see [`runbook/LESSONS_LEARNED.md`](runbook/LESSONS_LEARNED.md). For per-env deploy gates, see [`runbook/CHECKLIST.md`](runbook/CHECKLIST.md). For the original DEV-rollout retrospective, see [`LESSONS-LEARNED.md`](LESSONS-LEARNED.md).
+This is the action-item view. For technical root-cause writeups on closed issues, see [`runbook/LESSONS_LEARNED.md`](../runbook/LESSONS_LEARNED.md). For per-env deploy gates, see [`runbook/CHECKLIST.md`](../runbook/CHECKLIST.md). For the original DEV-rollout retrospective, see [`LESSONS-LEARNED.md`](LESSONS-LEARNED.md).
 
 **Status legend:**
 - `OPEN` — work outstanding (default for any item not yet resolved)

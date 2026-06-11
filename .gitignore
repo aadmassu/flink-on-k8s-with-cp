@@ -29,9 +29,9 @@ Thumbs.db
 
 images-phase*.txt
 
-docs/*
-!docs/pump.txt
-!docs/dump.txt
+project-docs/*
+!project-docs/pump.txt
+!project-docs/dump.txt
 notes.md
 *.xlsx
 generate_*gantt*.py
