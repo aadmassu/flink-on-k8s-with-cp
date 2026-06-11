@@ -51,8 +51,8 @@ cmf:
       engine: sqlserver
       ## TODO: Replace with FCB's SQL Server hostname (requires SNOW ticket for DB team)
       url: "<fcb-sqlserver-host>"
-      # Default SQL Server port
-      port: 1433
+      # FCB MSSQL custom port (NOT the SQL Server default 1433)
+      port: 3085
       # Database name — must be pre-created by DBA team
       database: cmf
       # Database user — must have db_owner role on the cmf database
