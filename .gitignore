@@ -31,10 +31,16 @@ Thumbs.db
 images-phase*.txt
 
 # Local-only docs, notes, and project planning files
-docs/TALKING-POINTS.*
-docs/*.png
-docs/*.jpg
-docs/*.jpeg
+#
+# docs/ policy: only error.txt is committed going forward. Anything else
+# in docs/ (vendor PDFs from FCB Container Team, screenshots, ROSA-related
+# notes, ad-hoc Markdown) stays local. Files already tracked at the time
+# this rule was added stay tracked — gitignore only suppresses NEW
+# untracked files, so historical PDFs and the capacity PNG keep their
+# git history. To add a new file under docs/ deliberately, use
+# `git add -f path/to/file`.
+docs/*
+!docs/error.txt
 notes.md
 *.xlsx
 generate_*gantt*.py
