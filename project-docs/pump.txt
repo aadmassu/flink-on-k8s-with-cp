@@ -1,231 +1,218 @@
-apiVersion: external-secrets.io/v1
-kind: SecretStore
-metadata:
-  annotations:
-    argocd.argoproj.io/tracking-id: 'secrets:external-secrets.io/SecretStore:dah-flink-dev/11547-d-key-fp'
-    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
-    fcbint.net/requester: Tushar.Patle@firstcitizens.com
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"external-secrets.io/v1","kind":"SecretStore","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"secrets:external-secrets.io/SecretStore:dah-flink-dev/11547-d-key-fp","fcbint.net/contact":"dahkafkasupportnotification@firstcitizens.com","fcbint.net/requester":"Tushar.Patle@firstcitizens.com"},"labels":{"app.kubernetes.io/instance":"dah-flink-dev","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"k8s-project","app.kubernetes.io/version":"1.2.12","fcbint.net/app-id":"11547","fcbint.net/app-tier":"4","fcbint.net/argo-app":"secrets","fcbint.net/network":"core","fcbint.net/ritm":"ritm1055510","helm.sh/chart":"k8s-project-1.2.12"},"name":"11547-d-key-fp","namespace":"dah-flink-dev"},"spec":{"provider":{"webhook":{"caBundle":"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZ2VENDQTZXZ0F3SUJBZ0lGVWNPdXI3WXdEUVlKS29aSWh2Y05BUUVMQlFBd2ZqRUxNQWtHQTFVRUJoTUMKVlZNeEZ6QVZCZ05WQkFnTURrNXZjblJvSUVOaGNtOXNhVzVoTVJBd0RnWURWUVFIREFkU1lXeGxhV2RvTVN3dwpLZ1lEVlFRS0RDTkdhWEp6ZEMxRGFYUnBlbVZ1Y3lCQ1lXNXJJQ1lnVkhKMWMzUWdRMjl0Y0dGdWVURVdNQlFHCkExVUVBd3dOUmtOQ0lGSnZiM1FnUTBFZ01qQWVGdzB5TkRFd01UY3lNRFF5TVRGYUZ3MDBPVEV3TVRneU1EUXkKTVRCYU1INHhDekFKQmdOVkJBWVRBbFZUTVJjd0ZRWURWUVFJREE1T2IzSjBhQ0JEWVhKdmJHbHVZVEVRTUE0RwpBMVVFQnd3SFVtRnNaV2xuYURFc01Db0dBMVVFQ2d3alJtbHljM1F0UTJsMGFYcGxibk1nUW1GdWF5QW1JRlJ5CmRYTjBJRU52YlhCaGJua3hGakFVQmdOVkJBTU1EVVpEUWlCU2IyOTBJRU5CSURJd2dnSWlNQTBHQ1NxR1NJYjMKRFFFQkFRVUFBNElDRHdBd2dnSUtBb0lDQVFDajZzUVowczVFcUVyZEhxYlpzTExvZHlUaERVR0JOZXREc1BJcwpUY1BxVjlIWVF1TVVkQW1oYjRTRnR4SU9QcDZsUzlhdVlXNGpSTzlzR2NHT2MwcHVzbmt3M2ZkTWZqaTNvcWU0CjR2S1djb2FlOFdMYWM0clluS1d1SXhGNllkYTh2eGRmZFZ0dHBBdk0vZTdWTjgxb1ZDcExiTVlSUDIzT2h0NWkKd1hSeGFhb244K2ljSHhVeTVqbGt5UzFVNlpzMmc5QnRKMlhmbTQ5cjkwemFVWGNoMWlyZGcvWGFCcUx3dHRoQwpqMk9QR2xPV21Xci9HUzZQM3JtM2VOWWJUTjFXSC9HeHdRUkExTEFCWDljc0VMYS9wS1ZaVUVSUkpNVFZMMVhWCnJjbk5WZEthMlRiZHlSVVh2aVA1NEQwYlBKTUFMRHhMb1hOZHp4UXREaCsydkRjOWdCeUgwejI3Y0g5Z1Q0OFAKSnFkbUp1QWFmQUJ3ek10UXhRV2hQWklpSmROb09HcUNCOHlmQ0xJSm00OEo3WmVsamxhdkZjZUdJOFVwUHVVcAp5NEl6SEVTRXVkU0tCbDhJRXdncWJUNjcvYjRKNVFKRjFpLzEraFJGaHpXS0dKdWpUUVBEVTJzblFSbXRKaWtkCmxiWUNhWHpUYS82T0NVNWYxMG85MzgyQ3pNdWRGNDZTdUxyeXhkaVFkeWNzR1Y5TjJOSm5xaExnTFlHMHJyMEUKNFJ2K0JEM2JURUdWMU9uVEIrdTBiUytTT3pFVStsWmdjazZqYW1KYUdVbmNPc3IrN29pTThmT25peFZ4eUVyYwpPcFVaSjlUV3V6K3FIOUlWQ05qaEE2SHpBSElaV3ROalJKMnJ1RWVYQzFnaElabVoxN3hSTjRYbjlMWmlkell0CnVNTzhKd0lEQVFBQm8wSXdRREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlNROXJMWE5oQ1EKbWwzQ1BTOFBrU0RkdmRuM1BqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dJQgpBS0RQMldjVGp2OGVqblRHbTFXZHp6MjVsTk9YaHZERm5rQmJvQmVYY3NtRTlvWlE5ZWlycERvQ0hMTm1CMnVPClJENWl5ajJXQ0lRSUFPNUwxaC9EMEQxbFM3NGY0UExOQ1lzRlQ2ZlJXNER5OFNOT2grdVR6V21nejVkaEVTNkYKYkcxRTIrdndhdVdaRi9pR2NLRFl2OWc5Q0FGZjY4bVVCazZFay9BQ3Y4T24zOW8rL0FnMXdwSEFyMFRMeGwvcApvcWpUdWZ4eFVzT2x5MUE5cDdwYmZDZDN4a1FSK2x6WkxaTmE5cTBib09tTDVKUlAyTm16OURPTzFPUFoybHhCClNIOXI3Ykw2UlB4Yk80WllabXVuMStOOFArVW00dnVSakVIaTBGbUZYU1FaUkRCanRxTDE5T09rQk4xL3RmbnEKTFBuVXlQMitwYThubnp4TWFZYnB3MU9uZUZpeWl2Z2FkQnlsQ3M2ZXNvdHRxN1hYczZmODhoY3V4bmYrSnpzMwp0cGh2RkhhYzRQK3VubkpQMGVrN1NwMHRJOTJ3aWdBQXFucHZ2SjlLZksrRC9PaXJES1piV205RWY1UkMwT25lCndBZ25QVkdNM1FqcmN3RTkrQkJ1NjBnMG92amxEOVFCVzRGamlocXMrSHBRNElVOVg5c0FqV3JoLzdqbzBPYzUKclJZVkJwWTI0LzlNRW5sWmJZdjlKVE1BYVFoeFd4SGNxTWt5WllTSDd1T1R4b1NtTmM1TlBGYUtURVJGQUYwaQprZXgzSEp5bGsvRmI4bXBZdWxKdDArYnRHcUN1WkRpaS9jQjRzVFk0aVIrUlJvVXRKYytPMkkvTXBzVjdnOXFQCmtUYWJ3c2pZZGRmUTl5MWZBeVdQSWZodS9YK0dSM0ZQamltZ090b20xSFlQCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KCi0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQpNSUlGYmpDQ0ExYWdBd0lCQWdJUUh4MFovekhoNjRKRFkzN1J2dTA5Y2pBTkJna3Foa2lHOXcwQkFRc0ZBREJJCk1TNHdMQVlEVlFRS0V5VkdhWEp6ZENCRGFYUnBlbVZ1Y3lCQ1lXNXJJR0Z1WkNCVWNuVnpkQ0JEYjIxd1lXNTUKTVJZd0ZBWURWUVFERXcxR1EwSWdVbTl2ZENCRFFTQXhNQjRYRFRFNE1EZ3lPVEUwTWpRd04xb1hEVFF6TURneQpPVEUwTWpRd04xb3dTREV1TUN3R0ExVUVDaE1sUm1seWMzUWdRMmwwYVhwbGJuTWdRbUZ1YXlCaGJtUWdWSEoxCmMzUWdRMjl0Y0dGdWVURVdNQlFHQTFVRUF4TU5Sa05DSUZKdmIzUWdRMEVnTVRDQ0FpSXdEUVlKS29aSWh2Y04KQVFFQkJRQURnZ0lQQURDQ0Fnb0NnZ0lCQUwyMytROUt4cjhQTm1PRDk5TGhsR0FhNDZtOSswdDl1SUVvZFlhRQo3LzZVNUFIQkxTY0wwNFJobmJrdkFjQjcxczFPNjNKYUR0SjdYclV1NWdLVjBPaWQ2cGZNbnA1Wjc2eFZraDA2CjBINFRpWVhQQ3NhMHVMNEdaQ2FJdjExaDgzajZUSGRkdUJEVTZoQVVQRk9pYy92WExkTURDYlV0RFBHN25CL3cKcVJGb0p5Mzd1RVJpNS83TzQwTWxUUEZ3N2sxSG1iaGJ2ZFAwem11NXZDcE1xcXJqbmxvVzRrOWN6UU5laFp4cApwVDlLZldCTkhLRzhWcnhDMU02eGlwbGlOajR4NGZmc3hmZWYxV0Ura0t0VDVtbVF6aUhrTDNRU1E2bXZSS3kxCjFJTVZtdTVGUlhJOE8vdmJqMmJnMnBEUUYrcHFpcUY1V2I4MlFXOHZyMzd3UmlodldLYzJnV1d0a3pxVFU4Wm8KSGpLZHZZOThHWTBvVEFMa2VPVGFTUkpVSW85Q1RidDVnU2NXemVCU2tyMTVhVUpmYXA3aUlObGdxcHoyekVkWQpmSkF4WXZ2M3pXOVRkdXVpVW53Sk85ajRTNDV0aWN5MXg5cUhsQjNGc2dPZVlaZmFZQ0YzN0tkQ1Q0dHFWNXZHCjQ4TkQ0NlFnWTlVSC91bUg0LzF6MzNBMVNqNzZjVnozYW90Szd0NXBPOWxxSHhnUkFVZFIxMlAvQk1haURpRlUKWHZiN3pueFJUV2wrRUdqUzR0MkZGajJNbGhxeEhhdTJPSVFzSi9GMFNCdWdYNG55SzRLSEdFSVRyOG85cENjOApNV1dYS2tTbUhlMHNmR01yWEJ0Vk4vWkg3aHRvZ2RrZjhSdG1sRVZQMDNYOUVwWDdUQWlubXpkNXFzZUtVenArCkYxbDFBZ01CQUFHalZEQlNNQTRHQTFVZER3RUIvd1FFQXdJQkJqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEcKQTFVZERnUVdCQlJ1Y1I3bEZORmxuQndPVGhDSEU1bWZHNXA2TkRBUUJna3JCZ0VFQVlJM0ZRRUVBd0lCQURBTgpCZ2txaGtpRzl3MEJBUXNGQUFPQ0FnRUFIbHhobi9MOU4vRG8zL25LaHowc3Zvc2ltODE3d2N3N3ZOWnV5NW14CnJxTDczaFJPa1JId0Z3TGFpRGpqWmR6Uy9Tc2NKTDZINjhoR055VHh2ZTh0V0t2b3E1MW1lbDNGVk1UNkxpSWQKK0RPeTl3SFNVMElGS21nN2J4UWxxTGNhbTI0NFBhTnh5QVNuemNGcmFkOXVtSjBrY3l0NWk2blluY3k5Mm80cAo4SUNFN0U5YXErRlFPMkJwbyt2aituTWNYS1FVanpSMEVHd1NuWFp5TlRsdDhPUis4REg5eUwvVGg4ckwvZHJUCmJSckFQZGtSNlZLblVWSUpkTUxwb1FKMytNZUgvY3U0Q2hVcUx6b0ZzNmxzWnFTZ0cxdml1VkJTeHI1cEpIK0wKOUQ5cUVqNmpMeTMrcDFEQ1FYV0FiM2hNZ1RHK1o0c3ZaWWhoMlROSXJWRyszU055Y1Bma090QkpYMENiVWVzdApTQnYwN1psei9sQy9SZHAxQzZCOE5GN0RzYjdnWDd6SnpIWk5XUTVmY05vMDE3cHF2UURTeWQzRi9wOTg4c1FGClN0SmMwOVU1djJualdRdUYxRGVyT3FjbWs5SHBtbkwzRTZGQ01mRlhJZ1pWQm13N0tWaDc1QkVUMDlwWTl4c24KbnN0VWQreDdWaTRWQ2FieDF4dEhtRGlsRmZ2M2lCWTA4cXpqSEJObk9EcVhKTXdBaGhXRGVBWnRuc1VrbE1HMwp6Y1N6eGhjTVAwV3paTnhlYWNFVDExUjErRDJSNnQ4UkJpbjdxOC9zNXlXVy9XNmtMQnNDeEhUdDJUNGdycG9mCnc5RGNCeEFLVVB6bFRaSFkvSTE3NWNURHZ1OUdpOE5FSDUybDNVcC9ZaWZreHVzajh0MnJBRnRHUVRKejJoVGMKNDY0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==","result":{"jsonPath":"$.Content"},"timeout":"30s","url":"https://pam-ccp.fcpd.fcbint.net/AIMWebServiceIP/api/Accounts?ConnectionTimeout=30\u0026AppId=APP-11547-D\u0026Query=Safe=11547_D_KEY_FP;UserName={{ .remoteRef.key }};Address={{ .remoteRef.property }}"}},"retrySettings":{"maxRetries":6,"retryInterval":"10s"}}}
-  resourceVersion: '720530783'
-  name: 11547-d-key-fp
-  uid: 9396871d-bc5d-4a13-b5c3-96a785e4c5f0
-  creationTimestamp: '2026-05-14T15:40:02Z'
-  generation: 1
-  managedFields:
-    - apiVersion: external-secrets.io/v1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:metadata':
-          'f:annotations':
-            .: {}
-            'f:argocd.argoproj.io/tracking-id': {}
-            'f:fcbint.net/contact': {}
-            'f:fcbint.net/requester': {}
-            'f:kubectl.kubernetes.io/last-applied-configuration': {}
-          'f:labels':
-            'f:helm.sh/chart': {}
-            'f:app.kubernetes.io/managed-by': {}
-            'f:fcbint.net/app-id': {}
-            'f:fcbint.net/network': {}
-            'f:app.kubernetes.io/name': {}
-            .: {}
-            'f:fcbint.net/argo-app': {}
-            'f:fcbint.net/app-tier': {}
-            'f:fcbint.net/ritm': {}
-            'f:app.kubernetes.io/version': {}
-            'f:app.kubernetes.io/instance': {}
-        'f:spec':
-          .: {}
-          'f:provider':
-            .: {}
-            'f:webhook':
-              .: {}
-              'f:caBundle': {}
-              'f:result':
-                .: {}
-                'f:jsonPath': {}
-              'f:timeout': {}
-              'f:url': {}
-          'f:retrySettings':
-            .: {}
-            'f:maxRetries': {}
-            'f:retryInterval': {}
-      manager: argocd-controller
-      operation: Update
-      time: '2026-05-14T15:40:02Z'
-    - apiVersion: external-secrets.io/v1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:status':
-          .: {}
-          'f:capabilities': {}
-          'f:conditions': {}
-      manager: external-secrets
-      operation: Update
-      subresource: status
-      time: '2026-05-14T15:40:02Z'
-  namespace: dah-flink-dev
-  labels:
-    fcbint.net/argo-app: secrets
-    app.kubernetes.io/instance: dah-flink-dev
-    fcbint.net/app-tier: '4'
-    fcbint.net/ritm: ritm1055510
-    app.kubernetes.io/version: 1.2.12
-    app.kubernetes.io/managed-by: Helm
-    helm.sh/chart: k8s-project-1.2.12
-    fcbint.net/network: core
-    app.kubernetes.io/name: k8s-project
-    fcbint.net/app-id: '11547'
-spec:
-  provider:
-    webhook:
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZ2VENDQTZXZ0F3SUJBZ0lGVWNPdXI3WXdEUVlKS29aSWh2Y05BUUVMQlFBd2ZqRUxNQWtHQTFVRUJoTUMKVlZNeEZ6QVZCZ05WQkFnTURrNXZjblJvSUVOaGNtOXNhVzVoTVJBd0RnWURWUVFIREFkU1lXeGxhV2RvTVN3dwpLZ1lEVlFRS0RDTkdhWEp6ZEMxRGFYUnBlbVZ1Y3lCQ1lXNXJJQ1lnVkhKMWMzUWdRMjl0Y0dGdWVURVdNQlFHCkExVUVBd3dOUmtOQ0lGSnZiM1FnUTBFZ01qQWVGdzB5TkRFd01UY3lNRFF5TVRGYUZ3MDBPVEV3TVRneU1EUXkKTVRCYU1INHhDekFKQmdOVkJBWVRBbFZUTVJjd0ZRWURWUVFJREE1T2IzSjBhQ0JEWVhKdmJHbHVZVEVRTUE0RwpBMVVFQnd3SFVtRnNaV2xuYURFc01Db0dBMVVFQ2d3alJtbHljM1F0UTJsMGFYcGxibk1nUW1GdWF5QW1JRlJ5CmRYTjBJRU52YlhCaGJua3hGakFVQmdOVkJBTU1EVVpEUWlCU2IyOTBJRU5CSURJd2dnSWlNQTBHQ1NxR1NJYjMKRFFFQkFRVUFBNElDRHdBd2dnSUtBb0lDQVFDajZzUVowczVFcUVyZEhxYlpzTExvZHlUaERVR0JOZXREc1BJcwpUY1BxVjlIWVF1TVVkQW1oYjRTRnR4SU9QcDZsUzlhdVlXNGpSTzlzR2NHT2MwcHVzbmt3M2ZkTWZqaTNvcWU0CjR2S1djb2FlOFdMYWM0clluS1d1SXhGNllkYTh2eGRmZFZ0dHBBdk0vZTdWTjgxb1ZDcExiTVlSUDIzT2h0NWkKd1hSeGFhb244K2ljSHhVeTVqbGt5UzFVNlpzMmc5QnRKMlhmbTQ5cjkwemFVWGNoMWlyZGcvWGFCcUx3dHRoQwpqMk9QR2xPV21Xci9HUzZQM3JtM2VOWWJUTjFXSC9HeHdRUkExTEFCWDljc0VMYS9wS1ZaVUVSUkpNVFZMMVhWCnJjbk5WZEthMlRiZHlSVVh2aVA1NEQwYlBKTUFMRHhMb1hOZHp4UXREaCsydkRjOWdCeUgwejI3Y0g5Z1Q0OFAKSnFkbUp1QWFmQUJ3ek10UXhRV2hQWklpSmROb09HcUNCOHlmQ0xJSm00OEo3WmVsamxhdkZjZUdJOFVwUHVVcAp5NEl6SEVTRXVkU0tCbDhJRXdncWJUNjcvYjRKNVFKRjFpLzEraFJGaHpXS0dKdWpUUVBEVTJzblFSbXRKaWtkCmxiWUNhWHpUYS82T0NVNWYxMG85MzgyQ3pNdWRGNDZTdUxyeXhkaVFkeWNzR1Y5TjJOSm5xaExnTFlHMHJyMEUKNFJ2K0JEM2JURUdWMU9uVEIrdTBiUytTT3pFVStsWmdjazZqYW1KYUdVbmNPc3IrN29pTThmT25peFZ4eUVyYwpPcFVaSjlUV3V6K3FIOUlWQ05qaEE2SHpBSElaV3ROalJKMnJ1RWVYQzFnaElabVoxN3hSTjRYbjlMWmlkell0CnVNTzhKd0lEQVFBQm8wSXdRREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlNROXJMWE5oQ1EKbWwzQ1BTOFBrU0RkdmRuM1BqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dJQgpBS0RQMldjVGp2OGVqblRHbTFXZHp6MjVsTk9YaHZERm5rQmJvQmVYY3NtRTlvWlE5ZWlycERvQ0hMTm1CMnVPClJENWl5ajJXQ0lRSUFPNUwxaC9EMEQxbFM3NGY0UExOQ1lzRlQ2ZlJXNER5OFNOT2grdVR6V21nejVkaEVTNkYKYkcxRTIrdndhdVdaRi9pR2NLRFl2OWc5Q0FGZjY4bVVCazZFay9BQ3Y4T24zOW8rL0FnMXdwSEFyMFRMeGwvcApvcWpUdWZ4eFVzT2x5MUE5cDdwYmZDZDN4a1FSK2x6WkxaTmE5cTBib09tTDVKUlAyTm16OURPTzFPUFoybHhCClNIOXI3Ykw2UlB4Yk80WllabXVuMStOOFArVW00dnVSakVIaTBGbUZYU1FaUkRCanRxTDE5T09rQk4xL3RmbnEKTFBuVXlQMitwYThubnp4TWFZYnB3MU9uZUZpeWl2Z2FkQnlsQ3M2ZXNvdHRxN1hYczZmODhoY3V4bmYrSnpzMwp0cGh2RkhhYzRQK3VubkpQMGVrN1NwMHRJOTJ3aWdBQXFucHZ2SjlLZksrRC9PaXJES1piV205RWY1UkMwT25lCndBZ25QVkdNM1FqcmN3RTkrQkJ1NjBnMG92amxEOVFCVzRGamlocXMrSHBRNElVOVg5c0FqV3JoLzdqbzBPYzUKclJZVkJwWTI0LzlNRW5sWmJZdjlKVE1BYVFoeFd4SGNxTWt5WllTSDd1T1R4b1NtTmM1TlBGYUtURVJGQUYwaQprZXgzSEp5bGsvRmI4bXBZdWxKdDArYnRHcUN1WkRpaS9jQjRzVFk0aVIrUlJvVXRKYytPMkkvTXBzVjdnOXFQCmtUYWJ3c2pZZGRmUTl5MWZBeVdQSWZodS9YK0dSM0ZQamltZ090b20xSFlQCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KCi0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQpNSUlGYmpDQ0ExYWdBd0lCQWdJUUh4MFovekhoNjRKRFkzN1J2dTA5Y2pBTkJna3Foa2lHOXcwQkFRc0ZBREJJCk1TNHdMQVlEVlFRS0V5VkdhWEp6ZENCRGFYUnBlbVZ1Y3lCQ1lXNXJJR0Z1WkNCVWNuVnpkQ0JEYjIxd1lXNTUKTVJZd0ZBWURWUVFERXcxR1EwSWdVbTl2ZENCRFFTQXhNQjRYRFRFNE1EZ3lPVEUwTWpRd04xb1hEVFF6TURneQpPVEUwTWpRd04xb3dTREV1TUN3R0ExVUVDaE1sUm1seWMzUWdRMmwwYVhwbGJuTWdRbUZ1YXlCaGJtUWdWSEoxCmMzUWdRMjl0Y0dGdWVURVdNQlFHQTFVRUF4TU5Sa05DSUZKdmIzUWdRMEVnTVRDQ0FpSXdEUVlKS29aSWh2Y04KQVFFQkJRQURnZ0lQQURDQ0Fnb0NnZ0lCQUwyMytROUt4cjhQTm1PRDk5TGhsR0FhNDZtOSswdDl1SUVvZFlhRQo3LzZVNUFIQkxTY0wwNFJobmJrdkFjQjcxczFPNjNKYUR0SjdYclV1NWdLVjBPaWQ2cGZNbnA1Wjc2eFZraDA2CjBINFRpWVhQQ3NhMHVMNEdaQ2FJdjExaDgzajZUSGRkdUJEVTZoQVVQRk9pYy92WExkTURDYlV0RFBHN25CL3cKcVJGb0p5Mzd1RVJpNS83TzQwTWxUUEZ3N2sxSG1iaGJ2ZFAwem11NXZDcE1xcXJqbmxvVzRrOWN6UU5laFp4cApwVDlLZldCTkhLRzhWcnhDMU02eGlwbGlOajR4NGZmc3hmZWYxV0Ura0t0VDVtbVF6aUhrTDNRU1E2bXZSS3kxCjFJTVZtdTVGUlhJOE8vdmJqMmJnMnBEUUYrcHFpcUY1V2I4MlFXOHZyMzd3UmlodldLYzJnV1d0a3pxVFU4Wm8KSGpLZHZZOThHWTBvVEFMa2VPVGFTUkpVSW85Q1RidDVnU2NXemVCU2tyMTVhVUpmYXA3aUlObGdxcHoyekVkWQpmSkF4WXZ2M3pXOVRkdXVpVW53Sk85ajRTNDV0aWN5MXg5cUhsQjNGc2dPZVlaZmFZQ0YzN0tkQ1Q0dHFWNXZHCjQ4TkQ0NlFnWTlVSC91bUg0LzF6MzNBMVNqNzZjVnozYW90Szd0NXBPOWxxSHhnUkFVZFIxMlAvQk1haURpRlUKWHZiN3pueFJUV2wrRUdqUzR0MkZGajJNbGhxeEhhdTJPSVFzSi9GMFNCdWdYNG55SzRLSEdFSVRyOG85cENjOApNV1dYS2tTbUhlMHNmR01yWEJ0Vk4vWkg3aHRvZ2RrZjhSdG1sRVZQMDNYOUVwWDdUQWlubXpkNXFzZUtVenArCkYxbDFBZ01CQUFHalZEQlNNQTRHQTFVZER3RUIvd1FFQXdJQkJqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEcKQTFVZERnUVdCQlJ1Y1I3bEZORmxuQndPVGhDSEU1bWZHNXA2TkRBUUJna3JCZ0VFQVlJM0ZRRUVBd0lCQURBTgpCZ2txaGtpRzl3MEJBUXNGQUFPQ0FnRUFIbHhobi9MOU4vRG8zL25LaHowc3Zvc2ltODE3d2N3N3ZOWnV5NW14CnJxTDczaFJPa1JId0Z3TGFpRGpqWmR6Uy9Tc2NKTDZINjhoR055VHh2ZTh0V0t2b3E1MW1lbDNGVk1UNkxpSWQKK0RPeTl3SFNVMElGS21nN2J4UWxxTGNhbTI0NFBhTnh5QVNuemNGcmFkOXVtSjBrY3l0NWk2blluY3k5Mm80cAo4SUNFN0U5YXErRlFPMkJwbyt2aituTWNYS1FVanpSMEVHd1NuWFp5TlRsdDhPUis4REg5eUwvVGg4ckwvZHJUCmJSckFQZGtSNlZLblVWSUpkTUxwb1FKMytNZUgvY3U0Q2hVcUx6b0ZzNmxzWnFTZ0cxdml1VkJTeHI1cEpIK0wKOUQ5cUVqNmpMeTMrcDFEQ1FYV0FiM2hNZ1RHK1o0c3ZaWWhoMlROSXJWRyszU055Y1Bma090QkpYMENiVWVzdApTQnYwN1psei9sQy9SZHAxQzZCOE5GN0RzYjdnWDd6SnpIWk5XUTVmY05vMDE3cHF2UURTeWQzRi9wOTg4c1FGClN0SmMwOVU1djJualdRdUYxRGVyT3FjbWs5SHBtbkwzRTZGQ01mRlhJZ1pWQm13N0tWaDc1QkVUMDlwWTl4c24KbnN0VWQreDdWaTRWQ2FieDF4dEhtRGlsRmZ2M2lCWTA4cXpqSEJObk9EcVhKTXdBaGhXRGVBWnRuc1VrbE1HMwp6Y1N6eGhjTVAwV3paTnhlYWNFVDExUjErRDJSNnQ4UkJpbjdxOC9zNXlXVy9XNmtMQnNDeEhUdDJUNGdycG9mCnc5RGNCeEFLVVB6bFRaSFkvSTE3NWNURHZ1OUdpOE5FSDUybDNVcC9ZaWZreHVzajh0MnJBRnRHUVRKejJoVGMKNDY0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-      result:
-        jsonPath: $.Content
-      timeout: 30s
-      url: 'https://pam-ccp.fcpd.fcbint.net/AIMWebServiceIP/api/Accounts?ConnectionTimeout=30&AppId=APP-11547-D&Query=Safe=11547_D_KEY_FP;UserName={{ .remoteRef.key }};Address={{ .remoteRef.property }}'
-  retrySettings:
-    maxRetries: 6
-    retryInterval: 10s
-status:
-  capabilities: ReadOnly
-  conditions:
-    - lastTransitionTime: '2026-05-14T15:40:02Z'
-      message: store validated
-      reason: Valid
-      status: 'True'
-      type: Ready
-	  
----
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  annotations:
-    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
-    force-sync: '1779221325'
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"external-secrets.io/v1","kind":"ExternalSecret","metadata":{"annotations":{"fcbint.net/contact":"dahkafkasupportnotification@firstcitizens.com"},"labels":{"app.kubernetes.io/component":"cmf-secret","app.kubernetes.io/instance":"confluent-license","app.kubernetes.io/name":"confluent-license","app.kubernetes.io/part-of":"confluent-manager-for-flink","fcbint.net/app-id":"11547"},"name":"confluent-license","namespace":"dah-flink-dev"},"spec":{"data":[{"remoteRef":{"key":"dev-confluent-license","property":"Digital Analytics Hub"},"secretKey":"jwt"}],"refreshInterval":"1h","secretStoreRef":{"kind":"SecretStore","name":"11547-d-key-fp"},"target":{"creationPolicy":"Owner","deletionPolicy":"Retain","name":"confluent-license","template":{"data":{"license.txt":"license={{ .jwt }}\n"},"engineVersion":"v2","metadata":{"labels":{"app.kubernetes.io/component":"cmf-secret","app.kubernetes.io/instance":"confluent-license","app.kubernetes.io/name":"confluent-license","app.kubernetes.io/part-of":"confluent-manager-for-flink","fcbint.net/app-id":"11547"}},"type":"Opaque"}}}}
-  resourceVersion: '743937174'
-  name: confluent-license
-  uid: 15f58953-f5d4-4f43-85d2-eedb58f5c1dc
-  creationTimestamp: '2026-05-19T20:00:27Z'
-  generation: 1
-  managedFields:
-    - apiVersion: external-secrets.io/v1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:metadata':
-          'f:annotations':
-            .: {}
-            'f:fcbint.net/contact': {}
-            'f:kubectl.kubernetes.io/last-applied-configuration': {}
-          'f:labels':
-            .: {}
-            'f:app.kubernetes.io/component': {}
-            'f:app.kubernetes.io/instance': {}
-            'f:app.kubernetes.io/name': {}
-            'f:app.kubernetes.io/part-of': {}
-            'f:fcbint.net/app-id': {}
-        'f:spec':
-          .: {}
-          'f:data': {}
-          'f:refreshInterval': {}
-          'f:secretStoreRef':
-            .: {}
-            'f:kind': {}
-            'f:name': {}
-          'f:target':
-            .: {}
-            'f:creationPolicy': {}
-            'f:deletionPolicy': {}
-            'f:name': {}
-            'f:template':
-              .: {}
-              'f:data':
-                .: {}
-                'f:license.txt': {}
-              'f:engineVersion': {}
-              'f:mergePolicy': {}
-              'f:metadata':
-                .: {}
-                'f:labels':
-                  .: {}
-                  'f:app.kubernetes.io/component': {}
-                  'f:app.kubernetes.io/instance': {}
-                  'f:app.kubernetes.io/name': {}
-                  'f:app.kubernetes.io/part-of': {}
-                  'f:fcbint.net/app-id': {}
-              'f:type': {}
-      manager: kubectl-client-side-apply
-      operation: Update
-      time: '2026-05-19T20:00:27Z'
-    - apiVersion: external-secrets.io/v1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:status':
-          .: {}
-          'f:binding': {}
-          'f:conditions': {}
-          'f:refreshTime': {}
-      manager: external-secrets
-      operation: Update
-      subresource: status
-      time: '2026-05-19T20:00:28Z'
-    - apiVersion: external-secrets.io/v1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:metadata':
-          'f:annotations':
-            'f:force-sync': {}
-      manager: kubectl-annotate
-      operation: Update
-      time: '2026-05-19T20:08:45Z'
-  namespace: dah-flink-dev
-  labels:
-    app.kubernetes.io/component: cmf-secret
-    app.kubernetes.io/instance: confluent-license
-    app.kubernetes.io/name: confluent-license
-    app.kubernetes.io/part-of: confluent-manager-for-flink
-    fcbint.net/app-id: '11547'
-spec:
-  data:
-    - remoteRef:
-        conversionStrategy: Default
-        decodingStrategy: None
-        key: dev-confluent-license
-        metadataPolicy: None
-        property: Digital Analytics Hub
-      secretKey: jwt
-  refreshInterval: 1h
-  secretStoreRef:
-    kind: SecretStore
-    name: 11547-d-key-fp
-  target:
-    creationPolicy: Owner
-    deletionPolicy: Retain
-    name: confluent-license
-    template:
-      data:
-        license.txt: |
-          license={{ .jwt }}
-      engineVersion: v2
-      mergePolicy: Replace
-      metadata:
-        labels:
-          app.kubernetes.io/component: cmf-secret
-          app.kubernetes.io/instance: confluent-license
-          app.kubernetes.io/name: confluent-license
-          app.kubernetes.io/part-of: confluent-manager-for-flink
-          fcbint.net/app-id: '11547'
-      type: Opaque
-status:
-  binding:
-    name: ''
-  conditions:
-    - lastTransitionTime: '2026-05-19T20:00:28Z'
-      message: could not get secret data from provider
-      reason: SecretSyncedError
-      status: 'False'
-      type: Ready
-  refreshTime: null
+# ADO Environments — 3 × 5 = 15 definitions
+# Project: Banking-DAH (azdo-prd.fcpd.fcbint.net/CITMain/Banking-DAH)
+# Drafted: 2026-06-10
+# Author: Ayu
+
+## Purpose
+
+Proposed Azure DevOps Environments backing the multi-stage YAML CD
+pipelines for Flink/CFK delivery on OpenShift. Three workload classes
+× five envs:
+
+  flink-jobs-<env>  — application code (DAH.Flink.Jobs ci.yaml + cd.yaml)
+  cp-<env>          — Confluent Platform CFK CRs (DAH.Kafka.OS confluent-platform.yaml)
+  cmf-<env>         — CMF + Flink Operator (DAH.Kafka.OS cmf.yaml)
+
+  <env> ∈ { dev, qa, uat, prd, dr }
+
+The existing DBA-owned Environments (Dev / QA / Uat / prod, used by
+DAH.DB sql and SSIS.SqlScripts) stay untouched — different approvers,
+different change-management policy, different cadence.
+
+
+## Conventions
+
+- Names are lowercase kebab-case (flink-jobs-dev, not Flink-Jobs-Dev).
+  Keeps YAML `environment:` references consistent and avoids the casing
+  drift the DBA envs already exhibit (Dev / QA / Uat / prod — three
+  conventions in four envs).
+- Branch control check on every non-dev Environment restricts the
+  triggering branch to `master`. Dev allows feature branches so engineers
+  can iterate.
+- Exclusive lock check enabled on every Environment so concurrent
+  pipeline runs serialize per env — prevents two engineers stepping on
+  each other's CFK CR applies or CMF Helm bumps.
+- ServiceNow gate applied at *-prd and *-dr only. Uses the "Invoke REST
+  API" check pointing at the CITMain SNOW change-window endpoint
+  (exact URL TBC with FCB Change Management).
+- Business-hours gate (09:00–17:00 ET, Mon–Fri) on *-prd. Intentionally
+  NOT on *-dr — DR deploys are incident-driven, must work any time.
+
+
+## Approver groups (legend)
+
+  KAFKA-ADMINS    — Tushar (kafka admin), Preeti (team manager), Ayu
+  CONTAINER       — Rick Mulder, Tom Philipps
+  CHANGE-MGMT     — FCB Change Management approver group (DL TBC)
+  FCB-SECURITY    — FCB Security distribution list (TBC; only used if a
+                    specific job ever needs PII/security review)
+
+
+## Definitions
+
+
+### 1. flink-jobs-dev
+Pipeline:        DAH.Flink.Jobs / cd.yaml (Dev stage)
+Deploys:         FlinkApplication CR + ConfigMap per Flink job
+Branch control:  any branch (engineers iterate on feature branches)
+Approvers:       none (auto-deploy)
+Pre-deploy:      Exclusive lock
+Post-deploy:     none
+
+### 2. flink-jobs-qa
+Pipeline:        DAH.Flink.Jobs / cd.yaml (QA stage)
+Deploys:         FlinkApplication CR + ConfigMap per Flink job
+Branch control:  master only
+Approvers:       KAFKA-ADMINS (any 1 of 3)
+Pre-deploy:      Exclusive lock, branch=master
+Timeout:         24 hours; reject on timeout
+
+### 3. flink-jobs-uat
+Pipeline:        DAH.Flink.Jobs / cd.yaml (UAT stage)
+Deploys:         FlinkApplication CR + ConfigMap per Flink job
+Branch control:  master only
+Approvers:       KAFKA-ADMINS (any 1 of 3)
+Pre-deploy:      Exclusive lock, branch=master
+Timeout:         24 hours; reject on timeout
+
+### 4. flink-jobs-prd
+Pipeline:        DAH.Flink.Jobs / cd.yaml (Prd stage)
+Deploys:         FlinkApplication CR + ConfigMap per Flink job
+                 (image promoted from dev registry to prod registry first)
+Branch control:  master only
+Approvers:       KAFKA-ADMINS (Tushar required) + CHANGE-MGMT
+Pre-deploy:      Exclusive lock, branch=master, ServiceNow change-window
+                 gate, business-hours gate (09:00–17:00 ET, Mon–Fri)
+Timeout:         48 hours; reject on timeout
+
+### 5. flink-jobs-dr
+Pipeline:        DAH.Flink.Jobs / cd.yaml (Dr stage; not yet active)
+Deploys:         FlinkApplication CR + ConfigMap per Flink job on the
+                 secondary cluster. Normally idle; deploys only on
+                 failover or when state diverges from prd.
+Branch control:  master only
+Approvers:       KAFKA-ADMINS (Tushar required) + CONTAINER + CHANGE-MGMT
+                 (DR deploys are inherently incidents — extra reviewer)
+Pre-deploy:      Exclusive lock, branch=master, ServiceNow change-window gate
+Timeout:         48 hours; reject on timeout
+
+
+### 6. cp-dev
+Pipeline:        DAH.Kafka.OS / confluent-platform.yaml (environment=dev)
+Deploys:         CFK CRs (KRaftController, Kafka, SchemaRegistry, Connect,
+                 KafkaRestProxy, ControlCenter), prereq Secrets,
+                 cert-manager Certificate CRs, Ingress
+Branch control:  any branch (dev is the experimentation env)
+Approvers:       none (auto-deploy)
+Pre-deploy:      Exclusive lock
+
+### 7. cp-qa
+Pipeline:        DAH.Kafka.OS / confluent-platform.yaml (environment=qa)
+Deploys:         CFK CRs + prereqs + certs + Ingress
+Branch control:  fcb-flink-cp only
+Approvers:       KAFKA-ADMINS (Tushar required) + CONTAINER (Rick OR Tom)
+Pre-deploy:      Exclusive lock
+Timeout:         48 hours; reject on timeout
+
+### 8. cp-uat
+Pipeline:        DAH.Kafka.OS / confluent-platform.yaml (environment=uat)
+Deploys:         CFK CRs + prereqs + certs + Ingress
+Branch control:  fcb-flink-cp only
+Approvers:       KAFKA-ADMINS (Tushar required) + CONTAINER (Rick OR Tom)
+Pre-deploy:      Exclusive lock
+Timeout:         48 hours; reject on timeout
+
+### 9. cp-prd
+Pipeline:        DAH.Kafka.OS / confluent-platform.yaml (environment=prd)
+Deploys:         CFK CRs + prereqs + certs + Ingress on production cluster.
+                 Broker sizing per Application Infrastructure Workbook
+                 (linked from ISSUE-TRACKER.md tracker 2.5).
+Branch control:  master only
+Approvers:       KAFKA-ADMINS (Tushar required) + CONTAINER (Rick required)
+                 + CHANGE-MGMT
+Pre-deploy:      Exclusive lock, branch=master, ServiceNow change-window
+                 gate, business-hours gate (09:00–17:00 ET, Mon–Fri)
+Timeout:         72 hours; reject on timeout
+
+### 10. cp-dr
+Pipeline:        DAH.Kafka.OS / confluent-platform.yaml (environment=dr)
+Deploys:         CFK CRs + prereqs + certs + Ingress on secondary cluster.
+                 OAuth clients, SASL passwords, MDS keypair MUST match prd
+                 for cluster-link failover compatibility — see
+                 apps/confluent-platform/dr/prereqs/README.md.
+Branch control:  master only
+Approvers:       KAFKA-ADMINS (Tushar required) + CONTAINER (Rick required)
+                 + CHANGE-MGMT
+Pre-deploy:      Exclusive lock, branch=master, ServiceNow change-window gate
+Timeout:         72 hours; reject on timeout
+
+
+### 11. cmf-dev
+Pipeline:        DAH.Kafka.OS / cmf.yaml (environment=dev)
+                 + flink-operator.yaml (environment=dev)
+Deploys:         CMF Helm chart + Flink Operator Helm chart
+Branch control:  any branch
+Approvers:       none (auto-deploy)
+Pre-deploy:      Exclusive lock
+
+### 12. cmf-qa
+Pipeline:        DAH.Kafka.OS / cmf.yaml (environment=qa)
+                 + flink-operator.yaml (environment=qa)
+Deploys:         CMF + Flink Operator Helm charts
+Branch control:  fcb-flink-cp only
+Approvers:       KAFKA-ADMINS (any 1 of 3)
+Pre-deploy:      Exclusive lock
+Timeout:         24 hours; reject on timeout
+
+### 13. cmf-uat
+Pipeline:        DAH.Kafka.OS / cmf.yaml (environment=uat)
+                 + flink-operator.yaml (environment=uat)
+Deploys:         CMF + Flink Operator Helm charts
+Branch control:  fcb-flink-cp only
+Approvers:       KAFKA-ADMINS (any 1 of 3)
+Pre-deploy:      Exclusive lock
+Timeout:         24 hours; reject on timeout
+
+### 14. cmf-prd
+Pipeline:        DAH.Kafka.OS / cmf.yaml (environment=prd)
+                 + flink-operator.yaml (environment=prd)
+Deploys:         CMF + Flink Operator Helm charts on production cluster
+Branch control:  master only
+Approvers:       KAFKA-ADMINS (Tushar required) + CHANGE-MGMT
+Pre-deploy:      Exclusive lock, branch=master, ServiceNow change-window
+                 gate, business-hours gate (09:00–17:00 ET, Mon–Fri)
+Timeout:         48 hours; reject on timeout
+
+### 15. cmf-dr
+Pipeline:        DAH.Kafka.OS / cmf.yaml (environment=dr)
+                 + flink-operator.yaml (environment=dr)
+Deploys:         CMF + Flink Operator Helm charts on secondary cluster.
+                 CMF DB connection points to dr SQL Server instance;
+                 license values match prd.
+Branch control:  master only
+Approvers:       KAFKA-ADMINS (Tushar required) + CHANGE-MGMT
+Pre-deploy:      Exclusive lock, branch=master, ServiceNow change-window gate
+Timeout:         48 hours; reject on timeout
+
+
+## Open items to confirm with FCB ops before clicking "New environment"
+
+1. ServiceNow gate endpoint: the FCB SNOW REST API URL for change-window
+   validation — confirm with Change Management or Container team.
+2. Approver distribution lists: the exact AD groups or DL names for
+   KAFKA-ADMINS, CONTAINER, CHANGE-MGMT, FCB-SECURITY. Current draft
+   uses individual usernames as placeholders.
+3. Whether flink-jobs-prd needs CONTAINER approval in addition to
+   KAFKA-ADMINS + CHANGE-MGMT. Current draft says no — job code doesn't
+   touch infrastructure. Confirm with Rick.
+4. Whether cp-dev / cmf-dev should allow non-master branches (current
+   draft: yes — dev is for experimentation) or restrict to fcb-flink-cp
+   (FCB delivery branch). Lean toward "yes" but defer to FCB ops.
+5. Business-hours gate window: 09:00–17:00 ET Mon–Fri is a guess. FCB
+   change-management may have a stricter or looser window.
+6. dr business-hours gate is intentionally omitted — confirm with
+   Change Management that DR is treated as incident-response and
+   exempt from change-window gates.
+7. Branch protection on master in Azure Repos: pair the Environment
+   "Branch control" check with branch-protection rules so master can't
+   be force-pushed from under an Environment that just gated on it.
