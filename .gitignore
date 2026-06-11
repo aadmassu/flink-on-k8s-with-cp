@@ -29,6 +29,7 @@ Thumbs.db
 
 images-phase*.txt
 
+# project-docs/ is local-only; pump.txt and dump.txt are the two exceptions
 project-docs/*
 !project-docs/pump.txt
 !project-docs/dump.txt
