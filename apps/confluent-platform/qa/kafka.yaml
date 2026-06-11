@@ -90,6 +90,18 @@ spec:
   license:
     secretRef: cfk-license
 
+  # FCB org-wide trust bundle — see apps/confluent-platform/dev/kafka.yaml
+  # for the full rationale.
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /mnt/sslcerts/fcb-trust-bundle
+        readOnly: true
+
   # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
   # maxUnavailable=0. CFK auto-creates a PDB per workload; for this
   # single-replica StatefulSet the default lands at 0, which the policy
@@ -123,6 +135,11 @@ spec:
             groupsClaimName: dahUAT_groups # TODO: switch to dahQA_groups once Okta admins confirm
 
   configOverrides:
+    # JVM-default truststore → fcb-trust-bundle (see dev/kafka.yaml).
+    jvm:
+      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStorePassword=changeit"
+      - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
       - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
       - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
