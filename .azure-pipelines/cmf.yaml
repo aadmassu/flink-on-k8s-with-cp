@@ -223,7 +223,7 @@ stages:
                   # Both files only get applied if they exist in the env
                   # directory (dev has them as of today; qa/uat/prd/dr will
                   # be added per-env when those envs are ready to expose
-                  # CMF). See docs/OpenShift Ingress.pdf for the FCB pattern.
+                  # CMF). See https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress for the FCB pattern.
                   for f in cmf-ingress-tls-certificate.yaml cmf-ingress.yaml; do
                     if [ -f "$ENV_DIR/$f" ]; then
                       echo ""

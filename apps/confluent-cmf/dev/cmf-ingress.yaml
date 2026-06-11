@@ -9,7 +9,7 @@
 #            --HTTPS (cmf-tls)-->  cmf-service:443  -->  pod:8080
 #
 # Both legs are HTTPS, which is exactly what `reencrypt` termination is for.
-# The PDF (docs/OpenShift Ingress.pdf) explicitly recommends reencrypt as the
+# The PDF (https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress) explicitly recommends reencrypt as the
 # annotation default when the backend is HTTPS.
 #
 # Dev has no OAuth in front of CMF today (cmf.authentication is not set in
@@ -29,7 +29,7 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     # Backend is HTTPS — reencrypt at the router instead of the default edge.
-    # See docs/OpenShift Ingress.pdf "Ingress Example" — recommended pattern.
+    # See https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress "Ingress Example" — recommended pattern.
     route.openshift.io/termination: reencrypt
     fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
 spec:

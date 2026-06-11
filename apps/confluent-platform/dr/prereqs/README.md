@@ -26,7 +26,7 @@ README for the TLS side.
 - **OAuth scope**: `11547.DAH(Prod)` (DR shares the Prod Okta tenant with prd)
 - **Groups claim**: `dahProd_groups`
 - **Source VM properties**: [`../../cp-confluent/prd-2/`](../../cp-confluent/) — VM CP prd secondary (matches the prd-1 → prd / prd-2 → dr OpenShift mapping)
-- **Cluster apps domain**: `apps.pd-s.ocp.fcbint.net` (secondary cluster, per the FCB OpenShift Ingress PDF Load Balancer table)
+- **Cluster apps domain**: `apps.pd-s.ocp.fcbint.net` (secondary cluster, per the FCB OpenShift Ingress Confluence page Load Balancer table)
 
 ## Variable group values
 

@@ -939,7 +939,7 @@ stages:
                   # because they cover different DNS names: backend covers
                   # *.dah-flink-<env>.svc.cluster.local, edge covers the
                   # public *.apps.<env-cluster>.ocp.fcbint.net host. See
-                  # docs/OpenShift Ingress.pdf and apps/confluent-platform/
+                  # https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress and apps/confluent-platform/
                   # <env>/ingress/.
                   TLS_SECRETS=(
                     kafka-tls
@@ -1211,7 +1211,7 @@ stages:
                   # Same gating model as the CR apply step above — "All" master
                   # overrides individual flags; otherwise honour each checkbox.
                   # See apps/confluent-platform/<env>/ingress/ for the file set
-                  # and docs/OpenShift Ingress.pdf for the FCB pattern these
+                  # and https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress for the FCB pattern these
                   # follow (ingressClassName=openshift-core-zone, reencrypt
                   # termination, cert-manager-issued Secret via spec.tls.secretName).
                   #
@@ -1267,10 +1267,10 @@ stages:
 
                   echo ""
                   echo "NOTE: public hostnames follow the Container Team's"
-                  echo "Internal-OCP pattern from docs/OpenShift Ingress.pdf:"
+                  echo "Internal-OCP pattern from https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress:"
                   echo "  <component>.apps.<env-cluster>.ocp.fcbint.net"
                   echo "DNS is automatic via the cluster wildcard for dev/qa;"
-                  echo "UAT/PRD add Floating-DNS CNAMEs per the PDF."
+                  echo "UAT/PRD add Floating-DNS CNAMEs per the Confluence page."
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
