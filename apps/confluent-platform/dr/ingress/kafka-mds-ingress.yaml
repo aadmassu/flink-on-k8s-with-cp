@@ -1,0 +1,43 @@
+---
+# Ingress exposing the Kafka broker MDS REST endpoint publicly — dr.
+#
+# Backend is the `kafka` Service (created by the CFK Operator from the Kafka
+# CR) on container port 8090 — the broker's embedded Metadata Service. Backend
+# is HTTPS (broker serves MDS with the `kafka-tls` cert) so termination is
+# `reencrypt`.
+#
+# Exposes the MDS API ONLY — not the Kafka protocol on 9092/9094/7055.
+# Ingress is L7 HTTP/HTTPS; the Kafka protocol is not. Clients that need
+# Kafka producer/consumer access continue to talk directly to the bootstrap
+# Service over the standard listener ports.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kafka-mds
+  namespace: dah-flink-dr
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-mds
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    route.openshift.io/termination: reencrypt
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+    - host: kafka-mds.apps.pd-s.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: kafka
+                port:
+                  number: 8090
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - kafka-mds.apps.pd-s.ocp.fcbint.net
+      secretName: kafka-mds-ingress-tls

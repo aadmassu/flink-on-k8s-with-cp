@@ -1,0 +1,43 @@
+---
+# cert-manager Certificate for the Control Center UI Ingress — dr.
+# Distinct from controlcenter-tls (backend serving cert).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: controlcenter-ingress-tls
+  namespace: dah-flink-dr
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter-ingress-tls
+    app.kubernetes.io/component: ingress-cert
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Prod
+    metadata.command-issuer.keyfactor.com/Description: "Confluent Control Center UI (Ingress edge cert)"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: controlcenter.apps.pd-s.ocp.fcbint.net
+  dnsNames:
+    - controlcenter.apps.pd-s.ocp.fcbint.net
+  duration: 8760h0m0s
+  renewBefore: 1080h0m0s
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: controlcenter-ingress-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: controlcenter
+      app.kubernetes.io/instance: controlcenter-ingress-tls
+      app.kubernetes.io/component: ingress-cert
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

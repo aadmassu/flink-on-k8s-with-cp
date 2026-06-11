@@ -1,0 +1,243 @@
+---
+# CFK KRaftController CR — dr (3-node KRaft quorum)
+#
+# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
+# with env substitutions (namespace, cluster domain, OAuth scope/groups).
+# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
+# claim names all inherit DEV values. Walk the file with FCB ops before
+# applying — at minimum confirm:
+#   - namespace dr matches what Container team provisioned
+#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
+#     correct for the Prod Okta tenant (DR shares the Prod tenant)
+#   - cluster domain matches the cluster's external Load Balancer
+#   - dataVolumeCapacity is appropriate for dr (dev was 10 Gi)
+#   - resources.requests/limits are appropriate for dr (dev is heavily
+#     downsized for the dev quota)
+#
+#
+# Sources (apps/confluent-platform/cp-confluent/prd-2/):
+#   d11547varc-jxvh-controller-1-server.properties  (node.id=1)
+#   d11547varc-pnvg-controller-2-server.properties  (node.id=2)
+#   d11547varc-d2kd-controller-3-server.properties  (node.id=3)
+#
+# Per-VM config carried over here:
+#   process.roles=controller
+#   listeners=CONTROLLER://:9093  (SASL_SSL, PLAIN inter-controller)
+#   listener.security.protocol.map=CONTROLLER:SASL_SSL,BROKER:SASL_SSL
+#   log.dirs=/data/kafka
+#   sasl.mechanism.controller.protocol=PLAIN
+#   metric.reporters=TelemetryReporter,ConfluentMetricsReporter
+#   confluent.balancer.enable=true  (SBC)
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: dah-flink-dr
+  labels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  # 3-controller KRaft quorum — HA-safe (tolerates one controller loss).
+  # Storage is the tight resource, not CPU: 3 controllers × 1 Gi vct each
+  # = 3 Gi of the 100 GiB namespace storage cap, comfortably within budget.
+  # CPU + memory pressure is now the main constraint shaped by 2.5; if it
+  # surfaces, drop back to replicas: 1 temporarily — single-controller is
+  # NOT HA-safe but works for dev smoke testing.
+  replicas: 3
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
+  # FCB Gatekeeper [required-workload-labels] inspects the auto-generated
+  # StatefulSet (not the CR). injectLabels is CFK's mechanism for pushing
+  # labels into every managed resource — keep aligned with the FCB common-
+  # metadata standard (name, instance, component, part-of, app-id).
+  injectLabels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/instance: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  # CFK turns dataVolumeCapacity + storageClass into a StatefulSet
+  # volumeClaimTemplate. Each controller gets a deterministic PVC named
+  #   data-kraftcontroller-<ordinal>
+  # bound to a Ceph RBD PV. When the pod restarts the same PVC + PV is
+  # re-attached, so the KRaft metadata log (the cluster's source of truth)
+  # survives pod and node failures.
+  # Frugal dev sizing — 1 Gi per controller × 3 replicas = 3 Gi of the
+  # current 100 GiB dev storage quota. KRaft metadata log fits comfortably
+  # at this size; bump only if controllers actually OOM the volume. VM
+  # controllers ran at 64 Gi but were dramatically over-provisioned.
+  dataVolumeCapacity: 1Gi
+  storageClass:
+    name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — quorum log volume
+
+  # FAILED EXPERIMENT NOTE — do NOT re-add spec.volumeClaimTemplates here.
+  #
+  # We previously added an explicit `spec.volumeClaimTemplates` block to
+  # this CR to force CFK to emit `storageClassName: ocs-storagecluster-
+  # ceph-rbd` on the StatefulSet's vct (FCB's [ceph-storage] Gatekeeper
+  # constraint rejects empty storageClassName with the placeholder
+  # `<dummy>`). The field was silently pruned at admission — verified by
+  # dumping the live CR yaml and seeing no `volumeClaimTemplates:`
+  # present, while every other field we set survived. CFK 3.1.1's CRD
+  # doesn't expose this field at the spec root, so K8s structural-schema
+  # pruning strips it.
+  #
+  # Two real paths forward:
+  #   1. Tushar upgrades FCB's CFK to 3.2.x where spec.volumeClaimTemplates
+  #      is a first-class field — then we add it back and the rejection
+  #      goes away.
+  #   2. Open a Confluent ticket asking why CFK 3.1.x's operator emits
+  #      `storageClassName: ""` on the vct when spec.storageClass.name is
+  #      set on the CR. The actual PVCs CFK pre-creates have the right
+  #      class (verified) — only the StatefulSet vct it generates is
+  #      missing it.
+  # Resources MUST live under spec.podTemplate.resources — top-level
+  # spec.resources is not in the KRaftController CRD and gets pruned at
+  # admission. See schemaregistry.yaml for the full rationale. Sizing
+  # values move to podTemplate.resources further down this file.
+
+  # CONTROLLER listener on 9093, SASL_SSL with PLAIN (matches VM).
+  listeners:
+    controller:
+      tls:
+        enabled: true
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+  tls:
+    secretRef: kraftcontroller-tls
+  license:
+    secretRef: cfk-license
+
+  # FCB org-wide trust bundle — see kafka.yaml for the full rationale.
+  # Controllers do less outbound HTTPS than brokers, but TelemetryReporter
+  # (when re-enabled) and any future MDS-callback paths will need it.
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /mnt/sslcerts/fcb-trust-bundle
+        readOnly: true
+
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. CFK auto-creates a PDB per workload; for this
+  # single-replica StatefulSet the default lands at 0, which the policy
+  # treats as "blocks drains forever". maxUnavailable=1 makes the
+  # auto-generated PDB drainable.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+  # Carried over from controller .properties so the cluster keeps the same
+  # internal-topic replication factors and authorizer config as the VM.
+  configOverrides:
+    # JVM-default truststore → fcb-trust-bundle (see kafka.yaml for rationale).
+    # Password is trust-manager's default ("changeit"); confirm with Container
+    # team if the FCB Bundle was rebuilt with a custom password.
+    jvm:
+      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStorePassword=changeit"
+      - "-Djavax.net.ssl.trustStoreType=JKS"
+    server:
+      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+      # Controllers do NOT host MDS, so the centralized-RBAC (CONFLUENT)
+      # provider can't bootstrap here — it requires confluent.metadata.bootstrap.servers
+      # to point at an MDS endpoint that doesn't exist until the brokers come up
+      # (and the brokers can't come up until the controllers do). Keep only the
+      # KRAFT_ACL provider on the controller — it stores ACLs in the metadata
+      # log itself, no MDS lookup needed. Brokers continue to use CONFLUENT,KRAFT_ACL.
+      # See runbook/LESSONS_LEARNED.md A8.
+      - confluent.authorizer.access.rule.providers=KRAFT_ACL
+      - super.users=User:admin
+      - confluent.metadata.topic.replication.factor=3
+      - confluent.balancer.topic.replication.factor=3
+      - confluent.license.topic.replication.factor=3
+      - confluent.balancer.enable=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+      # ConfluentMetricsReporter publishes broker-side metrics to the
+      # _confluent-metrics topic so C3 / SBC can read them. It needs
+      # confluent.metrics.reporter.bootstrap.servers to know where the
+      # broker is — chicken-and-egg with the controller. Strip it from the
+      # controller (brokers keep it). See runbook/LESSONS_LEARNED.md A9.
+      #
+      # TelemetryReporter was kept after A9 because it ships directly to
+      # Confluent's hosted telemetry endpoint without needing a broker.
+      # However it requires Confluent telemetry API credentials, which
+      # FCB hasn't provisioned — without them the reporter logs an ERROR
+      # at startup ("API Key/Secret are missing for the exporter '_confluent'")
+      # and stays inert. Removed here for log cleanliness. Re-enable
+      # (with credentials) when Confluent telemetry is set up at FCB —
+      # see project memory `project_fcb_telemetry_audit_reenable_later`.
+      #
+      # No `metric.reporters` override → falls back to the operator default
+      # (no reporters on the controller). Brokers retain their own reporter
+      # config independently.
+      #
+      # Audit log provider is disabled here for the same chicken-and-egg
+      # reason — it publishes audit events to a Kafka topic and needs
+      # `confluent.security.event.logger.exporter.kafka.bootstrap.servers`
+      # to find the broker, which doesn't exist until controllers are up.
+      # The provider's startup failure is non-fatal (one-shot ERROR at
+      # boot) but pollutes logs. Brokers (which host the audit topic) keep
+      # the audit logger enabled. See runbook/LESSONS_LEARNED.md A12.
+      - confluent.security.event.logger.enable=false
+  podTemplate:
+    serviceAccountName: flink-operator
+    # KRaft controllers handle metadata-log writes only (topic creates,
+    # partition reassignments, leader elections) — they don't process
+    # messages. VM allocation was 4 vCPU / 4 GiB at 9% utilization, so
+    # actual usage is ~0.36 vCPU and ~0.36 GiB. The numbers below give
+    # ~3x CPU and ~5x memory headroom while freeing ~3 vCPU and 2 GiB
+    # per worker for broker / CMF / monitoring co-tenants.
+    # TEMP sizing — see top-of-file comment. Real dev was 1/2 req, 2/2 limit.
+    resources:
+      requests:
+        cpu: "100m"
+        memory: 384Mi
+      limits:
+        cpu: "200m"
+        memory: 512Mi
+    probe:
+      liveness:
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 20
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
+    # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
+    # admission. See kafka.yaml for the full rationale.
+    podSecurityContext: {}
+    # podTemplate.labels lands on the Pod template inside the StatefulSet.
+    # injectLabels above only labels the StatefulSet; the FCB Gatekeeper
+    # [required-workload-labels] policy ALSO inspects the Pod at admission.
+    # cfk-role is the custom label used by the anti-affinity rule below.
+    labels:
+      app.kubernetes.io/name: kraftcontroller
+      app.kubernetes.io/instance: kraftcontroller
+      app.kubernetes.io/component: kraft-controller
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
+      cfk-role: kraft-controller
+    # Spread controllers across nodes. The selector matches the cfk-role
+    # label set above, so controllers refuse to schedule on a node that
+    # already has another controller pod. Brokers (cfk-role: kafka-broker)
+    # are *not* matched, so a node may host one broker + one controller.
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                cfk-role: kraft-controller
+            topologyKey: kubernetes.io/hostname

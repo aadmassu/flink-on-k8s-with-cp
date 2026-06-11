@@ -1,0 +1,56 @@
+---
+# cert-manager Certificate for the Kafka broker MDS REST endpoint Ingress — prd.
+#
+# Produces Secret `kafka-mds-ingress-tls` (Keyfactor-signed). Backend is the
+# Kafka bootstrap Service on container port 8090 — the broker's embedded
+# Metadata Service. Exposed via the Ingress at ../ingress/kafka-mds-ingress.yaml
+# so RBAC tools and humans can reach MDS over a Keyfactor-signed public hostname
+# rather than only via the in-cluster TLS Secret `kafka-tls`.
+#
+# This is distinct from `kafka-tls` (existing) — that's the broker's serving
+# cert for both the Kafka protocol listeners AND the MDS HTTPS port inside
+# the cluster. `kafka-mds-ingress-tls` is the edge cert the HAProxy router
+# presents to browsers. Same broker, different DNS names.
+#
+# DNS automatic for dev via the cluster wildcard (docs/OpenShift Ingress.pdf
+# Option 1: Internal Bank Network - OCP).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kafka-mds-ingress-tls
+  namespace: dah-flink-prd
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-mds-ingress-tls
+    app.kubernetes.io/component: ingress-cert
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Prod
+    metadata.command-issuer.keyfactor.com/Description: "Kafka broker MDS REST endpoint (Ingress edge cert)"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: kafka-mds.apps.pd-p.ocp.fcbint.net
+  dnsNames:
+    - kafka-mds.apps.pd-p.ocp.fcbint.net
+  duration: 8760h0m0s
+  renewBefore: 1080h0m0s
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: kafka-mds-ingress-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/instance: kafka-mds-ingress-tls
+      app.kubernetes.io/component: ingress-cert
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

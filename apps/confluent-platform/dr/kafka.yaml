@@ -1,0 +1,347 @@
+---
+# CFK Kafka CR — dr (3-broker, KRaft mode)
+#
+# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
+# with env substitutions (namespace, cluster domain, OAuth scope/groups).
+# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
+# claim names all inherit DEV values. Walk the file with FCB ops before
+# applying — at minimum confirm:
+#   - namespace dr matches what Container team provisioned
+#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
+#     correct for the Prod Okta tenant (DR shares the Prod tenant)
+#   - cluster domain matches the cluster's external Load Balancer
+#   - dataVolumeCapacity is appropriate for dr (dev was 10 Gi)
+#   - resources.requests/limits are appropriate for dr (dev is heavily
+#     downsized for the dev quota)
+#
+#
+# Sources (apps/confluent-platform/cp-confluent/prd-2/):
+#   d11547varc-pgm8-broker-1-server.properties  (broker.id=101)
+#   d11547varc-g719-broker-2-server.properties  (broker.id=102)
+#   d11547varc-81mb-broker-3-server.properties  (broker.id=103)
+#
+# Per-VM config carried over here:
+#   listeners=INTERNAL://:9092,BROKER://:9091,CERTONLY://:9094
+#   listener.security.protocol.map=INTERNAL:SASL_SSL,BROKER:SASL_SSL,CERTONLY:SSL
+#   inter.broker.listener.name=BROKER
+#   advertised.listeners (internal: 9092, broker: 9091, external mTLS: 7055 via CERTONLY)
+#   confluent.metadata.server.listeners=https://0.0.0.0:8090   (MDS embedded in broker)
+#   log.dirs=/data/kafka
+#   log.retention.hours=168, log.segment.bytes=1073741824
+#   offsets/transaction/license/metrics topic replication = 3
+#   transaction.state.log.min.isr=2
+#   num.io.threads=16, num.network.threads=8
+#   process.roles=broker
+#   controller.quorum.voters=1@<jxvh>:9093,2@<pnvg>:9093,3@<d2kd>:9093 (resolved by CFK from KRaftController CR)
+#   authorizer=ConfluentServerAuthorizer with CONFLUENT,KRAFT_ACL
+#   SBC + telemetry enabled
+#
+# OAuth (Okta) carried over: issuer myapps.firstcitizens.com/oauth2/default,
+#   JWKS endpoint, expected audience Confluent,account,api://default,
+#   sub claim sub, groups claim dahProd_groups, scope 11547.DAH(Prod).
+
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: dah-flink-dr
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: kafka-broker
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  # 3-broker cluster — enables RF=3 inter-broker replication and minimum-
+  # viable cluster-link migration testing. CPU + memory portion of the
+  # dev ResourceQuota was raised; storage is now the tight resource
+  # (100 GiB cap per dev quota's storage piece; see tracker 2.5). At
+  # 10 Gi per broker × 3 = 30 Gi, this leaves headroom for the kraft
+  # controllers (3 × 1 Gi = 3 Gi) + controlcenter + flink-state-bearing
+  # jobs within the 100 Gi budget. Bump dataVolumeCapacity once Container
+  # team grants the storage raise toward the ~1.272 TB workbook target.
+  replicas: 3
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
+  # FCB Gatekeeper [required-workload-labels] checks the *StatefulSet*, not
+  # the CR. metadata.labels above only label the Kafka CR object itself;
+  # the operator does not auto-propagate them to the generated StatefulSet/
+  # Pod/PDB/Service. injectLabels is CFK's explicit mechanism for pushing
+  # labels into every managed resource. Keep this list in sync with the
+  # FCB common-metadata standard (name, instance, component, part-of,
+  # app-id).
+  injectLabels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka
+    app.kubernetes.io/component: kafka-broker
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  # CFK turns dataVolumeCapacity + storageClass into a StatefulSet
+  # volumeClaimTemplate. Each broker gets a deterministic PVC named
+  #   data-kafka-<ordinal>      (kafka-0, kafka-1, kafka-2)
+  # bound to a Ceph RBD PV. When a pod restarts (same node OR rescheduled
+  # to another node — Ceph RBD is network-attached and re-attachable
+  # anywhere in the cluster), it reuses the SAME PVC and therefore the
+  # SAME PV. Log dirs survive pod restarts and node failures by design.
+  # Do NOT enable any "recreate-on-restart" knob — CFK doesn't expose one
+  # for this volume, and adding one would forfeit the deterministic
+  # PVC↔broker.id binding.
+  # Frugal dev sizing under the 100 GiB namespace storage quota:
+  #   Kafka brokers:   10 Gi × 3   = 30 Gi
+  #   KRaft controllers: 1 Gi × 3  =  3 Gi
+  #   ControlCenter:    1 Gi × 1   =  1 Gi (when re-enabled)
+  #   Headroom for Flink job state and any future PVCs: ~66 Gi
+  # Adequate for dev smoke testing — VM broker actual usage is ~3 GiB at
+  # ~2% utilization, so 10 Gi is generous. NOT representative of prod.
+  # When Container team grants the storage raise toward the ~1.272 TB
+  # workbook target (tracker 2.5 remainder), bump back toward VM-equivalent:
+  #   Kafka broker:     1 TiB  (matching VM; +3 TiB planned → 4 TiB)
+  #   KRaft controller: 64 GiB
+  #   Control Center:   300 GiB
+  dataVolumeCapacity: 10Gi
+  storageClass:
+    name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — best write throughput for log dirs
+  # Resources MUST live under spec.podTemplate.resources — top-level
+  # spec.resources is not in the Kafka CRD and gets pruned at admission.
+  # See schemaregistry.yaml for the full rationale. The sizing values
+  # below move to podTemplate.resources further down this file.
+
+  # KRaft mode — points at the KRaftController CR (kraftcontroller.yaml)
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller
+
+  # Listeners — mirror the VM listener model:
+  #   internal  (SASL_SSL, PLAIN)        — replaces VM BROKER:9091 inter-broker
+  #   external  (SASL_SSL, OAUTHBEARER)  — replaces VM INTERNAL:9092 (client OAuth)
+  #   custom    (SSL, mTLS)              — replaces VM CERTONLY:9094 (mTLS-only clients)
+  listeners:
+    internal:
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+      tls:
+        enabled: true
+    external:
+      # Kafka listener auth is the SERVER side — brokers accept SASL/OAUTHBEARER
+      # client connections. CRD wants OIDC config nested under oauthSettings.
+      # Flat fields (jwksEndpointUri, expectedIssuer, etc.) directly under
+      # authentication.* are silently dropped during CRD admission.
+      authentication:
+        type: oauth
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(Prod)
+          subClaimName: sub
+          groupsClaimName: dahProd_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+      externalAccess:
+        type: loadBalancer
+        loadBalancer:
+          # Per-broker LBs + a bootstrap LB are created by CFK. The cluster
+          # domain controls the advertised hostname suffix; brokers will be
+          # advertised as <brokerPrefix><N>.<domain> and the bootstrap as
+          # <bootstrapPrefix>.<domain>. Add the matching SANs in
+          # kafka-tls-certificate.yaml before applying.
+          # TENTATIVE — confirm with Tom 2026-05-12. Brokers will be advertised
+          # as b<N>.kafka.dr.dah.fcbint.net and the bootstrap as
+          # bootstrap.kafka.dr.dah.fcbint.net. Matching SANs are in
+          # kafka-tls-certificate.yaml; if the domain changes, update both
+          # files in lockstep.
+          domain: kafka.dr.dah.fcbint.net
+          brokerPrefix: b
+          bootstrapPrefix: bootstrap
+    custom:
+      - name: certonly
+        port: 9094
+        authentication:
+          type: mtls
+        tls:
+          enabled: true
+
+  tls:
+    secretRef: kafka-tls
+  license:
+    secretRef: cfk-license
+
+  # FCB org-wide trust bundle — mount the `fcb-trust-bundle` ConfigMap
+  # (trust-manager-managed; owned by the fcb-security Helm chart) into the
+  # broker pod so the JVM-default truststore (see configOverrides.jvm below)
+  # can find it. Holds the public-root CAs PLUS FCB Root CA 1/2 — required
+  # for outbound HTTPS to Okta (OAuth/JWKS), MDS-to-MDS over Ingress, and
+  # any other FCB-internal endpoint signed by Keyfactor → FCB Root CA.
+  # Per-listener Kafka SSL (ssl.truststore.location) still uses the
+  # kafka-tls Secret and is unaffected.
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /mnt/sslcerts/fcb-trust-bundle
+        readOnly: true
+
+  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
+  # maxUnavailable=0. CFK auto-creates a PDB per workload; for this
+  # single-replica StatefulSet the default lands at 0, which the policy
+  # treats as "blocks drains forever". maxUnavailable=1 makes the
+  # auto-generated PDB drainable.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  # Embedded MDS (Metadata Service) — VM equivalent is the broker-hosted
+  # MDS on port 8090. In CFK, the correct path is spec.services.mds (the
+  # earlier `metadataServer:` block was NOT in the CRD schema and got
+  # silently dropped during admission, which is why SR / Connect / REST /
+  # C3 couldn't reach MDS at all).
+  #
+  # provider.oauth.{clientCredentials, configurations} is what tells MDS
+  # how to validate incoming bearer tokens against Okta and how to mint
+  # tokens of its own. configurations.{authorizeBaseEndpointUri, issuer,
+  # jwksEndpointUri, refreshToken, tokenBaseEndpointUri} are REQUIRED.
+  services:
+    mds:
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      tls:
+        enabled: true
+      authentication:
+        type: bearer
+      provider:
+        type: oauth
+        oauth:
+          clientCredentials:
+            secretRef: oauth-mds-rest
+          configurations:
+            audience: "Confluent,account,api://default"
+            authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
+            issuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            refreshToken: true
+            tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            subClaimName: sub
+            groupsClaimName: dahProd_groups
+
+  # Carry-over Kafka server settings that don't have a structured CR field.
+  # Keep this list aligned with the broker .properties — drift here breaks
+  # cluster-link / VM client compatibility.
+  configOverrides:
+    # Point the JVM default truststore at the fcb-trust-bundle JKS mounted
+    # via mountedVolumes above. This is consulted by any TLS handshake
+    # that does NOT have its own truststore config (OAuth/JWKS calls to
+    # Okta, telemetry exporters, MDS-to-MDS over Ingress, etc.). It does
+    # NOT override per-listener Kafka SSL — those use ssl.truststore.location
+    # from the kafka-tls Secret. Password is trust-manager's default
+    # ("changeit"); confirm with Container team if the FCB Bundle was
+    # rebuilt with a custom password.
+    jvm:
+      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStorePassword=changeit"
+      - "-Djavax.net.ssl.trustStoreType=JKS"
+    server:
+      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+      - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+      - super.users=User:admin
+      - inter.broker.listener.name=internal
+      - log.retention.hours=168
+      - log.segment.bytes=1073741824
+      - log.retention.check.interval.ms=300000
+      - num.io.threads=16
+      - num.network.threads=8
+      - num.partitions=1
+      - num.recovery.threads.per.data.dir=2
+      - offsets.topic.replication.factor=3
+      - transaction.state.log.replication.factor=3
+      - transaction.state.log.min.isr=2
+      - confluent.license.topic.replication.factor=3
+      - confluent.metadata.topic.replication.factor=3
+      - confluent.balancer.topic.replication.factor=3
+      - confluent.cluster.link.metadata.topic.replication.factor=3
+      - confluent.metrics.reporter.topic.replicas=3
+      - confluent.security.event.logger.exporter.kafka.topic.replicas=3
+      - confluent.consumer.lag.emitter.enabled=true
+      - confluent.balancer.enable=true
+      - confluent.balancer.data.enabled=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+      - confluent.telemetry.enabled=true
+      - confluent.reporters.telemetry.auto.enable=true
+      - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    # Sized to fit FCB's 16 vCPU / 32 GiB worker nodes alongside a co-located
+    # KRaft controller (anti-affinity allows one broker + one controller per
+    # node) and system daemons. The VM ran with a 16 vCPU / 16 GiB allocation
+    # at 2% CPU and 20% memory utilization — actual usage is ~0.3 vCPU + 3 GiB.
+    # The numbers below give ~6x headroom over actual without exhausting a
+    # worker; with co-location, per-node usage lands around broker 4 + ctrlr 4
+    # + system 2 = 10 vCPU and ~16 GiB, leaving room on the worker for CMF
+    # and other workloads. If broker traffic grows, raise the limits first
+    # (heap auto-tunes to ~75% of memory limit).
+    # TEMP sizing — see top-of-file comment. Real dev sizing was
+    # 2/4 req, 4/8 limit. JVM heap at 1.5 Gi limit gets ~1.1 Gi which
+    # is enough to start a single broker for smoke tests, not enough
+    # for any sustained traffic.
+    resources:
+      requests:
+        cpu: "200m"
+        memory: 768Mi
+      limits:
+        cpu: "400m"
+        memory: 1.5Gi
+    # CFK probe overrides (operator-flavored — only liveness + readiness
+    # exposed by the CRD; startupProbe is not in the schema, so the
+    # Gatekeeper `[startup]` warning persists at WARN level until CFK
+    # adds the field. Generous timing accommodates the small heap.)
+    probe:
+      liveness:
+        initialDelaySeconds: 90
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001).
+    # OpenShift's restricted-v2 SCC then assigns a UID from this namespace's
+    # allocated range (1001320000–1001329999) and adds GID 0 as a supplemental
+    # group. CP 8.1 images are built UID-agnostic with GID-0 group-write on
+    # runtime paths, so this works without any anyuid/custom SCC binding.
+    # Mirrors apps/confluent-cmf/dev/values.yaml's podSecurity.enabled: false.
+    podSecurityContext: {}
+    # podTemplate.labels lands on the Pod template inside the StatefulSet.
+    # injectLabels (set higher in spec) only labels the StatefulSet object;
+    # FCB Gatekeeper's [required-workload-labels] policy ALSO inspects the
+    # Pod resource at admission, so the FCB common-metadata labels must be
+    # repeated here. cfk-role is the custom label used by the anti-affinity
+    # rule below.
+    labels:
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/instance: kafka
+      app.kubernetes.io/component: kafka-broker
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
+      cfk-role: kafka-broker
+    # Spread brokers across nodes. The selector matches the cfk-role label
+    # we just set, so brokers refuse to schedule on a node that already has
+    # another broker pod. Brokers and KRaft controllers carry *different*
+    # cfk-role values, so a node may host one broker + one controller — but
+    # no two brokers and no two controllers.
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                cfk-role: kafka-broker
+            topologyKey: kubernetes.io/hostname

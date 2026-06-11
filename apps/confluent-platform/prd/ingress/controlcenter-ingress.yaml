@@ -1,0 +1,36 @@
+---
+# Ingress exposing Control Center UI publicly — prd.
+# Backend serves HTTPS on 9021 with controlcenter-tls → reencrypt.
+# Of all the CFK component Ingresses, this is the one humans hit most often —
+# C3 is the main browser-facing CP dashboard.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: controlcenter
+  namespace: dah-flink-prd
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    route.openshift.io/termination: reencrypt
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+    - host: controlcenter.apps.pd-p.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: controlcenter
+                port:
+                  number: 9021
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - controlcenter.apps.pd-p.ocp.fcbint.net
+      secretName: controlcenter-ingress-tls

@@ -1,0 +1,61 @@
+---
+# cert-manager Certificate for the Kafka brokers — dr.
+# Issued by FCB's Keyfactor ClusterIssuer; resulting Secret (kafka-tls) is
+# consumed by the Kafka CR via tls.secretRef. SANs cover both the headless
+# Service per-pod DNS and the round-robin Service DNS, since brokers are
+# addressed both ways internally.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kafka-tls
+  namespace: dah-flink-dr
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-tls
+    app.kubernetes.io/component: kafka-broker
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Prod
+    metadata.command-issuer.keyfactor.com/Description: "Kafka brokers — internal listeners and MDS"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  # Internal-only SANs. The FCB Keyfactor approver-policy allows DNS names
+  # under *.svc, *.svc.cluster.local, and *.ocp.fcbint.net — anything else
+  # is rejected. The earlier draft included external LB SANs under
+  # kafka.dr.dah.fcbint.net (a stand-in for the eventual external hostname);
+  # those tripped the policy and blocked the CertificateRequest.
+  #
+  # External LB exposure remains staged in kafka.yaml's externalAccess block.
+  # External SANs will be re-added once either (a) Tom allocates an LB
+  # hostname under *.ocp.fcbint.net, or (b) FCB binds a separate ClusterIssuer
+  # to Keyfactor's wildcard template. Until then, external clients that
+  # strictly validate TLS hostname will fail against the LB; in-cluster
+  # traffic (CMF, Flink jobs) uses the *.svc.cluster.local listener and is
+  # unaffected.
+  commonName: kafka.dah-flink-dr.svc.cluster.local
+  dnsNames:
+    - kafka.dah-flink-dr.svc
+    - kafka.dah-flink-dr.svc.cluster.local
+    - kafka-0.kafka.dah-flink-dr.svc.cluster.local
+    - kafka-1.kafka.dah-flink-dr.svc.cluster.local
+    - kafka-2.kafka.dah-flink-dr.svc.cluster.local
+  duration: 8760h0m0s
+  renewBefore: 360h
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: kafka-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/instance: kafka-tls
+      app.kubernetes.io/component: kafka-broker
+      fcbint.net/app-id: "11547"

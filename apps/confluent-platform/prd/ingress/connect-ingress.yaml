@@ -1,0 +1,34 @@
+---
+# Ingress exposing Kafka Connect REST/UI publicly — prd.
+# Backend serves HTTPS on 8083 with connect-tls → reencrypt.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: connect
+  namespace: dah-flink-prd
+  labels:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/instance: connect
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    route.openshift.io/termination: reencrypt
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+    - host: connect.apps.pd-p.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: connect
+                port:
+                  number: 8083
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - connect.apps.pd-p.ocp.fcbint.net
+      secretName: connect-ingress-tls
