@@ -14,6 +14,13 @@ cmf:
   sql:
     production: true
 
+  # Enable full stack-trace logging at the CMF layer (suspected networking
+  # misconfiguration to SQL Server — Flink engineer requested this to get a
+  # detailed trace behind the generic `Could not get Connection for
+  # extracting meta-data` Flyway failure). TEMPORARY — revert to false (or
+  # remove) after the next deploy's stack trace is captured and analyzed.
+  stackTraceLogging: true
+
   # OAuth authentication for the CMF REST API — requires valid Okta token on every request
   authentication:
     type: oauth
