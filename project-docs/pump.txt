@@ -1,8 +1,1 @@
-Hi Rick,
-
-Yes, KRaft is required. Quick justification you can paste into the RBAC request:
-
-KRaft is Kafka's built-in metadata + consensus layer; it replaces ZooKeeper, which Apache Kafka 4.0 (Q1 2026) removed entirely and Confluent's CFK 3.x line no longer supports. Our FCB-issued 2.3.0-fcb-preview-2 build is KRaft-only — there is no ZooKeeper code path. KRaftController is the first CR in the dependency chain (kraft → kafka → SR / Connect / REST / Control Center): until its StatefulSet reconciles its PVCs (which is what the requested cluster-scoped update / patch on persistentvolumes enables), no Kafka brokers — and nothing downstream of them — can come up.
-
-Thanks,
-Ayu
+Yes, KRaft is required. It is Kafka's metadata + consensus layer and replaces ZooKeeper, which Apache Kafka 4.0 removed entirely and Confluent's CFK 3.x line no longer supports. The CFK operator needs the requested permissions because it manages and reconciles KRaftController resources, their PVCs, and cluster state as part of normal Kafka operations.
