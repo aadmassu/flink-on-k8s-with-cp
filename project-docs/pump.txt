@@ -1,1 +1,8 @@
-CMF tried to connect to db-dahbronze-t.fcpd.fcbint.net:3085 / DAHFLINK as ut_db_DAH_kafka-svc at 2026-06-11 21:40:37 UTC and got Login failed Msg 18456, State 1. The ClientConnectionId on the SQL Server side is 8f019b93-ba7c-4394-a94f-e3ab56a26885. Could you check the SQL Server error log around that timestamp / connection ID and tell us the actual State value? The client-side State 1 is the obfuscated value SQL Server returns by default — the real reason (wrong password vs disabled account vs default-DB issue vs something else) is only in the server log.
+Hi Rick,
+
+Yes, KRaft is required. Quick justification you can paste into the RBAC request:
+
+KRaft is Kafka's built-in metadata + consensus layer; it replaces ZooKeeper, which Apache Kafka 4.0 (Q1 2026) removed entirely and Confluent's CFK 3.x line no longer supports. Our FCB-issued 2.3.0-fcb-preview-2 build is KRaft-only — there is no ZooKeeper code path. KRaftController is the first CR in the dependency chain (kraft → kafka → SR / Connect / REST / Control Center): until its StatefulSet reconciles its PVCs (which is what the requested cluster-scoped update / patch on persistentvolumes enables), no Kafka brokers — and nothing downstream of them — can come up.
+
+Thanks,
+Ayu
