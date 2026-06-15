@@ -1,20 +1,106 @@
-# Week 1 Tuesday — Lab: StatefulSet + Anti-Affinity + PDB + Drain
+# Week 1 Tuesday — Lab: StatefulSet + Anti-Affinity + PDB + Drain (on kind)
 
-**Time**: ~4 hours
+**Time**: ~4 hours (30 min setup + ~3.5 hours lab)
 **Prerequisite**: Lesson 1-5 from morning discussion
 
-## Goal
+## Why kind for this lab
 
-Build a 3-replica StatefulSet that survives a node drain — then break it by tightening the PDB and watching the drain block. The exercise sticks because you can see the rules cause + reject the eviction in real time.
+The Tuesday lab needs **multiple nodes** to demonstrate anti-affinity spread and drain behavior. OpenShift Local (CRC) is single-node, so the drain step doesn't make pedagogical sense. `kind` ("Kubernetes IN Docker") spins up a real multi-node K8s cluster locally in about 60 seconds — perfect for this material. Once Week 4 starts (CFK, Routes, SCC, etc.), you'll switch to a real OpenShift cluster.
+
+`kubectl` against kind behaves identically to `oc` against OpenShift for everything in this lab.
+
+---
+
+## Environment Setup — kind on macOS (one-time, ~10 min)
+
+### Step 1 — install Docker Desktop (or Colima as a lighter alternative)
+
+kind runs each "node" as a container, so you need a container runtime.
+
+**Option A — Docker Desktop** (easiest, GUI)
+
+1. Download from https://www.docker.com/products/docker-desktop/
+2. Install + launch. Sign in (free account works).
+3. In Docker Desktop → Settings → Resources, bump CPU to **6** and memory to **8 GB minimum** (kind nodes are CPU-light but K8s itself is memory-hungry).
+4. Verify:
+   ```bash
+   docker version
+   docker run --rm hello-world
+   ```
+
+**Option B — Colima** (lighter, CLI-only, no Docker login required)
+
+```bash
+brew install colima docker
+colima start --cpu 6 --memory 8
+docker version    # should connect to colima's daemon
+```
+
+### Step 2 — install kind + kubectl
+
+```bash
+brew install kind kubectl
+
+kind version       # should print v0.20+ at time of writing
+kubectl version --client
+```
+
+### Step 3 — create a 3-node training cluster
+
+```bash
+cat <<EOF | kind create cluster --name training --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+  - role: worker
+EOF
+```
+
+Takes ~60 seconds. The CLI prints `Set kubectl context to "kind-training"` when done.
+
+### Step 4 — verify the cluster
+
+```bash
+kubectl cluster-info --context kind-training
+
+kubectl get nodes
+# Expected: 4 nodes (1 control-plane + 3 workers), all Ready
+
+kubectl get pods -n kube-system
+# Expected: CoreDNS + kindnet + kube-proxy on every node
+```
+
+If something is wrong: `kind delete cluster --name training` and recreate.
+
+### Step 5 — set the context (so you don't have to specify it each time)
+
+```bash
+kubectl config use-context kind-training
+kubectl config current-context        # confirms kind-training
+```
+
+### Step 6 — create a working namespace
+
+```bash
+kubectl create namespace training
+kubectl config set-context --current --namespace=training
+kubectl config view --minify | grep namespace:
+# Expected: namespace: training
+```
+
+You're ready.
+
+---
 
 ## Hands-on Lab
 
 ### Step 1 — Deploy a 3-replica StatefulSet (no extras yet)
 
 ```bash
-oc project <you>-training
-
-cat <<EOF | oc apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -32,8 +118,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: registry.access.redhat.com/ubi9/ubi-minimal
-          command: ["sh", "-c", "while true; do sleep 30; done"]
+          image: nginx:1.27-alpine
           resources:
             requests: { cpu: 100m, memory: 64Mi }
             limits:   { cpu: 200m, memory: 128Mi }
@@ -49,16 +134,17 @@ spec:
     - port: 80
 EOF
 
-oc get pods -l app=demo -o wide -w &
+kubectl get pods -l app=demo -o wide -w &
 sleep 30 ; jobs %1 && kill %1 2>/dev/null
+kubectl get pods -l app=demo -o wide
 ```
 
-**Capture**: which node hosts each of demo-0 / demo-1 / demo-2. Right now there's no anti-affinity — they MAY end up on the same node depending on the scheduler.
+**Capture**: which node hosts each of demo-0 / demo-1 / demo-2. Without anti-affinity, they MAY share a node depending on the scheduler.
 
 ### Step 2 — Apply pod anti-affinity (Lesson 3)
 
 ```bash
-oc patch statefulset demo --type=merge -p '
+kubectl patch statefulset demo --type=merge -p '
 spec:
   template:
     spec:
@@ -71,19 +157,32 @@ spec:
               topologyKey: kubernetes.io/hostname
 '
 
-# Force rolling update so existing Pods re-spread
-oc rollout restart statefulset/demo
-oc rollout status statefulset/demo --timeout=300s
+# Force a rolling update so existing Pods re-spread
+kubectl rollout restart statefulset/demo
+kubectl rollout status statefulset/demo --timeout=300s
 
-oc get pods -l app=demo -o wide
+kubectl get pods -l app=demo -o wide
 ```
 
-**Capture**: NOW each Pod should be on a DIFFERENT node. If your training cluster has only 2 nodes, demo-2 will be stuck Pending — that's expected; describe the Pod to see the "didn't match Pod anti-affinity" event.
+**Capture**: each Pod should now be on a DIFFERENT worker. With 3 workers + 3 replicas, all three should land — one per node.
+
+To prove the constraint works, scale to 4 (more replicas than workers):
+
+```bash
+kubectl scale statefulset/demo --replicas=4
+sleep 15
+kubectl get pods -l app=demo -o wide
+# Expected: demo-3 stuck Pending
+kubectl describe pod demo-3 | grep -A 5 Events:
+# Look for "didn't match Pod anti-affinity rules"
+
+kubectl scale statefulset/demo --replicas=3
+```
 
 ### Step 3 — Apply a PDB (Lesson 5)
 
 ```bash
-cat <<EOF | oc apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -95,24 +194,22 @@ spec:
       app: demo
 EOF
 
-oc get pdb demo-pdb
+kubectl get pdb demo-pdb
 ```
 
-**Capture**: `ALLOWED DISRUPTIONS` should be `1` (out of 3, keeping minAvailable=2).
+**Capture**: `ALLOWED DISRUPTIONS` should be `1` (3 ready - 2 minAvailable = 1).
 
-### Step 4 — Drain a node and observe
-
-Pick the node hosting demo-1:
+### Step 4 — Drain a node and observe (the safe case)
 
 ```bash
-NODE=$(oc get pod demo-1 -o jsonpath='{.spec.nodeName}')
+NODE=$(kubectl get pod demo-1 -o jsonpath='{.spec.nodeName}')
 echo "Will drain $NODE"
 
 # In a second terminal, watch:
-#   oc get pods -l app=demo -o wide -w
-#   oc get pdb demo-pdb -w
+#   kubectl get pods -l app=demo -o wide -w
+#   kubectl get pdb demo-pdb -w
 
-oc adm drain $NODE \
+kubectl drain $NODE \
   --delete-emptydir-data \
   --ignore-daemonsets \
   --force \
@@ -121,33 +218,33 @@ oc adm drain $NODE \
 ```
 
 **Expected behavior**:
-- PDB allows the eviction (1 ≤ allowed disruptions).
-- demo-1 evicts.
-- demo-1's PVC follows it to the new node (rebound to whatever node K8s picks under the anti-affinity constraint).
-- Drain completes.
+- PDB allows the eviction (allowed disruptions = 1 ≥ 1 needed).
+- demo-1 evicts cleanly.
+- StatefulSet re-creates demo-1 on a different worker (anti-affinity ensures it doesn't land on a node already hosting demo-0 or demo-2).
+- Drain completes successfully.
 
 ```bash
-# Cleanup — uncordon the node so it's schedulable again
-oc adm uncordon $NODE
+# Uncordon the node so it's schedulable again
+kubectl uncordon $NODE
 
 # Confirm all 3 Pods are Running
-oc get pods -l app=demo -o wide
+kubectl get pods -l app=demo -o wide
 ```
 
-### Step 5 — Break the PDB on purpose
+### Step 5 — Break the PDB on purpose (the blocked case)
 
 Tighten the PDB so a drain is impossible:
 
 ```bash
-oc patch pdb demo-pdb --type=merge -p '{"spec":{"minAvailable":3}}'
+kubectl patch pdb demo-pdb --type=merge -p '{"spec":{"minAvailable":3}}'
 
-oc get pdb demo-pdb
+kubectl get pdb demo-pdb
 # ALLOWED DISRUPTIONS should now be 0
 
-NODE=$(oc get pod demo-1 -o jsonpath='{.spec.nodeName}')
+NODE=$(kubectl get pod demo-1 -o jsonpath='{.spec.nodeName}')
 
 # This drain should HANG / FAIL — PDB blocks the eviction
-timeout 60 oc adm drain $NODE \
+timeout 60 kubectl drain $NODE \
   --delete-emptydir-data \
   --ignore-daemonsets \
   --force \
@@ -156,18 +253,16 @@ timeout 60 oc adm drain $NODE \
 echo "drain exit code: $?"
 ```
 
-**Capture** the exact error message. It should explicitly name the PDB blocking the eviction.
+**Capture** the exact error message. It should name `demo-pdb` blocking the eviction with text like `Cannot evict pod as it would violate the pod's disruption budget`.
 
 ```bash
-oc adm uncordon $NODE
-oc patch pdb demo-pdb --type=merge -p '{"spec":{"minAvailable":2}}'
+kubectl uncordon $NODE
+kubectl patch pdb demo-pdb --type=merge -p '{"spec":{"minAvailable":2}}'
 ```
 
 ### Step 6 — Why was the eviction allowed (or rejected)?
 
-Walk through the logic for both cases:
-
-| Scenario | minAvailable | Ready pods | Allowed disruptions | Result |
+| Scenario | minAvailable | Ready Pods | Allowed disruptions | Result |
 |---|---|---|---|---|
 | Step 4 | 2 | 3 | 3 - 2 = 1 | Drain allowed |
 | Step 5 | 3 | 3 | 3 - 3 = 0 | Drain blocked |
@@ -179,23 +274,53 @@ This is the EXACT same logic that protects Kafka brokers during a CFK rolling up
 For each, predict the behavior before running, then run and confirm:
 
 1. PDB `minAvailable: 2` on a 2-replica StatefulSet — can you drain a node hosting one Pod?
-2. PDB `maxUnavailable: 1` on a 3-replica StatefulSet — equivalent to `minAvailable: 2`? Verify.
-3. Anti-affinity on a 2-node cluster with `replicas: 3` — what's demo-2's status? What event names the cause?
-4. Add a taint `dedicated=demo:NoSchedule` to one node + no toleration on the StatefulSet — what happens to existing demo-N Pods on that node? (Hint: nothing — taints don't evict existing Pods unless NoExecute.)
+2. PDB `maxUnavailable: 1` on a 3-replica StatefulSet — equivalent to `minAvailable: 2`? Verify by comparing `ALLOWED DISRUPTIONS`.
+3. Anti-affinity on a 2-worker cluster with `replicas: 3` — to test this, recreate kind with 2 workers (`kind delete cluster --name training` then re-create with 2 worker entries) — confirm demo-2 stays Pending. What event names the cause?
+4. Add a taint `dedicated=demo:NoSchedule` to one worker + no toleration on the StatefulSet — what happens to existing demo-N Pods on that node? (Hint: nothing — taints don't evict existing Pods unless `NoExecute`.)
+   ```bash
+   kubectl taint nodes training-worker dedicated=demo:NoSchedule
+   # ... observe ...
+   kubectl taint nodes training-worker dedicated=demo:NoSchedule-   # remove (note trailing -)
+   ```
 
 ## Deliverable — `deliverables/<you>/week01/tuesday.md`
 
-1. **Initial Pod placement** — before anti-affinity (Pod → Node table)
-2. **Placement after anti-affinity** — Pod → Node table again, plus what happens to demo-2 if your cluster has < 3 nodes
-3. **PDB state** before and after each scenario (`oc get pdb -o wide`)
-4. **Drain output** for both Step 4 (allowed) and Step 5 (blocked) — paste verbatim
-5. **Your explanation** of why each drain was allowed or rejected, in your own words (1 paragraph)
-6. **The CFK Connection** — write 2-3 sentences about how this lab translates to Kafka broker survival during an OpenShift upgrade
+1. **kind setup confirmation** — `kubectl get nodes` output showing 4-node cluster
+2. **Initial Pod placement** — before anti-affinity (Pod → Node table)
+3. **Placement after anti-affinity** — Pod → Node table again, plus the `Pending` result from scaling to 4 replicas
+4. **PDB state** before and after each scenario (`kubectl get pdb`)
+5. **Drain output** for both Step 4 (allowed) and Step 5 (blocked) — paste verbatim
+6. **Your explanation** of why each drain was allowed or rejected, in your own words (1 paragraph)
+7. **The CFK Connection** — 2-3 sentences about how this lab translates to Kafka broker survival during an OpenShift upgrade in Week 4
 
-Cleanup:
+## Cleanup
+
+Two options:
+
+**Keep the cluster for later this week** (recommended — Week 1 Thursday's storage lab and Week 2 labs can reuse it):
 
 ```bash
-oc delete statefulset demo
-oc delete svc demo-headless
-oc delete pdb demo-pdb
+kubectl delete statefulset demo
+kubectl delete svc demo-headless
+kubectl delete pdb demo-pdb
+# Cluster stays running
 ```
+
+**Tear down completely**:
+
+```bash
+kind delete cluster --name training
+```
+
+## What kind covers across the bootcamp
+
+| Week | Topic | Works on kind? |
+|---|---|---|
+| 1 | OpenShift Foundations | ✅ Yes — substitute `oc` with `kubectl`, OpenShift Routes with K8s Ingress (Wed) |
+| 2 | OpenShift Operations | ✅ Yes — install OLM / ArgoCD / Prometheus operator manually |
+| 3 | ROSA + AWS | ❌ No — needs real AWS (IAM, STS, VPC). Use a sandbox AWS account or instructor-provided ROSA cluster |
+| 4 | CFK | ✅ Yes — install CFK operator + cert-manager via Helm |
+| 5 | Kafka Operations | ✅ Yes — runs on the CFK from Week 4 |
+| 6 | Flink + Multi-Region | ⚠️ Partial — Mon/Tue work on kind; Wed/Thu/Fri (cluster linking, MRC, DR) need two clusters or a real MRC setup |
+
+So: **Weeks 1, 2, 4, 5 — full kind support. Week 3 — needs AWS. Week 6 — kind for the basics, multi-cluster setup for cluster-link + DR.**
