@@ -9,7 +9,7 @@ This is the action-item view. For technical root-cause writeups on closed issues
 - `BLOCKER` — currently blocking forward progress on a named workstream. BLOCKER implies OPEN; rows show as `OPEN / BLOCKER` to make both states explicit
 - `CLOSED` — resolved; kept for reference
 
-*Last updated: 2026-06-11.*
+*Last updated: 2026-06-15.*
 
 ---
 
@@ -58,6 +58,7 @@ Covers both the DEV operator label-propagation blocker and the upper-env CMF rol
 | 3.1 | CLOSED | Container team | Enable debug logging on the Flink Kubernetes Operator to diagnose why FCB common-metadata labels aren't propagating to the Deployment that the operator creates | Resolved. Container team added `logger.operator.level = DEBUG` on the Flink Operator's `log4j-operator.properties` (with `append: true` on `defaultConfiguration`); operator pod restarted to pick up the new ConfigMap. Debug logs are now available for diagnosing the underlying label-propagation issue — root-cause analysis (and any follow-up admission-mutation policy or operator fix) remains separate work. See `runbook/LESSONS_LEARNED.md` G1 for the structural background | RITM1080156 |
 | 3.2 | OPEN / BLOCKER | Container team | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-uat` | Pending Container team change-management approval. The chart-suppression overrides already in `apps/confluent-cmf/{uat,prd}/values.yaml` (see `LESSONS-LEARNED.md` B4) mean the next install attempt will admit cleanly, but the CMF pod will fail to schedule with `serviceaccount "flink-operator" not found` until this lands. Pre-flight check: `oc -n dah-flink-uat get sa flink-operator cmf-env-sa-dah-flink-uat` | RITM1050600 |
 | 3.3 | OPEN | Container team | `fcb-security` ArgoCD chart hasn't yet applied the per-env SA / Role / RoleBinding to `dah-flink-prd` | Repeats 3.2 on the PRD cluster. Pre-flight check before CMF install: `oc -n dah-flink-prd get sa flink-operator cmf-env-sa-dah-flink-prd` | Yet to be created |
+| 3.4 | OPEN / BLOCKER | DBA team | Database user `ut_db_DAH_kafka-svc` is not able to create database on `db-dahbronze-t.fcpd.fcbint.net` server | Tushar is following up with the DBA team. No SNOW filed yet. Surfaced on 2026-06-11 from the UAT CMF startup attempt: SQL Server returned `Login failed Msg 18456, State 1` (ClientConnectionId `8f019b93-ba7c-4394-a94f-e3ab56a26885` for the server-side error-log lookup of the actual State). The DBA-side update is that this user lacks CREATE DATABASE permission — Flyway needs it to bootstrap migrations on first run, so the `entityManagerFactory` bean fails and the CMF pod CrashLoopBackOff's. **Blocks UAT CMF deploy** until DBA team grants the permission or pre-creates the schema | Yet to be created |
 
 ---
 
