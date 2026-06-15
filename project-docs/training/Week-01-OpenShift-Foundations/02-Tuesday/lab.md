@@ -5,9 +5,11 @@
 
 ## Why kind for this lab
 
-The Tuesday lab needs **multiple nodes** to demonstrate anti-affinity spread and drain behavior. OpenShift Local (CRC) is single-node, so the drain step doesn't make pedagogical sense. `kind` ("Kubernetes IN Docker") spins up a real multi-node K8s cluster locally in about 60 seconds — perfect for this material. Once Week 4 starts (CFK, Routes, SCC, etc.), you'll switch to a real OpenShift cluster.
+The Tuesday lab needs **multiple nodes** to demonstrate anti-affinity spread and drain behavior. OpenShift Local (CRC) is single-node, so the drain step doesn't make pedagogical sense. `kind` ("Kubernetes IN Docker") spins up a real multi-node K8s cluster locally in about 60 seconds — perfect for this material.
 
-`kubectl` against kind behaves identically to `oc` against OpenShift for everything in this lab.
+**Plan for the bootcamp**: use kind for **Week 1 and Week 2**. Starting **Week 3 onwards** (ROSA, CFK, Kafka, Flink), switch to a real ROSA cluster — you need real AWS IAM / STS / OIDC / VPC and real OpenShift primitives (Routes, SCC, OLM) for those days.
+
+`kubectl` against kind behaves identically to `oc` against OpenShift for everything in this Week-1 lab.
 
 ---
 
@@ -312,15 +314,15 @@ kubectl delete pdb demo-pdb
 kind delete cluster --name training
 ```
 
-## What kind covers across the bootcamp
+## Bootcamp environment plan
 
-| Week | Topic | Works on kind? |
+| Week | Topic | Environment |
 |---|---|---|
-| 1 | OpenShift Foundations | ✅ Yes — substitute `oc` with `kubectl`, OpenShift Routes with K8s Ingress (Wed) |
-| 2 | OpenShift Operations | ✅ Yes — install OLM / ArgoCD / Prometheus operator manually |
-| 3 | ROSA + AWS | ❌ No — needs real AWS (IAM, STS, VPC). Use a sandbox AWS account or instructor-provided ROSA cluster |
-| 4 | CFK | ✅ Yes — install CFK operator + cert-manager via Helm |
-| 5 | Kafka Operations | ✅ Yes — runs on the CFK from Week 4 |
-| 6 | Flink + Multi-Region | ⚠️ Partial — Mon/Tue work on kind; Wed/Thu/Fri (cluster linking, MRC, DR) need two clusters or a real MRC setup |
+| 1 | OpenShift Foundations | **kind** (this week) — `kubectl` instead of `oc`; Ingress in place of Route on Wed |
+| 2 | OpenShift Operations | **kind** — install OLM / ArgoCD / Prometheus Operator manually via Helm |
+| 3 | ROSA + AWS | **ROSA** — real AWS IAM / STS / OIDC / VPC are the day's subject matter |
+| 4 | CFK | **ROSA** — Routes, SCC, OLM-managed CFK Operator, cert-manager + Keyfactor integration |
+| 5 | Kafka Operations | **ROSA** — runs on the CFK installed in Week 4 |
+| 6 | Flink + Multi-Region | **ROSA** — plus a second cluster (or DR region) for Wed-Fri cluster-link + MRC + DR drill |
 
-So: **Weeks 1, 2, 4, 5 — full kind support. Week 3 — needs AWS. Week 6 — kind for the basics, multi-cluster setup for cluster-link + DR.**
+Before Week 3 Monday, make sure your ROSA cluster is provisioned, `oc` is logged in, and you can `oc new-project <you>-training`.
