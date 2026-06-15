@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="manual" pages="5">
   <diagram name="L1 — Workload Controllers" id="l1-workload-controllers">
-    <mxGraphModel dx="1634" dy="1089" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2228" dy="1325" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -14,16 +14,16 @@
           <mxGeometry height="640" width="720" x="80" y="120" as="geometry" />
         </mxCell>
         <mxCell id="dep" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="Deploy" vertex="1">
-          <mxGeometry height="130" width="130" x="375" y="170" as="geometry" />
+          <mxGeometry height="130" width="130" x="324" y="170" as="geometry" />
         </mxCell>
         <mxCell id="dep_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="Deployment" vertex="1">
-          <mxGeometry height="20" width="180" x="350" y="305" as="geometry" />
+          <mxGeometry height="20" width="89" x="461" y="225" as="geometry" />
         </mxCell>
         <mxCell id="rs" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=20;fontStyle=1;html=1;aspect=fixed;" value="RS" vertex="1">
-          <mxGeometry height="120" width="120" x="380" y="370" as="geometry" />
+          <mxGeometry height="120" width="120" x="329" y="370" as="geometry" />
         </mxCell>
         <mxCell id="rs_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="ReplicaSet" vertex="1">
-          <mxGeometry height="20" width="180" x="350" y="495" as="geometry" />
+          <mxGeometry height="20" width="94" x="465" y="420" as="geometry" />
         </mxCell>
         <mxCell id="dpod1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod&#xa;abc-xyz" vertex="1">
           <mxGeometry height="60" width="120" x="130" y="600" as="geometry" />
@@ -35,10 +35,10 @@
           <mxGeometry height="60" width="120" x="530" y="600" as="geometry" />
         </mxCell>
         <mxCell id="dpod_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="random suffixes · ephemeral IPs · fungible · any Pod ↔ any Pod" vertex="1">
-          <mxGeometry height="20" width="660" x="110" y="680" as="geometry" />
+          <mxGeometry height="20" width="360" x="248" y="678" as="geometry" />
         </mxCell>
         <mxCell id="dpod_note2" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="Pod dies → controller spawns a NEW Pod with a NEW name" vertex="1">
-          <mxGeometry height="20" width="660" x="110" y="705" as="geometry" />
+          <mxGeometry height="20" width="368" x="248" y="703" as="geometry" />
         </mxCell>
         <mxCell id="e_dep_rs" edge="1" parent="1" source="dep" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontColor=#326CE5;fontSize=10;fontStyle=1;" target="rs" value="owns">
           <mxGeometry relative="1" as="geometry" />
@@ -56,10 +56,10 @@
           <mxGeometry height="640" width="720" x="860" y="120" as="geometry" />
         </mxCell>
         <mxCell id="sts" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="Sts" vertex="1">
-          <mxGeometry height="130" width="130" x="1155" y="170" as="geometry" />
+          <mxGeometry height="130" width="130" x="1144" y="170" as="geometry" />
         </mxCell>
         <mxCell id="sts_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#EE0000;fontStyle=2;" value="StatefulSet" vertex="1">
-          <mxGeometry height="20" width="180" x="1130" y="305" as="geometry" />
+          <mxGeometry height="20" width="84" x="1280" y="209" as="geometry" />
         </mxCell>
         <mxCell id="spod0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=13;fontStyle=1;align=center;" value="kafka-0" vertex="1">
           <mxGeometry height="60" width="140" x="900" y="400" as="geometry" />
@@ -80,13 +80,13 @@
           <mxGeometry height="100" width="140" x="1380" y="510" as="geometry" />
         </mxCell>
         <mxCell id="spod_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#EE0000;fontStyle=2;" value="stable names · DNS: kafka-0.headless.ns.svc.cluster.local · each Pod glued to its OWN PVC" vertex="1">
-          <mxGeometry height="20" width="700" x="870" y="630" as="geometry" />
+          <mxGeometry height="20" width="500" x="988" y="633" as="geometry" />
         </mxCell>
         <mxCell id="spod_note2" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#EE0000;fontStyle=2;" value="kafka-0 dies → K8s recreates kafka-0 with SAME PVC mounted (data persists)" vertex="1">
-          <mxGeometry height="20" width="700" x="870" y="655" as="geometry" />
+          <mxGeometry height="20" width="500" x="988" y="658" as="geometry" />
         </mxCell>
         <mxCell id="spod_note3" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#EE0000;fontStyle=2;" value="Ordered lifecycle: created 0→1→2; deleted 2→1→0; never parallel by default" vertex="1">
-          <mxGeometry height="20" width="700" x="870" y="680" as="geometry" />
+          <mxGeometry height="20" width="500" x="988" y="683" as="geometry" />
         </mxCell>
         <mxCell id="e_sts_spod0" edge="1" parent="1" source="sts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;" target="spod0">
           <mxGeometry relative="1" as="geometry" />
