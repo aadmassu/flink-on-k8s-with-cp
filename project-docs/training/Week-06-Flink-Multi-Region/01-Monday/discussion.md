@@ -93,6 +93,50 @@ spec:
 
 When applied, the operator creates the JM + TMs, and Flink runs the job.
 
+### Upstream Flink CRDs — FlinkDeployment vs FlinkSessionJob
+
+CMF's `FlinkApplication` is Confluent's wrapper. Underneath, the **Apache Flink Kubernetes Operator** (the upstream open-source operator) ships two CRDs that emit very different K8s resources. Knowing the difference matters when you troubleshoot, because what gets created depends on which CRD the operator is acting on.
+
+| CRD | What it represents | Native K8s resources emitted |
+|---|---|---|
+| **FlinkDeployment** (Application mode) | A complete Flink cluster + a single job that owns that cluster's lifecycle. When the job ends, the cluster goes away. | JobManager **Deployment** · TaskManager **Deployment** · **Services** (JM REST + UI) · **ConfigMaps** (`flink-conf.yaml`, log4j) · optional **PodDisruptionBudget** |
+| **FlinkDeployment** (Session mode) | A long-running Flink cluster that accepts multiple jobs over its lifetime. | Same as above — but the cluster persists past any single job |
+| **FlinkSessionJob** | A job submitted to an EXISTING Session-mode FlinkDeployment. | **None.** No new infrastructure. The CR's reconciliation hits the JM REST endpoint of the referenced FlinkDeployment to deploy the JAR/SQL. Status conditions track job state (submitted / running / finished / failed). |
+
+So when an engineer reports "I applied a `FlinkSessionJob` and nothing happened in `oc get pods`" — that's expected. The job runs as work inside the existing TaskManagers from the FlinkDeployment it points at. Look at JM REST logs + the CR's status conditions, not at new Pods.
+
+### Where "stateful vs stateless" actually changes K8s resources
+
+A Flink job being stateful (keyed state, windows, ValueState) by itself does NOT change which K8s objects the operator emits. What DOES change them:
+
+| Setting | Resource change |
+|---|---|
+| Single JM, HA disabled | JobManager = 1-replica Deployment |
+| `high-availability: kubernetes` + JM replicas ≥ 2 | JobManager promoted to **multi-replica Deployment with leader election via a ConfigMap** (e.g. `<job>-cluster-config-map`); HA state path (S3 / PVC) referenced in config |
+| State backend: HashMap | No extra K8s resources — state lives in JVM heap |
+| State backend: RocksDB | No extra K8s resources at the orchestration layer — RocksDB writes to local Pod disk; checkpoints still flow to S3/PV |
+| Reactive mode / autoscaling | No new resources; operator mutates `spec.replicas` on TM Deployment in-place |
+
+The operator does NOT create PVCs for checkpoint/savepoint storage at the platform — it configures Flink Pods with the S3 endpoint, and Flink writes there directly via the S3 file-system plugin.
+
+### CMF on top of all this
+
+In the platform's deployment, CMF translates each statement into a **`FlinkApplication`** CR (Confluent's wrapper), which the Confluent-branded operator turns into a **`FlinkDeployment` in Application mode** (one cluster per statement, dedicated lifecycle). CMF does NOT typically use `FlinkSessionJob` here — every SQL statement gets its own cluster. That's why you see N JobManager + TaskManager pairs in `dah-flink-<env>` for N active CMF statements, rather than one shared session cluster.
+
+Three layers to keep straight in your head:
+
+```
+1. CMF Statement (SQL or Table API)            ← what the engineer/analyst writes
+   ↓
+2. FlinkApplication CR (Confluent wrapper)     ← what CMF creates
+   ↓
+3. FlinkDeployment CR (upstream Apache CRD)    ← what the Confluent operator translates it into
+   ↓
+4. K8s primitives (Deployment, Service, ...)   ← what kubelet actually runs
+```
+
+When troubleshooting, descend the layers in order: CMF status → FlinkApplication CR → FlinkDeployment CR → Pods/Services.
+
 ## Diagram Walkthrough (~30 min)
 
 Open `60-flink-network.drawio` (the platform's canonical diagram). Walk:
@@ -117,6 +161,10 @@ Open `60-flink-network.drawio` (the platform's canonical diagram). Walk:
 2. What's the difference between a savepoint and a checkpoint?
 3. Why does the platform use a separate Flink Operator + CMF rather than just Flink Operator?
 4. How does Flink achieve "exactly once" when its source is Kafka?
+5. An engineer applies a `FlinkSessionJob` and `oc get pods` shows no new Pods. Is something broken? Where do you look first?
+6. A job uses RocksDB state backend and processes 50 GB of keyed state. Does the operator create any extra K8s resources (PVC, Volume, etc.) compared to the same job using HashMap state? Why or why not?
+7. When you enable HA on a JobManager (replicas ≥ 2, `high-availability: kubernetes`), what specific K8s object appears that didn't exist before?
+8. Why does CMF spin up N JobManager + TaskManager pairs for N concurrent statements rather than running them on one shared Session cluster via `FlinkSessionJob`?
 
 
 ## Added Enhancement — Flink Operational Architecture
