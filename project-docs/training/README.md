@@ -105,4 +105,5 @@ See `deliverables/README.md` for the submission convention.
 ## Status of the curriculum
 
 - **Week 1** — fully written; ready to run from Monday
-- **Weeks 2–6** — week-level READMEs in place with the daily topics; per-day discussion + lab content fleshed out as each week approaches
+- **Week 2** — fully written; ready to run
+- **Weeks 3–6** — week-level READMEs in place with the daily topics; per-day discussion + lab content fleshed out as each week approaches

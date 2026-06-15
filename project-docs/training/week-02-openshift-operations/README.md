@@ -4,13 +4,13 @@
 
 ## Daily plan
 
-| Day | Topic | Diagram anchor | Friday-style break-things? |
+| Day | Topic | Diagram | Lab |
 |---|---|---|---|
-| **Monday** | RBAC (User → RoleBinding → Role → Resources) | TBD: `20-rbac-binding.drawio` | — |
-| **Tuesday** | **Operators** (the most important day before CFK — reconciliation loop) | TBD: `21-operator-reconciliation.drawio` | — |
-| **Wednesday** | Monitoring (Application → Prometheus → Grafana) | TBD: `22-monitoring-flow.drawio` | — |
-| **Thursday** | GitOps (Git → ArgoCD → OpenShift) | TBD: `23-gitops.drawio` | — |
-| **Friday** | **Quotas + Limits — break deployments via exhaustion** (this is exactly the FCB DEV ResourceQuota story from tracker 2.5) | TBD: `24-quota-failures.drawio` | YES |
+| **[Monday](monday/discussion.md)** | RBAC (Subject → RoleBinding → Role → Resources) | `20-rbac-binding.drawio` | [`labs/week02/monday.md`](../labs/week02/monday.md) |
+| **[Tuesday](tuesday/discussion.md)** | **Operators (the reconciliation loop)** — the most important day before CFK | `21-operator-reconciliation.drawio` | [`labs/week02/tuesday.md`](../labs/week02/tuesday.md) |
+| **[Wednesday](wednesday/discussion.md)** | Monitoring (Pod → /metrics → Prometheus → PromQL → Grafana) | `22-monitoring-flow.drawio` | [`labs/week02/wednesday.md`](../labs/week02/wednesday.md) |
+| **[Thursday](thursday/discussion.md)** | GitOps (Git → ArgoCD → OpenShift) | `23-gitops.drawio` | [`labs/week02/thursday.md`](../labs/week02/thursday.md) |
+| **[Friday](friday/discussion.md)** | **Quotas + Limits — break deployments via exhaustion** (the FCB DEV tracker 2.5 / runbook A3 story) | `24-quota-failures.drawio` | [`labs/week02/friday.md`](../labs/week02/friday.md) |
 
 ## End-of-week deliverable
 
@@ -25,4 +25,4 @@ Each engineer commits to `deliverables/<engineer-name>/week02/`:
 
 ## Status of this week
 
-📝 Day-level discussion + lab content **to be written** before Week 2 Monday. The topics and the break-things Friday are locked in per the curriculum review.
+✅ Fully written — ready to run Week 2 Monday. Five discussions, five labs, five diagrams.
