@@ -1,0 +1,78 @@
+# StatefulSet — stable identity + stable storage.
+# Reference example. NOT applied by the lab — read alongside Lesson 1 of discussion.md.
+#
+# Key properties:
+#   - Pods get predictable names: myapp-0, myapp-1, myapp-2 (no random suffix).
+#   - Each Pod gets its OWN PersistentVolumeClaim via volumeClaimTemplates.
+#     PVC names: data-myapp-0, data-myapp-1, data-myapp-2.
+#   - Ordered lifecycle: created 0 → 1 → 2; deleted 2 → 1 → 0.
+#   - If myapp-0 dies, K8s recreates myapp-0 with the SAME PVC mounted (data persists).
+#   - Required for: Kafka brokers, KRaftController, databases, anything needing stable identity + disk.
+#
+# Apply with: kubectl apply -f examples/statefulset.yaml
+# Inspect:    kubectl get sts,pod,pvc -l app=myapp
+# Tear down:  kubectl delete sts myapp && kubectl delete pvc -l app=myapp
+#             (PVCs are NOT auto-deleted with the StatefulSet — safety default)
+---
+# The headless Service is REQUIRED — gives each Pod a stable DNS name
+# (myapp-0.myapp-headless.<namespace>.svc.cluster.local)
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-headless
+spec:
+  clusterIP: None             # headless — DNS returns A records for each backing Pod
+  selector:
+    app: myapp
+  ports:
+    - port: 80
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: myapp
+spec:
+  serviceName: myapp-headless        # MUST match the headless Service name above
+  replicas: 3
+  podManagementPolicy: OrderedReady  # default — start Pods one at a time, wait for Ready before next.
+                                     # Use 'Parallel' only for initial bring-up; never for upgrade.
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 2
+
+  # volumeClaimTemplates: per-Pod PVC, automatically created with name <template>-<sts>-<ordinal>
+  # e.g. data-myapp-0, data-myapp-1, data-myapp-2
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi

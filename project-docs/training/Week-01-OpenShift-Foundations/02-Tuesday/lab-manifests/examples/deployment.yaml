@@ -1,0 +1,53 @@
+# Deployment — stateless, interchangeable Pods.
+# Reference example. NOT applied by the lab — read alongside Lesson 1 of discussion.md.
+#
+# Key properties:
+#   - K8s creates a ReplicaSet which maintains N identical Pods.
+#   - Pods get random suffixes (myapp-7d4f9b6c8b-x2k9p) — no stable identity.
+#   - A dying Pod is replaced by a fresh Pod with a NEW name + NEW IP.
+#   - Use for: REST APIs, web frontends, stateless workers, CMF, Connect, SR.
+#
+# Apply with: kubectl apply -f examples/deployment.yaml
+# Inspect:    kubectl get deploy,rs,pod -l app=myapp
+# Tear down:  kubectl delete deploy myapp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  labels:
+    app: myapp
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate       # Deployment default: roll Pods in-place during upgrades
+    rollingUpdate:
+      maxSurge: 1             # at most 1 extra Pod above replicas during update
+      maxUnavailable: 0       # never go below replicas during update
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          # Health probes — required for Pods to be marked Ready
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 2

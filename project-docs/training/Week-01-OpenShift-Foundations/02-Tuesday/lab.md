@@ -101,6 +101,8 @@ You're ready.
 
 All YAML manifests for this lab live in [`lab-manifests/`](lab-manifests/). Run the commands below from this `02-Tuesday/` directory so relative paths resolve.
 
+Reference examples — generic Deployment + StatefulSet templates with inline comments — are under [`lab-manifests/examples/`](lab-manifests/examples/) for engineers to read alongside Lesson 1. They're standalone and runnable but NOT applied by the lab.
+
 ### Step 1 — Deploy a 3-replica StatefulSet (no extras yet)
 
 ```bash
