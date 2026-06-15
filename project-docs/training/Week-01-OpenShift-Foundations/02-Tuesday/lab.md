@@ -1,119 +1,201 @@
-# Week 1 Tuesday — Lab: Stateless vs Stateful Workloads
+# Week 1 Tuesday — Lab: StatefulSet + Anti-Affinity + PDB + Drain
 
-**Time**: ~3 hours
+**Time**: ~4 hours
+**Prerequisite**: Lesson 1-5 from morning discussion
 
-## Hands-on Lab — Deployment vs StatefulSet, side by side
+## Goal
 
-Work in `<you>-training`.
+Build a 3-replica StatefulSet that survives a node drain — then break it by tightening the PDB and watching the drain block. The exercise sticks because you can see the rules cause + reject the eviction in real time.
+
+## Hands-on Lab
+
+### Step 1 — Deploy a 3-replica StatefulSet (no extras yet)
 
 ```bash
-# 1. Deploy nginx as a Deployment (stateless)
-cat <<EOF | oc apply -f -
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx
-spec:
-  replicas: 3
-  selector:
-    matchLabels: {app: nginx}
-  template:
-    metadata:
-      labels: {app: nginx}
-    spec:
-      containers:
-        - name: nginx
-          image: nginx:1.27
-EOF
+oc project <you>-training
 
-# 2. Deploy redis as a StatefulSet (with PVC template)
-# You need a headless Service first (for stable DNS)
 cat <<EOF | oc apply -f -
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis-headless
-spec:
-  clusterIP: None
-  selector: {app: redis}
-  ports:
-    - port: 6379
-      name: redis
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: redis
+  name: demo
 spec:
-  serviceName: redis-headless
+  serviceName: demo-headless
   replicas: 3
   selector:
-    matchLabels: {app: redis}
+    matchLabels:
+      app: demo
   template:
     metadata:
-      labels: {app: redis}
+      labels:
+        app: demo
     spec:
       containers:
-        - name: redis
-          image: redis:7
-          ports:
-            - containerPort: 6379
-          volumeMounts:
-            - name: data
-              mountPath: /data
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 1Gi
+        - name: app
+          image: registry.access.redhat.com/ubi9/ubi-minimal
+          command: ["sh", "-c", "while true; do sleep 30; done"]
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits:   { cpu: 200m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-headless
+spec:
+  clusterIP: None
+  selector: { app: demo }
+  ports:
+    - port: 80
 EOF
 
-# 3. Observe pod names + IPs
-oc get pods -l app=nginx -o wide
-oc get pods -l app=redis -o wide
-oc get pvc
-
-# 4. Delete one of each and watch what happens
-oc delete pod nginx-<some-hash>
-oc delete pod redis-0
-# Watch:
-oc get pods -w
+oc get pods -l app=demo -o wide -w &
+sleep 30 ; jobs %1 && kill %1 2>/dev/null
 ```
 
-Answer in your runbook: **what's different about the replacement Pod's name in each case? Why?**
+**Capture**: which node hosts each of demo-0 / demo-1 / demo-2. Right now there's no anti-affinity — they MAY end up on the same node depending on the scheduler.
 
-## Troubleshooting Exercise — break the StatefulSet ordering
+### Step 2 — Apply pod anti-affinity (Lesson 3)
 
 ```bash
-# Force redis-1 into CrashLoopBackOff by giving it a bad image
-oc set image statefulset/redis redis=redis:doesnotexist
-oc get pods -l app=redis
+oc patch statefulset demo --type=merge -p '
+spec:
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: demo
+              topologyKey: kubernetes.io/hostname
+'
+
+# Force rolling update so existing Pods re-spread
+oc rollout restart statefulset/demo
+oc rollout status statefulset/demo --timeout=300s
+
+oc get pods -l app=demo -o wide
 ```
 
-Observe: even though redis-0 is healthy, redis-2 is stopped during the rolling update because redis-1 won't reach Ready.
+**Capture**: NOW each Pod should be on a DIFFERENT node. If your training cluster has only 2 nodes, demo-2 will be stuck Pending — that's expected; describe the Pod to see the "didn't match Pod anti-affinity" event.
 
-Investigate using the morning's diagram trace:
-1. What's the StatefulSet's `updateStrategy`? (`oc get statefulset redis -o yaml | grep -A3 updateStrategy`)
-2. Why doesn't K8s skip redis-1 and update redis-2?
-3. Roll back: `oc set image statefulset/redis redis=redis:7` and watch the recovery
+### Step 3 — Apply a PDB (Lesson 5)
+
+```bash
+cat <<EOF | oc apply -f -
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: demo-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: demo
+EOF
+
+oc get pdb demo-pdb
+```
+
+**Capture**: `ALLOWED DISRUPTIONS` should be `1` (out of 3, keeping minAvailable=2).
+
+### Step 4 — Drain a node and observe
+
+Pick the node hosting demo-1:
+
+```bash
+NODE=$(oc get pod demo-1 -o jsonpath='{.spec.nodeName}')
+echo "Will drain $NODE"
+
+# In a second terminal, watch:
+#   oc get pods -l app=demo -o wide -w
+#   oc get pdb demo-pdb -w
+
+oc adm drain $NODE \
+  --delete-emptydir-data \
+  --ignore-daemonsets \
+  --force \
+  --grace-period=30 \
+  --timeout=120s
+```
+
+**Expected behavior**:
+- PDB allows the eviction (1 ≤ allowed disruptions).
+- demo-1 evicts.
+- demo-1's PVC follows it to the new node (rebound to whatever node K8s picks under the anti-affinity constraint).
+- Drain completes.
+
+```bash
+# Cleanup — uncordon the node so it's schedulable again
+oc adm uncordon $NODE
+
+# Confirm all 3 Pods are Running
+oc get pods -l app=demo -o wide
+```
+
+### Step 5 — Break the PDB on purpose
+
+Tighten the PDB so a drain is impossible:
+
+```bash
+oc patch pdb demo-pdb --type=merge -p '{"spec":{"minAvailable":3}}'
+
+oc get pdb demo-pdb
+# ALLOWED DISRUPTIONS should now be 0
+
+NODE=$(oc get pod demo-1 -o jsonpath='{.spec.nodeName}')
+
+# This drain should HANG / FAIL — PDB blocks the eviction
+timeout 60 oc adm drain $NODE \
+  --delete-emptydir-data \
+  --ignore-daemonsets \
+  --force \
+  --grace-period=30 \
+  --timeout=30s
+echo "drain exit code: $?"
+```
+
+**Capture** the exact error message. It should explicitly name the PDB blocking the eviction.
+
+```bash
+oc adm uncordon $NODE
+oc patch pdb demo-pdb --type=merge -p '{"spec":{"minAvailable":2}}'
+```
+
+### Step 6 — Why was the eviction allowed (or rejected)?
+
+Walk through the logic for both cases:
+
+| Scenario | minAvailable | Ready pods | Allowed disruptions | Result |
+|---|---|---|---|---|
+| Step 4 | 2 | 3 | 3 - 2 = 1 | Drain allowed |
+| Step 5 | 3 | 3 | 3 - 3 = 0 | Drain blocked |
+
+This is the EXACT same logic that protects Kafka brokers during a CFK rolling upgrade in Week 4.
+
+## Troubleshooting Exercise
+
+For each, predict the behavior before running, then run and confirm:
+
+1. PDB `minAvailable: 2` on a 2-replica StatefulSet — can you drain a node hosting one Pod?
+2. PDB `maxUnavailable: 1` on a 3-replica StatefulSet — equivalent to `minAvailable: 2`? Verify.
+3. Anti-affinity on a 2-node cluster with `replicas: 3` — what's demo-2's status? What event names the cause?
+4. Add a taint `dedicated=demo:NoSchedule` to one node + no toleration on the StatefulSet — what happens to existing demo-N Pods on that node? (Hint: nothing — taints don't evict existing Pods unless NoExecute.)
 
 ## Deliverable — `deliverables/<you>/week01/tuesday.md`
 
-1. **Side-by-side observation table** — for nginx Deployment and redis StatefulSet, list: Pod names, IPs after delete-and-recreate, whether each Pod has a PVC, what survives a Pod delete
-2. **Why Kafka uses StatefulSet** — explain in your own words, in 3 sentences max. (Reference: broker.id stability, log data, DNS-based broker discovery)
-3. **The blocked update** — what was the failure mode of the redis-1 update? What command did you use to unblock?
-4. Two questions that came up
+1. **Initial Pod placement** — before anti-affinity (Pod → Node table)
+2. **Placement after anti-affinity** — Pod → Node table again, plus what happens to demo-2 if your cluster has < 3 nodes
+3. **PDB state** before and after each scenario (`oc get pdb -o wide`)
+4. **Drain output** for both Step 4 (allowed) and Step 5 (blocked) — paste verbatim
+5. **Your explanation** of why each drain was allowed or rejected, in your own words (1 paragraph)
+6. **The CFK Connection** — write 2-3 sentences about how this lab translates to Kafka broker survival during an OpenShift upgrade
 
-Cleanup before EOD:
+Cleanup:
 
 ```bash
-oc delete statefulset redis
-oc delete pvc -l app=redis     # critical — StatefulSet does NOT garbage-collect its PVCs
-oc delete svc redis-headless
-oc delete deployment nginx
+oc delete statefulset demo
+oc delete svc demo-headless
+oc delete pdb demo-pdb
 ```
-
-That `oc delete pvc -l app=redis` step is itself a Week-1 lesson: **deleting a StatefulSet does NOT delete its PVCs by default.** A real CFK uninstall in prod follows the same rule — be careful.

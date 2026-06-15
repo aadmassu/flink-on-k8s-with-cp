@@ -1,5 +1,5 @@
 <mxfile host="app.diagrams.net" agent="manual">
-  <diagram name="Workload Controllers" id="workload-controllers">
+  <diagram name="L1 — Workload Controllers" id="l1-workload-controllers">
     <mxGraphModel dx="1634" dy="1089" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
@@ -160,6 +160,577 @@
         </mxCell>
         <mxCell id="key_legend" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=3;" value="Colors — BLUE heptagons + boxes = stateless / interchangeable (Deployment world).  RED heptagons + boxes = stateful / identity-preserving (StatefulSet world).  Dashed edges = operator-driven creation." vertex="1">
           <mxGeometry height="20" width="1500" x="70" y="1280" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="L2 — Scaling" id="l2-scaling">
+    <mxGraphModel dx="1634" dy="1089" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="l2_title" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" value="Scaling — HPA, manual, and why stateful systems are different" vertex="1">
+          <mxGeometry height="50" width="900" x="377" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_subtitle" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=12;fontStyle=2;fontColor=#326CE5;" value="Stateless can auto-scale on a metric. Kafka / Flink scaling is a planned operation." vertex="1">
+          <mxGeometry height="20" width="900" x="377" y="68" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_dbox" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff5ff;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#326CE5;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="Deployment scaling — HPA-driven" vertex="1">
+          <mxGeometry height="640" width="720" x="80" y="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_hpa" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="HPA" vertex="1">
+          <mxGeometry height="110" width="110" x="385" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_hpa_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="HorizontalPodAutoscaler" vertex="1">
+          <mxGeometry height="20" width="220" x="330" y="285" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_metric" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=center;fontSize=11;fontColor=#326CE5;fontStyle=1;" value="metric: CPU &gt; 70%&#xa;target: avgUtilization 60%" vertex="1">
+          <mxGeometry height="60" width="240" x="120" y="195" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_d_before" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=center;verticalAlign=top;fontSize=12;fontColor=#326CE5;fontStyle=1;spacingTop=8;" value="Before — replicas: 3" vertex="1">
+          <mxGeometry height="170" width="280" x="105" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_dpb1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="50" width="70" x="120" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_dpb2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="50" width="70" x="220" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_dpb3" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="50" width="70" x="320" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_d_before_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="CPU climbing past target" vertex="1">
+          <mxGeometry height="20" width="240" x="120" y="465" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_d_after" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=center;verticalAlign=top;fontSize=12;fontColor=#326CE5;fontStyle=1;spacingTop=8;" value="After — replicas: 5" vertex="1">
+          <mxGeometry height="170" width="280" x="500" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_dpa1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="40" width="60" x="510" y="385" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_dpa2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="40" width="60" x="580" y="385" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_dpa3" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="40" width="60" x="650" y="385" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_dpa4" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="40" width="60" x="510" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_dpa5" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="40" width="60" x="580" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_d_after_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="HPA bumped .spec.replicas → ReplicaSet adds Pods" vertex="1">
+          <mxGeometry height="20" width="280" x="500" y="495" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_d_arrow" edge="1" parent="1" source="l2_d_before" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontColor=#326CE5;fontSize=11;fontStyle=1;" target="l2_d_after" value="CPU &gt; 70%">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_d_works" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontSize=11;fontColor=#326CE5;spacingLeft=10;" value="Works because Pods are interchangeable.&#xa;Adding a Pod = adding throughput.&#xa;Removing a Pod = no data lost." vertex="1">
+          <mxGeometry height="80" width="680" x="100" y="580" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_d_other" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="VPA (vertical) and Cluster Autoscaler (node-level) complete the autoscale stack" vertex="1">
+          <mxGeometry height="20" width="680" x="100" y="690" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_sbox" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdecec;strokeColor=#EE0000;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#EE0000;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="StatefulSet scaling — manual + planned" vertex="1">
+          <mxGeometry height="640" width="720" x="860" y="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_kbefore" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EE0000;align=center;verticalAlign=top;fontSize=12;fontColor=#EE0000;fontStyle=1;spacingTop=8;" value="Kafka cluster — 3 brokers" vertex="1">
+          <mxGeometry height="180" width="320" x="900" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_kb0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-0" vertex="1">
+          <mxGeometry height="50" width="90" x="915" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_kb1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-1" vertex="1">
+          <mxGeometry height="50" width="90" x="1015" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_kb2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-2" vertex="1">
+          <mxGeometry height="50" width="90" x="1115" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_kbefore_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#EE0000;fontStyle=2;" value="6 partitions distributed across brokers" vertex="1">
+          <mxGeometry height="20" width="320" x="900" y="300" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_kafter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EE0000;align=center;verticalAlign=top;fontSize=12;fontColor=#EE0000;fontStyle=1;spacingTop=8;" value="After spec.replicas: 4" vertex="1">
+          <mxGeometry height="180" width="320" x="1260" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_ka0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-0" vertex="1">
+          <mxGeometry height="50" width="90" x="1275" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_ka1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-1" vertex="1">
+          <mxGeometry height="50" width="90" x="1375" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_ka2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-2" vertex="1">
+          <mxGeometry height="50" width="90" x="1475" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_ka3" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontColor=#b85450;fontSize=12;fontStyle=1;align=center;dashed=1;" value="broker-3&#xa;(no partitions yet)" vertex="1">
+          <mxGeometry height="60" width="190" x="1330" y="285" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_k_arrow" edge="1" parent="1" source="l2_kbefore" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;fontColor=#EE0000;fontSize=11;fontStyle=1;" target="l2_kafter" value="oc scale">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_k_warning" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=11;fontColor=#b85450;spacingLeft=10;fontStyle=1;" value="⚠ Scaling does NOT auto-rebalance partitions.&#xa;broker-3 has no partitions until you run a reassignment.&#xa;Partition reassignment moves data → can take hours." vertex="1">
+          <mxGeometry height="80" width="680" x="880" y="395" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_flink" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EE0000;align=left;verticalAlign=middle;fontSize=11;fontColor=#EE0000;spacingLeft=10;" value="Flink rescaling — parallelism is a job property:&#xa;  1. stop job with savepoint&#xa;  2. submit new job with new parallelism&#xa;  3. restore from savepoint (state repartitions)" vertex="1">
+          <mxGeometry height="100" width="680" x="880" y="500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_flink_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#EE0000;fontStyle=2;" value="Don&#39;t HPA stateful workloads — terminating Pods can lose ISR / partition leadership" vertex="1">
+          <mxGeometry height="20" width="680" x="880" y="630" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l2_key_title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=12;" value="Component Roles (one-liner each)" vertex="1">
+          <mxGeometry height="20" width="500" x="70" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_key_hpa" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="HPA          — HorizontalPodAutoscaler; watches CPU / memory / custom metric, updates .spec.replicas of a Deployment within min/max bounds." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="825" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_key_vpa" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="VPA          — VerticalPodAutoscaler; resizes requests/limits per Pod (bigger Pods, not more of them); requires Pod restart; less common in production." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="845" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_key_ca" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Cluster Autoscaler — adds/removes Nodes (not Pods) when Pods are unschedulable or nodes are underutilized; runs at the cloud/infrastructure layer." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="865" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_key_kafka" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Kafka scaling — partition count is fixed at topic creation; adding brokers requires manual partition reassignment; throughput scales with partitions, not brokers." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_key_flink" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Flink scaling — parallelism baked into job submission; rescale = stop with savepoint + restart with new parallelism + state repartition; reactive mode auto-scales TMs (not used here yet)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="905" as="geometry" />
+        </mxCell>
+        <mxCell id="l2_key_legend" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=3;" value="Colors — BLUE = stateless (HPA-friendly).  RED = stateful (manual + planned).  Dashed Pod = new replica with no partitions assigned." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="930" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="L3 — HA: Affinity &amp; Anti-Affinity" id="l3-ha-affinity">
+    <mxGraphModel dx="1634" dy="1089" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="l3_title" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" value="High Availability — Affinity &amp; Anti-Affinity" vertex="1">
+          <mxGeometry height="50" width="900" x="377" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_subtitle" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=12;fontStyle=2;fontColor=#326CE5;" value="Pod placement vs node failures — what happens when Node-2 dies?" vertex="1">
+          <mxGeometry height="20" width="900" x="377" y="68" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_bad_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdecec;strokeColor=#EE0000;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#EE0000;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="Without anti-affinity — brokers can cluster" vertex="1">
+          <mxGeometry height="640" width="720" x="80" y="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_bad_n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-1" vertex="1">
+          <mxGeometry height="200" width="280" x="120" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_bad_b0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-0" vertex="1">
+          <mxGeometry height="40" width="100" x="135" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_bad_b1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-1" vertex="1">
+          <mxGeometry height="40" width="100" x="255" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_bad_b2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-2" vertex="1">
+          <mxGeometry height="40" width="100" x="195" y="285" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_bad_n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-2 (idle)" vertex="1">
+          <mxGeometry height="200" width="280" x="450" y="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_bad_fail" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=top;fontSize=12;fontColor=#b85450;fontStyle=1;spacingTop=8;" value="If Node-1 dies …" vertex="1">
+          <mxGeometry height="220" width="640" x="120" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_bad_fail_n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#b85450;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-1 ✗ FAILED" vertex="1">
+          <mxGeometry height="160" width="280" x="140" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_bad_dead0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;dashed=1;" value="broker-0 ✗" vertex="1">
+          <mxGeometry height="32" width="100" x="155" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_bad_dead1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;dashed=1;" value="broker-1 ✗" vertex="1">
+          <mxGeometry height="32" width="100" x="275" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_bad_dead2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;dashed=1;" value="broker-2 ✗" vertex="1">
+          <mxGeometry height="32" width="100" x="215" y="540" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_bad_result" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontColor=#b85450;fontStyle=1;" value="ISR = 0 · producer writes fail · cluster down" vertex="1">
+          <mxGeometry height="20" width="280" x="450" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_bad_why" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#b85450;fontStyle=2;" value="all 3 broker replicas lived on the same node" vertex="1">
+          <mxGeometry height="20" width="280" x="450" y="525" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_bad_yaml" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EE0000;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#EE0000;spacingLeft=10;" value="spec.template.spec:&#xa;  # NO podAntiAffinity → scheduler may colocate" vertex="1">
+          <mxGeometry height="50" width="640" x="120" y="650" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff5ff;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#326CE5;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="With pod anti-affinity (topologyKey: hostname)" vertex="1">
+          <mxGeometry height="640" width="720" x="860" y="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-1" vertex="1">
+          <mxGeometry height="130" width="200" x="900" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_good_b0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-0" vertex="1">
+          <mxGeometry height="40" width="160" x="920" y="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-2" vertex="1">
+          <mxGeometry height="130" width="200" x="1140" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_good_b1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-1" vertex="1">
+          <mxGeometry height="40" width="160" x="1160" y="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_n3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-3" vertex="1">
+          <mxGeometry height="130" width="200" x="1380" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_good_b2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="broker-2" vertex="1">
+          <mxGeometry height="40" width="160" x="1400" y="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_fail" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=top;fontSize=12;fontColor=#82b366;fontStyle=1;spacingTop=8;" value="If Node-2 dies …" vertex="1">
+          <mxGeometry height="220" width="640" x="900" y="410" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_fail_n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-1" vertex="1">
+          <mxGeometry height="100" width="180" x="915" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_good_alive0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;" value="broker-0 ✓" vertex="1">
+          <mxGeometry height="32" width="140" x="935" y="490" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_fail_n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#b85450;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-2 ✗" vertex="1">
+          <mxGeometry height="100" width="180" x="1135" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_good_dead1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;dashed=1;" value="broker-1 ✗" vertex="1">
+          <mxGeometry height="32" width="140" x="1155" y="490" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_fail_n3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-3" vertex="1">
+          <mxGeometry height="100" width="180" x="1355" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_good_alive2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;" value="broker-2 ✓" vertex="1">
+          <mxGeometry height="32" width="140" x="1375" y="490" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_result" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontColor=#82b366;fontStyle=1;" value="ISR = 2 · producer writes continue · only 1 broker affected" vertex="1">
+          <mxGeometry height="20" width="640" x="900" y="595" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_good_yaml" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#326CE5;spacingLeft=10;" value="podAntiAffinity:&#xa;  requiredDuringSchedulingIgnoredDuringExecution:&#xa;    - labelSelector: { matchLabels: { app: kafka } }&#xa;      topologyKey: kubernetes.io/hostname" vertex="1">
+          <mxGeometry height="80" width="640" x="900" y="650" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l3_key_title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=12;" value="Component Roles (one-liner each)" vertex="1">
+          <mxGeometry height="20" width="500" x="70" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_key_aff" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="podAffinity        — schedule Pod A near (or on the same Node as) Pods matching a label; e.g. cache near app." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="825" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_key_anti" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="podAntiAffinity    — schedule Pod A AWAY from Pods matching a label; the Kafka pattern: no two brokers on the same node (topologyKey=hostname)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="845" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_key_node" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="nodeAffinity       — schedule Pod onto specific Nodes (by label, e.g. zone, instance type, SSD); pairs naturally with taints + tolerations (Lesson 4)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="865" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_key_topo" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="topologyKey        — the label on Nodes used to define a &quot;topology domain&quot; — hostname (per-node), zone (per-AZ), region; choose based on the failure boundary you protect against." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_key_req" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="required vs preferred — &quot;requiredDuringScheduling&quot; is a hard rule (Pod can&#39;t schedule if it can&#39;t satisfy); &quot;preferredDuringScheduling&quot; is a soft hint (best-effort)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="905" as="geometry" />
+        </mxCell>
+        <mxCell id="l3_key_legend" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=3;" value="Colors — RED box (left) = without anti-affinity (single-node failure = cluster down).  BLUE box (right) = with anti-affinity (single-node failure = 1 broker lost, ISR holds)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="930" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="L4 — Scheduling: Taints &amp; Tolerations" id="l4-scheduling">
+    <mxGraphModel dx="1634" dy="1089" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="l4_title" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" value="Scheduling — Taints &amp; Tolerations" vertex="1">
+          <mxGeometry height="50" width="900" x="377" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_subtitle" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=12;fontStyle=2;fontColor=#326CE5;" value="Taints repel Pods. Tolerations allow Pods through. Use both to dedicate nodes." vertex="1">
+          <mxGeometry height="20" width="900" x="377" y="68" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_pods_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff5ff;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#326CE5;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="Pods (with their tolerations)" vertex="1">
+          <mxGeometry height="500" width="540" x="80" y="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_pod_a" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod A&#xa;web app" vertex="1">
+          <mxGeometry height="60" width="160" x="110" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_pod_a_tol" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#326CE5;spacingLeft=10;" value="tolerations: []&#xa;(no special tolerations)" vertex="1">
+          <mxGeometry height="60" width="320" x="280" y="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_pod_b" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod B&#xa;Kafka broker" vertex="1">
+          <mxGeometry height="60" width="160" x="110" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_pod_b_tol" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#326CE5;spacingLeft=10;" value="tolerations:&#xa;  - key: dedicated&#xa;    value: kafka&#xa;    effect: NoSchedule" vertex="1">
+          <mxGeometry height="80" width="320" x="280" y="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_pod_c" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod C&#xa;ML training" vertex="1">
+          <mxGeometry height="60" width="160" x="110" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_pod_c_tol" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#326CE5;spacingLeft=10;" value="tolerations:&#xa;  - key: nvidia.com/gpu&#xa;    value: &quot;true&quot;&#xa;    effect: NoSchedule" vertex="1">
+          <mxGeometry height="80" width="320" x="280" y="400" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_pod_d" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;dashed=1;" value="Pod D&#xa;random job" vertex="1">
+          <mxGeometry height="60" width="160" x="110" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_pod_d_tol" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#b85450;spacingLeft=10;" value="tolerations: []&#xa;wants to schedule on the GPU node — REJECTED" vertex="1">
+          <mxGeometry height="60" width="320" x="280" y="525" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_nodes_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdecec;strokeColor=#EE0000;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#EE0000;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="Nodes (with their taints)" vertex="1">
+          <mxGeometry height="500" width="540" x="1040" y="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_node_1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-1 (generic)" vertex="1">
+          <mxGeometry height="100" width="480" x="1070" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_node_1_taint" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#FFFFFF;" value="taints: []" vertex="1">
+          <mxGeometry height="20" width="450" x="1085" y="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_node_2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-2 (Kafka-dedicated)" vertex="1">
+          <mxGeometry height="100" width="480" x="1070" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_node_2_taint" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#FFFFFF;" value="taints: dedicated=kafka:NoSchedule" vertex="1">
+          <mxGeometry height="20" width="450" x="1085" y="345" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_node_3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;arcSize=7;" value="Node-3 (GPU)" vertex="1">
+          <mxGeometry height="100" width="480" x="1070" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_node_3_taint" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#FFFFFF;" value="taints: nvidia.com/gpu=true:NoSchedule" vertex="1">
+          <mxGeometry height="20" width="450" x="1085" y="460" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_e_a" edge="1" parent="1" source="l4_pod_a_tol" target="l4_node_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontColor=#326CE5;fontSize=10;fontStyle=1;" value="✓ schedules">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_e_b" edge="1" parent="1" source="l4_pod_b_tol" target="l4_node_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontColor=#326CE5;fontSize=10;fontStyle=1;" value="✓ schedules">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_e_c" edge="1" parent="1" source="l4_pod_c_tol" target="l4_node_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontColor=#326CE5;fontSize=10;fontStyle=1;" value="✓ schedules">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_e_d" edge="1" parent="1" source="l4_pod_d_tol" target="l4_node_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#b85450;strokeWidth=2;fontColor=#b85450;fontSize=10;fontStyle=1;dashed=1;" value="✗ rejected: didn&#39;t tolerate taint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_effects" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=top;fontSize=11;fontColor=#326CE5;spacingLeft=15;spacingTop=8;fontStyle=1;" value="The three effects" vertex="1">
+          <mxGeometry height="150" width="1500" x="80" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_eff_ns" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#326CE5;" value="NoSchedule        — new Pods can&#39;t schedule onto this node unless they tolerate the taint. Existing Pods stay." vertex="1">
+          <mxGeometry height="20" width="1460" x="100" y="675" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_eff_pns" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#326CE5;" value="PreferNoSchedule  — soft version of NoSchedule. Scheduler tries to avoid this node but will use it if nothing else fits." vertex="1">
+          <mxGeometry height="20" width="1460" x="100" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_eff_ne" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#326CE5;" value="NoExecute         — new Pods can&#39;t schedule AND existing Pods on the node get evicted (unless they tolerate). Used for emergency node isolation." vertex="1">
+          <mxGeometry height="20" width="1460" x="100" y="725" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_eff_pair" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="Pair with nodeAffinity/nodeSelector to ATTRACT (toleration only ALLOWS through the gate — doesn&#39;t pull the Pod there)." vertex="1">
+          <mxGeometry height="20" width="1460" x="100" y="755" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l4_key_title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=12;" value="Component Roles (one-liner each)" vertex="1">
+          <mxGeometry height="20" width="500" x="70" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_key_taint" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Taint           — applied to a Node: key=value:Effect. Tells the scheduler to repel Pods unless they have a matching toleration." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="845" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_key_tol" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Toleration      — applied to a Pod: matches a Node taint by key+value+effect. ALLOWS the Pod on the tainted Node (doesn&#39;t force the Pod there)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="865" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_key_uses" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Common use cases — dedicated Kafka nodes, dedicated Flink TM nodes, GPU nodes, control-plane nodes (node-role.kubernetes.io/master)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_key_aff" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="To PIN a Pod      — combine a Pod toleration + a nodeSelector or nodeAffinity. Toleration alone is permission, not attraction." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="905" as="geometry" />
+        </mxCell>
+        <mxCell id="l4_key_legend" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=3;" value="Colors — BLUE Pods + node = generic / allowed.  RED Pod = rejected by a taint.  Dashed = rejected scheduling attempt.  RED Nodes = tainted (dedicated)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="930" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="L5 — Resilience: PDB" id="l5-resilience-pdb">
+    <mxGraphModel dx="1634" dy="1089" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="l5_title" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" value="Resilience — Pod Disruption Budget (PDB)" vertex="1">
+          <mxGeometry height="50" width="900" x="377" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_subtitle" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=12;fontStyle=2;fontColor=#326CE5;" value="How drains, upgrades, and autoscale-down are kept safe — and what PDB can&#39;t protect against" vertex="1">
+          <mxGeometry height="20" width="900" x="377" y="68" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_bad_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdecec;strokeColor=#EE0000;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#EE0000;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="Without PDB — drain can evict everything" vertex="1">
+          <mxGeometry height="640" width="720" x="80" y="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_bad_initial" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EE0000;align=center;verticalAlign=top;fontSize=12;fontColor=#EE0000;fontStyle=1;spacingTop=8;" value="Initial state" vertex="1">
+          <mxGeometry height="180" width="640" x="120" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-1" vertex="1">
+          <mxGeometry height="100" width="180" x="140" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_b0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;" value="broker-0" vertex="1">
+          <mxGeometry height="35" width="140" x="160" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-2" vertex="1">
+          <mxGeometry height="100" width="180" x="350" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_b1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;" value="broker-1" vertex="1">
+          <mxGeometry height="35" width="140" x="370" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_n3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-3" vertex="1">
+          <mxGeometry height="100" width="180" x="560" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_b2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;" value="broker-2" vertex="1">
+          <mxGeometry height="35" width="140" x="580" y="265" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_bad_drain" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=middle;fontSize=12;fontColor=#b85450;fontStyle=1;" value="oc adm drain node-1 node-2 node-3   (concurrent maintenance, no PDB to enforce safety)" vertex="1">
+          <mxGeometry height="50" width="640" x="120" y="375" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_bad_after" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EE0000;align=center;verticalAlign=top;fontSize=12;fontColor=#EE0000;fontStyle=1;spacingTop=8;" value="Result" vertex="1">
+          <mxGeometry height="180" width="640" x="120" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_n1d" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#b85450;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-1 (draining)" vertex="1">
+          <mxGeometry height="100" width="180" x="140" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_b0d" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;dashed=1;" value="broker-0 ✗" vertex="1">
+          <mxGeometry height="35" width="140" x="160" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_n2d" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#b85450;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-2 (draining)" vertex="1">
+          <mxGeometry height="100" width="180" x="350" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_b1d" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;dashed=1;" value="broker-1 ✗" vertex="1">
+          <mxGeometry height="35" width="140" x="370" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_n3d" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#b85450;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-3 (draining)" vertex="1">
+          <mxGeometry height="100" width="180" x="560" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_b2d" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;dashed=1;" value="broker-2 ✗" vertex="1">
+          <mxGeometry height="35" width="140" x="580" y="525" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_bad_outcome" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontColor=#b85450;fontStyle=1;" value="ISR = 0 · producer writes fail · cluster down" vertex="1">
+          <mxGeometry height="20" width="640" x="120" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_why" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#b85450;fontStyle=2;" value="all 3 brokers evicted concurrently — nothing told the drain it was unsafe" vertex="1">
+          <mxGeometry height="20" width="640" x="120" y="665" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_e1" edge="1" parent="1" source="l5_bad_initial" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#b85450;strokeWidth=2;" target="l5_bad_drain">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_bad_e2" edge="1" parent="1" source="l5_bad_drain" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#b85450;strokeWidth=2;" target="l5_bad_after">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_good_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff5ff;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#326CE5;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="With PDB minAvailable=2 — drain is gated" vertex="1">
+          <mxGeometry height="640" width="720" x="860" y="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_pdb_yaml" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontFamily=Courier New;fontSize=10;fontColor=#326CE5;spacingLeft=10;" value="kind: PodDisruptionBudget&#xa;spec:&#xa;  minAvailable: 2&#xa;  selector: { matchLabels: { app: kafka } }" vertex="1">
+          <mxGeometry height="80" width="640" x="900" y="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_good_drain" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=middle;fontSize=12;fontColor=#82b366;fontStyle=1;" value="oc adm drain node-1   (one node at a time)" vertex="1">
+          <mxGeometry height="50" width="640" x="900" y="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_good_check" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontSize=11;fontColor=#326CE5;spacingLeft=10;" value="PDB asks: &quot;can I evict broker-0 and still keep ≥2 brokers Ready?&quot;&#xa;3 Ready − 1 evict = 2 → minAvailable=2 satisfied → eviction ALLOWED" vertex="1">
+          <mxGeometry height="60" width="640" x="900" y="345" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_good_after" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=center;verticalAlign=top;fontSize=12;fontColor=#326CE5;fontStyle=1;spacingTop=8;" value="Result" vertex="1">
+          <mxGeometry height="180" width="640" x="900" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_good_n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#b85450;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-1 (draining)" vertex="1">
+          <mxGeometry height="100" width="180" x="920" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_good_b0" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;dashed=1;" value="broker-0 ✗" vertex="1">
+          <mxGeometry height="35" width="140" x="940" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_good_n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-2" vertex="1">
+          <mxGeometry height="100" width="180" x="1130" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_good_b1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;" value="broker-1 ✓" vertex="1">
+          <mxGeometry height="35" width="140" x="1150" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_good_n3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=11;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;arcSize=7;" value="Node-3" vertex="1">
+          <mxGeometry height="100" width="180" x="1340" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_good_b2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;" value="broker-2 ✓" vertex="1">
+          <mxGeometry height="35" width="140" x="1360" y="505" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_good_outcome" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontColor=#82b366;fontStyle=1;" value="ISR = 2 · producer writes continue · cluster stays available" vertex="1">
+          <mxGeometry height="20" width="640" x="900" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_good_why" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#82b366;fontStyle=2;" value="broker-0 rescheduled on another node by StatefulSet → PDB recalculates → drain proceeds" vertex="1">
+          <mxGeometry height="20" width="640" x="900" y="645" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_cfk_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdecec;strokeColor=#EE0000;strokeWidth=2;fontStyle=1;fontSize=13;fontColor=#EE0000;verticalAlign=top;align=center;spacingTop=8;arcSize=4;" value="The CFK Connection — everything ties together" vertex="1">
+          <mxGeometry height="100" width="1500" x="80" y="785" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_cfk_chain" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontColor=#EE0000;fontStyle=1;fontFamily=Courier New;" value="Kafka Broker  →  StatefulSet (L1)  →  Pod Anti-Affinity (L3)  →  PodDisruptionBudget (L5)  →  PVC (L1)" vertex="1">
+          <mxGeometry height="30" width="1500" x="80" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_cfk_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#EE0000;fontStyle=2;" value="Scheduling (L4) + Scaling (L2) are the &quot;advanced operator&quot; tools reached for when basic SS + anti-affinity + PDB aren&#39;t enough" vertex="1">
+          <mxGeometry height="20" width="1500" x="80" y="855" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l5_key_title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=12;" value="Component Roles (one-liner each)" vertex="1">
+          <mxGeometry height="20" width="500" x="70" y="910" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_key_pdb" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="PDB              — PodDisruptionBudget. minAvailable=N or maxUnavailable=N. Gates VOLUNTARY disruptions (drain, autoscale-down, rolling upgrade)." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="935" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_key_voluntary" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Voluntary        — drain, eviction, autoscale-down, rolling restart. PDB IS enforced." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="955" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_key_invol" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Involuntary      — node crash, hardware failure, network partition. PDB does NOT save you — use anti-affinity + replication for these." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="975" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_key_uses" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Where PDB matters — Kafka upgrades (CFK rolling), OpenShift upgrades (MCO drains), worker replacement, ROSA-orchestrated maintenance." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="995" as="geometry" />
+        </mxCell>
+        <mxCell id="l5_key_legend" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=3;" value="Colors — RED (left) = unsafe drain without PDB.  BLUE (right) = safe drain with PDB.  Dashed Pods = evicted/draining.  Bottom red strip = the chain that protects Kafka." vertex="1">
+          <mxGeometry height="20" width="1500" x="70" y="1020" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
