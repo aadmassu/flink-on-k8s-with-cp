@@ -1,1 +1,36 @@
-Yes, KRaft is required. It is Kafka's metadata + consensus layer and replaces ZooKeeper, which Apache Kafka 4.0 removed entirely and Confluent's CFK 3.x line no longer supports. The CFK operator needs the requested permissions because it manages and reconciles KRaftController resources, their PVCs, and cluster state as part of normal Kafka operations.
+Subject: DAH Flink/Kafka on OpenShift — week of June 8–12 status & blockers heading into the new week
+
+Hi [recipient],
+
+Brief end-of-week roll-up on the DAH Flink + CFK on OpenShift rollout.
+
+Where we ended Friday (June 12)
+
+- DEV CFK is partially green: kraftcontroller and pre-kafka components are up, but the Kafka brokers can't reconcile until FCB Container Platforms applies the outstanding ClusterRole patch (RITM1093307). Confluent's CFK product team is preparing the formal written justification FCB needs; we provided the KRaft-required brief to Rick on Friday (KRaft replaces ZooKeeper, Apache Kafka 4.0 removed ZK, CFK 3.x is KRaft-only, operator needs cluster-scoped update/patch on persistentvolumes to reconcile KRaftController PVCs).
+
+- UAT CMF install attempt: peeled back through three failure modes during the week. (1) SQL Server port was on 1433 (default) instead of FCB's custom 3085 — fixed in values.yaml. (2) JDBC block was a stale template (placeholder host, hardcoded user 'cmf', wrong Secret ref) — aligned UAT and PRD values.yaml to DEV's working pattern (database DAHFLINK, install-time --set injection from variable groups, trustServerCertificate=true, Secret ref cmf-db-credentials). (3) DEBUG + stackTraceLogging enabled in CMF isolated the residual failure to the TDS logon step after TLS handshake — ruled out the Flink engineer's network-misconfiguration hypothesis. The SQL Server account ut_db_DAH_kafka-svc is rejecting login (Msg 18456, State 1); DBA team's update is the account lacks CREATE DATABASE permission, which Flyway needs to bootstrap migrations. Tracker 3.4 filed; Tushar is following up with DBA.
+
+- Network architecture diagrams for the planned Rick walk are committed at docs/diagrams/cfk-network.drawio and docs/diagrams/flink-network.drawio. Inbound + outbound firewall asks are consolidated under docs/firewall/INBOUND-FIREWALL-REQUESTS.md and OUTBOUND-FIREWALL-REQUESTS.md, framed around native product ports per Confluent + Apache Flink documentation (so producer / consumer / admin clients switch from VM CP to CFK without reconfiguring URLs). Trackers 2.10 + 2.11 collapsed into a single 2.10.
+
+- The 4 UAT ExternalSecrets (cmf-db-credentials, cmf-encryption-key, confluent-license, cfk-license) are scaffolded against the deployed 11547-u-lnx-fp SecretStore but marked STUB/DRAFT until CyberArk Safe 11547_U_LNX_FP is provisioned with the matching accounts. The pipeline already does variable-group fallback in non-dev branches, so install paths are unaffected.
+
+Active blockers (in priority order)
+
+1. RITM1093307 — CFK operator missing cluster-scoped update/patch on persistentvolumes. Container team. Confluent's formal justification pending. Gates DEV going fully green.
+2. Tracker 3.4 — UAT SQL Server account ut_db_DAH_kafka-svc lacks CREATE DATABASE permission. DBA team. Tushar following up; no SNOW yet.
+3. RITM1050600 — fcb-security ArgoCD chart hasn't applied per-env SA/Role/RoleBinding to dah-flink-uat. Container team. Blocks UAT CMF pod scheduling.
+4. Tracker 3.5 — same as RITM1050600 but for PRD, plus the flink-operator Role needs additional verbs (serviceaccounts/get + roles+rolebindings/get,list,watch). Container team. Tushar to file the SNOW; namespace name (dah-flink-prd vs dah-flink-prod) to confirm on the request.
+5. Tracker 2.9 — outbound TCP/443 egress from dah-flink-<env> to Okta (myapps.firstcitizens.com). Container team / FCB Security. No CFK component can fetch OAuth tokens at runtime without this.
+6. CyberArk per-env CMF secrets (RITM1085071 QA, RITM1085692 UAT, RITM1085693 PRD). Tushar / FCB Security.
+
+What we need this week
+
+- Container team visibility on RITM1093307 timing once Confluent's justification arrives.
+- DBA team follow-through on tracker 3.4: confirm the actual State value from the SQL Server error log (ClientConnectionId 8f019b93-ba7c-4394-a94f-e3ab56a26885) and grant CREATE DATABASE (or pre-create the DAHFLINK schema). Same-day fix once the DBA gets the look.
+- Reschedule the network architecture walk with Rick — the Friday slot didn't happen. Diagrams + the three decisions (external exposure pattern, firewall scope, DR-mirrors-PRD) are ready.
+- Tushar files the tracker 3.5 SNOW for PRD CMF RBAC.
+
+Full evidence trail: docs/ISSUE-TRACKER.md (one row per blocker with RITM + owner), runbook/LESSONS_LEARNED.md (root-cause writeups), docs/reports/Week-June-08-12-Report.md (this past week), docs/reports/Week-June-15-19-Report.md (carrying forward).
+
+Thanks,
+Ayu
