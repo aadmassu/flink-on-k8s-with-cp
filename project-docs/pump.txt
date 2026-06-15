@@ -1,36 +1,68 @@
-Subject: DAH Flink/Kafka on OpenShift — week of June 8–12 status & blockers heading into the new week
+Strong justification — request for FCB custom-TCP-port exposure of Kafka broker listeners (TCP/9092 SASL_SSL + TCP/9094 mTLS) for the DAH Flink + CFK on OpenShift rollout
 
-Hi [recipient],
+To be filed via the FCB non-standard TCP port request form, per env. Per Friday 2026-06-12 walk with Rick.
 
-Brief end-of-week roll-up on the DAH Flink + CFK on OpenShift rollout.
+REQUEST
 
-Where we ended Friday (June 12)
+Allow inbound traffic on the per-env OpenShift ingress router on:
+- TCP/9092 — Kafka broker SASL_SSL OAuth listener (the standard Kafka client port; OAuth-authenticated traffic via Okta-issued JWTs)
+- TCP/9094 — Kafka broker mTLS / certonly listener (mTLS-authenticated traffic for cluster-link source brokers and existing cert-only clients)
 
-- DEV CFK is partially green: kraftcontroller and pre-kafka components are up, but the Kafka brokers can't reconcile until FCB Container Platforms applies the outstanding ClusterRole patch (RITM1093307). Confluent's CFK product team is preparing the formal written justification FCB needs; we provided the KRaft-required brief to Rick on Friday (KRaft replaces ZooKeeper, Apache Kafka 4.0 removed ZK, CFK 3.x is KRaft-only, operator needs cluster-scoped update/patch on persistentvolumes to reconcile KRaftController PVCs).
+Source = App / VM zone CIDRs (Tushar to confirm exact list before filing). Destination = per-env cluster Load Balancer IP from the OpenShift Ingress Confluence page (DEV 10.7.72.209 / QA 10.7.72.212 / UAT-P 10.7.72.215 / UAT-S 10.7.72.218 / PRD-P 10.0.192.194 / PRD-S 10.208.4.34). Both ports terminate at the broker's Keyfactor-issued TLS certificate — no unencrypted traffic exposed on either.
 
-- UAT CMF install attempt: peeled back through three failure modes during the week. (1) SQL Server port was on 1433 (default) instead of FCB's custom 3085 — fixed in values.yaml. (2) JDBC block was a stale template (placeholder host, hardcoded user 'cmf', wrong Secret ref) — aligned UAT and PRD values.yaml to DEV's working pattern (database DAHFLINK, install-time --set injection from variable groups, trustServerCertificate=true, Secret ref cmf-db-credentials). (3) DEBUG + stackTraceLogging enabled in CMF isolated the residual failure to the TDS logon step after TLS handshake — ruled out the Flink engineer's network-misconfiguration hypothesis. The SQL Server account ut_db_DAH_kafka-svc is rejecting login (Msg 18456, State 1); DBA team's update is the account lacks CREATE DATABASE permission, which Flyway needs to bootstrap migrations. Tracker 3.4 filed; Tushar is following up with DBA.
+KEY JUSTIFICATION — A KAFKA BROKER EXPOSES MULTIPLE LISTENERS, EACH WITH A DIFFERENT AUTHENTICATION PROFILE
 
-- Network architecture diagrams for the planned Rick walk are committed at docs/diagrams/cfk-network.drawio and docs/diagrams/flink-network.drawio. Inbound + outbound firewall asks are consolidated under docs/firewall/INBOUND-FIREWALL-REQUESTS.md and OUTBOUND-FIREWALL-REQUESTS.md, framed around native product ports per Confluent + Apache Flink documentation (so producer / consumer / admin clients switch from VM CP to CFK without reconfiguring URLs). Trackers 2.10 + 2.11 collapsed into a single 2.10.
+A single Apache Kafka broker can (and at FCB must) bind multiple TCP listeners, each on a distinct port and each carrying a different SASL or TLS authentication mechanism. This is a core feature of the Apache Kafka broker, configured via `listeners` + `listener.security.protocol.map` on the broker process and surfaced on the CFK `Kafka` CR's `spec.listeners` block. The architecture is not a workaround; it is how every production Kafka cluster supports heterogeneous client populations.
 
-- The 4 UAT ExternalSecrets (cmf-db-credentials, cmf-encryption-key, confluent-license, cfk-license) are scaffolded against the deployed 11547-u-lnx-fp SecretStore but marked STUB/DRAFT until CyberArk Safe 11547_U_LNX_FP is provisioned with the matching accounts. The pipeline already does variable-group fallback in non-dev branches, so install paths are unaffected.
+At FCB the Kafka CR (apps/confluent-platform/<env>/kafka.yaml) declares three listeners:
 
-Active blockers (in priority order)
+  - internal     — SASL_SSL with PLAIN auth          — broker-to-broker only, on TCP/9091, never crosses the perimeter
+  - external     — SASL_SSL with OAUTHBEARER (Okta)  — primary client-facing listener used by every CFK component, every Flink job, and downstream microservices for OAuth-authenticated produces/consumes — on TCP/9092
+  - certonly     — SSL with mTLS                     — cert-only listener for clients that authenticate by client certificate rather than by OAuth token — on TCP/9094
 
-1. RITM1093307 — CFK operator missing cluster-scoped update/patch on persistentvolumes. Container team. Confluent's formal justification pending. Gates DEV going fully green.
-2. Tracker 3.4 — UAT SQL Server account ut_db_DAH_kafka-svc lacks CREATE DATABASE permission. DBA team. Tushar following up; no SNOW yet.
-3. RITM1050600 — fcb-security ArgoCD chart hasn't applied per-env SA/Role/RoleBinding to dah-flink-uat. Container team. Blocks UAT CMF pod scheduling.
-4. Tracker 3.5 — same as RITM1050600 but for PRD, plus the flink-operator Role needs additional verbs (serviceaccounts/get + roles+rolebindings/get,list,watch). Container team. Tushar to file the SNOW; namespace name (dah-flink-prd vs dah-flink-prod) to confirm on the request.
-5. Tracker 2.9 — outbound TCP/443 egress from dah-flink-<env> to Okta (myapps.firstcitizens.com). Container team / FCB Security. No CFK component can fetch OAuth tokens at runtime without this.
-6. CyberArk per-env CMF secrets (RITM1085071 QA, RITM1085692 UAT, RITM1085693 PRD). Tushar / FCB Security.
+These are not three different services; they are one Kafka broker process binding three TCP ports. Each external listener serves a different client persona:
 
-What we need this week
+  - OAuth clients (DAH apps and downstream consumers using Okta-issued tokens) connect to 9092
+  - mTLS clients (the active VM CP cluster-link source broker during the VM CP -> CFK migration window; mTLS-only integration tooling using Keyfactor-issued client certificates) connect to 9094
 
-- Container team visibility on RITM1093307 timing once Confluent's justification arrives.
-- DBA team follow-through on tracker 3.4: confirm the actual State value from the SQL Server error log (ClientConnectionId 8f019b93-ba7c-4394-a94f-e3ab56a26885) and grant CREATE DATABASE (or pre-create the DAHFLINK schema). Same-day fix once the DBA gets the look.
-- Reschedule the network architecture walk with Rick — the Friday slot didn't happen. Diagrams + the three decisions (external exposure pattern, firewall scope, DR-mirrors-PRD) are ready.
-- Tushar files the tracker 3.5 SNOW for PRD CMF RBAC.
+The two listeners cannot be collapsed onto a single port because the listener's authentication and TLS-handshake behavior is bound per-port in the broker's listener.security.protocol.map. Removing 9094 also removes the entire mTLS auth path, which is the only way the cluster-link source broker (still on VM CP today) is configured to authenticate to the destination during migration.
 
-Full evidence trail: docs/ISSUE-TRACKER.md (one row per blocker with RITM + owner), runbook/LESSONS_LEARNED.md (root-cause writeups), docs/reports/Week-June-08-12-Report.md (this past week), docs/reports/Week-June-15-19-Report.md (carrying forward).
+WHY NOT TCP/443
 
-Thanks,
-Ayu
+Kafka uses a binary wire protocol over a long-lived TCP socket, framed inside TLS. It is not HTTP. HAProxy on FCB's Core Zone ingress routers decodes HTTP/1.1 / HTTP/2 / HTTPS at Layer 7 to route requests; Kafka traffic carries no HTTP envelope and cannot be routed by HTTP-aware proxies. The only HAProxy mode that passes Kafka through is `route.openshift.io/termination: passthrough` with SNI-based routing, and that lands the client on TCP/443 — preserving the port part of the problem this exception is meant to solve.
+
+A practical consequence: every existing FCB Kafka client (VM CP cluster-link, mTLS-only producers, downstream consumers) is configured against bootstrap.servers on TCP/9092 (OAuth) or TCP/9094 (mTLS), with Keyfactor / Okta credentials issued under SANs that cover the broker hostnames on those specific ports. Moving the listener to TCP/443 requires re-issuing every client certificate (SAN re-issuance through Keyfactor) and reconfiguring every client's bootstrap.servers — a multi-team coordination across DAH, downstream consumers, and the active VM CP cluster-link mirror — for no platform-side gain.
+
+For the seven non-broker CP services (Schema Registry, Connect, REST Proxy, MDS, Control Center, CMF, Flink JobManager) — all of which speak HTTP/HTTPS — we ARE migrating to TCP/443 Ingress mapped to each service's native backend port (8081 / 8082 / 8083 / 8090 / 9021 / 8080 / 8081). That decision was locked in at Friday's walk. The custom-port exception requested here is scoped only to the Kafka wire protocol, which is binary not HTTP.
+
+ALTERNATIVES CONSIDERED
+
+- TCP/443 Ingress via HAProxy: not viable for Kafka (binary wire protocol; not HTTP). Even with passthrough, lands clients on TCP/443 — defeats migration transparency and breaks cluster-link.
+- OpenShift Route with TLS passthrough: same as above; lands on TCP/443.
+- NodePort Service: prohibited by FCB platform admission control policy (Rick confirmed Friday — admission control rejects services attempting to expose NodePort).
+- LoadBalancer Service: contradicts the FCB ClusterIP-only Services standard.
+
+The non-standard custom-TCP-port request form is the only path that preserves: (a) the standard Kafka multiple-listener architecture, (b) compatibility with existing FCB Kafka clients without re-issuing their TLS certificates, and (c) the active VM CP cluster-link mirror dependency during the migration window.
+
+TLS REQUIREMENT
+
+Both 9092 and 9094 terminate at the broker's Keyfactor-issued TLS server certificate, with per-broker SAN entries covering the per-broker DNS hostnames. No unencrypted traffic is exposed on either port:
+
+  - 9092 — wire-protocol TCP, encrypted via the SASL_SSL listener's TLS layer; OAuth bearer token enveloped inside
+  - 9094 — wire-protocol TCP, encrypted via the SSL listener's TLS layer; client presents a matching mTLS client certificate at the TLS handshake
+
+Both meet the FCB requirement that all exposed services use TLS certificates and that no unencrypted connections are allowed.
+
+OPEN ITEM ALREADY PARKED WITH RICK
+
+Per Friday's discussion: bootstrap.servers currently uses a single DNS name (kafka.<env>.dah.fcbint.net) with two different ports (`:9092`, `:9094`) per Apache Kafka community convention. If FCB needs separate DNS names per listener (one per port) to fit the ingress router model — e.g. `kafka-oauth.<env>.dah.fcbint.net:9092` + `kafka-mtls.<env>.dah.fcbint.net:9094` — that is configurable on the CFK Kafka CR's listener block. Confirming the underlying CR support with the CFK product team; happy to switch to per-listener DNS names if that simplifies the firewall request structure.
+
+INTERIM POSITION
+
+To progress the implementation while this exception is being filed and approved, the per-env CFK deploy will proceed with a SINGLE listener (the OAuth listener on TCP/9092 — TCP/443 is the actively-discussed alternative for the OAuth listener as well, pending the single-vs-multiple-DNS-name decision above) and the certonly listener will be added later once the custom-port exception lands. This allows DEV / QA / UAT cluster bring-up to proceed without blocking on the firewall workflow.
+
+NEXT STEPS
+
+  - Tushar files the FCB non-standard TCP port request per env (DEV first; QA / UAT / PRD / DR mirror with their per-env IPs)
+  - Citing this justification, the per-env DNS scheme + LB IP table in docs/firewall/INBOUND-FIREWALL-REQUESTS.md, and the App / VM zone source CIDRs
+  - Container team confirms the bootstrap-DNS strategy (single DNS multi-port vs per-listener DNS) so the SAN block on apps/confluent-platform/<env>/cert-manager/kafka-tls-certificate.yaml is correct before any apply
