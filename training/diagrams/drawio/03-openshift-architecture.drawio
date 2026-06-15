@@ -1,0 +1,313 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="OpenShift Architecture" id="openshift-architecture">
+    <mxGraphModel dx="2568" dy="1301" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" value="OpenShift Architecture — key features layered on Kubernetes&lt;br&gt;(red = OpenShift-specific additions; blue = standard K8s)" vertex="1">
+          <mxGeometry height="50" width="1500" x="80" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="oc CLI&#xa;Web Console / API consumer" vertex="1">
+          <mxGeometry height="80" width="260" x="42" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="cp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff5ff;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#326CE5;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="Control Plane  (Master Nodes)" vertex="1">
+          <mxGeometry height="690" width="720" x="40" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="cp_k8s_label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#326CE5;" value="—  standard Kubernetes  —" vertex="1">
+          <mxGeometry height="20" width="191" x="290" y="213" as="geometry" />
+        </mxCell>
+        <mxCell id="api" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="api" vertex="1">
+          <mxGeometry height="100" width="100" x="80" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="etcd" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=16;fontStyle=1;html=1;aspect=fixed;" value="etcd" vertex="1">
+          <mxGeometry height="100" width="100" x="240" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="sched" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=15;fontStyle=1;html=1;aspect=fixed;" value="sched" vertex="1">
+          <mxGeometry height="100" width="100" x="400" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="cm" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="c-m" vertex="1">
+          <mxGeometry height="100" width="100" x="560" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="cp_os_label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#EE0000;" value="—  OpenShift API + control-plane extensions  —" vertex="1">
+          <mxGeometry height="20" width="700" x="13" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="oas" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="oas" vertex="1">
+          <mxGeometry height="120" width="120" x="70.5" y="467" as="geometry" />
+        </mxCell>
+        <mxCell id="oas_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#EE0000;fontStyle=2;" value="openshift-apiserver" vertex="1">
+          <mxGeometry height="20" width="103" x="84" y="587" as="geometry" />
+        </mxCell>
+        <mxCell id="ocm" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="ocm" vertex="1">
+          <mxGeometry height="120" width="120" x="240" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="ocm_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#EE0000;fontStyle=2;" value="openshift-controller-manager" vertex="1">
+          <mxGeometry height="20" width="200" x="200" y="587" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=16;fontStyle=1;html=1;aspect=fixed;" value="oauth" vertex="1">
+          <mxGeometry height="120" width="120" x="420" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#EE0000;fontStyle=2;" value="oauth-server" vertex="1">
+          <mxGeometry height="20" width="140" x="410" y="587" as="geometry" />
+        </mxCell>
+        <mxCell id="olm" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="olm" vertex="1">
+          <mxGeometry height="120" width="120" x="600" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="olm_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#EE0000;fontStyle=2;" value="operator-lifecycle-mgr" vertex="1">
+          <mxGeometry height="20" width="160" x="580" y="587" as="geometry" />
+        </mxCell>
+        <mxCell id="cp_op_label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#EE0000;" value="—  OpenShift cluster lifecycle operators  —" vertex="1">
+          <mxGeometry height="20" width="232" x="280" y="646" as="geometry" />
+        </mxCell>
+        <mxCell id="cvo" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="cvo" vertex="1">
+          <mxGeometry height="100" width="100" x="183" y="668" as="geometry" />
+        </mxCell>
+        <mxCell id="cvo_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#EE0000;fontStyle=2;" value="cluster-version-operator" vertex="1">
+          <mxGeometry height="20" width="142" x="162" y="773" as="geometry" />
+        </mxCell>
+        <mxCell id="mco" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="mco" vertex="1">
+          <mxGeometry height="120" width="120" x="480" y="734" as="geometry" />
+        </mxCell>
+        <mxCell id="mco_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#EE0000;fontStyle=2;" value="machine-config-operator" vertex="1">
+          <mxGeometry height="20" width="154" x="456" y="705" as="geometry" />
+        </mxCell>
+        <mxCell id="svc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef0f0;strokeColor=#EE0000;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#EE0000;verticalAlign=top;align=center;spacingLeft=20;spacingTop=10;arcSize=4;" value="Cluster Services  (run as Pods, managed by OLM/CVO)" vertex="1">
+          <mxGeometry height="360" width="380" x="780" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="router" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;html=1;aspect=fixed;" value="router" vertex="1">
+          <mxGeometry height="110" width="110" x="810" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="router_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontColor=#EE0000;fontStyle=2;" value="HAProxy (Route)" vertex="1">
+          <mxGeometry height="20" width="130" x="800" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="registry" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;html=1;aspect=fixed;" value="registry" vertex="1">
+          <mxGeometry height="110" width="110" x="950" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="registry_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontColor=#EE0000;fontStyle=2;" value="image-registry" vertex="1">
+          <mxGeometry height="20" width="130" x="940" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="console" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;html=1;aspect=fixed;" value="console" vertex="1">
+          <mxGeometry height="110" width="110" x="810" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="console_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontColor=#EE0000;fontStyle=2;" value="web-console" vertex="1">
+          <mxGeometry height="20" width="130" x="800" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="monitoring" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=12;fontStyle=1;html=1;aspect=fixed;" value="monitor" vertex="1">
+          <mxGeometry height="110" width="110" x="950" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="monitoring_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontColor=#EE0000;fontStyle=2;" value="prometheus/alertmgr" vertex="1">
+          <mxGeometry height="20" width="160" x="925" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="node" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=7;" value="Worker Node  (RHCOS)" vertex="1">
+          <mxGeometry height="690" width="460" x="1180" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="kubelet" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;html=1;aspect=fixed;" value="kubelet" vertex="1">
+          <mxGeometry height="110" width="110" x="1210" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="kproxy" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;html=1;aspect=fixed;" value="k-proxy" vertex="1">
+          <mxGeometry height="110" width="110" x="1370" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="crio" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;html=1;aspect=fixed;" value="CRI-O&lt;div&gt;(Containerd,&lt;/div&gt;&lt;div&gt;Docker)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="110" width="110" x="1523" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="mcd" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;html=1;aspect=fixed;" value="mcd" vertex="1">
+          <mxGeometry height="110" width="110" x="1210" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="mcd_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontColor=#FFFFFF;fontStyle=2;" value="machine-config-daemon" vertex="1">
+          <mxGeometry height="20" width="180" x="1175" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="sdn" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=12;fontStyle=1;html=1;aspect=fixed;" value="ovn" vertex="1">
+          <mxGeometry height="110" width="110" x="1370" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="sdn_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontColor=#FFFFFF;fontStyle=2;" value="OVN-Kubernetes CNI" vertex="1">
+          <mxGeometry height="20" width="150" x="1350" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="pods_label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#FFFFFF;fontStyle=2;" value="Pods (workloads — subject to SCC + Project quota)" vertex="1">
+          <mxGeometry height="20" width="400" x="1200" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="pod1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="50" width="80" x="1220" y="679" as="geometry" />
+        </mxCell>
+        <mxCell id="pod2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="50" width="80" x="1320" y="679" as="geometry" />
+        </mxCell>
+        <mxCell id="pod3" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="50" width="80" x="1420" y="679" as="geometry" />
+        </mxCell>
+        <mxCell id="pod4" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="50" width="80" x="1520" y="679" as="geometry" />
+        </mxCell>
+        <mxCell id="rhcos_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#FFFFFF;fontStyle=2;" value="Host OS: RHCOS (Red Hat CoreOS) — immutable, Ignition-configured, MCO-managed" vertex="1">
+          <mxGeometry height="20" width="430" x="1205" y="748" as="geometry" />
+        </mxCell>
+        <mxCell id="scc_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#FFFFFF;fontStyle=2;" value="Admission: SCCs enforce per-Pod capabilities + UID ranges (OpenShift&#39;s stricter PodSecurity)" vertex="1">
+          <mxGeometry height="20" width="430" x="1205" y="773" as="geometry" />
+        </mxCell>
+        <mxCell id="prj_note" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#FFFFFF;fontStyle=2;" value="Workloads land in Projects (= Namespaces + RBAC + Quota + LimitRange defaults)" vertex="1">
+          <mxGeometry height="20" width="430" x="1205" y="798" as="geometry" />
+        </mxCell>
+        <mxCell id="e_user_oas" edge="1" parent="1" source="user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.013;entryY=0.611;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;fontColor=#EE0000;fontSize=11;fontStyle=1;" target="oas" value="oc / Console (REST)">
+          <mxGeometry relative="1" x="-0.7281" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="172" y="126" />
+              <mxPoint x="24" y="126" />
+              <mxPoint x="24" y="540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_oas_api" edge="1" parent="1" source="oas" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#EE0000;strokeWidth=2;fontColor=#EE0000;fontSize=11;fontStyle=1;" target="api" value="aggregates">
+          <mxGeometry relative="1" x="-0.0536" y="-33" as="geometry">
+            <mxPoint x="28" y="16" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_etcd" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="etcd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_api_sched" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="sched">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="203" y="348" />
+              <mxPoint x="203" y="387" />
+              <mxPoint x="370" y="387" />
+              <mxPoint x="370" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_cm" edge="1" parent="1" source="sched" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="cm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ocm_api" edge="1" parent="1" source="ocm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#EE0000;strokeWidth=2;" target="api">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="416" />
+              <mxPoint x="130" y="416" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_oauth_api" edge="1" parent="1" source="oauth" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#EE0000;strokeWidth=2;" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_olm_api" edge="1" parent="1" source="olm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#EE0000;strokeWidth=2;" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cvo_api" edge="1" parent="1" source="cvo" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.013;entryY=0.611;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#EE0000;strokeWidth=2;exitX=0.013;exitY=0.611;exitDx=0;exitDy=0;" target="api">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="59" y="729" />
+              <mxPoint x="59" y="331" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_mco_api" edge="1" parent="1" source="mco" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.013;exitY=0.611;exitDx=0;exitDy=0;endArrow=classic;startArrow=classic;strokeColor=#EE0000;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="48" y="807" />
+              <mxPoint x="48" y="298" />
+            </Array>
+            <mxPoint x="83" y="298" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_router_api" edge="1" parent="1" source="router" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;endArrow=classic;startArrow=classic;strokeColor=#EE0000;strokeWidth=2;dashed=1;entryX=0.95;entryY=0.19;entryDx=0;entryDy=0;entryPerimeter=0;" target="api">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="865" y="240" />
+              <mxPoint x="205" y="240" />
+              <mxPoint x="205" y="289" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_console_oas" edge="1" parent="1" source="console" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#EE0000;strokeWidth=2;dashed=1;" target="oas">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="787" y="475" />
+              <mxPoint x="787" y="637" />
+              <mxPoint x="219" y="637" />
+              <mxPoint x="219" y="527" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_kubelet" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="kubelet">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="153" y="252" />
+              <mxPoint x="152" y="252" />
+              <mxPoint x="152" y="164" />
+              <mxPoint x="1265" y="164" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_kproxy" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="kproxy">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="130" y="148" />
+              <mxPoint x="1425" y="148" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_mco_mcd" edge="1" parent="1" source="mco" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;fontColor=#EE0000;fontSize=10;fontStyle=1;" target="mcd" value="config push">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1166" y="794" />
+              <mxPoint x="1166" y="475" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_kubelet_crio" edge="1" parent="1" source="kubelet" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontColor=#326CE5;fontSize=10;fontStyle=1;" target="crio" value="CRI gRPC">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1342" y="315" />
+              <mxPoint x="1342" y="394" />
+              <mxPoint x="1502" y="394" />
+              <mxPoint x="1502" y="315" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_crio_pods" edge="1" parent="1" source="crio" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontColor=#326CE5;fontSize=10;fontStyle=1;" target="pod3" value="runs">
+          <mxGeometry relative="1" x="-0.3724" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1578" y="650" />
+              <mxPoint x="1460" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="key_title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=12;" value="OpenShift-specific Component Roles (one-liner each)" vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="910" as="geometry" />
+        </mxCell>
+        <mxCell id="key_oas" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="oas     — openshift-apiserver: aggregated API server in front of kube-apiserver; serves OpenShift-only resource kinds (Route, BuildConfig, ImageStream, Project, DeploymentConfig, ...)" vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="935" as="geometry" />
+        </mxCell>
+        <mxCell id="key_ocm" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="ocm     — openshift-controller-manager: control loops for OpenShift-specific resources (BuildConfig → Build → image; DeploymentConfig → ReplicationController; ImageStream tag updates)." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="955" as="geometry" />
+        </mxCell>
+        <mxCell id="key_oauth" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="oauth   — integrated OAuth2 server; pluggable identity providers (htpasswd, LDAP, OIDC, GitHub, Keystone, BasicAuth); issues tokens that the api-server accepts." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="975" as="geometry" />
+        </mxCell>
+        <mxCell id="key_olm" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="olm     — Operator Lifecycle Manager: installs, upgrades, and removes Operators from OperatorHub (Subscription / ClusterServiceVersion CRs); manages operator dependency graph." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="995" as="geometry" />
+        </mxCell>
+        <mxCell id="key_cvo" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="cvo     — Cluster Version Operator: reconciles the ClusterVersion CR against a Red Hat-signed release manifest; owns and updates ALL the platform-level operators above and below it." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="1015" as="geometry" />
+        </mxCell>
+        <mxCell id="key_mco" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="mco     — Machine Config Operator: owns the desired node OS state (kernel args, kubelet config, registry mirrors, files via Ignition). Pushes MachineConfig → per-node mcd to apply + reboot." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="1035" as="geometry" />
+        </mxCell>
+        <mxCell id="key_router" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="router  — default Ingress Controller (HAProxy-based) that converts OpenShift Route resources into HAProxy frontends; supports edge / passthrough / reencrypt TLS termination." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="1055" as="geometry" />
+        </mxCell>
+        <mxCell id="key_registry" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="registry — integrated container image registry (image-registry.openshift-image-registry.svc); backs ImageStreams; pulls happen via the cluster pull secret automatically." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="1075" as="geometry" />
+        </mxCell>
+        <mxCell id="key_console" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=1" value="console — Web UI for cluster admins (cluster perspective: nodes, operators, monitoring) and developers (developer perspective: Pipelines, BuildConfigs, Topology view)." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="1095" as="geometry" />
+        </mxCell>
+        <mxCell id="key_crio" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=3;" value="CRI-O — OpenShift&#39;s default container runtime (not containerd); shipped + lifecycle-managed by MCO; runs containers via the OCI spec under the kubelet&#39;s CRI gRPC interface." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="1115" as="geometry" />
+        </mxCell>
+        <mxCell id="key_legend" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=3;" value="Colors — BLUE heptagons = standard Kubernetes (same as kubernetes.io diagram).  RED heptagons = OpenShift-specific additions.  Solid edges = required at runtime; dashed = HTTPS/HTTP via api-server proxy." vertex="1">
+          <mxGeometry height="20" width="1000" x="40" y="1135" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
