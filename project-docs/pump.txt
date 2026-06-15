@@ -66,3 +66,4 @@ NEXT STEPS
   - Tushar files the FCB non-standard TCP port request per env (DEV first; QA / UAT / PRD / DR mirror with their per-env IPs)
   - Citing this justification, the per-env DNS scheme + LB IP table in docs/firewall/INBOUND-FIREWALL-REQUESTS.md, and the App / VM zone source CIDRs
   - Container team confirms the bootstrap-DNS strategy (single DNS multi-port vs per-listener DNS) so the SAN block on apps/confluent-platform/<env>/cert-manager/kafka-tls-certificate.yaml is correct before any apply
+
