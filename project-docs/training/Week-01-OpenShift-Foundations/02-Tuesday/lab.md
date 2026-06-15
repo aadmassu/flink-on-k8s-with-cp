@@ -99,42 +99,12 @@ You're ready.
 
 ## Hands-on Lab
 
+All YAML manifests for this lab live in [`lab-manifests/`](lab-manifests/). Run the commands below from this `02-Tuesday/` directory so relative paths resolve.
+
 ### Step 1 — Deploy a 3-replica StatefulSet (no extras yet)
 
 ```bash
-cat <<EOF | kubectl apply -f -
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: demo
-spec:
-  serviceName: demo-headless
-  replicas: 3
-  selector:
-    matchLabels:
-      app: demo
-  template:
-    metadata:
-      labels:
-        app: demo
-    spec:
-      containers:
-        - name: app
-          image: nginx:1.27-alpine
-          resources:
-            requests: { cpu: 100m, memory: 64Mi }
-            limits:   { cpu: 200m, memory: 128Mi }
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: demo-headless
-spec:
-  clusterIP: None
-  selector: { app: demo }
-  ports:
-    - port: 80
-EOF
+kubectl apply -f lab-manifests/statefulset.yaml
 
 kubectl get pods -l app=demo -o wide -w &
 sleep 30 ; jobs %1 && kill %1 2>/dev/null
@@ -146,18 +116,7 @@ kubectl get pods -l app=demo -o wide
 ### Step 2 — Apply pod anti-affinity (Lesson 3)
 
 ```bash
-kubectl patch statefulset demo --type=merge -p '
-spec:
-  template:
-    spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: demo
-              topologyKey: kubernetes.io/hostname
-'
+kubectl patch statefulset demo --type=merge --patch-file=lab-manifests/anti-affinity-patch.yaml
 
 # Force a rolling update so existing Pods re-spread
 kubectl rollout restart statefulset/demo
@@ -184,17 +143,7 @@ kubectl scale statefulset/demo --replicas=3
 ### Step 3 — Apply a PDB (Lesson 5)
 
 ```bash
-cat <<EOF | kubectl apply -f -
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: demo-pdb
-spec:
-  minAvailable: 2
-  selector:
-    matchLabels:
-      app: demo
-EOF
+kubectl apply -f lab-manifests/pdb.yaml
 
 kubectl get pdb demo-pdb
 ```
@@ -238,7 +187,7 @@ kubectl get pods -l app=demo -o wide
 Tighten the PDB so a drain is impossible:
 
 ```bash
-kubectl patch pdb demo-pdb --type=merge -p '{"spec":{"minAvailable":3}}'
+kubectl patch pdb demo-pdb --type=merge --patch-file=lab-manifests/pdb-strict-patch.yaml
 
 kubectl get pdb demo-pdb
 # ALLOWED DISRUPTIONS should now be 0
@@ -259,7 +208,7 @@ echo "drain exit code: $?"
 
 ```bash
 kubectl uncordon $NODE
-kubectl patch pdb demo-pdb --type=merge -p '{"spec":{"minAvailable":2}}'
+kubectl apply -f lab-manifests/pdb.yaml        # revert to minAvailable: 2
 ```
 
 ### Step 6 — Why was the eviction allowed (or rejected)?
