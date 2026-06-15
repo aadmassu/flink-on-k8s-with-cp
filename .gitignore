@@ -29,10 +29,13 @@ Thumbs.db
 
 images-phase*.txt
 
-# project-docs/ is local-only; pump.txt and dump.txt are the two exceptions
+# project-docs/ is local-only; the exceptions below are tracked because they
+# carry team-shared content (training bootcamp + the two scratch files).
 project-docs/*
 !project-docs/pump.txt
 !project-docs/dump.txt
+!project-docs/training
+!project-docs/training/**
 notes.md
 *.xlsx
 generate_*gantt*.py
