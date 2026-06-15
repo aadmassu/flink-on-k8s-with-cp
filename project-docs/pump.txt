@@ -65,5 +65,43 @@ NEXT STEPS
 
   - Tushar files the FCB non-standard TCP port request per env (DEV first; QA / UAT / PRD / DR mirror with their per-env IPs)
   - Citing this justification, the per-env DNS scheme + LB IP table in docs/firewall/INBOUND-FIREWALL-REQUESTS.md, and the App / VM zone source CIDRs
-  - Container team confirms the bootstrap-DNS strategy (single DNS multi-port vs per-listener DNS) so the SAN block on apps/confluent-platform/<env>/cert-manager/kafka-tls-certificate.yaml is correct before any apply
+  - Container team confirms the bootstrap-DNS strategy (single DNS multi-port vs per-listener DNS) so the SAN block on apps/confluent-platform/<env>/cert-manager/kafka-tls-certificate.yaml is correct before pply
+
+
+  # Week-June-08-12 Progress Report
+
+**Project Progress: YELLOW**
+
+## Blockers
+
+* **RITM1093307** – CFK operator requires OpenShift RBAC updates for Persistent Volume management. Confluent engineering justification has been accepted and implementation by the Container Platforms team is pending.
+* **Tracker 3.4 (DBA-Owned)** – UAT CMF deployment remains blocked by SQL Server authentication/database access issues requiring DBA team resolution.
+* **RITM1050600** – UAT service account, Role, and RoleBinding provisioning remains pending, preventing CMF deployment in the UAT environment.
+* **RITM1085071 (QA), RITM1085692 (UAT), RITM1085693 (PRD)** – CyberArk onboarding for CMF secrets remains incomplete, blocking upper-environment CMF deployments.
+
+## Accomplishments
+
+* Successfully deployed and validated the first Flink workload (`aep-rate-limit-job`) on the new OpenShift platform in DEV.
+* Completed multiple Flink/OpenShift integration fixes including admission policy compliance, health probes, resource sizing, and deployment troubleshooting.
+* Increased DEV ResourceQuota capacity from 10 GB to 100 GB. While still significantly below the long-term storage target, the current allocation is sufficient to proceed with CFK and Flink development activities.
+* Resolved OpenShift-to-Okta connectivity issues, enabling CFK components and Flink applications to obtain OAuth tokens successfully.
+* Implemented CFK deployment improvements including phased component startup, enhanced diagnostics, automated recovery actions, and pipeline enhancements.
+* Completed CyberArk/External Secrets integration design and deployment artifacts for all SDLC environments.
+* Completed ingress, certificate, trust bundle, and environment scaffolding for QA, UAT, PRD, and DR environments.
+* Created network architecture diagrams and completed architecture review with the FCB Container Platforms team.
+* Reached agreement to expose non-broker Confluent services through standard HTTPS ingress (TCP/443).
+* Established an approved path to expose Kafka SASL/OAuth traffic through TCP/443 mapped to broker port 9092. Additional broker listeners, such as the mTLS listener on port 9094, may require separate custom port approval and justification.
+* Flink DEV environment is fully deployed and operational. Flink QA deployment is substantially complete with remaining validation activities in progress.
+
+## This Week Plan
+
+* Validate and complete CFK deployment once **RITM1093307** is implemented by the Container Platforms team.
+* Submit formal justification for Kafka broker custom listener requirements, including the mTLS listener on port 9094.
+* Continue CFK DEV deployment and component validation activities once remaining blockers are cleared.
+* Resolve UAT CMF database authentication issues with the DBA team.
+* Complete **RITM1050600** service account provisioning activities for UAT.
+* Track fulfillment of **RITM1085071**, **RITM1085692**, and **RITM1085693** CyberArk onboarding requests.
+* Execute connectivity validation and deployment readiness checks for QA, UAT, PRD, and DR environments.
+* Continue preparation for CFK promotion into UAT and subsequent environments.
+
 
