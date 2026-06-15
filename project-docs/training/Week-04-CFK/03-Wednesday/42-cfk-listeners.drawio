@@ -1,0 +1,70 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="CFK Listeners" id="cfk-listeners">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="CFK Broker Listeners — the bilingual broker (production environment)" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ext_clients" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#aaaaaa;align=left;verticalAlign=top;fontStyle=1;fontSize=11;spacingLeft=10;spacingTop=8;" value="External (off-cluster) clients" vertex="1">
+          <mxGeometry x="80" y="100" width="400" height="500" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="oauth_client" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="App client&#10;(Okta OAuth bearer)" vertex="1">
+          <mxGeometry x="120" y="150" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="vm_cp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="VM CP broker&#10;(mTLS client cert)&#10;cluster-link source" vertex="1">
+          <mxGeometry x="120" y="280" width="280" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ocp" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;fontStyle=1;fontSize=11;spacingLeft=10;spacingTop=8;" value="OpenShift cluster" vertex="1">
+          <mxGeometry x="540" y="100" width="1040" height="900" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="haproxy" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="HAProxy Ingress&#10;9092 TLS passthrough" vertex="1">
+          <mxGeometry x="580" y="160" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="firewall" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;fontSize=10;" value="9094 firewall exception&#10;(tracker 2.10)&#10;direct LoadBalancer" vertex="1">
+          <mxGeometry x="580" y="280" width="260" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="broker_ns" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;fontStyle=1;fontSize=11;spacingLeft=10;spacingTop=8;" value="dah-flink-dev — Kafka broker Pod" vertex="1">
+          <mxGeometry x="900" y="140" width="660" height="800" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="l_internal" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="Listener: internal&#10;  port: 9091&#10;  protocol: SSL (no auth)&#10;  audience: broker ↔ broker,&#10;            broker ↔ KRaftController" vertex="1">
+          <mxGeometry x="940" y="200" width="580" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="l_ext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="Listener: external&#10;  port: 9092&#10;  protocol: SASL_SSL  +  SASL_OAUTHBEARER&#10;  audience: app clients via Okta token (tracker 2.9)" vertex="1">
+          <mxGeometry x="940" y="360" width="580" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="l_custom" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="Listener: custom-mtls&#10;  port: 9094&#10;  protocol: SSL  +  mTLS client auth&#10;  audience: VM CP brokers as cluster-link source" vertex="1">
+          <mxGeometry x="940" y="520" width="580" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="broker_jvm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;align=center;fontSize=11;fontStyle=1;" value="Kafka broker JVM&#10;listens on 9091, 9092, 9094 simultaneously&#10;per-listener SASL/SSL settings" vertex="1">
+          <mxGeometry x="940" y="700" width="580" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;fontStyle=2;spacingLeft=12;" value="Each listener has its own security.protocol + sasl.mechanism + ssl.* settings. Broker isn&#39;t routing — it&#39;s serving each port with its own profile." vertex="1">
+          <mxGeometry x="900" y="860" width="660" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_oauth_hp" parent="1" edge="1" source="oauth_client" target="haproxy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;" value="9092 OAuth"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_vm_fw" parent="1" edge="1" source="vm_cp" target="firewall" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#b85450;strokeWidth=2;" value="9094 mTLS"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_hp_ext" parent="1" edge="1" source="haproxy" target="l_ext" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_fw_custom" parent="1" edge="1" source="firewall" target="l_custom" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#b85450;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_int_jvm" parent="1" edge="1" source="l_internal" target="broker_jvm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_ext_jvm" parent="1" edge="1" source="l_ext" target="broker_jvm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_custom_jvm" parent="1" edge="1" source="l_custom" target="broker_jvm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

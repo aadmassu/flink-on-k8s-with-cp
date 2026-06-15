@@ -1,0 +1,56 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="Topic Lifecycle" id="topic-lifecycle">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="KafkaTopic CR → Partition placement → Leader election → Replication" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="apply" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="Engineer applies&#10;KafkaTopic CR&#10;orders / 6 part / RF=3" vertex="1">
+          <mxGeometry x="80" y="120" width="240" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="operator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EE0000;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="CFK Operator&#10;CreateTopics admin call" vertex="1">
+          <mxGeometry x="400" y="120" width="240" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kraft" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="KRaftController&#10;assigns partitions to brokers&#10;elects leaders" vertex="1">
+          <mxGeometry x="720" y="120" width="280" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="meta" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;fontFamily=Courier New;" value="Partition layout (typical):&#10;P0 leader=0 ISR=[0,1,2]&#10;P1 leader=1 ISR=[1,2,0]&#10;P2 leader=2 ISR=[2,0,1]&#10;P3 leader=0 ISR=[0,2,1]&#10;P4 leader=1 ISR=[1,0,2]&#10;P5 leader=2 ISR=[2,1,0]" vertex="1">
+          <mxGeometry x="1080" y="120" width="500" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cluster_box" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;fontStyle=1;fontSize=11;spacingLeft=10;spacingTop=8;" value="Kafka cluster — 3 brokers" vertex="1">
+          <mxGeometry x="80" y="340" width="1500" height="500" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="b0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="broker.id=0&#10;leader of P0, P3&#10;follower of P1, P2, P4, P5" vertex="1">
+          <mxGeometry x="120" y="400" width="440" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="b1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="broker.id=1&#10;leader of P1, P4&#10;follower of P0, P2, P3, P5" vertex="1">
+          <mxGeometry x="600" y="400" width="440" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="b2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="broker.id=2&#10;leader of P2, P5&#10;follower of P0, P1, P3, P4" vertex="1">
+          <mxGeometry x="1080" y="400" width="460" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="replication" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Replication&#10;  Followers fetch from leader continuously&#10;  ISR = replicas within replica.lag.time.max.ms (default 30s)&#10;  high-water-mark = min(LEO across ISR)&#10;  Consumer only reads ≤ high-water-mark" vertex="1">
+          <mxGeometry x="120" y="560" width="1420" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="producer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Producer with acks=all, min.insync.replicas=2&#10;  1. Send hash(key) → partition → broker N (leader)&#10;  2. Leader appends, replicates to followers&#10;  3. ACK when 2 of 3 ISR have acked the write&#10;  4. If &lt; min.insync.replicas, NotEnoughReplicasException" vertex="1">
+          <mxGeometry x="120" y="700" width="1420" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_apply_op" parent="1" edge="1" source="apply" target="operator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op_kraft" parent="1" edge="1" source="operator" target="kraft" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_kraft_meta" parent="1" edge="1" source="kraft" target="meta" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

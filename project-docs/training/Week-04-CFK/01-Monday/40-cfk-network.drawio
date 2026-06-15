@@ -1,0 +1,222 @@
+<mxfile host="app.diagrams.net" modified="2026-06-11T00:00:00.000Z" agent="manual" version="22.1.16" type="device">
+  <diagram name="CFK Network" id="cfk-network">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2339" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="CFK Network — Inbound, Egress, Firewall + Routes&#10;(driving artifact for firewall + system-access walk; see docs/firewall/*)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="userZone" value="USER ZONE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="320" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin" value="Admin / browser&#10;(developer laptop)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="70" y="120" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="appVmZone" value="APP / VM ZONE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="80" width="760" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="producer" value="Producers / Consumers&#10;(SASL_SSL OAuth + REST)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="430" y="120" width="320" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="vmcpBroker" value="VM CP source broker&#10;(cluster-link migration only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="780" y="120" width="340" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="adminZone" value="ADMIN / OPS ZONE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="80" width="340" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="cliAdmin" value="kafka-cli / curl / oc&#10;(MDS REST + Connect REST)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="120" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="fwInbound" value="ENTERPRISE PERIMETER FIREWALL — INBOUND&#10;rules per docs/firewall/INBOUND-FIREWALL-REQUESTS.md" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=center;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="1500" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_admin_fw" value="TCP/443 — but ASK NATIVE PORTS&#10;9021 C3, 8083 Connect, 8082 KRP, 8090 MDS" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="admin" target="fwInbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_producer_fw" value="9092 (SASL_SSL OAuth)&#10;8081 (Schema Registry)" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="producer" target="fwInbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_vmcp_fw" value="9094 (mTLS, certonly listener)" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="vmcpBroker" target="fwInbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_cli_fw" value="8090 MDS / 8083 Connect / 8082 KRP" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="cliAdmin" target="fwInbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cluster" value="OPENSHIFT CLUSTER (apps.&lt;env&gt;.ocp.example.com + kafka.&lt;env&gt;.dah.example.com)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;align=center;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="1500" height="1180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="haproxy" value="HAProxy Ingress Controller&#10;(openshift-core-zone; reencrypt termination)&#10;LB IPs: DEV 10.7.72.209 / QA 10.7.72.212 / UAT-P 10.7.72.215 / UAT-S 10.7.72.218 / PRD-P 10.0.192.194 / PRD-S 10.208.4.34" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="450" width="1420" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kafkaLb" value="Kafka external listener (LoadBalancer Service per broker)&#10;⚠ contradicts enterprise ClusterIP-only standard — policy walk with Container team" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="560" width="1420" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ns" value="NAMESPACE: dah-flink-&lt;env&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="650" width="1420" height="900" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_ing" value="Ingress objects — HAProxy 443 → native pod port (current scaffolding in apps/confluent-platform/&lt;env&gt;/ingress/)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="680" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="ing_mds" value="kafka-mds.&#10;apps.&lt;env&gt;.ocp...&#10;443 → 8090" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="710" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ing_sr" value="schemaregistry.&#10;apps.&lt;env&gt;.ocp...&#10;443 → 8081" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="350" y="710" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ing_connect" value="connect.&#10;apps.&lt;env&gt;.ocp...&#10;443 → 8083" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="590" y="710" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ing_krp" value="kafkarest.&#10;apps.&lt;env&gt;.ocp...&#10;443 → 8082" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="830" y="710" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ing_c3" value="controlcenter.&#10;apps.&lt;env&gt;.ocp...&#10;443 → 9021" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="710" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_lb" value="Kafka broker LoadBalancer Services — wire protocol, native ports (kafka.&lt;env&gt;.dah.example.com domain)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="810" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lb_boot" value="bootstrap.&#10;kafka.&lt;env&gt;.dah...&#10;9092 / 9094" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="840" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="lb_b0" value="b0.kafka.&#10;&lt;env&gt;.dah...&#10;9092 / 9094" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="350" y="840" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="lb_b1" value="b1.kafka.&#10;&lt;env&gt;.dah...&#10;9092 / 9094" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="590" y="840" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="lb_b2" value="b2.kafka.&#10;&lt;env&gt;.dah...&#10;9092 / 9094" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="830" y="840" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_cr" value="CFK Custom Resources → Pods (apps/confluent-platform/&lt;env&gt;/*.yaml)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="940" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="cr_kraft" value="KRaftController" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="970" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="cr_kafka" value="Kafka (3 brokers)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="310" y="970" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="cr_sr" value="SchemaRegistry" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="510" y="970" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="cr_connect" value="KafkaConnect" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="710" y="970" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="cr_krp" value="KafkaRestProxy" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="910" y="970" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="cr_c3" value="ControlCenter" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="970" width="180" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_svc" value="ClusterIP Services (CFK-generated, pod-network only)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1070" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc_mds" value="kafka:8090&#10;(MDS embedded)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1100" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc_kafka_int" value="kafka:9091&#10;(internal SASL_SSL)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="310" y="1100" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc_sr" value="schemaregistry:8081" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="510" y="1100" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc_connect" value="connect:8083" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="710" y="1100" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc_krp" value="kafkarestproxy:8082" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="910" y="1100" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc_c3" value="controlcenter:9021" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="1100" width="180" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_pki" value="Supporting: TLS Secrets fed by cert-manager Certificate CRs (apps/confluent-platform/&lt;env&gt;/cert-manager/)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1190" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="pki_node" value="cert-manager + Keyfactor ClusterIssuer&#10;→ kafka-tls / kafka-mds-tls / schemaregistry-tls / connect-tls / kafkarestproxy-tls / controlcenter-tls / corporate-trust-bundle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1220" width="1380" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_aux" value="Supporting: ExternalSecrets (ESO) → CyberArk → confluent-license / cfk-license / cmf-encryption-key / cmf-db-credentials" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1330" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="eso_node" value="ExternalSecret CRs + namespace-scoped SecretStore (11547-&lt;e&gt;-key-fp) — webhook to the corporate CyberArk CCP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1360" width="1380" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_quota" value="Supporting: ResourceQuota (CPU/RAM/storage) + Gatekeeper admission constraints" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1440" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="quota_node" value="ResourceQuota (per-env, ~1.272 TB storage target — tracker 2.5)&#10;Gatekeeper constraints: required-workload-labels, readiness-liveness, ceph-storage, required-configmap-labels" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1470" width="1380" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_fw_haproxy" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwInbound" target="haproxy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fw_lb" value="9092 / 9094 — passthrough TCP" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="fwInbound" target="kafkaLb" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="fwOutbound" value="ENTERPRISE PERIMETER FIREWALL — OUTBOUND / EGRESS&#10;rules per docs/firewall/OUTBOUND-FIREWALL-REQUESTS.md (CFK track)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=center;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1620" width="1500" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ext_okta" value="Okta tenant&#10;okta.example.com&#10;:443&#10;⚠ BLOCKED in DEV — tracker 2.9" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1740" width="260" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_cyberark" value="CyberArk CCP webhook&#10;(via ESO SecretStore)&#10;:443" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1740" width="260" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_artifactory" value="Artifactory&#10;artifactory.example.com&#10;:443" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1740" width="260" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_dns" value="corporate DNS resolvers&#10;:53 UDP / TCP" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1740" width="260" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_vmcp_out" value="VM CP brokers&#10;d11547varc-*.fcpd.example.com&#10;:9092 / :9094&#10;(cluster-link migration source)" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="1740" width="380" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_cluster_fwout" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="cluster" target="fwOutbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_okta" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_okta" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_cyber" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_cyberark" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_art" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_artifactory" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_dns" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_dns" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_vmcp" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_vmcp_out" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend" value="LEGEND&#10;━━━━━━━━━━━━━━━━━━&#10;🟡 External actor / destination&#10;🔴 enterprise perimeter firewall&#10;🟣 Ingress / HAProxy / LB Service&#10;🟢 Namespace (dah-flink-&lt;env&gt;)&#10;🟠 CFK Custom Resource (rhombus)&#10;🟡 ClusterIP Service&#10;🔵 Supporting infra (PKI, ESO, Quota)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;verticalAlign=top;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1900" width="380" height="180" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,136 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="K8s Components" id="k8s-components">
+    <mxGraphModel dx="2162" dy="1096" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" value="Kubernetes Components — simple reference (objects used in dah-flink-&lt;env&gt;)" vertex="1">
+          <mxGeometry height="40" width="600" x="347" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cluster" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;align=center;fontSize=13;arcSize=2;" value="KUBERNETES CLUSTER" vertex="1">
+          <mxGeometry height="1050" width="1190" x="60" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ns" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" value="NAMESPACE: dah-flink-&lt;env&gt;" vertex="1">
+          <mxGeometry height="980" width="1150" x="80" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr_identity" parent="1" style="text;html=1;align=center;fontStyle=1;fontSize=12;" value="Identity &amp; Authorization" vertex="1">
+          <mxGeometry height="20" width="220" x="430" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="sa" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="ServiceAccount&#xa;(flink-operator)" vertex="1">
+          <mxGeometry height="70" width="200" x="120" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="role" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="Role&#xa;(namespace-scoped)" vertex="1">
+          <mxGeometry height="70" width="200" x="707" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="rb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="RoleBinding&#xa;(SA ↔ Role)" vertex="1">
+          <mxGeometry height="70" width="200" x="395" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sa_rb" edge="1" parent="1" source="sa" style="endArrow=classic;html=1;" target="rb" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_role_rb" edge="1" parent="1" source="role" style="endArrow=classic;html=1;" target="rb" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr_config" parent="1" style="text;html=1;align=center;fontStyle=1;fontSize=12;" value="Configuration &amp; Secrets" vertex="1">
+          <mxGeometry height="20" width="250" x="260" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="cm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=11;" value="ConfigMap&#xa;(non-sensitive config&#xa;e.g. corporate-trust-bundle)" vertex="1">
+          <mxGeometry height="80" width="240" x="120" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="secret" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=11;" value="Secret&#xa;(sensitive: TLS, passwords,&#xa;tokens, licenses)" vertex="1">
+          <mxGeometry height="80" width="240" x="420" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr_workload" parent="1" style="text;html=1;align=center;fontStyle=1;fontSize=12;" value="Workload Controllers (manage Pods)" vertex="1">
+          <mxGeometry height="20" width="220" x="960" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;align=center;fontSize=11;" value="Deployment&#xa;(stateless: CMF,&#xa;Flink Operator)" vertex="1">
+          <mxGeometry height="80" width="220" x="120" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="sts" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;align=center;fontSize=11;" value="StatefulSet&#xa;(stateful: Kafka brokers,&#xa;KRaftController; manages PVCs)" vertex="1">
+          <mxGeometry height="80" width="240" x="490" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="cr" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;fontSize=11;" value="Custom Resource&#xa;(operator-managed:&#xa;KRaftController, Kafka, SR,&#xa;Connect, KRP, C3,&#xa;FlinkApplication)" vertex="1">
+          <mxGeometry height="120" width="240" x="940" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="operator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;fontSize=11;" value="Operator&#xa;(CFK / Flink K8s Operator;&#xa;watches CRs → creates Deployment/StatefulSet)" vertex="1">
+          <mxGeometry height="80" width="280" x="270" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cr_operator" edge="1" parent="1" source="cr" style="endArrow=classic;html=1;fontSize=10;" target="operator" value="watches">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_operator_deploy" edge="1" parent="1" source="operator" style="endArrow=classic;html=1;dashed=1;fontSize=10;" target="deploy" value="creates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_operator_sts" edge="1" parent="1" source="operator" style="endArrow=classic;html=1;dashed=1;fontSize=10;" target="sts" value="creates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr_pods" parent="1" style="text;html=1;align=center;fontStyle=1;fontSize=12;" value="Pods (the actual running containers)" vertex="1">
+          <mxGeometry height="20" width="230" x="495" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="pod1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="Pod" vertex="1">
+          <mxGeometry height="70" width="100" x="180" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="pod2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="Pod" vertex="1">
+          <mxGeometry height="70" width="100" x="495" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="pod3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="Pod" vertex="1">
+          <mxGeometry height="70" width="100" x="630" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="e_deploy_pod1" edge="1" parent="1" source="deploy" style="endArrow=classic;html=1;" target="pod1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sts_pod2" edge="1" parent="1" source="sts" style="endArrow=classic;html=1;" target="pod2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sts_pod3" edge="1" parent="1" source="sts" style="endArrow=classic;html=1;" target="pod3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr_storage" parent="1" style="text;html=1;align=center;fontStyle=1;fontSize=12;" value="Storage (StatefulSet-only)" vertex="1">
+          <mxGeometry height="20" width="190" x="740" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="pvc" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PersistentVolumeClaim&#xa;(per-Pod, created by StatefulSet)" vertex="1">
+          <mxGeometry height="80" width="240" x="420" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="pv" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PersistentVolume&#xa;(cluster-scoped, ceph-rbd)" vertex="1">
+          <mxGeometry height="80" width="240" x="707" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="e_pod_pvc" edge="1" parent="1" source="pod2" style="endArrow=classic;html=1;fontSize=10;" target="pvc" value="mounts">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_pvc_pv" edge="1" parent="1" source="pvc" style="endArrow=classic;html=1;fontSize=10;" target="pv" value="binds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr_network" parent="1" style="text;html=1;align=center;fontStyle=1;fontSize=12;" value="Networking" vertex="1">
+          <mxGeometry height="20" width="1380" x="110" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="svc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="Service (ClusterIP)&#xa;(stable DNS + pod selector)" vertex="1">
+          <mxGeometry height="80" width="240" x="110" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="ing" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;fontSize=11;" value="Ingress&#xa;(HTTPS, HAProxy edge,&#xa;reencrypt termination)" vertex="1">
+          <mxGeometry height="80" width="240" x="565" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="extclient" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="External client&#xa;(browser / VM / admin)" vertex="1">
+          <mxGeometry height="170" width="240" x="1310" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="e_svc_pods" edge="1" parent="1" source="svc" style="endArrow=classic;html=1;fontSize=10;" target="pod1" value="selector → pods">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ing_svc" edge="1" parent="1" source="ing" style="endArrow=classic;html=1;fontSize=10;" target="svc" value="routes to">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ext_ing" edge="1" parent="1" source="extclient" style="endArrow=classic;html=1;fontSize=10;" target="ing" value="HTTPS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr_attach" parent="1" style="text;html=1;align=center;fontStyle=1;fontSize=12;" value="Pod attachments (how config + secrets + identity flow into containers)" vertex="1">
+          <mxGeometry height="20" width="1380" x="110" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="attach_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;verticalAlign=middle;fontSize=11;" value="Pods consume ConfigMap and Secret values as volume mounts or env vars.&#xa;Pods run AS the ServiceAccount declared in their spec — that SA&#39;s Role (via RoleBinding) determines what the pod can read/write through the K8s API." vertex="1">
+          <mxGeometry height="40" width="770" x="120" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;verticalAlign=top;fontSize=10;arcSize=1;" value="LEGEND&#xa;━━━━━━━━━━━━━━━━━━━━&#xa;🟡 Identity / Service / PVC / PV   (stable, named, selector-matched)&#xa;🔵 ConfigMap / Secret / CRD info  (configuration data)&#xa;🟢 Workload controllers + Pods  (the running thing)&#xa;🟠 Custom Resource (rhombus) + Operator  (extends K8s API)&#xa;🟣 Ingress  (HTTP/S entry point)" vertex="1">
+          <mxGeometry height="120" width="287" x="930" y="150" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

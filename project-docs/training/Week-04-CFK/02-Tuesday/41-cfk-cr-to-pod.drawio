@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="CFK CR to Pod" id="cfk-cr-to-pod">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="CFK Reconciliation — Kafka CR → child objects → running Pods" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="user" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="Engineer&#10;oc apply -f kafka.yaml" vertex="1">
+          <mxGeometry x="80" y="120" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;align=center;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="kube-apiserver&#10;+ etcd" vertex="1">
+          <mxGeometry x="360" y="120" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kafka_cr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;spacingLeft=8;" value="Kafka CR (in etcd)&#10;  kind: Kafka&#10;  spec.replicas: 3&#10;  spec.image: cp-server:7.7.0&#10;  spec.dependencies.kRaftController" vertex="1">
+          <mxGeometry x="640" y="100" width="280" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ns_operator" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#aaaaaa;align=left;verticalAlign=top;fontStyle=1;fontSize=11;spacingLeft=10;spacingTop=8;" value="confluent-operator namespace" vertex="1">
+          <mxGeometry x="80" y="280" width="500" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="operator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;align=center;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="CFK Operator Pod&#10;Watch + Reconcile loop" vertex="1">
+          <mxGeometry x="120" y="320" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="reconcile" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="1. validate spec&#10;2. read dependencies (KRaftController ready?)&#10;3. render child objects (server-side apply)&#10;4. watch child objects&#10;5. write status.conditions" vertex="1">
+          <mxGeometry x="120" y="420" width="420" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ns_workload" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;fontStyle=1;fontSize=11;spacingLeft=10;spacingTop=8;" value="dah-flink-dev namespace" vertex="1">
+          <mxGeometry x="640" y="280" width="940" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sts" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="StatefulSet/kafka&#10;replicas: 3" vertex="1">
+          <mxGeometry x="680" y="320" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="Service/kafka&#10;+ headless Service" vertex="1">
+          <mxGeometry x="920" y="320" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="cm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="ConfigMap/kafka&#10;broker.properties" vertex="1">
+          <mxGeometry x="1160" y="320" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="pvc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="PVCs (× replicas)&#10;data-kafka-0..2" vertex="1">
+          <mxGeometry x="1400" y="320" width="160" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kafka0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="kafka-0 Pod&#10;init → broker JVM&#10;broker.id=0" vertex="1">
+          <mxGeometry x="680" y="460" width="240" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="kafka1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="kafka-1 Pod&#10;init → broker JVM&#10;broker.id=1" vertex="1">
+          <mxGeometry x="960" y="460" width="240" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="kafka2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="kafka-2 Pod&#10;init → broker JVM&#10;broker.id=2" vertex="1">
+          <mxGeometry x="1240" y="460" width="240" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="status" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Kafka.status (written by operator)&#10;  conditions:&#10;    - type: cluster-ready, status: True&#10;    - type: cluster-update, status: completed&#10;  replicas: 3, readyReplicas: 3" vertex="1">
+          <mxGeometry x="680" y="640" width="800" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#aaaaaa;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Engineer reads ONLY: Kafka.status.conditions. Operator writes it as the single source of truth on health." vertex="1">
+          <mxGeometry x="680" y="800" width="800" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_user_api" parent="1" edge="1" source="user" target="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_api_cr" parent="1" edge="1" source="api" target="kafka_cr" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_cr_op" parent="1" edge="1" source="kafka_cr" target="operator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;" value="watch"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op_sts" parent="1" edge="1" source="operator" target="sts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;" value="apply"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op_svc" parent="1" edge="1" source="operator" target="svc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op_cm" parent="1" edge="1" source="operator" target="cm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op_pvc" parent="1" edge="1" source="operator" target="pvc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sts_k0" parent="1" edge="1" source="sts" target="kafka0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sts_k1" parent="1" edge="1" source="sts" target="kafka1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sts_k2" parent="1" edge="1" source="sts" target="kafka2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op_status" parent="1" edge="1" source="operator" target="status" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;" value="status write"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

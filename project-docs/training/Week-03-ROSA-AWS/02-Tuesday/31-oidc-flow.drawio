@@ -1,0 +1,86 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="OIDC Flow" id="oidc-flow">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="OIDC Login Flow — User → Okta → OpenShift OAuth Server → bearer token → apiserver" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="user" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="Engineer&#10;runs: oc login --web" vertex="1">
+          <mxGeometry x="80" y="110" width="240" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="browser" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="Browser&#10;drives the OAuth dance" vertex="1">
+          <mxGeometry x="400" y="110" width="240" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="oauth" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="OpenShift OAuth Server (openshift-authentication ns)" vertex="1">
+          <mxGeometry x="80" y="240" width="700" height="320" as="geometry"/>
+        </mxCell>
+        <mxCell id="redir_in" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;fontSize=11;spacingLeft=10;" value="Step 2: redirect browser → Okta /authorize" vertex="1">
+          <mxGeometry x="120" y="300" width="600" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="exch" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;fontSize=11;spacingLeft=10;" value="Step 5: exchange authorization code → Okta token (server-to-server)" vertex="1">
+          <mxGeometry x="120" y="360" width="600" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="verify" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;fontSize=11;spacingLeft=10;" value="Step 6-7: verify Okta token signature against Okta JWKS; read groups claim" vertex="1">
+          <mxGeometry x="120" y="410" width="600" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="mint" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;fontSize=11;spacingLeft=10;" value="Step 8: mint OpenShift bearer token (separate from Okta&apos;s token)" vertex="1">
+          <mxGeometry x="120" y="460" width="600" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="display" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;fontSize=11;spacingLeft=10;" value="Step 9: return token to oc; oc writes to ~/.kube/config" vertex="1">
+          <mxGeometry x="120" y="510" width="600" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="okta" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="Okta (corporate tenant — okta.example.com)" vertex="1">
+          <mxGeometry x="900" y="240" width="640" height="320" as="geometry"/>
+        </mxCell>
+        <mxCell id="auth_page" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=11;spacingLeft=10;" value="Step 3: present sign-in page; user enters password + MFA" vertex="1">
+          <mxGeometry x="940" y="300" width="560" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="redir_back" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=11;spacingLeft=10;" value="Step 4: redirect browser back to OAuth Server with authorization code" vertex="1">
+          <mxGeometry x="940" y="360" width="560" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="jwks" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=11;spacingLeft=10;" value="Step 5b: Okta /token endpoint returns signed JWT to OAuth Server" vertex="1">
+          <mxGeometry x="940" y="410" width="560" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="jwks_pub" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=11;spacingLeft=10;" value="JWKS endpoint serves Okta&apos;s public signing keys for token verification" vertex="1">
+          <mxGeometry x="940" y="460" width="560" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="claims" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=11;spacingLeft=10;" value="Token claims: sub (user), groups (dahDev_groups, ...), aud, exp" vertex="1">
+          <mxGeometry x="940" y="510" width="560" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;align=center;fontColor=#FFFFFF;fontSize=14;fontStyle=1;" value="kube-apiserver" vertex="1">
+          <mxGeometry x="600" y="640" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="oc_call" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="oc get pods&#10;Authorization: Bearer &lt;OpenShift token&gt;" vertex="1">
+          <mxGeometry x="100" y="640" width="380" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api_validate" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;verticalAlign=top;fontSize=11;spacingLeft=10;spacingTop=10;" value="apiserver does:&#10;  Step 11 — validate bearer token via OAuth Server&#39;s token-review API&#10;  Step 12 — look up user, resolve their Groups&#10;  Step 13 — check RBAC: does this user/group have the right Role to perform this verb on this resource?&#10;  → return 200 OK with resource(s)  OR  403 Forbidden" vertex="1">
+          <mxGeometry x="960" y="640" width="600" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="two_token" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;fontStyle=1;spacingLeft=12;" value="The two-token distinction — engineers confuse these:&#10;  Okta token = signed by Okta, validated against Okta JWKS. Lives in OAuth Server briefly.&#10;  OpenShift bearer token = minted by OAuth Server, used only to call apiserver. Lives in ~/.kube/config." vertex="1">
+          <mxGeometry x="80" y="860" width="1500" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="failures" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="Where it breaks: cluster can&apos;t reach Okta (tracker 2.9 egress) → step 2 redirect fails. User&apos;s Okta password wrong → step 3 fails. Group claim missing from token → user has no Groups → 403 even though logged in. Token expired → re-login." vertex="1">
+          <mxGeometry x="80" y="960" width="1500" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_user_browser" parent="1" edge="1" source="user" target="browser" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#666666;strokeWidth=2;fontSize=10;" value="Step 1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_browser_oauth" parent="1" edge="1" source="browser" target="oauth" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#d79b00;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_oauth_okta" parent="1" edge="1" source="oauth" target="okta" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#b85450;strokeWidth=2;fontSize=10;" value="OIDC handshake"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_oc_api" parent="1" edge="1" source="oc_call" target="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontSize=10;" value="Step 10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_api_validate" parent="1" edge="1" source="api" target="api_validate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d79b00;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

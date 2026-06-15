@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="VPC Network" id="vpc-network">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="VPC Network — Pod egress paths + how external clients reach the cluster" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="vpc" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;verticalAlign=top;fontStyle=1;fontSize=14;spacingTop=10;" value="VPC (10.0.0.0/16)" vertex="1">
+          <mxGeometry x="80" y="100" width="900" height="900" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="igw" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;fontStyle=1;" value="Internet Gateway&#10;(IGW)" vertex="1">
+          <mxGeometry x="380" y="160" width="200" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pub" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="Public subnet 10.0.1.0/24" vertex="1">
+          <mxGeometry x="120" y="260" width="820" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="nlb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=center;fontSize=11;" value="NLB / ALB&#10;(public IP; serves Routes' external endpoint)" vertex="1">
+          <mxGeometry x="160" y="310" width="280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="nat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=center;fontSize=11;" value="NAT Gateway&#10;(elastic IP)" vertex="1">
+          <mxGeometry x="480" y="310" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt_pub" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Route table:&#10;0.0.0.0/0 → IGW" vertex="1">
+          <mxGeometry x="720" y="310" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="priv" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="Private subnets 10.0.2.0/24, 10.0.3.0/24, 10.0.4.0/24 (multi-AZ)" vertex="1">
+          <mxGeometry x="120" y="460" width="820" height="500" as="geometry"/>
+        </mxCell>
+        <mxCell id="worker" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;align=center;fontSize=11;" value="Worker node (EC2)" vertex="1">
+          <mxGeometry x="160" y="510" width="240" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="pods_layer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="Pod (CNI overlay, e.g. 10.128.x.x)" vertex="1">
+          <mxGeometry x="160" y="600" width="240" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="rt_priv" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Route table:&#10;0.0.0.0/0 → NAT GW&#10;10.x.x.x/N → VGW (on-prem)&#10;&lt;vpce range&gt; → VPC endpoint" vertex="1">
+          <mxGeometry x="440" y="510" width="280" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="sg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Security Group on worker:&#10;ingress 6443 from masters&#10;ingress 9092/9094 from VPN CIDR (for cluster-link)&#10;egress: ALL" vertex="1">
+          <mxGeometry x="160" y="680" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="vpce" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=center;fontSize=10;" value="VPC Endpoints (S3 gateway, STS interface, ECR, KMS)" vertex="1">
+          <mxGeometry x="520" y="700" width="380" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="vgw" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;fontSize=11;fontStyle=1;" value="VPN / Virtual Gateway&#10;or AWS Direct Connect" vertex="1">
+          <mxGeometry x="520" y="800" width="380" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ext_user" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="External client&#10;(the User Zone / VM CP)" vertex="1">
+          <mxGeometry x="1080" y="160" width="280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="okta_ext" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="Okta tenant&#10;okta.example.com" vertex="1">
+          <mxGeometry x="1080" y="280" width="280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="AWS S3 / STS / ECR" vertex="1">
+          <mxGeometry x="1080" y="400" width="280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="onprem" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="on-prem&#10;Artifactory · VM CP · NetApp S3 · DNS · SQL" vertex="1">
+          <mxGeometry x="1080" y="800" width="380" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_ext_nlb" parent="1" edge="1" source="ext_user" target="nlb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#666666;strokeWidth=2;fontSize=10;" value="HTTPS via IGW"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pod_nat" parent="1" edge="1" source="pods_layer" target="nat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;fontSize=10;" value="0.0.0.0/0"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_nat_okta" parent="1" edge="1" source="nat" target="okta_ext" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;fontSize=10;" value="Okta OAuth"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pod_vpce" parent="1" edge="1" source="pods_layer" target="vpce" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;fontSize=10;" value="AWS APIs (private)"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_vpce_s3" parent="1" edge="1" source="vpce" target="s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pod_vgw" parent="1" edge="1" source="pods_layer" target="vgw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;fontSize=10;" value="onprem CIDR"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_vgw_onprem" parent="1" edge="1" source="vgw" target="onprem" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#d79b00;strokeWidth=2;fontSize=10;" value="encrypted tunnel"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pub_igw" parent="1" edge="1" source="pub" target="igw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_nlb_worker" parent="1" edge="1" source="nlb" target="worker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

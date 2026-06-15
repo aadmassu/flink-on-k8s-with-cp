@@ -1,0 +1,63 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="Kafka Failure Modes" id="kafka-fail">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="Six common Kafka common Kafka failure modes — symptom → metric → recovery" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="f1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="1. Disk full&#10;Symptom: NotEnoughReplicasException&#10;Metric: kafka_log_log_size; df -h&#10;Recovery: retention down or add disk" vertex="1">
+          <mxGeometry x="80" y="120" width="480" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="f2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="2. Slow broker&#10;Symptom: ISR shrinks; some clients hang&#10;Metric: request_handler_avg_idle_percent&#10;Recovery: restart broker; investigate GC / disk" vertex="1">
+          <mxGeometry x="600" y="120" width="480" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="f3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="3. Network partition&#10;Symptom: all brokers isolated; ISR collapses&#10;Metric: NetworkPolicy state; oc exec ping&#10;Recovery: remove block; brokers re-sync" vertex="1">
+          <mxGeometry x="1120" y="120" width="460" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="f4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="4. Authorization regression&#10;Symptom: TOPIC_AUTHORIZATION_FAILED&#10;Metric: kafka-acls --list; RBAC git diff&#10;Recovery: restore ACL" vertex="1">
+          <mxGeometry x="80" y="320" width="480" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="f5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="5. Schema Registry down&#10;Symptom: Avro/Proto producers fail; broker fine&#10;Metric: oc get pod -l app=schemaregistry&#10;Recovery: scale SR back" vertex="1">
+          <mxGeometry x="600" y="320" width="480" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="f6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="6. Cluster-link source down&#10;Symptom: destination topic lag growing&#10;Metric: kafka-cluster-links --describe&#10;Recovery: fix link cert (tracker 2.10)" vertex="1">
+          <mxGeometry x="1120" y="320" width="460" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="order" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;fontStyle=1;" value="Diagnostic order when customer says &quot;Kafka is broken&quot;" vertex="1">
+          <mxGeometry x="80" y="540" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="o1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="1. status.conditions&#10;on every CFK CR" vertex="1">
+          <mxGeometry x="80" y="600" width="240" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="o2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="2. oc get pods&#10;-l app=kafka" vertex="1">
+          <mxGeometry x="360" y="600" width="240" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="o3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="3. metric:&#10;under_replicated_partitions" vertex="1">
+          <mxGeometry x="640" y="600" width="280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="o4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="4. broker logs&#10;via Splunk" vertex="1">
+          <mxGeometry x="960" y="600" width="240" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="o5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="5. client config&#10;(if 1-4 healthy)" vertex="1">
+          <mxGeometry x="1240" y="600" width="240" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_o12" parent="1" edge="1" source="o1" target="o2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_o23" parent="1" edge="1" source="o2" target="o3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_o34" parent="1" edge="1" source="o3" target="o4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_o45" parent="1" edge="1" source="o4" target="o5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

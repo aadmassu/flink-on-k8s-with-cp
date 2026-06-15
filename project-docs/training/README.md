@@ -19,19 +19,19 @@ The source curriculum overview is preserved in [`curriculum-source.md`](curricul
 
 ## Daily rhythm
 
-Each day has the same shape — same content lives in two places to keep the morning discussion focused and the afternoon lab independent:
+Each day folder is self-contained — morning discussion, afternoon lab, and the day's diagram all live together:
 
 ```
 Morning  (~90 min)              Afternoon (~3–4 hours, self-paced)
 ─────────────────────           ──────────────────────────────────
-discussion.md                   labs/weekNN/<day>.md
+discussion.md                   lab.md
 ├── Architecture                ├── Hands-on Lab
 ├── Diagram Walkthrough         ├── Troubleshooting Exercise
 ├── Failure Scenarios           └── Deliverable Submission
 └── Q&A
 ```
 
-The diagram referenced in `discussion.md` lives once in `diagrams/drawio/` (numbered to match the rough course order). The lab file in `labs/weekNN/<day>.md` is the engineer's afternoon work.
+The diagram referenced in `discussion.md` lives in the same day folder as a `.drawio` file (numbered to match the rough course order — `40-cfk-network.drawio`, `41-cfk-cr-to-pod.drawio`, etc.).
 
 ## Folder layout
 
@@ -39,31 +39,21 @@ The diagram referenced in `discussion.md` lives once in `diagrams/drawio/` (numb
 training/
 ├── README.md                                       ← you are here
 ├── curriculum-source.md                            ← extracted from the original 6-week plan .docx
-├── week-01-openshift-foundations/
+├── Week-01-OpenShift-Foundations/
 │   ├── README.md                                   ← week intro + outcomes + daily index
-│   ├── monday/    discussion.md                    ← morning content per day
-│   ├── tuesday/   discussion.md
-│   ├── wednesday/ discussion.md
-│   ├── thursday/  discussion.md
-│   └── friday/    discussion.md                    ← Friday = break-things day
-├── week-02-openshift-operations/  (same shape)
-├── week-03-rosa-aws/              (same shape)
-├── week-04-cfk/                   (same shape — the most important week)
-├── week-05-kafka-operations/      (same shape)
-├── week-06-flink-multi-region/    (same shape)
-│
-├── diagrams/                                       ← central diagram library; one source per concept
-│   ├── drawio/                                     ← canonical .drawio source files (numbered ~ course order)
-│   ├── png/                                        ← engineers add PNG exports as they reference them
-│   └── notes/                                      ← per-diagram explanation .md for self-study
-│
-├── labs/                                           ← afternoon labs, one per day per week
-│   ├── week01/  monday.md  tuesday.md  ...
-│   ├── week02/  ...
-│   ├── week03/  ...
-│   ├── week04/  ...
-│   ├── week05/  ...
-│   └── week06/  ...
+│   ├── 01-Monday/
+│   │   ├── discussion.md                           ← morning content
+│   │   ├── lab.md                                  ← afternoon lab
+│   │   └── 01-k8s-architecture.drawio              ← the day's diagram (one or more)
+│   ├── 02-Tuesday/    (same shape)
+│   ├── 03-Wednesday/  (same shape)
+│   ├── 04-Thursday/   (same shape)
+│   └── 05-Friday/     (same shape — Friday = break-things day)
+├── Week-02-OpenShift-Operations/  (same shape)
+├── Week-03-ROSA-AWS/              (same shape)
+├── Week-04-CFK/                   (same shape — the most important week)
+├── Week-05-Kafka-Operations/      (same shape)
+├── Week-06-Flink-Multi-Region/    (same shape)
 │
 └── deliverables/                                   ← engineers submit week-by-week outputs here
     └── README.md                                   ← what to submit, naming convention
@@ -100,10 +90,29 @@ See `deliverables/README.md` for the submission convention.
 - `oc` CLI installed; able to log into the dev OpenShift cluster
 - VS Code with the drawio plugin (or drawio.io in a browser)
 - Git Bash or WSL (for the lab shell commands)
-- Read access to this repo + the matching `runbook/LESSONS_LEARNED.md` for FCB-specific context
+- Read access to this repo + the matching `runbook/LESSONS_LEARNED.md` for site-specific context
 
 ## Status of the curriculum
 
 - **Week 1** — fully written; ready to run from Monday
 - **Week 2** — fully written; ready to run
-- **Weeks 3–6** — week-level READMEs in place with the daily topics; per-day discussion + lab content fleshed out as each week approaches
+- **Week 3** — fully written; ready to run
+- **Week 4** — fully written; ready to run (the most important week)
+- **Week 5** — fully written; ready to run
+- **Week 6** — fully written; ready to run (DR drill as final exercise)
+
+Each week ends with a `06-Review/` folder containing a knowledge check, a skill check, and 20 Q&A.
+
+## Alignment with the original 6-week plan
+
+The bootcamp matches the original plan (`6_Week_Learning plan_OpenShift_ROSA_MRC_CP_Flink.docx`) at the day-level topic grain. A few intentional emphasis shifts vs. the original — each gap is surfaced in the corresponding week's `06-Review/qa.md` so engineers still master the missing material:
+
+| Week | Original-plan topic | What this curriculum did | Where the gap is filled |
+|---|---|---|---|
+| 1 | ConfigMaps and Secrets (Wed alongside Services) | Touched lightly across days | Wk 1 Q&A Q10 + Q11; skill-check Task 3 |
+| 2 | Security Context Constraints (Tue alongside Operators) | Dropped from dedicated treatment | Wk 2 Q&A Q4; skill-check Task 2 |
+| 5 | mTLS + ACLs + Confluent RBAC (Wed alongside OAuth) | Centered on OAuth | Wk 5 Q&A Q11 + Q12 |
+| 6 | Flink SQL + Watermarks (Tue) | Centered on checkpoints/savepoints | Wk 6 Q&A Q7 + Q8 |
+| 6 | MirrorMaker 2 (Thu) | Centered on cluster linking | Wk 6 Q&A Q10 + Q11 |
+
+If any of these gaps need a full day's treatment instead of Q&A coverage, that's an instructor judgment call for the cohort.

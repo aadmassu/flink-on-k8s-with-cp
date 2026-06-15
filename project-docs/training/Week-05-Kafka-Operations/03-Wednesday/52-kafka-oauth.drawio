@@ -1,0 +1,53 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="Kafka OAuth" id="kafka-oauth">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="Kafka OAuth — Okta JWT validates at broker, principal maps to ACL/RBAC" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="app" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="App / Service&#10;client_id + client_secret&#10;in K8s Secret" vertex="1">
+          <mxGeometry x="80" y="120" width="240" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="okta" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EE0000;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="Okta&#10;/oauth2/token&#10;/oauth2/v1/keys (JWKS)" vertex="1">
+          <mxGeometry x="400" y="120" width="240" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="jwt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;fontFamily=Courier New;spacingLeft=10;" value="JWT&#10;  iss: okta...&#10;  aud: kafka-cluster&#10;  sub: svc-orders&#10;  groups: [...]&#10;  exp: ..." vertex="1">
+          <mxGeometry x="720" y="120" width="280" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="broker" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="Kafka broker&#10;SASL_OAUTHBEARER&#10;listener 9092" vertex="1">
+          <mxGeometry x="1080" y="120" width="260" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="validate" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Broker validation steps&#10;  1. signature (against Okta JWKS)&#10;  2. issuer matches expected&#10;  3. audience matches expected&#10;  4. exp not in the past&#10;  5. extract principal from sub.claim.name" vertex="1">
+          <mxGeometry x="120" y="320" width="500" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="authz" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#326CE5;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Authorizer&#10;  ACL or RBAC lookup&#10;  principal × resource × operation&#10;  Allow → request proceeds&#10;  Deny → TOPIC_AUTHORIZATION_FAILED" vertex="1">
+          <mxGeometry x="680" y="320" width="500" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="env_constraints" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Environment constraints&#10;  Tracker 2.9 — Okta egress firewall rule&#10;  Tracker 2.8 — Okta TLS CA in broker truststore&#10;  Token cache ~5min&#10;  Operator + end-user OAuth are separate clients" vertex="1">
+          <mxGeometry x="1240" y="320" width="320" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="produce" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;fontStyle=1;" value="Produce / Fetch proceeds against the topic" vertex="1">
+          <mxGeometry x="600" y="540" width="500" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_app_okta" parent="1" edge="1" source="app" target="okta" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;" value="client_credentials"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_okta_jwt" parent="1" edge="1" source="okta" target="jwt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;" value="JWT"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_jwt_broker" parent="1" edge="1" source="jwt" target="broker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;" value="SASL"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_broker_okta_jwks" parent="1" edge="1" source="broker" target="okta" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;dashed=1;" value="JWKS fetch"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_validate_authz" parent="1" edge="1" source="validate" target="authz" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_authz_produce" parent="1" edge="1" source="authz" target="produce" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

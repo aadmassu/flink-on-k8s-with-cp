@@ -36,6 +36,10 @@ project-docs/*
 !project-docs/dump.txt
 !project-docs/training
 !project-docs/training/**
+# Re-exclude OS / archive / source-doc cruft under training/
+project-docs/training/**/.DS_Store
+project-docs/training/Archive.zip
+project-docs/training/*.docx
 notes.md
 *.xlsx
 generate_*gantt*.py

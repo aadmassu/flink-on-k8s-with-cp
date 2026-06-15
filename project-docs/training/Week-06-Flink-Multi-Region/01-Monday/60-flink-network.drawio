@@ -1,0 +1,218 @@
+<mxfile host="app.diagrams.net" modified="2026-06-11T00:00:00.000Z" agent="manual" version="22.1.16" type="device">
+  <diagram name="Flink Network" id="flink-network">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2339" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Flink Network — CMF + Flink Operator + FlinkApplication jobs&#10;(driving artifact for firewall + system-access walk; see docs/firewall/*)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="userZone" value="USER ZONE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="500" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ui_cmf" value="CMF UI / API client&#10;(browser, Confluent CLI, automation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="70" y="120" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="ui_jm" value="Flink Web Dashboard&#10;(per-job JM, browser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="300" y="120" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="opsZone" value="OPS / ADMIN ZONE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="580" y="80" width="500" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ops_cmf_api" value="CMF REST automation&#10;(submit FlinkApplications, query state)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="610" y="120" width="450" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cicd" value="CI/CD (Azure DevOps)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="80" width="420" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="cicd_agent" value="ADO pipeline agent (DevOpsLinux pool)&#10;cd.yaml — applies FlinkApplication CR + ConfigMap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="120" width="370" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="fwInbound" value="ENTERPRISE PERIMETER FIREWALL — INBOUND&#10;rules per docs/firewall/INBOUND-FIREWALL-REQUESTS.md" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=center;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="1500" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_uicmf_fw" value="8080 (CMF REST + UI)" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="ui_cmf" target="fwInbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_uijm_fw" value="8081 (Flink JM REST + Web Dashboard)" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="ui_jm" target="fwInbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_opscmf_fw" value="8080 (CMF REST)" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="ops_cmf_api" target="fwInbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_cicd_fw" value="6443 (OCP API server — oc apply via SA login)" style="endArrow=classic;html=1;strokeColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="cicd_agent" target="fwInbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cluster" value="OPENSHIFT CLUSTER (apps.&lt;env&gt;.ocp.example.com)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;align=center;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="1500" height="1180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="haproxy" value="HAProxy Ingress Controller (openshift-core-zone; reencrypt termination)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="450" width="1420" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ocpapi" value="OpenShift API server (6443) — Flink Operator + ADO pipeline agent both reach this; in-cluster watch + apply for FlinkApplication CRs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="520" width="1420" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ns" value="NAMESPACE: dah-flink-&lt;env&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;fontStyle=1;verticalAlign=top;align=center;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="600" width="1420" height="950" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_ing" value="Ingress objects — HAProxy 443 → native pod port" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="630" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="ing_cmf" value="cmf.&#10;apps.&lt;env&gt;.ocp...&#10;443 → 8080" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="660" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ing_flinkjm" value="&lt;job&gt;.flink.&#10;apps.&lt;env&gt;.ocp... (planned, per-FlinkApplication)&#10;443 → 8081" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;dashed=1;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="390" y="660" width="340" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_cmf" value="Confluent Manager for Flink (CMF) — Helm-deployed Deployment + Service (apps/confluent-cmf/&lt;env&gt;/)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="760" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="cmf_dep" value="cmf-deployment (Helm)&#10;image: confluent/cmf 2.3.0-preview-2&#10;mounts corporate-trust-bundle for outbound HTTPS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="790" width="420" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="cmf_svc" value="cmf-service (ClusterIP)&#10;:8080 (REST + UI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="550" y="790" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="cmf_sa" value="ServiceAccount cmf-env-sa-dah-flink-&lt;env&gt;&#10;(pre-created by the Security ArgoCD chart)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="790" y="790" width="320" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="cmf_eso" value="ExternalSecrets (CyberArk)&#10;cmf-db-credentials / cmf-encryption-key&#10;confluent-license" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="790" width="350" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_op" value="Apache Flink Operator — Helm-deployed Deployment (apps/flink-operator/&lt;env&gt;/)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="900" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="op_dep" value="flink-operator (Helm)&#10;watches FlinkApplication / FlinkDeployment CRs;&#10;DEBUG logging enabled; mountedVolumes carries corporate-trust-bundle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="930" width="500" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="op_sa" value="ServiceAccount flink-operator&#10;(pre-created by the Security ArgoCD chart — tracker 3.2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="630" y="930" width="370" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="op_crds" value="CRDs (cluster-scoped, applied by operator chart):&#10;flinkapplications.flink.confluent.io&#10;flinkdeployments.flink.apache.org" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="930" width="460" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_app" value="FlinkApplication / FlinkDeployment — one Flink job, operator-managed (e.g. aep-rate-limit-job)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1040" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="app_cr" value="FlinkApplication CR&#10;(applied by cd.yaml; image: artifactory/aep-rate-limit-job:&lt;tag&gt;)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1070" width="320" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="app_cm" value="ConfigMap&#10;(env-specific app config)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="450" y="1070" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="app_jm" value="JobManager Pod&#10;:8081 (Web Dashboard + REST)&#10;Gatekeeper-compliant labels + probes" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="690" y="1070" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="app_jm_svc" value="JobManager Service (ClusterIP)&#10;:8081" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="930" y="1070" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="app_tm" value="TaskManager Pod(s)&#10;data-exchange ports (cluster-internal only)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="1070" width="310" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_aux" value="Supporting: cert-manager (cmf-tls Certificate) + ResourceQuota + per-job AEP credentials via variable groups" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1180" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="aux_node" value="cmf-tls Certificate (cert-manager + Keyfactor) — feeds cmf-tls Secret (HTTPS edge for CMF Ingress)&#10;ResourceQuota CPU/RAM/storage budget shared with CFK pods&#10;Per-job secrets (aep-rate-limit-job-&lt;env&gt;: aep-api-key, aep-client-secret, etc.) wired via deploy-steps.yaml into the FlinkApplication env" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1210" width="1370" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hdr_intracluster" value="In-cluster service consumption (pod → pod, no firewall touched)" style="text;html=1;align=center;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1340" width="1380" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="intra_node" value="CMF talks to: SQL Server (out via egress) + Kafka (CFK or VM, out via egress) + Flink Operator (in-cluster)&#10;JobManager talks to: TaskManagers (in-cluster pod-network) + CMF (in-cluster, status updates)&#10;TaskManagers talk to: each other (data-exchange, in-cluster) + Kafka brokers (out via egress) + Schema Registry (out via egress) + NetApp S3 (out via egress, checkpoints)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1370" width="1370" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_fw_haproxy" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwInbound" target="haproxy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fw_ocpapi" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwInbound" target="ocpapi" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="fwOutbound" value="ENTERPRISE PERIMETER FIREWALL — OUTBOUND / EGRESS&#10;rules per docs/firewall/OUTBOUND-FIREWALL-REQUESTS.md (Flink track)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=center;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1620" width="1500" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ext_kafka" value="VM CP Kafka brokers&#10;d11547varc-*.fcpd.example.com&#10;:9092 (OAuth) / :9094 (mTLS)&#10;⚠ until per-env cluster-link migration" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1740" width="280" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_sr" value="VM Schema Registry&#10;&lt;env&gt;-schema-registry-hosts&#10;:8081" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="340" y="1740" width="220" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_s3" value="NetApp S3&#10;&lt;env&gt;-net-app-s3-url&#10;:443&#10;(Flink checkpoints + savepoints — CRITICAL)" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="580" y="1740" width="260" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_sql" value="CMF SQL Server&#10;&lt;env&gt;-cmf-sql-server-jdbc-url&#10;:3085" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="860" y="1740" width="240" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_okta" value="Okta tenant&#10;okta.example.com&#10;:443&#10;⚠ BLOCKED in DEV — tracker 2.9" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="1740" width="240" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_artifactory" value="Artifactory&#10;artifactory.example.com&#10;:443&#10;(CMF + Flink Op + job images)" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="1740" width="220" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_aep" value="AEP API (job-specific)&#10;platform.adobe.io&#10;:443&#10;(aep-rate-limit-job — caused 2026-06-10 global failover)" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1900" width="320" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_cyberark" value="CyberArk CCP webhook&#10;(ESO SecretStore)&#10;:443" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1900" width="220" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext_dns" value="corporate DNS&#10;:53 UDP/TCP" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="620" y="1900" width="180" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_cluster_fwout" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="cluster" target="fwOutbound" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_kafka" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_kafka" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_sr" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_sr" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_s3" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_s3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_sql" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_sql" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_okta" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_okta" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_art" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_artifactory" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_aep" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_aep" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_cyber" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_cyberark" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fwout_dns" value="" style="endArrow=classic;html=1;strokeColor=#b85450;" edge="1" source="fwOutbound" target="ext_dns" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend" value="LEGEND&#10;━━━━━━━━━━━━━━━━━━&#10;🟡 External actor / destination&#10;🔴 enterprise perimeter firewall&#10;🟣 Ingress / HAProxy&#10;🟢 Namespace dah-flink-&lt;env&gt;, Deployment, Pod&#10;🟠 CR (rhombus): FlinkApplication&#10;🟡 ClusterIP Service&#10;🔵 Supporting infra (CRDs, ESO, cert-manager)&#10;⤴ DASHED = planned / not yet deployed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;verticalAlign=top;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="840" y="1900" width="700" height="200" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

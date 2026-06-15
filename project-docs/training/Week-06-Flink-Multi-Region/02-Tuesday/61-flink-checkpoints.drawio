@@ -1,0 +1,60 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="Flink Checkpoints" id="flink-cp">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="Flink Checkpoints — barrier flows through job graph; state to NetApp S3" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="jm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EE0000;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" value="JobManager&#10;triggers checkpoint, tracks completion" vertex="1">
+          <mxGeometry x="80" y="120" width="320" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="src" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;" value="Source TM&#10;Kafka source&#10;reads from offset N" vertex="1">
+          <mxGeometry x="80" y="280" width="320" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="op1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="Operator TM&#10;keyed state in RocksDB" vertex="1">
+          <mxGeometry x="480" y="280" width="320" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="op2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=11;" value="Operator TM&#10;windowed state" vertex="1">
+          <mxGeometry x="880" y="280" width="320" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sink" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;align=center;fontColor=#FFFFFF;fontSize=11;" value="Sink TM&#10;Kafka sink (transactional)" vertex="1">
+          <mxGeometry x="1280" y="280" width="280" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="barrier_note" parent="1" style="text;html=1;align=center;fontSize=10;fontStyle=2;fontColor=#82b366;" value="Checkpoint barrier injected at source · flows through operators · each operator snapshots state when barrier arrives on all input streams" vertex="1">
+          <mxGeometry x="80" y="400" width="1500" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;fontStyle=1;" value="NetApp S3 — state.checkpoints.dir&#10;s3://netapp-bucket/checkpoints/&lt;job&gt;/chk-N/&#10;state files per operator + metadata" vertex="1">
+          <mxGeometry x="400" y="500" width="800" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kafka" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="Kafka — source offsets, sink transactions&#10;source offset committed INTO checkpoint, not into Kafka&#10;sink uses Kafka transaction; commits on checkpoint complete" vertex="1">
+          <mxGeometry x="400" y="660" width="800" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="recovery" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Recovery on TM crash&#10;  1. JM cancels job&#10;  2. JM finds latest complete checkpoint&#10;  3. New TMs load state from checkpoint&#10;  4. Source resets to checkpointed offset&#10;  5. Sink aborts any uncommitted transaction&#10;  6. Processing resumes" vertex="1">
+          <mxGeometry x="80" y="820" width="1500" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_jm_src" parent="1" edge="1" source="jm" target="src" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;" value="trigger barrier"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_src_op1" parent="1" edge="1" source="src" target="op1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;" value="barrier+data"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op1_op2" parent="1" edge="1" source="op1" target="op2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;" value="barrier+data"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op2_sink" parent="1" edge="1" source="op2" target="sink" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;" value="barrier+data"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_src_s3" parent="1" edge="1" source="src" target="s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;dashed=1;" value="snapshot"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op1_s3" parent="1" edge="1" source="op1" target="s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_op2_s3" parent="1" edge="1" source="op2" target="s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.6;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sink_s3" parent="1" edge="1" source="sink" target="s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;dashed=1;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sink_kafka" parent="1" edge="1" source="sink" target="kafka" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;" value="commit tx"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
