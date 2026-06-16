@@ -1,55 +1,59 @@
 ================================================================================
-SWEET32 / CVE-2016-2183 — CONFLUENT PLATFORM REMEDIATION ACTION PLAN
+SWEET32 / CVE-2016-2183 — BROKER REMEDIATION ACTION PLAN
 ================================================================================
 
 Reply context: response to Anusha K.
+Scope: The current vulnerability scan flagged the Kafka BROKER TLS
+listener only. This plan addresses the broker. Other Confluent
+Platform components (KRaft Controller, Schema Registry, Kafka Connect,
+REST Proxy, Control Center) are NOT in scope for this report — each
+would need its own analogous remediation if a future scan flags it.
+
 Environment:
   - RHEL (8 or 9)
   - Java 21
   - Confluent Platform 8.x (likely 8.0)
-  - KRaft (no ZooKeeper)
-  - Components in scope: KRaft Controller, Broker, Schema Registry,
-    Kafka Connect (distributed), REST Proxy, Control Center
-  - Not deployed: ksqlDB, MirrorMaker
+  - KRaft mode (no ZooKeeper)
 
 
 REVIEW OF THE PROPOSED 3-LAYER PLAN
 ================================================================================
-The plan is correct and supported. Three refinements before execution:
+The plan is correct and supported by Confluent. Three refinements
+before execution:
 
 1. JVM layer
-   Java 21 already includes 3DES_EDE_CBC, DESede, RC4, and other legacy
-   algorithms in the default jdk.tls.disabledAlgorithms list. The
-   proposed change is largely audit-defensible policy rather than a
-   behavioral change. Apply it via an override file referenced from
-   KAFKA_OPTS, NOT by editing $JAVA_HOME/conf/security/java.security in
-   place — JDK package updates silently revert in-place edits.
+   Java 21 already includes 3DES_EDE_CBC, DESede, RC4, and other
+   legacy algorithms in the default jdk.tls.disabledAlgorithms list.
+   The proposed change is largely audit-defensible policy rather than
+   a behavioral change. Apply it via an override file referenced from
+   KAFKA_OPTS, NOT by editing $JAVA_HOME/conf/security/java.security
+   in place — JDK package updates silently revert in-place edits.
 
 2. Application layer
-   ssl.cipher.suites in Kafka is an ALLOWLIST using Java-style names
-   (e.g. TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384), not an OpenSSL-style
-   denylist. Enumerate the ciphers you keep. Each CP component has both
-   a listener-side cipher context and one or more embedded-client-side
-   cipher contexts — these do not inherit from each other, so all must
-   be configured (see per-component sections below).
+   ssl.cipher.suites in Kafka is an ALLOWLIST using Java-style cipher
+   names (e.g. TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384), NOT an
+   OpenSSL-style denylist. Enumerate the ciphers you keep. Within the
+   broker, the global ssl.cipher.suites can be OVERRIDDEN per listener
+   via listener.name.<NAME>.ssl.cipher.suites — if you use prefixed
+   listeners, set the allowlist on each variant.
 
 3. OS layer
    Java does NOT follow the RHEL system crypto policy. The OS change
-   only affects C-based tooling on the host (openssl, librdkafka-based
-   clients, monitoring agents). RHEL 8/9 DEFAULT already excludes 3DES
-   server-side; verify before tightening to FUTURE, which also drops
-   SHA-1 and can break enterprise PKI interop.
+   only affects C-based tooling on the broker host (openssl,
+   librdkafka clients, monitoring agents). RHEL 8/9 DEFAULT already
+   excludes 3DES server-side; verify before tightening to FUTURE,
+   which also drops SHA-1 and can break enterprise PKI interop.
 
-No interference is expected with default listeners, inter-broker
-replication, or KRaft controller quorum, provided the rolling restart
-keeps the allowlist consistent across all brokers and controllers.
+No interference is expected with default broker listeners or
+inter-broker replication, provided the rolling restart keeps the
+allowlist consistent across all brokers.
 
 
 RECOMMENDED CIPHER ALLOWLIST
 ================================================================================
-Apply this value to every ssl.cipher.suites property listed below.
-ECDHE + AES-GCM and ChaCha20 only — no CBC, no 3DES, no RSA key
-exchange, no static DH.
+Apply this value to every broker ssl.cipher.suites property (global
+and any listener-prefixed variants). ECDHE + AES-GCM and ChaCha20
+only — no CBC, no 3DES, no RSA key exchange, no static DH.
 
 ssl.cipher.suites=TLS_AES_256_GCM_SHA384,\
 TLS_AES_128_GCM_SHA256,\
@@ -65,11 +69,11 @@ ssl.enabled.protocols=TLSv1.3,TLSv1.2
 
 
 ================================================================================
-GLOBAL — JVM (every node running any CP service)
+GLOBAL — JVM (broker nodes)
 ================================================================================
 Action:
   Add an explicit JDK security override file that pins the disabled-
-  algorithms list.
+  algorithms list on every broker node.
 
 Reason:
   Java 21 already disables 3DES by default, but an explicit override
@@ -77,38 +81,34 @@ Reason:
   In-place edits of java.security are reverted by package updates.
 
 How / where:
-  1) Create /etc/confluent/java-security-override.properties:
+  1) Create /etc/confluent/java-security-override.properties on each
+     broker node:
 
        jdk.tls.disabledAlgorithms=SSLv3, TLSv1, TLSv1.1, RC4, DES, \
            MD5withRSA, DH keySize < 2048, EC keySize < 224, \
            3DES_EDE_CBC, DESede, anon, NULL, \
            include jdk.disabled.namedCurves
 
-  2) Reference it from each component's systemd unit (or sysconfig):
+  2) Reference it from the broker systemd unit (or sysconfig) via
+     KAFKA_OPTS:
 
-       Broker / Controller:  KAFKA_OPTS
-       Schema Registry:      SCHEMA_REGISTRY_OPTS
-       Connect:              KAFKA_OPTS
-       REST Proxy:           KAFKAREST_OPTS
-       Control Center:       CONTROL_CENTER_OPTS
-
-       Example:
        Environment="KAFKA_OPTS=-Djava.security.properties=/etc/confluent/java-security-override.properties"
 
   3) Use single `=` (additive merge), NOT `==` (full replace).
 
 
 ================================================================================
-GLOBAL — OS (every node)
+GLOBAL — OS (broker nodes)
 ================================================================================
 Action:
-  Confirm the RHEL crypto policy excludes Sweet32 ciphers; tighten with
-  a subpolicy if anything legacy is still negotiable.
+  Confirm the RHEL crypto policy on each broker host excludes Sweet32
+  ciphers; tighten with a subpolicy if anything legacy is still
+  negotiable.
 
 Reason:
-  Java ignores this policy, but any C-based tool on the host (openssl,
-  librdkafka clients, monitoring agents) follows it. Closing the
-  non-Java path completes the defense-in-depth picture.
+  Java ignores this policy, but any C-based tool on the broker host
+  (openssl, librdkafka clients, monitoring agents) follows it.
+  Closing the non-Java path completes the defense-in-depth picture.
 
 How / where:
   Check current state:
@@ -119,212 +119,53 @@ How / where:
   Hardened baseline without breaking SHA-1 interop the way FUTURE does:
     update-crypto-policies --set DEFAULT:NO-SHA1:NO-3DES
 
-  Restart non-Java services after the policy change. Java services are
-  unaffected by the OS change alone.
+  Restart non-Java services on the broker host after the policy change.
+  The Kafka broker process is unaffected by the OS change alone.
 
 
 ================================================================================
-COMPONENT 1 — KRaft CONTROLLER
-================================================================================
-Config: /etc/kafka/kraft/controller.properties
-        (or /etc/kafka/server.properties on combined-role nodes)
-
-Action:
-  Set ssl.cipher.suites and ssl.enabled.protocols on the controller
-  listener. If listener-prefixed properties are in use, set the
-  prefixed variant too.
-
-Reason:
-  KRaft controllers terminate metadata-quorum and broker-registration
-  TLS. Without the allowlist they can still negotiate 3DES.
-
-How / where:
-  ssl.enabled.protocols=TLSv1.3,TLSv1.2
-  ssl.cipher.suites=<allowlist>
-
-  Optional listener-prefixed form (wins over default):
-    listener.name.controller.ssl.cipher.suites=<allowlist>
-
-  Restart one controller at a time. Verify quorum after each:
-    kafka-metadata-quorum.sh --bootstrap-controller <host>:9094 describe --status
-
-
-================================================================================
-COMPONENT 2 — BROKER
+BROKER
 ================================================================================
 Config: /etc/kafka/server.properties
 
 Action:
-  Set ssl.cipher.suites and ssl.enabled.protocols globally; also set
-  the listener-prefixed variants if multiple listeners are defined.
-  Confirm the listener named by inter.broker.listener.name is covered.
+  Set ssl.cipher.suites and ssl.enabled.protocols on every broker. If
+  the broker exposes multiple listeners (e.g. client, internal,
+  external), apply the allowlist on each listener-prefixed variant
+  as well. Confirm the listener named by inter.broker.listener.name
+  is covered.
 
 Reason:
-  Brokers are the largest cipher surface — client traffic, inter-broker
-  replication, controller-to-broker, and admin tooling all terminate
-  here.
+  The broker is the surface flagged by the scan. The same listener
+  config governs client traffic, inter-broker replication, and admin
+  tooling — fixing the broker listeners closes all three paths.
 
 How / where:
-  ssl.enabled.protocols=TLSv1.3,TLSv1.2
-  ssl.cipher.suites=<allowlist>
+  Global default:
+    ssl.enabled.protocols=TLSv1.3,TLSv1.2
+    ssl.cipher.suites=<allowlist>
 
-  Per listener (if applicable):
+  Per listener (prefixed form wins over the global default):
     listener.name.<INTERNAL>.ssl.cipher.suites=<allowlist>
     listener.name.<EXTERNAL>.ssl.cipher.suites=<allowlist>
+    listener.name.<INTERNAL>.ssl.enabled.protocols=TLSv1.3,TLSv1.2
+    listener.name.<EXTERNAL>.ssl.enabled.protocols=TLSv1.3,TLSv1.2
 
-  Restart one broker at a time; verify URP back to zero between each:
+  Inter-broker: confirm the listener name in
+  inter.broker.listener.name matches one of the listeners above.
+
+  Rolling restart: ONE broker at a time. Verify under-replicated
+  partitions return to zero between each:
+
     kafka-topics.sh --bootstrap-server <host>:9093 \
                     --describe --under-replicated-partitions
 
-
-================================================================================
-COMPONENT 3 — SCHEMA REGISTRY
-================================================================================
-Config: /etc/schema-registry/schema-registry.properties
-
-Action:
-  Set the allowlist on BOTH the HTTPS listener AND the embedded Kafka
-  client SR uses to write the _schemas topic.
-
-Reason:
-  Clients hit SR over HTTPS for schema lookup; SR itself persists
-  schemas via an embedded Kafka client — a separate SSL context that
-  does not inherit from the listener config.
-
-How / where:
-  Listener:
-    listeners=https://0.0.0.0:8081
-    ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    ssl.cipher.suites=<allowlist>
-
-  Embedded Kafka client (SR -> brokers):
-    kafkastore.security.protocol=SSL
-    kafkastore.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    kafkastore.ssl.cipher.suites=<allowlist>
-
-
-================================================================================
-COMPONENT 4 — KAFKA CONNECT (distributed)
-================================================================================
-Config: /etc/kafka/connect-distributed.properties
-
-Action:
-  Set the allowlist on the REST listener, the worker's own Kafka client
-  (connect-offsets / connect-configs / connect-status), and each
-  per-connector producer / consumer / admin client. If Confluent
-  Monitoring Interceptors are loaded (typical when Control Center
-  metrics are on), set the allowlist on those too.
-
-Reason:
-  Connect has four distinct SSL contexts inside a single worker. The
-  producer.* / consumer.* / admin.* prefixed properties do NOT inherit
-  from the worker base — each is a separate SSL configuration.
-
-How / where:
-  REST listener:
-    listeners=https://0.0.0.0:8083
-    listeners.https.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    listeners.https.ssl.cipher.suites=<allowlist>
-
-  Worker base (Connect's own internal topics):
-    ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    ssl.cipher.suites=<allowlist>
-
-  Per-connector clients:
-    producer.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    producer.ssl.cipher.suites=<allowlist>
-    consumer.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    consumer.ssl.cipher.suites=<allowlist>
-    admin.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    admin.ssl.cipher.suites=<allowlist>
-
-  Confluent Monitoring Interceptors:
-    producer.confluent.monitoring.interceptor.ssl.cipher.suites=<allowlist>
-    consumer.confluent.monitoring.interceptor.ssl.cipher.suites=<allowlist>
-
-
-================================================================================
-COMPONENT 5 — REST PROXY
-================================================================================
-Config: /etc/kafka-rest/kafka-rest.properties
-
-Action:
-  Set the allowlist on both the HTTPS listener and the embedded Kafka
-  client REST Proxy uses to reach brokers.
-
-Reason:
-  Same shape as Schema Registry — listener side faces HTTP callers;
-  client.* side is REST Proxy's outbound producer/consumer to brokers.
-
-How / where:
-  Listener:
-    listeners=https://0.0.0.0:8082
-    ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    ssl.cipher.suites=<allowlist>
-
-  Backend (REST Proxy -> brokers):
-    client.security.protocol=SSL
-    client.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    client.ssl.cipher.suites=<allowlist>
-
-
-================================================================================
-COMPONENT 6 — CONTROL CENTER
-================================================================================
-Config: /etc/confluent-control-center/control-center-production.properties
-
-Action:
-  Control Center has four SSL contexts to cover. Set the allowlist on
-  each:
-    a) REST / UI HTTPS listener
-    b) Embedded Streams app (C3's internal topics on the broker)
-    c) Connection to Schema Registry
-    d) Connection to each managed Connect cluster
-
-Reason:
-  Control Center is a multi-protocol consumer — it pulls metrics via
-  embedded Kafka Streams, reads schemas over HTTPS, and queries Connect
-  REST. Each is a separate SSL handshake. Missing one leaves a 3DES
-  path open in the management plane.
-
-How / where:
-  REST / UI listener:
-    confluent.controlcenter.rest.listeners=https://0.0.0.0:9021
-    confluent.controlcenter.rest.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    confluent.controlcenter.rest.ssl.cipher.suites=<allowlist>
-
-  Embedded Streams:
-    confluent.controlcenter.streams.security.protocol=SSL
-    confluent.controlcenter.streams.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    confluent.controlcenter.streams.ssl.cipher.suites=<allowlist>
-
-  C3 -> Schema Registry:
-    confluent.controlcenter.schema.registry.url=https://<sr-host>:8081
-    confluent.controlcenter.schema.registry.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    confluent.controlcenter.schema.registry.ssl.cipher.suites=<allowlist>
-
-  C3 -> Connect (repeat per cluster name):
-    confluent.controlcenter.connect.<name>.cluster=https://<connect-host>:8083
-    confluent.controlcenter.connect.<name>.ssl.enabled.protocols=TLSv1.3,TLSv1.2
-    confluent.controlcenter.connect.<name>.ssl.cipher.suites=<allowlist>
-
-
-ROLLING-RESTART ORDER
-================================================================================
-Within each environment, restart in this order with a health check
-between each component:
-
-  1. KRaft Controllers       (one at a time; verify quorum status)
-  2. Brokers                 (one at a time; URP back to zero)
-  3. Schema Registry
-  4. Kafka Connect workers   (rolling)
-  5. REST Proxy
-  6. Control Center          (last)
+  Output must be empty before restarting the next broker.
 
 
 VERIFICATION
 ================================================================================
-For every TLS listener, after restart:
+Per broker listener, after restart:
 
   # Should succeed — a modern ECDHE+GCM cipher negotiates:
   openssl s_client -connect <host>:<port> -tls1_2 \
@@ -337,6 +178,8 @@ For every TLS listener, after restart:
   # Full posture survey per listener:
   nmap --script ssl-enum-ciphers -p <port> <host>
 
+Repeat for every TLS port the broker exposes.
+
 
 DIRECT ANSWERS TO THE THREE QUESTIONS
 ================================================================================
@@ -344,39 +187,44 @@ Q1: Are these the recommended remediation steps for Confluent Platform
     to resolve CVE-2016-2183?
 
 A1: Yes. Refinements: (a) apply the JVM change via an override file
-    referenced from KAFKA_OPTS-equivalent env vars, not by editing
-    java.security in place; (b) the application-layer cipher list is
-    an allowlist using Java-style cipher names — enumerate the
-    ciphers you keep; (c) the OS-level change only affects non-Java
-    tooling on the host because Java does not follow the RHEL system
-    crypto policy.
+    referenced from KAFKA_OPTS, not by editing java.security in place;
+    (b) the application-layer cipher list is an allowlist using
+    Java-style cipher names — enumerate the ciphers you keep; (c) the
+    OS-level change only affects non-Java tooling on the broker host
+    because Java does not follow the RHEL system crypto policy.
 
 
 Q2: Are there any specific internal Confluent components that require
     additional configuration beyond the standard SSL properties?
 
-A2: Yes. Schema Registry, Kafka Connect, REST Proxy, and Control
-    Center each expose multiple SSL contexts — a listener side AND one
-    or more embedded-client sides — that do NOT inherit from each
-    other. Control Center has four (REST, Streams, SR-link,
-    Connect-link). Kafka Connect's producer.* / consumer.* / admin.*
-    prefixed configs are also independent SSL contexts. Each one needs
-    the cipher allowlist explicitly. Component-by-component property
-    names are listed in the sections above.
+A2: For the broker (the only component flagged in the current scan):
+    inside a single server.properties, the global ssl.cipher.suites
+    can be OVERRIDDEN per listener via
+    listener.name.<NAME>.ssl.cipher.suites. If the broker exposes
+    multiple listeners (client, internal, external), set the allowlist
+    on every prefixed variant — the prefixed form wins over the global
+    default. Inter-broker traffic uses the listener named by
+    inter.broker.listener.name; confirm that listener is covered.
+
+    Other CP components (Schema Registry, Kafka Connect, REST Proxy,
+    Control Center) each have multiple SSL contexts of their own
+    (listener side plus one or more embedded-client sides) that do
+    NOT inherit from the broker config. None are flagged in the
+    current report. If a later scan covers them, each will need its
+    own analogous configuration.
 
 
 Q3: Will these changes interfere with any default internal listeners
     or replication mechanisms if SSL is being used for inter-broker
     communication?
 
-A3: No, provided every broker and every controller comes back with the
-    same allowlist. The recommended ECDHE+AES-GCM list is mutually
-    supported by all CP 8.x components on Java 21, so inter-broker
-    replication, KRaft controller quorum, and admin paths continue to
-    work unchanged. The only risk is the transient inconsistent state
-    during a rolling restart — mitigate by restarting one node at a
-    time and confirming health (quorum status / under-replicated
-    partitions) between each step.
+A3: No, provided every broker comes back with the same allowlist. The
+    recommended ECDHE + AES-GCM list is supported by all CP 8.x
+    brokers on Java 21, so inter-broker replication and admin paths
+    continue to work unchanged. The only operational risk is the
+    transient inconsistent state during a rolling restart — mitigate
+    by restarting one broker at a time and confirming URP returns to
+    zero between each.
 
 
 PERFORMANCE
@@ -399,41 +247,44 @@ Subject: RE: Sweet32 / CVE-2016-2183 remediation on Confluent Platform
 
 Hi Anusha,
 
-Thanks for putting the three-layer plan together. Short answer: yes, all
-three layers are supported by Confluent and are the correct approach for
-Sweet32 / CVE-2016-2183 on Confluent Platform. Direct answers to your
-three questions are below, with a few refinements worth flagging before
-execution. I have a per-component action plan (property names, config
-file paths, rolling-restart order, verification commands) that I can
-share separately or walk through on a call.
+Thanks for putting the three-layer plan together. Short answer: yes,
+all three layers are supported by Confluent and are the correct
+approach for Sweet32 / CVE-2016-2183 on the Kafka broker. Direct
+answers to your three questions are below, with a few refinements
+worth flagging before execution. I'm scoping this reply to the broker
+since that's the component flagged in the current vulnerability report
+— happy to extend the guidance to Schema Registry, Connect, REST
+Proxy, and Control Center if a later scan covers them.
 
 
 CONFIRMING THE THREE LAYERS
 ---------------------------
 
-1. JVM layer — Supported. Since the cluster is on Java 21, 3DES_EDE_CBC
+1. JVM layer — Supported. Since the broker is on Java 21, 3DES_EDE_CBC
    and DESede are already in the default jdk.tls.disabledAlgorithms
-   list, so this change is largely an explicit, audit-defensible policy
-   rather than a behavioral change. One refinement: apply it via a
-   referenced override file (KAFKA_OPTS=-Djava.security.properties=
-   /etc/confluent/java-security-override.properties, and the equivalent
-   *_OPTS env var for each component), not by editing
-   $JAVA_HOME/conf/security/java.security in place — JDK package
-   updates silently revert in-place edits.
+   list, so this change is largely an explicit, audit-defensible
+   policy rather than a behavioral change. One refinement: apply it
+   via a referenced override file (KAFKA_OPTS=
+   -Djava.security.properties=/etc/confluent/java-security-override.properties),
+   not by editing $JAVA_HOME/conf/security/java.security in place —
+   JDK package updates silently revert in-place edits.
 
-2. Application layer — Supported. Two practical notes: ssl.cipher.suites
-   in Kafka is an ALLOWLIST using Java-style cipher names
-   (TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384), not an OpenSSL-style
-   denylist. Enumerate the ciphers you keep. Several CP components also
-   expose multiple SSL contexts in a single process (see Q2).
+2. Application layer — Supported. Two practical notes:
+   ssl.cipher.suites in Kafka is an ALLOWLIST using Java-style cipher
+   names (TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384), not an OpenSSL-style
+   denylist. Enumerate the ciphers you keep. Within the broker, the
+   global ssl.cipher.suites can be overridden per listener via
+   listener.name.<NAME>.ssl.cipher.suites — see Q2 below.
 
 3. OS layer — Supported and useful, with one scoping note: Java does
-   NOT follow the RHEL system crypto policy. The OS change only affects
-   C-based tooling on the host (openssl, librdkafka clients, monitoring
-   agents). RHEL 8/9 DEFAULT already excludes 3DES server-side; verify
-   with `update-crypto-policies --show` and `openssl ciphers -v` before
-   tightening further. For a hardened baseline without breaking SHA-1
-   PKI interop the way FUTURE does, the safer subpolicy is:
+   NOT follow the RHEL system crypto policy. The OS change only
+   affects C-based tooling on the broker host (openssl, librdkafka
+   clients, monitoring agents). RHEL 8/9 DEFAULT already excludes
+   3DES server-side; verify with `update-crypto-policies --show` and
+   `openssl ciphers -v` before tightening further. For a hardened
+   baseline without breaking SHA-1 PKI interop the way FUTURE does,
+   the safer subpolicy is:
+
        update-crypto-policies --set DEFAULT:NO-SHA1:NO-3DES
 
 
@@ -443,70 +294,69 @@ DIRECT ANSWERS TO YOUR THREE QUESTIONS
 Q1. Are these the recommended remediation steps for Confluent Platform
     to resolve CVE-2016-2183?
 
-A1. Yes, with the three refinements above. The application-layer cipher
-    allowlist is the load-bearing fix; the JVM step is audit insurance
-    and forward-compatibility; the OS step closes the non-Java path.
+A1. Yes, with the three refinements above. The application-layer
+    cipher allowlist is the load-bearing fix; the JVM step is audit
+    insurance and forward-compatibility; the OS step closes the
+    non-Java path.
 
 
 Q2. Are there any specific internal Confluent components that require
     additional configuration beyond the standard SSL properties?
 
-A2. Yes — Schema Registry, Kafka Connect, REST Proxy, and Control
-    Center each expose multiple SSL contexts (a listener side plus one
-    or more embedded-client sides) that do NOT inherit from each other:
+A2. For the broker (the only component flagged in the current scan):
+    inside a single server.properties, the global ssl.cipher.suites
+    can be overridden per listener via
+    listener.name.<NAME>.ssl.cipher.suites. If the broker exposes
+    multiple listeners (client, internal, external), set the allowlist
+    on every prefixed variant — the prefixed form wins over the global
+    default. Inter-broker traffic uses the listener named by
+    inter.broker.listener.name; confirm that listener is covered.
 
-      - Schema Registry — the HTTPS listener (ssl.cipher.suites) AND
-        the embedded Kafka client that writes the _schemas topic
-        (kafkastore.ssl.cipher.suites).
-      - Kafka Connect — REST listener, the worker's own Kafka client
-        for connect-offsets/-configs/-status, AND per-connector
-        producer.*, consumer.*, admin.* clients. Each is an independent
-        SSL context. Add Confluent Monitoring Interceptors if loaded.
-      - REST Proxy — HTTPS listener AND backend client
-        (client.ssl.cipher.suites).
-      - Control Center — four contexts: REST/UI listener, embedded
-        Streams, SR-link, and Connect-link (one per managed Connect
-        cluster).
-
-    Recommended cipher allowlist for every ssl.cipher.suites property
-    (ECDHE + AES-GCM and ChaCha20, no CBC, no 3DES, no static RSA-KX):
-
-      TLS_AES_256_GCM_SHA384,
-      TLS_AES_128_GCM_SHA256,
-      TLS_CHACHA20_POLY1305_SHA256,
-      TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-      TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-      TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-      TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-      TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-      TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-
-    With ssl.enabled.protocols=TLSv1.3,TLSv1.2.
+    Other CP components (Schema Registry, Kafka Connect, REST Proxy,
+    Control Center) each have multiple SSL contexts of their own
+    (listener side + one or more embedded-client sides) that do NOT
+    inherit from the broker config. They aren't flagged in the
+    current report, so they're out of scope here — happy to share the
+    per-component property names if a later scan covers them.
 
 
 Q3. Will these changes interfere with any default internal listeners
     or replication mechanisms if SSL is being used for inter-broker
     communication?
 
-A3. No, provided every broker and every KRaft controller comes back
-    with the same allowlist. The recommended ECDHE + AES-GCM list is
-    mutually supported by all CP 8.x components on Java 21, so
-    inter-broker replication, KRaft controller quorum, and admin paths
+A3. No, provided every broker comes back with the same allowlist. The
+    recommended ECDHE + AES-GCM list is supported by all CP 8.x
+    brokers on Java 21, so inter-broker replication and admin paths
     continue to work unchanged. The only operational risk is the
     transient inconsistent state during a rolling restart — restart
-    one node at a time and confirm health (quorum status, URP back to
-    zero) between each step. Suggested rolling order:
+    one broker at a time and confirm URP returns to zero between each.
 
-        Controllers -> Brokers -> Schema Registry -> Connect workers
-        -> REST Proxy -> Control Center (last)
-
-    Verify each listener post-restart by negotiating a modern cipher
-    (should succeed) and a 3DES cipher (should be rejected), e.g.:
+    Verify each broker listener post-restart by negotiating a modern
+    cipher (should succeed) and a 3DES cipher (should be rejected),
+    e.g.:
 
         openssl s_client -connect <host>:<port> -tls1_2 \
             -cipher 'ECDHE-RSA-AES256-GCM-SHA384' </dev/null
         openssl s_client -connect <host>:<port> -tls1_2 \
             -cipher 'DES-CBC3-SHA' </dev/null
+
+
+RECOMMENDED CIPHER ALLOWLIST
+----------------------------
+For every ssl.cipher.suites property on the broker (global and any
+listener-prefixed variants), use:
+
+  TLS_AES_256_GCM_SHA384,
+  TLS_AES_128_GCM_SHA256,
+  TLS_CHACHA20_POLY1305_SHA256,
+  TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+  TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+  TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+  TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+  TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+  TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+
+With ssl.enabled.protocols=TLSv1.3,TLSv1.2.
 
 
 PERFORMANCE
@@ -516,8 +366,8 @@ x86_64 CPUs (AES-NI); removing 3DES-CBC drops the slowest cipher in
 the negotiable set, not the fastest.
 
 
-Happy to walk through the per-component property names and rollout
-sequence on a quick call if that helps — just flag a time that works.
+Happy to walk through the rollout sequence on a quick call if useful —
+just flag a time.
 
 
 Thanks,
