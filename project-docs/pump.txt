@@ -388,3 +388,140 @@ the negotiable set, not the fastest.
 
 END OF PLAN
 ================================================================================
+
+
+
+================================================================================
+EMAIL DRAFT — REPLY TO ANUSHA K
+================================================================================
+Subject: RE: Sweet32 / CVE-2016-2183 remediation on Confluent Platform
+
+
+Hi Anusha,
+
+Thanks for putting the three-layer plan together. Short answer: yes, all
+three layers are supported by Confluent and are the correct approach for
+Sweet32 / CVE-2016-2183 on Confluent Platform. Direct answers to your
+three questions are below, with a few refinements worth flagging before
+execution. I have a per-component action plan (property names, config
+file paths, rolling-restart order, verification commands) that I can
+share separately or walk through on a call.
+
+
+CONFIRMING THE THREE LAYERS
+---------------------------
+
+1. JVM layer — Supported. Since the cluster is on Java 21, 3DES_EDE_CBC
+   and DESede are already in the default jdk.tls.disabledAlgorithms
+   list, so this change is largely an explicit, audit-defensible policy
+   rather than a behavioral change. One refinement: apply it via a
+   referenced override file (KAFKA_OPTS=-Djava.security.properties=
+   /etc/confluent/java-security-override.properties, and the equivalent
+   *_OPTS env var for each component), not by editing
+   $JAVA_HOME/conf/security/java.security in place — JDK package
+   updates silently revert in-place edits.
+
+2. Application layer — Supported. Two practical notes: ssl.cipher.suites
+   in Kafka is an ALLOWLIST using Java-style cipher names
+   (TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384), not an OpenSSL-style
+   denylist. Enumerate the ciphers you keep. Several CP components also
+   expose multiple SSL contexts in a single process (see Q2).
+
+3. OS layer — Supported and useful, with one scoping note: Java does
+   NOT follow the RHEL system crypto policy. The OS change only affects
+   C-based tooling on the host (openssl, librdkafka clients, monitoring
+   agents). RHEL 8/9 DEFAULT already excludes 3DES server-side; verify
+   with `update-crypto-policies --show` and `openssl ciphers -v` before
+   tightening further. For a hardened baseline without breaking SHA-1
+   PKI interop the way FUTURE does, the safer subpolicy is:
+       update-crypto-policies --set DEFAULT:NO-SHA1:NO-3DES
+
+
+DIRECT ANSWERS TO YOUR THREE QUESTIONS
+--------------------------------------
+
+Q1. Are these the recommended remediation steps for Confluent Platform
+    to resolve CVE-2016-2183?
+
+A1. Yes, with the three refinements above. The application-layer cipher
+    allowlist is the load-bearing fix; the JVM step is audit insurance
+    and forward-compatibility; the OS step closes the non-Java path.
+
+
+Q2. Are there any specific internal Confluent components that require
+    additional configuration beyond the standard SSL properties?
+
+A2. Yes — Schema Registry, Kafka Connect, REST Proxy, and Control
+    Center each expose multiple SSL contexts (a listener side plus one
+    or more embedded-client sides) that do NOT inherit from each other:
+
+      - Schema Registry — the HTTPS listener (ssl.cipher.suites) AND
+        the embedded Kafka client that writes the _schemas topic
+        (kafkastore.ssl.cipher.suites).
+      - Kafka Connect — REST listener, the worker's own Kafka client
+        for connect-offsets/-configs/-status, AND per-connector
+        producer.*, consumer.*, admin.* clients. Each is an independent
+        SSL context. Add Confluent Monitoring Interceptors if loaded.
+      - REST Proxy — HTTPS listener AND backend client
+        (client.ssl.cipher.suites).
+      - Control Center — four contexts: REST/UI listener, embedded
+        Streams, SR-link, and Connect-link (one per managed Connect
+        cluster).
+
+    Recommended cipher allowlist for every ssl.cipher.suites property
+    (ECDHE + AES-GCM and ChaCha20, no CBC, no 3DES, no static RSA-KX):
+
+      TLS_AES_256_GCM_SHA384,
+      TLS_AES_128_GCM_SHA256,
+      TLS_CHACHA20_POLY1305_SHA256,
+      TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+      TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+      TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+      TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+      TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+      TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+
+    With ssl.enabled.protocols=TLSv1.3,TLSv1.2.
+
+
+Q3. Will these changes interfere with any default internal listeners
+    or replication mechanisms if SSL is being used for inter-broker
+    communication?
+
+A3. No, provided every broker and every KRaft controller comes back
+    with the same allowlist. The recommended ECDHE + AES-GCM list is
+    mutually supported by all CP 8.x components on Java 21, so
+    inter-broker replication, KRaft controller quorum, and admin paths
+    continue to work unchanged. The only operational risk is the
+    transient inconsistent state during a rolling restart — restart
+    one node at a time and confirm health (quorum status, URP back to
+    zero) between each step. Suggested rolling order:
+
+        Controllers -> Brokers -> Schema Registry -> Connect workers
+        -> REST Proxy -> Control Center (last)
+
+    Verify each listener post-restart by negotiating a modern cipher
+    (should succeed) and a 3DES cipher (should be rejected), e.g.:
+
+        openssl s_client -connect <host>:<port> -tls1_2 \
+            -cipher 'ECDHE-RSA-AES256-GCM-SHA384' </dev/null
+        openssl s_client -connect <host>:<port> -tls1_2 \
+            -cipher 'DES-CBC3-SHA' </dev/null
+
+
+PERFORMANCE
+-----------
+No regression expected. AES-GCM is hardware-accelerated on all modern
+x86_64 CPUs (AES-NI); removing 3DES-CBC drops the slowest cipher in
+the negotiable set, not the fastest.
+
+
+Happy to walk through the per-component property names and rollout
+sequence on a quick call if that helps — just flag a time that works.
+
+
+Thanks,
+Ayele
+================================================================================
+END OF EMAIL DRAFT
+================================================================================
