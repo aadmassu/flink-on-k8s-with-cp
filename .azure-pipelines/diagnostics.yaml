@@ -250,27 +250,13 @@ stages:
                 # it ever did. Surfaces OOMKilled (exit 137), Error (exit 1
                 # from configure script), Completed (graceful exit), and the
                 # exit-code-to-restart-count ratio — instant signal vs the
-                # full pod yaml dump below.
+                # full pod yaml dump below. Empty `lastExit=` columns mean
+                # the container has never terminated; that's the healthy
+                # path.
                 echo ""
-                echo "=== Container restart history (lastState.terminated for every pod) ==="
-                oc -n "$OC_NS" get pods -o json 2>/dev/null \
-                  | python3 -c '
-import json, sys
-data = json.load(sys.stdin)
-rows = []
-for p in data.get("items", []):
-    pn = p["metadata"]["name"]
-    for cs in (p.get("status", {}).get("containerStatuses") or []) + (p.get("status", {}).get("initContainerStatuses") or []):
-        last = (cs.get("lastState") or {}).get("terminated") or {}
-        if last:
-            rows.append((pn, cs["name"], cs.get("restartCount", 0), last.get("exitCode"), last.get("reason"), last.get("startedAt", "")[:19], last.get("finishedAt", "")[:19]))
-if not rows:
-    print("  (no pods have a prior terminated state — nothing has died and restarted yet)")
-else:
-    print("  {:42s} {:25s} {:>9s} {:>6s} {:18s} {:21s} {:21s}".format("POD", "CONTAINER", "RESTARTS", "EXIT", "REASON", "STARTED", "FINISHED"))
-    for r in rows:
-        print("  {:42s} {:25s} {:>9s} {:>6s} {:18s} {:21s} {:21s}".format(*[str(x) if x is not None else "" for x in r]))
-' 2>&1 || echo "  (failed to render — operator pod or python3 unavailable)"
+                echo "=== Container restart history (restartCount + lastState.terminated per container) ==="
+                oc -n "$OC_NS" get pods -o jsonpath='{range .items[*]}POD={.metadata.name}{"\n"}{range .status.containerStatuses[*]}  container={.name} restartCount={.restartCount} lastExit={.lastState.terminated.exitCode} lastReason={.lastState.terminated.reason} lastStartedAt={.lastState.terminated.startedAt} lastFinishedAt={.lastState.terminated.finishedAt}{"\n"}{end}{range .status.initContainerStatuses[*]}  initContainer={.name} restartCount={.restartCount} lastExit={.lastState.terminated.exitCode} lastReason={.lastState.terminated.reason}{"\n"}{end}{end}' 2>/dev/null \
+                  || echo "  (no pods, or oc/jsonpath error)"
 
                 # `describe pod` events for any pod NOT in Ready state.
                 # Bounded by the not-Ready filter so it doesn't dump 30+
