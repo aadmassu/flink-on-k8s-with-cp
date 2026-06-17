@@ -1,0 +1,38 @@
+# ControlCenter (C3) — Confluent operator CRD.
+# Single-instance management UI for the cluster. Confluent doesn't ship C3 for
+# CP 8.x (latest C3 tag is 7.9.x), which is why the whole lab is pinned to
+# 7.9.8 — keeps every component on the same line.
+#
+# The operator turns this CR into:
+#   - StatefulSet  controlcenter                 (1 pod)
+#   - Service      controlcenter                 (headless)
+#   - Service      controlcenter-0-internal      (ClusterIP — the UI listener at :9021)
+#   - ConfigMap    controlcenter                 (rendered control-center.properties)
+#
+# To open the UI from your laptop after it's Ready:
+#   kubectl -n kafka-dev port-forward svc/controlcenter 9021:9021
+#   then http://localhost:9021 (default credentials: admin / Developer1)
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: kafka-dev
+spec:
+  replicas: 1
+  image:
+    application: confluentinc/cp-enterprise-control-center:7.9.8
+    init: confluentinc/confluent-init-container:2.11.0
+  dataVolumeCapacity: 2Gi
+  storageClass:
+    name: ssd
+  dependencies:
+    schemaRegistry:
+      url: http://schemaregistry.kafka-dev.svc.cluster.local:8081
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 1536Mi

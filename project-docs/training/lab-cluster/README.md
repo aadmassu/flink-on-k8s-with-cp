@@ -6,10 +6,12 @@ A bare-minimum Kafka cluster running on kind, managed by **Confluent for Kuberne
 
 - **3 KRaft controllers** — declared as a `KRaftController` CR; CFK creates the StatefulSet, headless Service, ConfigMap
 - **3 brokers** — declared as a `Kafka` CR; CFK creates the StatefulSet, per-broker Services, bootstrap Service, ConfigMap
-- **2 Schema Registry instances** — declared as a `SchemaRegistry` CR; CFK creates the Deployment and ClusterIP Service
+- **2 Schema Registry instances** — declared as a `SchemaRegistry` CR; CFK creates the StatefulSet and ClusterIP Services
+- **1 Control Center (C3)** — declared as a `ControlCenter` CR; CFK creates the StatefulSet and ClusterIP Services
 - **Anti-affinity** in `podTemplate` keeps controllers and brokers spread one-per-node across the 3 kind worker nodes
 - **Storage class `ssd`** — symbolic on kind (mapped to local-path); on a real cluster this would be a CSI-backed SSD class
-- **Namespace**: `kafka-dev`
+- **Namespace**: `kafka-dev` (Confluent CRs) and `confluent` (operator)
+- **CP version pin**: `7.9.8` for every component. Control Center hasn't shipped past 7.9.x (Confluent is replacing it with newer mgmt products), so 7.9.8 is the highest CP line where all four components — Kafka, KRaftController, Schema Registry, ControlCenter — coexist on the same train. `cp-server` and `cp-schema-registry` have 8.x tags; `cp-enterprise-control-center` does not.
 - **No TLS, no SASL, no external listeners** — added per week as the training builds up
 
 ## Prerequisites
@@ -40,9 +42,20 @@ kubectl -n kafka-dev wait --for=condition=Ready pod -l app=kafka --timeout=300s
 
 kubectl apply -f 30-schemaregistry.yaml
 kubectl -n kafka-dev wait --for=condition=Ready pod -l app=schemaregistry --timeout=300s
+
+kubectl apply -f 40-controlcenter.yaml
+kubectl -n kafka-dev wait --for=condition=Ready pod -l app=controlcenter --timeout=600s
 ```
 
-Apply order matters: the broker references the controller via `dependencies.kRaftController.clusterRef`, and Schema Registry references the broker via `dependencies.kafka.bootstrapEndpoint`. The operator will pause reconciliation until each dependency is Ready.
+Apply order matters: the broker references the controller via `dependencies.kRaftController.clusterRef`; Schema Registry references the broker via `dependencies.kafka.bootstrapEndpoint`; Control Center references Schema Registry via `dependencies.schemaRegistry.url` and discovers Kafka from the same namespace. The operator pauses reconciliation until each dependency is Ready.
+
+## Opening the Control Center UI
+
+```bash
+kubectl -n kafka-dev port-forward svc/controlcenter 9021:9021
+# then open http://localhost:9021 in a browser
+# default credentials: admin / Developer1
+```
 
 ## Verify
 
@@ -99,7 +112,7 @@ kubectl delete storageclass ssd
 - No external listeners (no NodePort, no Ingress, no Route)
 - No authorization (no ACLs)
 - No monitoring / metrics stack
-- No Connect, ksqlDB, REST Proxy, or Control Center
+- No Connect, ksqlDB, REST Proxy
 - No RBAC for Confluent
 
 Each week of training adds one or more of these as an additive overlay (or a tweak to the existing CRs — CFK keeps all of it in-place via the CR `spec`).
@@ -115,3 +128,4 @@ Each week of training adds one or more of these as an additive overlay (or a twe
 | `10-kraftcontroller.yaml` | `KRaftController` CR — 3 controllers, anti-affinity, 1 Gi PVCs |
 | `20-kafka.yaml` | `Kafka` CR — 3 brokers, anti-affinity, 1 Gi PVCs, depends on the controller above |
 | `30-schemaregistry.yaml` | `SchemaRegistry` CR — 2 replicas, depends on the broker above |
+| `40-controlcenter.yaml` | `ControlCenter` CR — 1 replica, 2 Gi PVC, depends on the Schema Registry above |
