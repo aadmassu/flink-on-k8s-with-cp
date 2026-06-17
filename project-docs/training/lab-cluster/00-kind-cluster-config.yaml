@@ -1,0 +1,12 @@
+# kind cluster config for the lab.
+# Used with: kind create cluster --name training --config 00-kind-cluster-config.yaml
+# Not applied via `kubectl apply`. This file is the source of truth for the
+# cluster's shape — 3 workers so anti-affinity has somewhere to spread to.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: training
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+- role: worker

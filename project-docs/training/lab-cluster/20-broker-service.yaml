@@ -1,0 +1,48 @@
+# Two Services for the broker StatefulSet.
+#
+# (1) Headless Service — per-Pod stable DNS for the brokers themselves.
+#     broker-0.broker.kafka-dev.svc.cluster.local
+#     broker-1.broker.kafka-dev.svc.cluster.local
+#     broker-2.broker.kafka-dev.svc.cluster.local
+#     Used as advertised.listeners and for inter-broker replication.
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker
+  namespace: kafka-dev
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: broker
+spec:
+  clusterIP: None              # headless
+  selector:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: broker
+  ports:
+  - name: plaintext
+    port: 9092
+    targetPort: 9092
+    protocol: TCP
+---
+# (2) Bootstrap Service — a regular ClusterIP that load-balances across all
+# brokers. Clients (Schema Registry, producers, consumers) point at this one
+# for the initial connection; Kafka then redirects them to specific brokers
+# via metadata responses.
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker-bootstrap
+  namespace: kafka-dev
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: broker
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: broker
+  ports:
+  - name: plaintext
+    port: 9092
+    targetPort: 9092
+    protocol: TCP

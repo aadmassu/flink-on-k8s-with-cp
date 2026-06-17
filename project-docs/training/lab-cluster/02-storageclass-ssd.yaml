@@ -1,0 +1,12 @@
+# A StorageClass named "ssd" wrapping the same local-path provisioner kind uses
+# by default. On a real cluster this would map to actual SSD-backed CSI storage;
+# on kind it's symbolic — the underlying data still lives on the host's disk.
+# Using it here so the lab manifests mirror what you'd write in a real cluster.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ssd
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: false

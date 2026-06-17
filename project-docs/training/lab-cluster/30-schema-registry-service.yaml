@@ -1,0 +1,21 @@
+# Single ClusterIP Service in front of both Schema Registry replicas.
+# Clients query http://schema-registry.kafka-dev.svc.cluster.local:8081
+# and kube-proxy load-balances across the 2 SR Pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: schema-registry
+  namespace: kafka-dev
+  labels:
+    app.kubernetes.io/name: schema-registry
+    app.kubernetes.io/component: schema-registry
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: schema-registry
+    app.kubernetes.io/component: schema-registry
+  ports:
+  - name: http
+    port: 8081
+    targetPort: 8081
+    protocol: TCP

@@ -1,0 +1,80 @@
+# Two Schema Registry replicas. SR is stateless on the K8s side — schemas
+# are persisted to the _schemas Kafka topic, not to local disk — so a plain
+# Deployment is the right primitive.
+# HOST_NAME is set to each Pod's IP via downward API so the two replicas can
+# proxy requests to each other when one of them is the elected leader.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: schema-registry
+  namespace: kafka-dev
+  labels:
+    app.kubernetes.io/name: schema-registry
+    app.kubernetes.io/component: schema-registry
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: schema-registry
+      app.kubernetes.io/component: schema-registry
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: schema-registry
+        app.kubernetes.io/component: schema-registry
+    spec:
+      # Disable K8s' legacy per-Service env injection. Without this, the
+      # Service named "schema-registry" causes K8s to set SCHEMA_REGISTRY_PORT
+      # in the container env, which Confluent's configure script interprets
+      # as the deprecated PORT setting and exits 1. We rely on DNS, not
+      # service-link env vars, so turning this off is safe and standard.
+      enableServiceLinks: false
+      containers:
+      - name: schema-registry
+        image: confluentinc/cp-schema-registry:7.7.0
+        imagePullPolicy: IfNotPresent
+        env:
+        # Each Pod's own IP — used as SR's HOST_NAME so peers can proxy to it.
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: SCHEMA_REGISTRY_HOST_NAME
+          value: "$(POD_IP)"
+        - name: SCHEMA_REGISTRY_LISTENERS
+          value: "http://0.0.0.0:8081"
+        # Bootstrap pointed at the broker bootstrap Service (the ClusterIP one,
+        # not the headless). Kafka redirects SR to specific brokers from there.
+        - name: SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS
+          value: "PLAINTEXT://broker-bootstrap.kafka-dev.svc.cluster.local:9092"
+        - name: SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR
+          value: "3"
+        - name: SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID
+          value: "schema-registry"
+        ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "256Mi"
+          limits:
+            cpu: "200m"
+            memory: "384Mi"
+        readinessProbe:
+          httpGet:
+            path: /subjects
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 6
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 3
