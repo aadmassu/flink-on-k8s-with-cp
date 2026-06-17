@@ -1,0 +1,338 @@
+# Pipeline:  diagnostics
+# Purpose:   Read-only dump of the CFK-managed Confluent Platform cluster
+#            state in dah-flink-<env>: ESO-managed Secrets inventory,
+#            Secrets stuck in Terminating, key prerequisite Secrets,
+#            CR auth spec, recent Warning events, full CR + StatefulSet
+#            yaml, status.conditions table, `oc explain` against the
+#            live CRD schema, and the last 200 lines of the operator
+#            log filtered for errors. Touches nothing — `set +e` and a
+#            trailing `exit 0` keep it strictly observational.
+# Author:    Ayele Admassu
+# Created:   2026-06-17
+#
+# Was previously embedded in confluent-platform.yaml under
+# action=diagnostics (and ran automatically as the first step of
+# action=install-or-update). Moved here so it can be invoked standalone
+# — and so install-or-update's startup is faster when you don't need
+# the dump.
+#
+# Variable Group: kafka-openshift-credentials-<env>
+#   openshift-service-account-name  — service account username
+#   openshift-service-account-pwd   — service account password (secret)
+#   openshift-api               — OpenShift API server URL
+#   openshift-namespace         — target namespace (dah-flink-<env>)
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, uat, prd, dr]
+
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: kafka-openshift-credentials-dev
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: kafka-openshift-credentials-qa
+  - ${{ if eq(parameters.environment, 'uat') }}:
+    - group: kafka-openshift-credentials-uat
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
+
+stages:
+  - stage: Diagnostics
+    displayName: "Confluent Platform diagnostics (${{ parameters.environment }})"
+    jobs:
+      - job: Diagnostics
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - template: templates/install-tools.yaml
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Logging in to OpenShift at $OC_API..."
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+
+                echo ""
+                echo "=== Logged-in user ==="
+                oc whoami
+
+                echo ""
+                echo "=== Switching to namespace $OC_NS ==="
+                oc project "$OC_NS"
+            env:
+              OC_API: $(openshift-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: $(openshift-namespace)
+
+          - task: Bash@3
+            displayName: "Diagnostics: dump Secret + CR state"
+            inputs:
+              targetType: inline
+              script: |
+                # Diagnostics intentionally never fail — they just log
+                # state. set +e so a missing CR or secret prints an
+                # error line but doesn't abort the pipeline.
+                set +e
+
+                # FIRST PASS — ESO-managed Secrets inventory. Lists every
+                # ExternalSecret CR's target Secret name so the rest of
+                # the diagnostic output makes clear which Secrets the
+                # pipeline owns vs which ESO owns. At FCB the ESO-managed
+                # set is (as of 2026-06-09): confluent-license,
+                # cmf-encryption-key, cmf-db-credentials — but this scans
+                # the live cluster rather than hardcoding, so the list
+                # stays accurate as more ExternalSecrets are added.
+                echo "=== ESO-managed Secrets in $OC_NS (do not manually create or finalizer-clear) ==="
+                ESO_LIST=$(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
+                  -o jsonpath='{range .items[*]}{.spec.target.name}{"\t(from ExternalSecret "}{.metadata.name}{", store "}{.spec.secretStoreRef.name}{")\n"}{end}' \
+                  2>/dev/null)
+                if [ -z "$ESO_LIST" ]; then
+                  echo "  (no ExternalSecrets in namespace, or external-secrets CRD missing)"
+                else
+                  echo "$ESO_LIST" | awk -F '\t' 'NF>=2 {printf "  %-40s %s\n", $1, $2}'
+                fi
+                echo ""
+
+                # SECOND PASS: any Secret stuck in Terminating state will
+                # block the next install reconcile with a "no new
+                # finalizers can be added if the object is being deleted"
+                # error from the API server. Surface it at the TOP of
+                # the diagnostic output so it's the first thing seen,
+                # rather than buried 1300+ lines down in a CR condition
+                # message. See runbook/LESSONS_LEARNED.md A13 and
+                # action=clear-stuck-prereq-finalizers for the recovery.
+                echo "=== Pre-flight: Secrets stuck in Terminating? ==="
+                STUCK_SECRETS=$(oc -n "$OC_NS" get secrets \
+                  -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\t"}{.metadata.deletionTimestamp}{"\t"}{.metadata.finalizers}{"\n"}{end}' \
+                  2>/dev/null)
+                if [ -z "$STUCK_SECRETS" ]; then
+                  echo "OK — no Secrets in $OC_NS carry a deletionTimestamp."
+                else
+                  echo "WARNING — the following Secrets are stuck in Terminating:"
+                  printf "%-40s %-25s %s\n" "NAME" "deletionTimestamp" "finalizers"
+                  echo "$STUCK_SECRETS" | awk -F '\t' 'NF>=3 {printf "%-40s %-25s %s\n", $1, $2, $3}'
+                  echo ""
+                  echo "The next install reconcile will fail trying to add new finalizers to these."
+                  echo "Recovery: re-run confluent-platform with action=clear-stuck-prereq-finalizers,"
+                  echo "then action=create-prereqs to re-provision, then action=install-or-update."
+                fi
+                echo ""
+
+                echo "=== Secret: sasl-plain-internal — keys ==="
+                echo "(expected: kafka-server-listener-internal-plain-users.json)"
+                oc -n "$OC_NS" get secret sasl-plain-internal \
+                  -o jsonpath='{.data}' 2>/dev/null \
+                  | python3 -c "import json,sys; d=json.load(sys.stdin); print(sorted(d.keys()))" \
+                  2>&1 || echo "(secret missing or not parseable)"
+
+                echo ""
+                echo "=== Secret: mds-token-keypair — keys ==="
+                echo "(expected: ['mdsPublicKey.pem', 'mdsTokenKeyPair.pem'])"
+                oc -n "$OC_NS" get secret mds-token-keypair \
+                  -o jsonpath='{.data}' 2>/dev/null \
+                  | python3 -c "import json,sys; d=json.load(sys.stdin); print(sorted(d.keys()))" \
+                  2>&1 || echo "(secret missing or not parseable)"
+
+                for cr_kind in connect kafkarestproxy schemaregistry controlcenter; do
+                  cr_name=$cr_kind
+                  [ "$cr_kind" = "kafkarestproxy" ] && cr_name=kafkarest
+                  [ "$cr_kind" = "controlcenter" ] && cr_name=controlcenter
+                  [ "$cr_kind" = "schemaregistry" ] && cr_name=schemaregistry
+
+                  echo ""
+                  echo "=== CR: $cr_kind/$cr_name — spec.authentication ==="
+                  echo "(expected: nested authentication.oauth.{secretRef, configuration})"
+                  oc -n "$OC_NS" get "$cr_kind" "$cr_name" \
+                    -o jsonpath='{.spec.authentication}' 2>/dev/null \
+                    | python3 -m json.tool 2>&1 \
+                    || echo "(CR not found yet — expected on first install)"
+                done
+
+                echo ""
+                echo "=== Recent Warning events (last 30) ==="
+                # The KIND/.involvedObject.name slash syntax above doesn't
+                # actually work — custom-columns can't concatenate two
+                # jsonpath expressions in one column, so the column comes
+                # out as "<none>" for every row and we can't tell which
+                # resource each warning is on. Split into two columns.
+                oc -n "$OC_NS" get events --sort-by=.lastTimestamp \
+                  --field-selector type=Warning \
+                  -o custom-columns=TIME:.lastTimestamp,REASON:.reason,KIND:.involvedObject.kind,NAME:.involvedObject.name,MSG:.message \
+                  2>/dev/null | tail -30 \
+                  || echo "(no Warning events or oc error)"
+
+                echo ""
+                echo "=== CFK CR status conditions ==="
+                for kind in kafka kraftcontroller schemaregistry connect kafkarestproxy controlcenter kafkarestclass; do
+                  echo ""
+                  echo "--- $kind ---"
+                  oc -n "$OC_NS" get "$kind" -o custom-columns=NAME:.metadata.name,READY:.status.replicas.ready,REPLICAS:.status.replicas.total,PHASE:.status.phase,MSG:.status.kafka.state 2>/dev/null \
+                    || echo "(no $kind in namespace)"
+                  oc -n "$OC_NS" get "$kind" -o jsonpath='{range .items[*]}{.metadata.name}{":\n"}{range .status.conditions[*]}  - type={.type} status={.status} reason={.reason} message={.message}{"\n"}{end}{end}' 2>/dev/null
+                done
+
+                echo ""
+                echo "=== Pods (all in namespace) ==="
+                oc -n "$OC_NS" get pods -o wide 2>/dev/null || true
+
+                echo ""
+                echo "=== PVCs ==="
+                oc -n "$OC_NS" get pvc -o wide 2>/dev/null || true
+
+                echo ""
+                echo "=== StatefulSets in namespace ==="
+                oc -n "$OC_NS" get sts -o wide 2>/dev/null || echo "(no StatefulSets)"
+
+                # Dump the FULL StatefulSet yaml — no sed, no head, nothing
+                # trimmed. We need to see the entire manifest CFK is
+                # producing so we can review the vct AND every other
+                # field together (storage class, annotations, owner refs,
+                # spec.template, the whole shape). For kraftcontroller
+                # and controlcenter the sts likely won't exist (rejected
+                # at admission), which the dump will surface explicitly.
+                echo ""
+                echo "=== Full StatefulSet yaml (kafka, kraftcontroller, controlcenter, schemaregistry, connect, kafkarest) ==="
+                for sts in kafka kraftcontroller controlcenter schemaregistry connect kafkarest; do
+                  echo ""
+                  echo "############### sts/$sts ###############"
+                  if oc -n "$OC_NS" get sts "$sts" >/dev/null 2>&1; then
+                    oc -n "$OC_NS" get sts "$sts" -o yaml
+                  else
+                    echo "(sts/$sts not found — likely rejected at admission or not yet created)"
+                  fi
+                done
+
+                # Dump the FULL CR yaml for every CFK component — no sed,
+                # no head, nothing trimmed. The live yaml from the API
+                # server shows what survived admission (compare against
+                # the source files in apps/confluent-platform/dev/ to
+                # spot anything CRD pruning may have dropped).
+                echo ""
+                echo "=== Full CR yaml (kafka, kraftcontroller, controlcenter, schemaregistry, connect, kafkarest, kafkarestclass) ==="
+                for kind_name in \
+                    "kafka kafka" \
+                    "kraftcontroller kraftcontroller" \
+                    "controlcenter controlcenter" \
+                    "schemaregistry schemaregistry" \
+                    "connect connect" \
+                    "kafkarestproxy kafkarest" \
+                    "kafkarestclass default"; do
+                  kind=${kind_name% *}; name=${kind_name#* }
+                  echo ""
+                  echo "############### $kind/$name ###############"
+                  if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+                    oc -n "$OC_NS" get "$kind" "$name" -o yaml
+                  else
+                    echo "($kind/$name not found in namespace)"
+                  fi
+                done
+
+                # Focused conditions table — flattens each CR's
+                # status.conditions into a one-line-per-condition view so
+                # the cluster-ready / resources-ready / statefulset-available
+                # truth is scannable without grepping the full yaml. Same
+                # data as in the full-CR dump above, just easier to read.
+                echo ""
+                echo "=== CR status.conditions (focus: cluster-ready) ==="
+                for kind_name in \
+                    "kraftcontroller kraftcontroller" \
+                    "kafka kafka" \
+                    "schemaregistry schemaregistry" \
+                    "connect connect" \
+                    "kafkarestproxy kafkarest" \
+                    "controlcenter controlcenter"; do
+                  kind=${kind_name% *}; name=${kind_name#* }
+                  echo ""
+                  echo "--- $kind/$name ---"
+                  if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+                    printf "%-12s %-50s %-10s %-25s %s\n" "NAME" "TYPE" "STATUS" "REASON" "MESSAGE"
+                    oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{range .status.conditions[*]}{.type}{"\t"}{.status}{"\t"}{.reason}{"\t"}{.message}{"\n"}{end}' 2>&1 \
+                      | awk -v name="$name" -F '\t' 'NF>=3 {printf "%-12s %-50s %-10s %-25s %s\n", name, $1, $2, $3, $4}' \
+                      || echo "(no conditions array)"
+                  else
+                    echo "($kind/$name not found)"
+                  fi
+                done
+
+                # `oc explain` returns the CRD SCHEMA as the API server
+                # sees it on THIS cluster — independent of any applied
+                # CR. Use it as ground truth for whether a field exists
+                # in the installed CRD (different from our vendored
+                # chart CRDs, which may be at a different patch level).
+                # The user (Rick) explicitly asked for this — it answers
+                # "did the API server prune my field, or did CFK ignore
+                # it after preserving it?" directly, without inference.
+                echo ""
+                echo "=== oc explain — CRD schema as the cluster sees it ==="
+                for query in \
+                    "kraftcontroller" \
+                    "kraftcontroller.spec" \
+                    "kraftcontroller.spec.volumeClaimTemplates" \
+                    "kraftcontroller.spec.storageClass" \
+                    "kraftcontroller.spec.podTemplate" \
+                    "kafka" \
+                    "kafka.spec" \
+                    "kafka.spec.volumeClaimTemplates" \
+                    "kafka.spec.storageClass" \
+                    "controlcenter" \
+                    "controlcenter.spec" \
+                    "controlcenter.spec.volumeClaimTemplates" \
+                    "controlcenter.spec.storageClass"; do
+                  echo ""
+                  echo "############### oc explain $query ###############"
+                  oc explain "$query" 2>&1 || true
+                done
+
+                echo ""
+                echo "=== CFK operator pod logs (last 200 lines, filtered) ==="
+                # The operator runs in its own namespace. Different installs
+                # label the pod differently — search by image name as the
+                # most reliable fingerprint (any container image containing
+                # `confluent-operator`).
+                # Match `confluent-operator` substring anywhere in the image
+                # — FCB retags through Artifactory so the image will be
+                # artifactory.fcbint.net/.../confluent-operator:<tag>, not
+                # confluentinc/confluent-operator. The full-substring match
+                # catches both.
+                OP_LINE=$(oc get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}|{.metadata.name}|{.spec.containers[*].image}{"\n"}{end}' 2>/dev/null \
+                  | grep -E '\|[^|]*confluent-operator' \
+                  | head -1)
+                OPNS=$(echo "$OP_LINE" | cut -d'|' -f1)
+                OPPOD=$(echo "$OP_LINE" | cut -d'|' -f2)
+                if [ -n "$OPNS" ] && [ -n "$OPPOD" ]; then
+                  echo "Operator: $OPNS/$OPPOD"
+                  echo ""
+                  echo "--- Last 200 lines, filtered for our components / errors ---"
+                  oc -n "$OPNS" logs "$OPPOD" --tail=200 2>&1 \
+                    | grep -iE 'error|warn|oauth|interbroker|schemaregistry|kraftcontroller|connect|kafkarest|controlcenter|kafka ' \
+                    | tail -60 \
+                    || echo "(no matching log lines)"
+                else
+                  echo "(could not locate confluent-operator pod — searched by image fingerprint)"
+                  echo "Listing all pods across all namespaces to help locate it:"
+                  oc get pods -A 2>/dev/null | grep -iE 'operator|confluent' | head -20
+                fi
+
+                echo ""
+                echo "=== End of diagnostics ==="
+                # Always succeed.
+                exit 0
+            env:
+              OC_NS: $(openshift-namespace)
