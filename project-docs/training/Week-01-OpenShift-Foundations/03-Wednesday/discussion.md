@@ -100,6 +100,36 @@ spec:                        # desired state of the Service
     protocol: TCP            # TCP | UDP | SCTP (TCP is the default if omitted)
 ```
 
+Visually, the two manifests above wire up like this — the inner box inside the Service is its `port: 80`; the inner box inside each Pod is its `containerPort: 8080`; the arrow labels show the Service's `targetPort: 8080` doing the mapping:
+
+```mermaid
+flowchart LR
+    Caller["Client / Caller<br/>(in-cluster Pod)"]
+
+    subgraph Svc["Service: hello — type: ClusterIP"]
+      SvcPort["port: 80"]
+    end
+
+    subgraph Pod1["Pod hello-1 — label: app=hello"]
+      P1Port["containerPort: 8080"]
+    end
+
+    subgraph Pod2["Pod hello-2 — label: app=hello"]
+      P2Port["containerPort: 8080"]
+    end
+
+    subgraph Pod3["Pod hello-3 — label: app=hello"]
+      P3Port["containerPort: 8080"]
+    end
+
+    Caller -->|"TCP :80"| SvcPort
+    SvcPort -->|"targetPort: 8080"| P1Port
+    SvcPort -->|"targetPort: 8080"| P2Port
+    SvcPort -->|"targetPort: 8080"| P3Port
+```
+
+(One Pod was shown in the YAML to keep the example minimal. In practice you'd run several via a Deployment — all with `app: hello` — and the Service selects them all, just like the three Pods in the diagram.)
+
 **The selector ↔ label link.** The Service's `selector: app: hello` is what wires it to the Pod's `metadata.labels.app: hello`. Change either one and the connection silently breaks: the Service ends up with zero Endpoints (the most common "Service quietly doesn't work" failure mode). The Service's `targetPort: 8080` is the **Pod's containerPort**, not its own port — mismatch them and traffic reaches the Pod on the wrong port.
 
 What the cluster does with this manifest, in order:
