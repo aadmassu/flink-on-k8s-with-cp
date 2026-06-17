@@ -26,6 +26,176 @@ Services and Routes are the two K8s networking objects engineers misuse most oft
 
 - **Kubernetes Ingress (`networking.k8s.io/v1`)** — the cloud-portable version of Route. OpenShift translates Ingress objects into Routes under the hood. You can declare Ingress YAML and OpenShift creates the matching Route automatically (this is what the platform's apps do — `apps/confluent-platform/<env>/ingress/*.yaml` is Ingress YAML, becomes Routes inside the cluster).
 
+## Service Types — Side-by-Side
+
+The bullets above gave you the conceptual difference. Concrete artifacts to anchor the mental model:
+
+### Sample manifests
+
+```yaml
+# ClusterIP — the default. Cluster-internal only.
+# Reachable as: hello.<namespace>.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello
+spec:
+  type: ClusterIP            # default; can be omitted
+  selector:
+    app: hello
+  ports:
+  - port: 80                 # the ClusterIP port
+    targetPort: 8080         # the Pod's containerPort
+---
+# NodePort — opens a fixed port (30000-32767) on EVERY node.
+# Reachable as: <any-node-ip>:30080
+# PROHIBITED in FCB production by admission control.
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: hello
+  ports:
+  - port: 80                 # cluster-internal ClusterIP still exists
+    targetPort: 8080
+    nodePort: 30080          # if omitted, the API server picks one
+---
+# LoadBalancer — provisions an external LB via the cloud provider.
+# Allocates a NodePort under the hood (visible in .spec.ports[].nodePort).
+# Reachable as: <external-lb-ip>:80
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-lb
+spec:
+  type: LoadBalancer
+  selector:
+    app: hello
+  ports:
+  - port: 80
+    targetPort: 8080
+```
+
+### Traffic flow (Mermaid)
+
+**ClusterIP** — in-cluster traffic only. CoreDNS resolves the Service DNS name; kube-proxy installs the iptables DNAT rules on every node so packets to the ClusterIP land on a backing Pod.
+
+```mermaid
+flowchart TD
+    Client["Client Pod (in-cluster)"]
+    CoreDNS["CoreDNS"]
+    Svc[("Service: ClusterIP<br/>10.96.0.42:80")]
+    Pod1["Pod A 10.244.1.5:8080"]
+    Pod2["Pod B 10.244.2.7:8080"]
+    KubeProxy["kube-proxy<br/>(per-node agent)"]
+
+    Client -->|"1) DNS: hello.ns.svc.cluster.local"| CoreDNS
+    CoreDNS -->|"2) returns 10.96.0.42"| Client
+    Client -->|"3) TCP to 10.96.0.42:80"| Svc
+    KubeProxy -.->|"installs iptables DNAT"| Svc
+    Svc --> Pod1
+    Svc --> Pod2
+```
+
+**NodePort** — external client hits any node's IP on the chosen port; kube-proxy's NodePort iptables rule on that node DNATs the packet onto the underlying ClusterIP.
+
+```mermaid
+flowchart TD
+    Ext["External Client"]
+    Node["<any-node-ip>:30080"]
+    Svc[("Service: NodePort<br/>nodePort: 30080<br/>ClusterIP: 10.96.0.42:80")]
+    Pod1["Pod A 10.244.1.5:8080"]
+    Pod2["Pod B 10.244.2.7:8080"]
+    KubeProxy["kube-proxy<br/>(per-node agent)"]
+
+    Ext -->|"TCP to node-ip:30080"| Node
+    KubeProxy -.->|"NodePort rule on every node"| Node
+    Node -->|"DNAT to ClusterIP"| Svc
+    Svc --> Pod1
+    Svc --> Pod2
+```
+
+**LoadBalancer** — adds a cloud-provisioned external LB in front of NodePort. The LB picks a node and forwards to its NodePort; from there it's the NodePort flow.
+
+```mermaid
+flowchart TD
+    Ext["External Client"]
+    LB["Cloud Load Balancer<br/>(external IP)"]
+    Node["<node-ip>:30180"]
+    Svc[("Service: LoadBalancer<br/>nodePort: 30180<br/>ClusterIP: 10.96.0.99:80")]
+    Pod1["Pod A 10.244.1.5:8080"]
+    Pod2["Pod B 10.244.2.7:8080"]
+    KubeProxy["kube-proxy<br/>(per-node agent)"]
+
+    Ext -->|"TCP to LB external IP:80"| LB
+    LB -->|"forwards to a node:30180"| Node
+    KubeProxy -.->|"NodePort rule on every node"| Node
+    Node -->|"DNAT to ClusterIP"| Svc
+    Svc --> Pod1
+    Svc --> Pod2
+```
+
+### CFK mapping — abridged Kafka + KRaftController
+
+The CFK operator translates two domain-specific CRs into the **StatefulSet + Service + ConfigMap + Secret** primitives from this week's lessons. Abridged snippet, with `# generates:` comments showing the K8s objects the operator creates from each CR:
+
+```yaml
+# CFK Kafka CR (abridged)
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: dah-flink-dev
+spec:
+  replicas: 3
+  image:
+    application: confluentinc/cp-server:7.7.0
+  dataVolumeCapacity: 100Gi
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller
+  listeners:
+    internal:
+      authentication: { type: mtls }
+      tls: { enabled: true }
+# CFK generates:
+#   StatefulSet  kafka                              3 broker Pods (kafka-0, kafka-1, kafka-2)
+#   Service      kafka                              headless (ClusterIP: None) — per-Pod DNS
+#   Service      kafka-0-internal, -1-, -2-internal one ClusterIP per broker (stable per-broker addr)
+#   Service      kafka-bootstrap                    ClusterIP fronting the cluster for bootstrap
+#   ConfigMap    kafka                              rendered server.properties
+#   Secret       kafka-*-tls                        broker certs (issued by cert-manager)
+
+---
+# CFK KRaftController CR (abridged)
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: dah-flink-dev
+spec:
+  replicas: 3
+  image:
+    application: confluentinc/cp-server:7.7.0
+  dataVolumeCapacity: 10Gi
+  listeners:
+    controller:
+      authentication: { type: mtls }
+      tls: { enabled: true }
+# CFK generates:
+#   StatefulSet  kraftcontroller                            3 controller Pods (KRaft quorum)
+#   Service      kraftcontroller                            headless — per-Pod DNS for quorum
+#   Service      kraftcontroller-0-internal, -1-, -2-       one ClusterIP per controller
+#   ConfigMap    kraftcontroller                            rendered controller.properties
+#   Secret       kraftcontroller-*-tls                      controller certs
+```
+
+At FCB, every Service the CFK operator generates is **ClusterIP** (headless is a ClusterIP variant with `ClusterIP: None`). Brokers and controllers are never exposed via NodePort or LoadBalancer directly — external client access is layered on top via Route + HAProxy ingress, with TLS edge/reencrypt termination at the router. That's tomorrow's (Thursday) story; today the Service-side is the focus.
+
 ## Diagram Walkthrough (~30 min) — trace one HTTPS request from user's browser to Pod
 
 Walk through the diagram, one arrow at a time:
