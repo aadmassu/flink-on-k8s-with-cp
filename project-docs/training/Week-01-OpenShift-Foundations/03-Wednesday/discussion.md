@@ -78,19 +78,26 @@ spec:
 Now the Service:
 
 ```yaml
-# ClusterIP — the default. Cluster-internal only.
+# ClusterIP — the default Service type. Cluster-internal only.
 # Reachable as: hello.<namespace>.svc.cluster.local
-apiVersion: v1
-kind: Service
-metadata:
-  name: hello
-spec:
-  type: ClusterIP            # default; can be omitted
-  selector:
+apiVersion: v1               # core K8s API group/version (Service is a core object)
+kind: Service                # the object kind we're declaring
+metadata:                    # object-level metadata (name, namespace, labels, annotations)
+  name: hello                # Service name; also the DNS prefix → hello.<namespace>.svc.cluster.local
+spec:                        # desired state of the Service
+  type: ClusterIP            # Service type. Possible values:
+                             #   ClusterIP    — default; cluster-internal virtual IP only
+                             #   NodePort     — also opens a static port (30000-32767) on every node
+                             #   LoadBalancer — also asks the cloud for an external LB (uses NodePort underneath)
+                             #   ExternalName — CNAME alias to an external DNS name (no proxying)
+                             # Headless variant: keep type: ClusterIP and set clusterIP: None
+                             # (returns per-Pod DNS records instead of a single virtual IP — used by StatefulSets)
+  selector:                  # label query — picks which Pods back this Service
     app: hello               # <-- MATCHES the Pod's metadata.labels.app
-  ports:
-  - port: 80                 # the ClusterIP port
-    targetPort: 8080         # <-- MATCHES the Pod's containerPort
+  ports:                     # list of ports this Service exposes
+  - port: 80                 # the port clients connect to on the Service's ClusterIP
+    targetPort: 8080         # <-- MATCHES the Pod's containerPort (where traffic actually lands)
+    protocol: TCP            # TCP | UDP | SCTP (TCP is the default if omitted)
 ```
 
 **The selector ↔ label link.** The Service's `selector: app: hello` is what wires it to the Pod's `metadata.labels.app: hello`. Change either one and the connection silently breaks: the Service ends up with zero Endpoints (the most common "Service quietly doesn't work" failure mode). The Service's `targetPort: 8080` is the **Pod's containerPort**, not its own port — mismatch them and traffic reaches the Pod on the wrong port.
