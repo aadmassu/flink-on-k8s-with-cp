@@ -150,6 +150,37 @@ stages:
                   | python3 -c "import json,sys; d=json.load(sys.stdin); print(sorted(d.keys()))" \
                   2>&1 || echo "(secret missing or not parseable)"
 
+                # Operator vs init-container minor must match (LESSONS_LEARNED
+                # D1). When they drift, the init container's config-rendering
+                # logic gets out of sync with what the operator validates,
+                # producing "ApplyFailed" with no further detail in the CR
+                # status. Surface both versions at the top, side by side.
+                echo ""
+                echo "=== Operator version vs init container versions in CR specs ==="
+                OP_VERSION=$(oc -n "$OC_NS" get kraftcontroller kraftcontroller \
+                  -o jsonpath='{.status.operatorVersion}' 2>/dev/null)
+                if [ -z "$OP_VERSION" ]; then
+                  OP_VERSION=$(oc -n "$OC_NS" get kafka kafka \
+                    -o jsonpath='{.status.operatorVersion}' 2>/dev/null)
+                fi
+                echo "  Operator (from CR .status.operatorVersion):  ${OP_VERSION:-<not reported>}"
+                echo "  (chart 0.1351.x = CFK 3.1.x; 0.1514.x = CFK 3.2.x)"
+                echo ""
+                echo "  Per-CR init container images (must match operator minor):"
+                for kind_name in \
+                    "kafka kafka" \
+                    "kraftcontroller kraftcontroller" \
+                    "schemaregistry schemaregistry" \
+                    "connect connect" \
+                    "kafkarestproxy kafkarest" \
+                    "controlcenter controlcenter"; do
+                  kind=${kind_name% *}; name=${kind_name#* }
+                  if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+                    IMG=$(oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{.spec.image.init}' 2>/dev/null)
+                    printf "    %-25s init = %s\n" "$kind/$name" "${IMG:-<unset>}"
+                  fi
+                done
+
                 # Comprehensive present/missing matrix for every Secret the
                 # install expects. Split into three groups:
                 #   prereq    — created by `create-prereqs` action (or ESO)
