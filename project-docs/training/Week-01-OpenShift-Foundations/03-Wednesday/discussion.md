@@ -56,6 +56,27 @@ A Service is a K8s object that gives a group of Pods (selected by label) a stabl
 
 ### Sample manifest
 
+First, the Pod the Service will route to. In production you'd run several of these via a Deployment or StatefulSet — a bare Pod is shown here just to make the label → selector mapping unambiguous:
+
+```yaml
+# A Pod with label app=hello. The Service below (and the NodePort and
+# LoadBalancer Services in Parts 3 and 4) all select THIS Pod.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-1
+  labels:
+    app: hello                       # <-- Services match on this label
+spec:
+  containers:
+  - name: hello
+    image: nginx:1.27
+    ports:
+    - containerPort: 8080            # <-- Services' targetPort points here
+```
+
+Now the Service:
+
 ```yaml
 # ClusterIP — the default. Cluster-internal only.
 # Reachable as: hello.<namespace>.svc.cluster.local
@@ -66,11 +87,13 @@ metadata:
 spec:
   type: ClusterIP            # default; can be omitted
   selector:
-    app: hello               # ANY Pod with label app=hello is a backend
+    app: hello               # <-- MATCHES the Pod's metadata.labels.app
   ports:
   - port: 80                 # the ClusterIP port
-    targetPort: 8080         # the Pod's containerPort
+    targetPort: 8080         # <-- MATCHES the Pod's containerPort
 ```
+
+**The selector ↔ label link.** The Service's `selector: app: hello` is what wires it to the Pod's `metadata.labels.app: hello`. Change either one and the connection silently breaks: the Service ends up with zero Endpoints (the most common "Service quietly doesn't work" failure mode). The Service's `targetPort: 8080` is the **Pod's containerPort**, not its own port — mismatch them and traffic reaches the Pod on the wrong port.
 
 What the cluster does with this manifest, in order:
 
@@ -148,11 +171,11 @@ metadata:
 spec:
   type: NodePort
   selector:
-    app: hello
+    app: hello                # <-- same label as the Pod in Part 2; same backend
   ports:
   - port: 80
-    targetPort: 8080
-    nodePort: 30080          # if omitted, K8s assigns one from 30000-32767
+    targetPort: 8080          # <-- same containerPort as the Pod in Part 2
+    nodePort: 30080           # if omitted, K8s assigns one from 30000-32767
 ```
 
 ### Diagram — NodePort
@@ -199,10 +222,10 @@ metadata:
 spec:
   type: LoadBalancer
   selector:
-    app: hello
+    app: hello                # <-- same label as the Pod in Part 2; same backend
   ports:
   - port: 80
-    targetPort: 8080
+    targetPort: 8080          # <-- same containerPort as the Pod in Part 2
 # K8s ALSO allocates a nodePort under the hood — visible in `.spec.ports[0].nodePort`.
 ```
 
