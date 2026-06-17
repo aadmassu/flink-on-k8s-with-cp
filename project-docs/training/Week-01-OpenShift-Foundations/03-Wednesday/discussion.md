@@ -9,9 +9,9 @@
 
 ## Why this matters
 
-Almost every Kafka, Connect, Schema Registry, and Flink connectivity issue you'll hit at FCB ultimately becomes a networking-layer troubleshooting exercise. Today is the foundation — by the end of it you should be able to look at a failing producer/consumer and predict which layer is at fault before opening a single log file.
+Almost every Kafka, Connect, Schema Registry, and Flink connectivity issue you'll hit in production ultimately becomes a networking-layer troubleshooting exercise. Today is the foundation — by the end of it you should be able to look at a failing producer/consumer and predict which layer is at fault before opening a single log file.
 
-The discussion below builds from the smallest networking primitive (a Pod's IP) up to the full FCB-production path (browser → HAProxy ingress router → Route → Service → EndpointSlice → Pod). Each new part adds **one** capability the previous part couldn't provide. Resist the temptation to skip ahead.
+The discussion below builds from the smallest networking primitive (a Pod's IP) up to the full production path (browser → HAProxy ingress router → Route → Service → EndpointSlice → Pod). Each new part adds **one** capability the previous part couldn't provide. Resist the temptation to skip ahead.
 
 ---
 
@@ -173,7 +173,7 @@ flowchart TD
     Svc --> Pod2
 ```
 
-### Why FCB production blocks NodePort
+### Why production blocks NodePort
 
 Every node ends up listening on a high port that isn't governed by Routes, HAProxy TLS, hostname-based admission, or the firewall rules guarding the Route layer. Production admission control (Gatekeeper / OPA) rejects `type: NodePort` for that reason. NodePort survives in lab clusters precisely because they don't enforce that constraint.
 
@@ -226,13 +226,13 @@ flowchart TD
     Svc --> Pod2
 ```
 
-### What happens on-prem at FCB
+### What happens on-prem (no cloud LB controller)
 
-FCB OpenShift is on-prem. There is no cloud LB controller to satisfy the request — so `kubectl get svc hello-lb` shows `EXTERNAL-IP: <pending>` forever. The underlying NodePort is still allocated, but no external LB exists. On cloud OpenShift (ROSA, ARO) the same Service would resolve to a provisioned LB IP within ~60 seconds.
+On an on-prem OpenShift cluster there is no cloud LB controller to satisfy the request — so `kubectl get svc hello-lb` shows `EXTERNAL-IP: <pending>` forever. The underlying NodePort is still allocated, but no external LB exists. On cloud OpenShift (ROSA, ARO) the same Service would resolve to a provisioned LB IP within ~60 seconds.
 
 ### The key insight
 
-`LoadBalancer = NodePort + external LB`. Same admission concern as NodePort applies — FCB doesn't use LoadBalancer in production either. So how do we expose Kafka, REST Proxy, or anything else externally on FCB? That's the next two layers.
+`LoadBalancer = NodePort + external LB`. Same admission concern as NodePort applies — on-prem production clusters don't use LoadBalancer either. So how do we expose Kafka, REST Proxy, or anything else externally on an on-prem cluster? That's the next two layers.
 
 ---
 
@@ -307,7 +307,7 @@ kind: Route
 metadata:
   name: hello
 spec:
-  host: hello.apps.dv-p.ocp.example.com
+  host: hello.apps.dev.ocp.example.com
   to:
     kind: Service
     name: hello                        # which ClusterIP Service to expose
@@ -320,7 +320,7 @@ spec:
 
 ### Routes live on HAProxy ingress routers
 
-The OpenShift "ingress router" is a small set of HAProxy Pods running on dedicated router nodes (at FCB these are in the Core Zone / Secure Zone). When you create a Route, the OpenShift Ingress Operator picks it up and pushes the hostname into HAProxy's config. HAProxy reloads with the new mapping.
+The OpenShift "ingress router" is a small set of HAProxy Pods running on dedicated router nodes (in regulated customer environments these typically sit on a DMZ or secure-zone network). When you create a Route, the OpenShift Ingress Operator picks it up and pushes the hostname into HAProxy's config. HAProxy reloads with the new mapping.
 
 So at the bottom layer, a Route is just: "this hostname goes to that ClusterIP Service, via HAProxy."
 
@@ -330,11 +330,11 @@ So at the bottom layer, a Route is just: "this hostname goes to that ClusterIP S
 |---|---|---|---|
 | `edge` | Yes | plain HTTP | Backend Pod has no cert; cluster-internal trust is fine |
 | `passthrough` | No (passes bytes through) | TLS | Backend MUST own its own cert; HAProxy only sees SNI |
-| `reencrypt` | Yes (then re-encrypts) | TLS | Both hops want TLS but with different certs (FCB's default) |
+| `reencrypt` | Yes (then re-encrypts) | TLS | Both hops want TLS but with different certs (common in regulated environments) |
 
-**FCB's preferred mode is `reencrypt`.** Why:
+**A common preferred mode in regulated environments is `reencrypt`.** Why:
 
-- Pod-side TLS is issued per-Service by cert-manager + KeyFactor (narrow trust).
+- Pod-side TLS is issued per-Service by cert-manager + the customer's PKI (narrow trust).
 - HAProxy-side TLS uses the wildcard Ingress Certificate (`*.apps.<env>.ocp.example.com`).
 - HAProxy decrypts → re-encrypts, so the wire is encrypted end-to-end, but with the right cert at each hop.
 
@@ -345,26 +345,26 @@ OpenShift translates Ingress objects into Routes under the hood. You can declare
 - **Write Route directly** — full access to OpenShift-specific TLS modes (especially `reencrypt`), tighter integration.
 - **Write Ingress (translates to Route)** — portable across vanilla K8s and OpenShift; some advanced TLS settings can't be expressed.
 
-At FCB, the GitOps repo uses **Ingress YAML** (cloud-portable) and lets OpenShift translate to Routes — see `apps/confluent-platform/<env>/ingress/*.yaml`.
+In practice, customer GitOps repos often use **Ingress YAML** (cloud-portable) and let OpenShift translate to Routes — files like `<gitops-root>/confluent-platform/<env>/ingress/*.yaml` become Routes inside the cluster.
 
 ---
 
-## Part 7 — Putting It All Together: The FCB Production Path (~15 min)
+## Part 7 — Putting It All Together: The Full Production Path (~15 min)
 
-The full path a real user HTTPS request takes to reach a Pod at FCB:
+The full path a real user HTTPS request takes to reach a Pod on a production OpenShift cluster:
 
 ```
 User browser
-  │ HTTPS GET https://my-app.apps.dv-p.ocp.example.com/
+  │ HTTPS GET https://my-app.apps.dev.ocp.example.com/
   │
   ▼
 enterprise perimeter firewall (TCP/443 allow → OCP cluster LB IP)
   │
   ▼
-OCP cluster Load Balancer IP (10.7.72.209 for DEV)
+OCP cluster Load Balancer IP
   │
   ▼
-HAProxy Ingress router pod (on a router node — Core Zone or Secure Zone)
+HAProxy Ingress router pod (on a dedicated router node)
   │  matches the Route by Host: header
   │  decrypts TLS with the Ingress Certificate
   │  re-encrypts with the backend cert (reencrypt mode)
@@ -381,7 +381,7 @@ Six hops, six layers, six things that can break. Walk through it one arrow at a 
 
 | Symptom | Likely cause | Where to check |
 |---|---|---|
-| `connection refused` from the user's browser | Firewall not allowing 443 to the LB IP | Security team / tracker 2.10 firewall |
+| `connection refused` from the user's browser | Firewall not allowing 443 to the LB IP | Network / firewall team |
 | `404 not found` from HAProxy | Route doesn't match the Host: header | `oc get routes` — check `.spec.host` |
 | `503 Service Unavailable` | Route exists but Service has no Ready endpoints | `oc get endpoints <svc-name>` — empty? |
 | `connection refused` from inside the cluster (Pod → Service) | Service `selector` doesn't match Pod labels | `oc get pod -l <selector>` returns empty |
@@ -401,7 +401,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
 metadata:
   name: kafka
-  namespace: dah-flink-dev
+  namespace: kafka-dev
 spec:
   replicas: 3
   image:
@@ -429,7 +429,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: KRaftController
 metadata:
   name: kraftcontroller
-  namespace: dah-flink-dev
+  namespace: kafka-dev
 spec:
   replicas: 3
   image:
@@ -447,7 +447,7 @@ spec:
 #   Secret       kraftcontroller-*-tls                      controller certs
 ```
 
-At FCB, **every Service the CFK operator generates is ClusterIP** (or headless — a ClusterIP variant with `ClusterIP: None`). Brokers and controllers are never exposed via NodePort or LoadBalancer directly. External client access is layered on top via Route + HAProxy ingress with reencrypt TLS termination. That's tomorrow's (Thursday) story; today's job was getting the Service side covered.
+In practice, **every Service the CFK operator generates is ClusterIP** (or headless — a ClusterIP variant with `ClusterIP: None`). Brokers and controllers are never exposed via NodePort or LoadBalancer directly. External client access is layered on top via Route + HAProxy ingress with reencrypt TLS termination. That's tomorrow's (Thursday) story; today's job was getting the Service side covered.
 
 ---
 
@@ -460,7 +460,7 @@ At FCB, **every Service the CFK operator generates is ClusterIP** (or headless �
 5. In production, why is `NodePort` not an option for exposing CFK components externally?
 6. CoreDNS returns an IP for your Service, but `curl` to that IP hangs. What three things would you check first?
 7. What happens if a Pod's `readinessProbe` starts failing mid-request to the Service?
-8. Why does `LoadBalancer` show `EXTERNAL-IP: <pending>` on FCB OCP but resolve quickly on ROSA?
+8. Why does `LoadBalancer` show `EXTERNAL-IP: <pending>` on an on-prem OpenShift cluster but resolve quickly on ROSA?
 9. What's the difference between a headless Service (`ClusterIP: None`) and a regular ClusterIP, and why does CFK generate one for the Kafka StatefulSet?
 
 ---
