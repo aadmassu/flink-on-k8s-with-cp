@@ -134,10 +134,17 @@ podSecurity:
 persistence:
   create: false
 
+# CMF is a Spring Boot app that caches Flink environments / catalogs and
+# proxies SQL/REST to the workload pods. Bumped from 100m/512Mi req,
+# 500m/1Gi lim to give steady-state headroom for the dev cluster's
+# two Flink jobs + the OAuth refresh path against Okta when auth is
+# enabled. Heap auto-sized from request → ~1 GiB; non-heap room up to
+# the 2 GiB limit covers the FCB trust-bundle JKS, JDBC driver pool
+# to the external SQL Server, and Spring's reflection / proxy caches.
 resources:
   requests:
-    cpu: 100m
-    memory: 512Mi
-  limits:
-    cpu: 500m
+    cpu: 200m
     memory: 1Gi
+  limits:
+    cpu: "1"
+    memory: 2Gi

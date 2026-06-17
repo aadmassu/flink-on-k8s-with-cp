@@ -27,11 +27,13 @@ metadata:
     fcbint.net/app-id: "11547"
 spec:
   # 3-controller KRaft quorum — HA-safe (tolerates one controller loss).
-  # Storage is the tight resource, not CPU: 3 controllers × 1 Gi vct each
-  # = 3 Gi of the 100 GiB namespace storage cap, comfortably within budget.
-  # CPU + memory pressure is now the main constraint shaped by 2.5; if it
-  # surfaces, drop back to replicas: 1 temporarily — single-controller is
-  # NOT HA-safe but works for dev smoke testing.
+  # Storage is the tightest knob — 3 controllers × 1 Gi vct = 3 Gi of
+  # the 100 GiB namespace storage cap, comfortably within budget.
+  # After the post-tracker-2.5 quota raise (11/22 CPU req/lim,
+  # 42/84 GiB mem req/lim), CPU and memory have ample headroom too;
+  # 3 replicas is the steady-state target. Don't drop to replicas: 1
+  # casually — single-controller is NOT HA-safe even for dev (loses
+  # quorum on first restart).
   replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3

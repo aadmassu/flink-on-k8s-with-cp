@@ -215,13 +215,21 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
+    # Dev-appropriate sizing — see LESSONS_LEARNED F2. The original
+    # 12 CPU / 16 GiB block was UAT-shaped and didn't fit a dev
+    # ResourceQuota (it doesn't fit the *current* dev quota either).
+    # 2 CPU / 4 GiB is the documented dev-smoke target; C3's embedded
+    # streams app + RocksDB state needs the heap headroom but not the
+    # retention or fanout that drives uat/prd sizing. Stays at
+    # replicas: 0 until the team explicitly re-enables — these numbers
+    # are what gets applied the moment it does.
     resources:
       requests:
-        cpu: "12"
-        memory: 16Gi
+        cpu: "1"
+        memory: 2Gi
       limits:
-        cpu: "12"
-        memory: 16Gi
+        cpu: "2"
+        memory: 4Gi
     # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
     # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
     # admission. See kafka.yaml for the full rationale.

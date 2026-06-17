@@ -273,17 +273,22 @@ spec:
     # + system 2 = 10 vCPU and ~16 GiB, leaving room on the worker for CMF
     # and other workloads. If broker traffic grows, raise the limits first
     # (heap auto-tunes to ~75% of memory limit).
-    # TEMP sizing — see top-of-file comment. Real dev sizing was
-    # 2/4 req, 4/8 limit. JVM heap at 1.5 Gi limit gets ~1.1 Gi which
-    # is enough to start a single broker for smoke tests, not enough
-    # for any sustained traffic.
+    # Raised from prior TEMP (200m/768Mi req, 400m/1.5Gi lim) to give
+    # the broker JVM real heap room. CFK 3.1.x derives -Xmx from
+    # memory.request, so heap lands at ~2 GiB with non-heap headroom
+    # to the 4 GiB limit (TLS buffers, page cache, network DirectByteBuffer).
+    # Does not fully restore the documented 2/4 req, 4/8 lim "real dev"
+    # target — that pushes the 3-broker CPU-request subtotal past the
+    # namespace ResourceQuota's requests.cpu = 11 once 3 controllers
+    # + SR + KRest + CMF + 2 Flink jobs are accounted for. This tier
+    # is the highest that still leaves room for everyone.
     resources:
       requests:
-        cpu: "200m"
-        memory: 768Mi
+        cpu: "1"
+        memory: 2Gi
       limits:
-        cpu: "400m"
-        memory: 1.5Gi
+        cpu: "2"
+        memory: 4Gi
     # CFK probe overrides (operator-flavored — only liveness + readiness
     # exposed by the CRD; startupProbe is not in the schema, so the
     # Gatekeeper `[startup]` warning persists at WARN level until CFK

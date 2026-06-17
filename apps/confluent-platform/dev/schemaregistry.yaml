@@ -165,14 +165,20 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # TEMP sizing — see top-of-file comment. Real dev was 4/4 req+limit.
+    # Raised from prior TEMP (75m/256Mi req, 150m/512Mi lim). The CFK
+    # init-container floor (~500m CPU / ~1 GiB mem) already dominates
+    # pod-level quota accounting, so the main-container bump is "free"
+    # against ResourceQuota and just gives SR a heap that won't OOM
+    # under any real subject load. Heap lands at ~512 MiB (sized from
+    # memory.request); non-heap headroom up to the 1 GiB main-container
+    # limit covers TLS buffers + the Avro schema cache.
     resources:
       requests:
-        cpu: "75m"
-        memory: 256Mi
-      limits:
-        cpu: "150m"
+        cpu: "200m"
         memory: 512Mi
+      limits:
+        cpu: "500m"
+        memory: 1Gi
     probe:
       liveness:
         initialDelaySeconds: 60

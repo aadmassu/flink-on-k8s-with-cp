@@ -231,14 +231,22 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # TEMP sizing — see top-of-file comment.
+    # Sizing right-sized for when replicas comes off 0. Connect
+    # workers ship producer/consumer interceptors + the SecretRegistry
+    # config provider plus the connector JARs themselves; the prior
+    # TEMP (75m/384Mi req, 150m/768Mi lim) was the floor that fit when
+    # the dev quota was 2 CPU / 8 GiB (see LESSONS_LEARNED F1). With
+    # the raised quota, this tier gives Connect's KafkaStreams/REST
+    # listener actual heap room. Pod budget when re-enabled:
+    # 2 replicas × this sizing fits inside the leftover quota with
+    # margin (see PR notes table).
     resources:
       requests:
-        cpu: "75m"
-        memory: 384Mi
-      limits:
-        cpu: "150m"
+        cpu: "250m"
         memory: 768Mi
+      limits:
+        cpu: "500m"
+        memory: 1.5Gi
     probe:
       liveness:
         initialDelaySeconds: 90
