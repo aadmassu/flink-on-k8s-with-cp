@@ -150,6 +150,60 @@ stages:
                   | python3 -c "import json,sys; d=json.load(sys.stdin); print(sorted(d.keys()))" \
                   2>&1 || echo "(secret missing or not parseable)"
 
+                # Comprehensive present/missing matrix for every Secret the
+                # install expects. Split into three groups:
+                #   prereq    — created by `create-prereqs` action (or ESO)
+                #   tls       — cert-manager Certificates write these
+                #   oauth     — env-specific OAuth client credentials
+                # Missing prereq or TLS Secret is the most common cause of a
+                # CFK pod that schedules but can't pass init.
+                echo ""
+                echo "=== Expected CFK Secrets — present/missing matrix ==="
+                print_secret_status() {
+                  local group=$1; shift
+                  echo ""
+                  echo "  [$group]"
+                  for s in "$@"; do
+                    if oc -n "$OC_NS" get secret "$s" >/dev/null 2>&1; then
+                      AGE=$(oc -n "$OC_NS" get secret "$s" -o jsonpath='{.metadata.creationTimestamp}')
+                      printf "    %-42s PRESENT (created %s)\n" "$s" "$AGE"
+                    else
+                      printf "    %-42s MISSING\n" "$s"
+                    fi
+                  done
+                }
+                print_secret_status "Prereq Secrets (manual / ESO)" \
+                  confluent-license sasl-plain-internal mds-token-keypair \
+                  cmf-encryption-key cmf-db-credentials \
+                  c3-prometheus-basic-auth c3-alertmanager-basic-auth
+                print_secret_status "TLS Secrets (cert-manager Certificate-issued)" \
+                  kafka-tls kraftcontroller-tls schemaregistry-tls \
+                  connect-tls kafkarest-tls controlcenter-tls \
+                  kafka-mds-ingress-tls schemaregistry-ingress-tls \
+                  connect-ingress-tls kafkarest-ingress-tls \
+                  controlcenter-ingress-tls
+                print_secret_status "OAuth Secrets (Okta client credentials)" \
+                  oauth-broker oauth-schemaregistry oauth-connect \
+                  oauth-kafkarest oauth-controlcenter oauth-mds-rest
+
+                # cert-manager Certificate objects — Ready condition tells us
+                # whether Keyfactor has issued the cert. A Secret that is
+                # MISSING in the matrix above is almost always paired with a
+                # Certificate that's `Ready=False` here (issuance pending,
+                # CSR rejected, ClusterIssuer broken, etc.).
+                echo ""
+                echo "=== cert-manager Certificates (Ready condition + age) ==="
+                if oc -n "$OC_NS" get certificates.cert-manager.io >/dev/null 2>&1; then
+                  printf "  %-50s %-8s %-30s %s\n" "NAME" "READY" "REASON" "SECRET"
+                  oc -n "$OC_NS" get certificates.cert-manager.io \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .status.conditions[?(@.type=="Ready")]}{.status}{"\t"}{.reason}{"\t"}{end}{.spec.secretName}{"\n"}{end}' \
+                    2>/dev/null \
+                    | awk -F '\t' 'NF>=4 {printf "  %-50s %-8s %-30s %s\n", $1, $2, $3, $4}' \
+                    || echo "  (failed to render — try `oc get certificates -o wide` manually)"
+                else
+                  echo "  (cert-manager CRD not found in cluster)"
+                fi
+
                 for cr_kind in connect kafkarestproxy schemaregistry controlcenter; do
                   cr_name=$cr_kind
                   [ "$cr_kind" = "kafkarestproxy" ] && cr_name=kafkarest
@@ -192,13 +246,110 @@ stages:
                 echo "=== Pods (all in namespace) ==="
                 oc -n "$OC_NS" get pods -o wide 2>/dev/null || true
 
+                # For every container in every pod, show how it last died if
+                # it ever did. Surfaces OOMKilled (exit 137), Error (exit 1
+                # from configure script), Completed (graceful exit), and the
+                # exit-code-to-restart-count ratio — instant signal vs the
+                # full pod yaml dump below.
+                echo ""
+                echo "=== Container restart history (lastState.terminated for every pod) ==="
+                oc -n "$OC_NS" get pods -o json 2>/dev/null \
+                  | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+rows = []
+for p in data.get("items", []):
+    pn = p["metadata"]["name"]
+    for cs in (p.get("status", {}).get("containerStatuses") or []) + (p.get("status", {}).get("initContainerStatuses") or []):
+        last = (cs.get("lastState") or {}).get("terminated") or {}
+        if last:
+            rows.append((pn, cs["name"], cs.get("restartCount", 0), last.get("exitCode"), last.get("reason"), last.get("startedAt", "")[:19], last.get("finishedAt", "")[:19]))
+if not rows:
+    print("  (no pods have a prior terminated state — nothing has died and restarted yet)")
+else:
+    print("  {:42s} {:25s} {:>9s} {:>6s} {:18s} {:21s} {:21s}".format("POD", "CONTAINER", "RESTARTS", "EXIT", "REASON", "STARTED", "FINISHED"))
+    for r in rows:
+        print("  {:42s} {:25s} {:>9s} {:>6s} {:18s} {:21s} {:21s}".format(*[str(x) if x is not None else "" for x in r]))
+' 2>&1 || echo "  (failed to render — operator pod or python3 unavailable)"
+
+                # `describe pod` events for any pod NOT in Ready state.
+                # Bounded by the not-Ready filter so it doesn't dump 30+
+                # pod events when the cluster is healthy. ImagePullBackOff,
+                # FailedScheduling, FailedMount, OOMKilled, container
+                # admission denials — all surface here cleanly.
+                echo ""
+                echo "=== Describe events for non-Ready pods (admission / scheduling / image / probe failures) ==="
+                NON_READY=$(oc -n "$OC_NS" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' 2>/dev/null \
+                  | awk -F '\t' '$2 != "True" {print $1}')
+                if [ -z "$NON_READY" ]; then
+                  echo "  (every pod has Ready=True — no events to dump)"
+                else
+                  for pod in $NON_READY; do
+                    echo ""
+                    echo "############### $pod ###############"
+                    oc -n "$OC_NS" describe pod "$pod" 2>/dev/null | sed -n '/^Events:/,/^$/p' \
+                      | head -40
+                  done
+                fi
+
                 echo ""
                 echo "=== PVCs ==="
                 oc -n "$OC_NS" get pvc -o wide 2>/dev/null || true
 
+                # PVCs stuck in Pending = StatefulSet pod stuck on volume
+                # attach. Surface the events on each Pending PVC so the
+                # storage class / provisioner reason is visible.
+                PENDING_PVCS=$(oc -n "$OC_NS" get pvc -o jsonpath='{range .items[?(@.status.phase!="Bound")]}{.metadata.name}{"\n"}{end}' 2>/dev/null)
+                if [ -n "$PENDING_PVCS" ]; then
+                  echo ""
+                  echo "=== Events on PVCs not in Bound state ==="
+                  for pvc in $PENDING_PVCS; do
+                    echo ""
+                    echo "############### pvc/$pvc ###############"
+                    oc -n "$OC_NS" describe pvc "$pvc" 2>/dev/null | sed -n '/^Events:/,/^$/p'
+                  done
+                fi
+
                 echo ""
                 echo "=== StatefulSets in namespace ==="
                 oc -n "$OC_NS" get sts -o wide 2>/dev/null || echo "(no StatefulSets)"
+
+                # Namespace-level resource accounting — admission rejects
+                # ("exceeded quota: compute-resources") and per-pod limit
+                # squeezes (LimitRange's per-container max) cause the
+                # mysterious "kraftcontroller pod availability never
+                # satisfied" CFK condition message just as often as any
+                # actual CFK fault. Surface both here so the data is
+                # adjacent to the pod/STS state.
+                echo ""
+                echo "=== ResourceQuota usage (hard vs used) ==="
+                oc -n "$OC_NS" describe resourcequota 2>&1 \
+                  || echo "  (no ResourceQuota in namespace)"
+
+                echo ""
+                echo "=== LimitRange (per-pod / per-container admission constraints) ==="
+                if oc -n "$OC_NS" get limitrange >/dev/null 2>&1; then
+                  oc -n "$OC_NS" describe limitrange 2>&1
+                else
+                  echo "  (no LimitRange in namespace — pods admitted on the per-CR resource block alone)"
+                fi
+
+                # Service / Endpoints — quick scan for a Service with zero
+                # Endpoints (selector mismatch, no pods Ready, port name
+                # mismatch). The Kafka CR's "waiting for controller pod
+                # availability" message often resolves down to "the
+                # kraftcontroller Service has no Endpoints yet" when the
+                # CR-level cluster-ready condition is True but the operator
+                # is still waiting on the headless Service.
+                echo ""
+                echo "=== Services + Endpoints (catch zero-Endpoint Services) ==="
+                oc -n "$OC_NS" get svc 2>/dev/null
+                echo ""
+                oc -n "$OC_NS" get endpoints 2>/dev/null \
+                  | awk 'NR==1 || $2=="<none>" || NR<999' \
+                  | head -30
+                echo ""
+                echo "(Look for any service with ENDPOINTS=<none>; that's the broken edge.)"
 
                 # Dump the FULL StatefulSet yaml — no sed, no head, nothing
                 # trimmed. We need to see the entire manifest CFK is
