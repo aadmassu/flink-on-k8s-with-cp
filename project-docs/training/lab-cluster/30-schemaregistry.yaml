@@ -1,0 +1,29 @@
+# SchemaRegistry — Confluent operator CRD.
+# The operator turns this single CR into:
+#   - Deployment  schemaregistry                  (2 replicas)
+#   - Service     schemaregistry                  (ClusterIP, fronts both replicas)
+#   - ConfigMap   schemaregistry                  (rendered schema-registry.properties)
+#
+# dependencies.kafka.bootstrapEndpoint points SR at the broker bootstrap Service
+# the Kafka CR's operator created in 20-kafka.yaml.
+apiVersion: platform.confluent.io/v1beta1
+kind: SchemaRegistry
+metadata:
+  name: schemaregistry
+  namespace: kafka-dev
+spec:
+  replicas: 2
+  image:
+    application: confluentinc/cp-schema-registry:7.8.0
+    init: confluentinc/confluent-init-container:2.11.0
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.kafka-dev.svc.cluster.local:9071
+  podTemplate:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        cpu: 200m
+        memory: 512Mi

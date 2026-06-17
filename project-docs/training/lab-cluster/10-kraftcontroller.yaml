@@ -1,0 +1,39 @@
+# KRaftController — Confluent operator CRD.
+# The operator turns this single CR into:
+#   - StatefulSet  kraftcontroller         (3 pods, one per node thanks to anti-affinity)
+#   - Service      kraftcontroller         (headless, per-pod DNS for the quorum)
+#   - ConfigMap    kraftcontroller         (rendered controller.properties)
+#   - Secret       kraftcontroller-tls etc (only if TLS is enabled — not in this lab)
+#
+# Run `kubectl -n kafka-dev get sts,svc,cm` after applying to see them appear.
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: kafka-dev
+spec:
+  replicas: 3
+  image:
+    application: confluentinc/cp-server:7.8.0
+    init: confluentinc/confluent-init-container:2.11.0
+  dataVolumeCapacity: 1Gi
+  storageClass:
+    name: ssd
+  podTemplate:
+    # Required anti-affinity: no two KRaft controllers on the same node.
+    # With 3 worker nodes and 3 replicas, one per node — losing a node
+    # never drops the quorum below 2/3.
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app: kraftcontroller
+          topologyKey: kubernetes.io/hostname
+    resources:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+      limits:
+        cpu: 500m
+        memory: 640Mi

@@ -1,25 +1,25 @@
-# Lab Cluster — Minimal Kafka on kind
+# Lab Cluster — Minimal CFK-managed Kafka on kind
 
-A bare-minimum Kafka cluster used to demonstrate Service concepts during training. Will be extended with features (TLS, auth, Connect, etc.) as the weeks progress — keep this folder evolving.
+A bare-minimum Kafka cluster running on kind, managed by **Confluent for Kubernetes (CFK)**. Used to demonstrate Service concepts during training; extended with features (TLS, auth, Connect, etc.) as the weeks progress.
 
 ## Composition
 
-- **3 KRaft controllers** (StatefulSet)
-- **3 brokers** (StatefulSet)
-- **2 Schema Registry instances** (Deployment)
-- **Anti-affinity** ensures controllers spread across the 3 kind worker nodes; same for brokers
-- **Storage class `ssd`** — symbolic on kind (mapped to local-path on the host); on a real cluster this would be a CSI-backed SSD class
+- **3 KRaft controllers** — declared as a `KRaftController` CR; CFK creates the StatefulSet, headless Service, ConfigMap
+- **3 brokers** — declared as a `Kafka` CR; CFK creates the StatefulSet, per-broker Services, bootstrap Service, ConfigMap
+- **2 Schema Registry instances** — declared as a `SchemaRegistry` CR; CFK creates the Deployment and ClusterIP Service
+- **Anti-affinity** in `podTemplate` keeps controllers and brokers spread one-per-node across the 3 kind worker nodes
+- **Storage class `ssd`** — symbolic on kind (mapped to local-path); on a real cluster this would be a CSI-backed SSD class
 - **Namespace**: `kafka-dev`
-- **No TLS, no SASL, no external listeners** — keep it minimal; features added per training week
+- **No TLS, no SASL, no external listeners** — added per week as the training builds up
 
 ## Prerequisites
 
-- A kind cluster with 1 control-plane + 3 worker nodes (see `00-kind-cluster-config.yaml`).
-- `kubectl` configured to that cluster: `kubectl config use-context kind-training`.
-- Docker (kind needs it).
-- ~3 GB free RAM for the cluster pods.
+1. A kind cluster with 1 control-plane + 3 worker nodes (see [`00-kind-cluster-config.yaml`](00-kind-cluster-config.yaml))
+2. The Confluent operator installed cluster-wide — see [`03-operator-install.md`](03-operator-install.md)
+3. `kubectl` configured to the kind cluster: `kubectl config use-context kind-training`
+4. ~4 GB free RAM for the cluster pods (operator + broker images are heavier than the OSS equivalents)
 
-If the kind cluster doesn't exist or has the wrong shape, create it:
+If the kind cluster doesn't exist:
 
 ```bash
 kind create cluster --name training --config 00-kind-cluster-config.yaml
@@ -27,61 +27,70 @@ kind create cluster --name training --config 00-kind-cluster-config.yaml
 
 ## Apply
 
-The numeric prefixes apply in order. The simplest path:
-
-```bash
-kubectl apply -f .
-```
-
-Or step by step (better for the first run so you can see each piece settle):
+Numeric prefixes apply in order. Simplest path after the operator is up:
 
 ```bash
 kubectl apply -f 01-namespace.yaml
 kubectl apply -f 02-storageclass-ssd.yaml
-kubectl apply -f 10-controller-service.yaml
-kubectl apply -f 11-controller-statefulset.yaml
-kubectl -n kafka-dev wait --for=condition=Ready pod -l app.kubernetes.io/component=controller --timeout=180s
+kubectl apply -f 10-kraftcontroller.yaml
+kubectl -n kafka-dev wait --for=condition=Ready pod -l app=kraftcontroller --timeout=300s
 
-kubectl apply -f 20-broker-service.yaml
-kubectl apply -f 21-broker-statefulset.yaml
-kubectl -n kafka-dev wait --for=condition=Ready pod -l app.kubernetes.io/component=broker --timeout=180s
+kubectl apply -f 20-kafka.yaml
+kubectl -n kafka-dev wait --for=condition=Ready pod -l app=kafka --timeout=300s
 
-kubectl apply -f 30-schema-registry-service.yaml
-kubectl apply -f 31-schema-registry-deployment.yaml
-kubectl -n kafka-dev wait --for=condition=Available deployment/schema-registry --timeout=180s
+kubectl apply -f 30-schemaregistry.yaml
+kubectl -n kafka-dev wait --for=condition=Ready pod -l app=schemaregistry --timeout=300s
 ```
+
+Apply order matters: the broker references the controller via `dependencies.kRaftController.clusterRef`, and Schema Registry references the broker via `dependencies.kafka.bootstrapEndpoint`. The operator will pause reconciliation until each dependency is Ready.
 
 ## Verify
 
 ```bash
-kubectl -n kafka-dev get pods -o wide          # 3 controllers + 3 brokers + 2 SR, spread across nodes
-kubectl -n kafka-dev get svc                   # headless + ClusterIP services
-kubectl -n kafka-dev get pvc                   # 6 PVCs (3 controller, 3 broker) on the ssd StorageClass
-kubectl -n kafka-dev get endpointslice          # which pods each Service is routing to
+# Confluent CRs and their status:
+kubectl -n kafka-dev get kraftcontroller,kafka,schemaregistry
+
+# What the operator generated from each CR:
+kubectl -n kafka-dev get sts,deploy,svc,cm,pvc
+
+# Pod layout (anti-affinity should spread brokers and controllers across worker nodes):
+kubectl -n kafka-dev get pods -o wide
+
+# EndpointSlices — which pods each Service routes to:
+kubectl -n kafka-dev get endpointslice
 ```
 
-A quick functional check — list internal Kafka metadata topics from inside a broker:
+Functional check — list internal topics from inside a broker:
 
 ```bash
-kubectl -n kafka-dev exec broker-0 -- \
-  kafka-topics --bootstrap-server localhost:9092 --list
+kubectl -n kafka-dev exec kafka-0 -- \
+  kafka-topics --bootstrap-server kafka.kafka-dev.svc.cluster.local:9071 --list
 ```
 
-A quick check on Schema Registry:
+Functional check — register and read back a schema via Schema Registry:
 
 ```bash
-kubectl -n kafka-dev exec deploy/schema-registry -- \
-  curl -s http://localhost:8081/subjects
+# Register
+kubectl -n kafka-dev exec deploy/schemaregistry -- \
+  curl -s -X POST -H 'Content-Type: application/vnd.schemaregistry.v1+json' \
+  --data '{"schema":"{\"type\":\"string\"}"}' \
+  http://schemaregistry.kafka-dev.svc.cluster.local:8081/subjects/test-value/versions
+
+# List
+kubectl -n kafka-dev exec deploy/schemaregistry -- \
+  curl -s http://schemaregistry.kafka-dev.svc.cluster.local:8081/subjects
 ```
 
 ## Tear down
 
 ```bash
+kubectl delete -f 30-schemaregistry.yaml
+kubectl delete -f 20-kafka.yaml
+kubectl delete -f 10-kraftcontroller.yaml
 kubectl delete namespace kafka-dev
 kubectl delete storageclass ssd
+# Keep the operator if you'll iterate; otherwise see 03-operator-install.md for full uninstall.
 ```
-
-PVCs go with the namespace; the underlying local-path data on the host nodes is cleaned by the local-path provisioner.
 
 ## What's intentionally NOT here yet
 
@@ -90,7 +99,19 @@ PVCs go with the namespace; the underlying local-path data on the host nodes is 
 - No external listeners (no NodePort, no Ingress, no Route)
 - No authorization (no ACLs)
 - No monitoring / metrics stack
-- No Connect, ksqlDB, or REST Proxy
-- No CFK or Strimzi operator — raw StatefulSets / Deployments so learners can see the K8s primitives directly
+- No Connect, ksqlDB, REST Proxy, or Control Center
+- No RBAC for Confluent
 
-Each week of training introduces one or more of these as additive overlays.
+Each week of training adds one or more of these as an additive overlay (or a tweak to the existing CRs — CFK keeps all of it in-place via the CR `spec`).
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `00-kind-cluster-config.yaml` | kind cluster shape (1 control-plane + 3 workers) — used by `kind create cluster --config` |
+| `01-namespace.yaml` | `kafka-dev` namespace |
+| `02-storageclass-ssd.yaml` | Symbolic `ssd` StorageClass over local-path |
+| `03-operator-install.md` | Helm commands to install the Confluent operator |
+| `10-kraftcontroller.yaml` | `KRaftController` CR — 3 controllers, anti-affinity, 1 Gi PVCs |
+| `20-kafka.yaml` | `Kafka` CR — 3 brokers, anti-affinity, 1 Gi PVCs, depends on the controller above |
+| `30-schemaregistry.yaml` | `SchemaRegistry` CR — 2 replicas, depends on the broker above |

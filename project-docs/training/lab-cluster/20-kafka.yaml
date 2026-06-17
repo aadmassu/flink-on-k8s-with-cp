@@ -1,0 +1,45 @@
+# Kafka — Confluent operator CRD.
+# The operator turns this single CR into:
+#   - StatefulSet  kafka                          (3 broker pods, one per node)
+#   - Service      kafka                          (headless, per-broker DNS)
+#   - Service      kafka-0-internal, -1-, -2-     (one ClusterIP per broker — stable per-broker address)
+#   - Service      kafka-bootstrap                (ClusterIP fronting the cluster for client bootstrap)
+#   - ConfigMap    kafka                          (rendered server.properties)
+#
+# dependencies.kRaftController.clusterRef tells the broker how to find the
+# KRaft quorum — the operator wires up controller.quorum.voters automatically.
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: kafka-dev
+spec:
+  replicas: 3
+  image:
+    application: confluentinc/cp-server:7.8.0
+    init: confluentinc/confluent-init-container:2.11.0
+  dataVolumeCapacity: 1Gi
+  storageClass:
+    name: ssd
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller        # matches metadata.name of the KRaftController CR
+  podTemplate:
+    # Required anti-affinity: no two brokers on the same node.
+    # With 3 worker nodes and 3 replicas, one per node — losing a node still
+    # leaves 2/3 brokers serving traffic.
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app: kafka
+          topologyKey: kubernetes.io/hostname
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 768Mi
