@@ -1,36 +1,60 @@
-# Wednesday — Services + Routes (Traffic Flow)
+# Wednesday — K8s Networking from the Ground Up → OpenShift Services + Routes
 
-**Time**: ~90 min
+**Time**: ~90 min discussion + ~30 min lab tie-in
 **Diagram**: [`10-services-routes-traffic-flow.drawio`](10-services-routes-traffic-flow.drawio) — client → HAProxy ingress → Route → Service → Endpoint → Pod
 
 ## Learning objective
 
-> **Trace a single HTTP request from an external user's browser to the Pod that answers it.** Name every K8s object the packet passes through, and what happens at each.
+> **Trace a single HTTP request from an external user's browser to the Pod that answers it.** Name every K8s object the packet passes through, why each one exists, and what happens at each.
 
-## Architecture Discussion (~40 min)
+## Why this matters
 
-Services and Routes are the two K8s networking objects engineers misuse most often. Cover, in order:
+Almost every Kafka, Connect, Schema Registry, and Flink connectivity issue you'll hit at FCB ultimately becomes a networking-layer troubleshooting exercise. Today is the foundation — by the end of it you should be able to look at a failing producer/consumer and predict which layer is at fault before opening a single log file.
 
-- **Pod IP** — every Pod gets one, from the CNI overlay. **Useless to clients**: ephemeral, changes on every restart, not externally reachable.
+The discussion below builds from the smallest networking primitive (a Pod's IP) up to the full FCB-production path (browser → HAProxy ingress router → Route → Service → EndpointSlice → Pod). Each new part adds **one** capability the previous part couldn't provide. Resist the temptation to skip ahead.
 
-- **Service (ClusterIP)** — a stable virtual IP + DNS name (`my-svc.namespace.svc.cluster.local`) that load-balances to all Pods matching its `selector`. The matching happens via an **EndpointSlice** object that the EndpointSlice controller keeps in sync with the Pods. `kube-proxy` watches EndpointSlices and writes iptables rules so traffic to the ClusterIP gets DNAT'd to a backing Pod IP.
+---
 
-- **Service (NodePort / LoadBalancer)** — same backing model as ClusterIP, just adds external exposure:
-  - NodePort opens a port on every node — **PROHIBITED in production by admission control**
-  - LoadBalancer asks the cloud provider for an external LB — not whin production uses for OpenShift apps
+## Part 1 — The Problem: Why Services Exist (~10 min)
 
-- **OpenShift Route** — the standard OpenShift way to expose a Service externally. Routes carry a hostname (`my-app.apps.dv-p.ocp.example.com`) and live on HAProxy ingress routers. Three TLS modes:
-  - `edge` — HAProxy terminates TLS; backend is plain HTTP (Service must be ClusterIP, port matches a HTTP backend)
-  - `passthrough` — HAProxy doesn't terminate; backend must speak TLS itself; SNI-based routing
-  - `reencrypt` — HAProxy terminates TLS, then re-encrypts to the backend with a different cert. **This is whin production uses for everything** (Pod-side TLS via cert-manager + Keyfactor; HAProxy-side TLS via the Ingress Certificate).
+### Every Pod gets an IP — for free
 
-- **Kubernetes Ingress (`networking.k8s.io/v1`)** — the cloud-portable version of Route. OpenShift translates Ingress objects into Routes under the hood. You can declare Ingress YAML and OpenShift creates the matching Route automatically (this is what the platform's apps do — `apps/confluent-platform/<env>/ingress/*.yaml` is Ingress YAML, becomes Routes inside the cluster).
+When K8s schedules a Pod, the CNI (Container Network Interface — the cluster's overlay-network plugin) assigns it an IP. You can see it:
 
-## Service Types — Side-by-Side
+```bash
+kubectl get pods -o wide
+```
 
-The bullets above gave you the conceptual difference. Concrete artifacts to anchor the mental model:
+The `IP` column is the Pod's address inside the cluster.
 
-### Sample manifests
+### But Pod IPs are useless to clients
+
+Three reasons:
+
+1. **Ephemeral.** Restart the Pod (crash, redeploy, eviction) and it comes back with a different IP. A client that hard-coded the old IP now talks to nothing.
+2. **Internal.** Pod IPs live on the cluster's overlay network. Your laptop, the perimeter firewall, and most external clients can't route to them.
+3. **No load balancing.** Scale a Deployment from 1 to 5 Pods and you now have 5 IPs. A naive client can't pick one, retry the others, or rebalance.
+
+### What we actually need
+
+A networking layer that gives clients:
+
+- A **stable address** that doesn't change when Pods restart.
+- A **single entry point** that load-balances across all healthy Pods.
+- A **name** to reach it (so config doesn't hard-code IPs).
+- Automatic membership: as Pods come and go, the address keeps working.
+
+That layer is the **Service**.
+
+---
+
+## Part 2 — Service (ClusterIP): The K8s Answer (~15 min)
+
+### What a Service is
+
+A Service is a K8s object that gives a group of Pods (selected by label) a stable virtual IP and a stable DNS name. Think of it as a phonebook entry that always points to whichever Pods currently match the description — no matter how often the Pods underneath change.
+
+### Sample manifest
 
 ```yaml
 # ClusterIP — the default. Cluster-internal only.
@@ -42,46 +66,34 @@ metadata:
 spec:
   type: ClusterIP            # default; can be omitted
   selector:
-    app: hello
+    app: hello               # ANY Pod with label app=hello is a backend
   ports:
   - port: 80                 # the ClusterIP port
     targetPort: 8080         # the Pod's containerPort
----
-# NodePort — opens a fixed port (30000-32767) on EVERY node.
-# Reachable as: <any-node-ip>:30080
-# PROHIBITED in FCB production by admission control.
-apiVersion: v1
-kind: Service
-metadata:
-  name: hello-nodeport
-spec:
-  type: NodePort
-  selector:
-    app: hello
-  ports:
-  - port: 80                 # cluster-internal ClusterIP still exists
-    targetPort: 8080
-    nodePort: 30080          # if omitted, the API server picks one
----
-# LoadBalancer — provisions an external LB via the cloud provider.
-# Allocates a NodePort under the hood (visible in .spec.ports[].nodePort).
-# Reachable as: <external-lb-ip>:80
-apiVersion: v1
-kind: Service
-metadata:
-  name: hello-lb
-spec:
-  type: LoadBalancer
-  selector:
-    app: hello
-  ports:
-  - port: 80
-    targetPort: 8080
 ```
 
-### Traffic flow (Mermaid)
+What the cluster does with this manifest, in order:
 
-**ClusterIP** — in-cluster traffic only. CoreDNS resolves the Service DNS name; kube-proxy installs the iptables DNAT rules on every node so packets to the ClusterIP land on a backing Pod.
+1. Allocates a `ClusterIP` from the Service network (e.g., `10.96.0.42`).
+2. Creates an **EndpointSlice** object listing every Pod IP+port whose labels match `app=hello`.
+3. **CoreDNS** publishes the record: `hello.<namespace>.svc.cluster.local → 10.96.0.42`.
+4. **kube-proxy** (running on every node) installs iptables (or IPVS) rules that DNAT traffic from `10.96.0.42:80` to one of the backing Pod IPs.
+
+### Three supporting objects you must know
+
+**EndpointSlice** — the glue between Service and Pods. The EndpointSlice controller updates it whenever a Pod is added, removed, or fails its readinessProbe. Inspect it:
+
+```bash
+kubectl get endpointslice -l kubernetes.io/service-name=hello
+```
+
+This is the **actual source of truth** for "which Pods is this Service routing to right now." When troubleshooting "the Service isn't working," check the EndpointSlice first.
+
+**CoreDNS** — the cluster DNS resolver, deployed as Pods (usually in `kube-system`). Any Pod doing `nslookup hello.ns.svc.cluster.local` is asking CoreDNS. CoreDNS reads K8s API objects (Services, EndpointSlices) and answers with the right IP. If a Service has no Endpoints, the DNS lookup may still resolve to the ClusterIP — but the actual traffic will fail at the Service layer.
+
+**kube-proxy** — runs on every node as a DaemonSet. Despite the name, **it does not proxy traffic itself**. It watches the API server for Service and EndpointSlice changes and writes iptables (or IPVS) rules so the kernel routes ClusterIP packets directly to a backing Pod. Once kube-proxy has installed the rules, there is no userspace proxy in the data path.
+
+### Diagram — ClusterIP traffic flow
 
 ```mermaid
 flowchart TD
@@ -100,7 +112,50 @@ flowchart TD
     Svc --> Pod2
 ```
 
-**NodePort** — external client hits any node's IP on the chosen port; kube-proxy's NodePort iptables rule on that node DNATs the packet onto the underlying ClusterIP.
+### Mental model
+
+A ClusterIP Service is **three coordinated objects pretending to be one**: the Service (the abstraction), the EndpointSlice (the live membership), and the iptables rules (the actual data path). When a Service "isn't working," the question is always: which of those three is out of sync?
+
+### Mini-exercise — name resolution before data path
+
+```bash
+oc exec <pod> -- nslookup kubernetes.default.svc
+oc exec <pod> -- nslookup <service-name>
+oc exec <pod> -- getent hosts <service-name>
+```
+
+Most Kafka / Connect / Schema Registry / Flink connectivity problems are ultimately a CoreDNS resolution failure. **Always test name resolution before debugging the data path.**
+
+---
+
+## Part 3 — External Access, Take 1: NodePort (~5 min)
+
+### The gap ClusterIP doesn't close
+
+ClusterIP is cluster-internal only. An external client (your laptop, an upstream system, a monitoring scrape) can't route to `10.96.0.42`.
+
+### The NodePort answer
+
+`type: NodePort` says: "in addition to the ClusterIP, open a high port (range `30000-32767`) on every node, and DNAT it back to the same ClusterIP." External clients reach the Service by hitting **any** node's IP on that port.
+
+```yaml
+# NodePort — opens a fixed port on EVERY node.
+# Reachable as: <any-node-ip>:30080
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: hello
+  ports:
+  - port: 80
+    targetPort: 8080
+    nodePort: 30080          # if omitted, K8s assigns one from 30000-32767
+```
+
+### Diagram — NodePort
 
 ```mermaid
 flowchart TD
@@ -118,7 +173,40 @@ flowchart TD
     Svc --> Pod2
 ```
 
-**LoadBalancer** — adds a cloud-provisioned external LB in front of NodePort. The LB picks a node and forwards to its NodePort; from there it's the NodePort flow.
+### Why FCB production blocks NodePort
+
+Every node ends up listening on a high port that isn't governed by Routes, HAProxy TLS, hostname-based admission, or the firewall rules guarding the Route layer. Production admission control (Gatekeeper / OPA) rejects `type: NodePort` for that reason. NodePort survives in lab clusters precisely because they don't enforce that constraint.
+
+---
+
+## Part 4 — External Access, Take 2: LoadBalancer (~5 min)
+
+### The gap NodePort doesn't close
+
+NodePort exposes a port on every node, but which node's IP do external clients use? Hardcoding one is fragile (that node could go down). Round-robin DNS helps but doesn't handle node failures cleanly. We want a single external IP, served by a Load Balancer outside the cluster, that picks a healthy node automatically.
+
+### The LoadBalancer answer
+
+`type: LoadBalancer` is **NodePort + a cloud-provisioned external LB in front**. K8s asks the cloud provider's API: "give me an external LB IP, point it at port `30xxx` on every node." The LB does the health-checking and node-selection.
+
+```yaml
+# LoadBalancer — cloud-provisioned external LB.
+# Reachable as: <external-lb-ip>:80
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-lb
+spec:
+  type: LoadBalancer
+  selector:
+    app: hello
+  ports:
+  - port: 80
+    targetPort: 8080
+# K8s ALSO allocates a nodePort under the hood — visible in `.spec.ports[0].nodePort`.
+```
+
+### Diagram — LoadBalancer
 
 ```mermaid
 flowchart TD
@@ -138,9 +226,174 @@ flowchart TD
     Svc --> Pod2
 ```
 
-### CFK mapping — abridged Kafka + KRaftController
+### What happens on-prem at FCB
 
-The CFK operator translates two domain-specific CRs into the **StatefulSet + Service + ConfigMap + Secret** primitives from this week's lessons. Abridged snippet, with `# generates:` comments showing the K8s objects the operator creates from each CR:
+FCB OpenShift is on-prem. There is no cloud LB controller to satisfy the request — so `kubectl get svc hello-lb` shows `EXTERNAL-IP: <pending>` forever. The underlying NodePort is still allocated, but no external LB exists. On cloud OpenShift (ROSA, ARO) the same Service would resolve to a provisioned LB IP within ~60 seconds.
+
+### The key insight
+
+`LoadBalancer = NodePort + external LB`. Same admission concern as NodePort applies — FCB doesn't use LoadBalancer in production either. So how do we expose Kafka, REST Proxy, or anything else externally on FCB? That's the next two layers.
+
+---
+
+## Part 5 — Vanilla K8s External Access: Ingress (~10 min)
+
+### Why we need yet another layer
+
+NodePort and LoadBalancer consume resources **per Service** — a NodePort per Service, a cloud LB per Service. That doesn't scale. A cluster with 50 web apps doesn't want 50 LB IPs.
+
+What we actually want is **one** external entry point that routes by **hostname** (or **path**) to many backend Services. That's Ingress.
+
+### The Ingress object
+
+```yaml
+# Ingress — hostname-based routing to a Service.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello
+spec:
+  rules:
+  - host: hello.example.com           # incoming Host: header
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hello                # which Service to route to
+            port:
+              number: 80
+  tls:
+  - hosts: [hello.example.com]
+    secretName: hello-tls              # cert/key for the listener
+```
+
+### An Ingress object needs an Ingress Controller
+
+The Ingress object is a **declarative description** of what should happen. Something actually has to listen on `:80/:443`, terminate TLS, read the `Host:` header, and route to the backend Service. That something is the **Ingress Controller** — a Pod (or several) running a reverse proxy. Common implementations:
+
+- `ingress-nginx` — NGINX-based, very common on vanilla K8s and kind.
+- `haproxy-ingress` — what OpenShift uses (covered in Part 6).
+- Traefik, Contour, AWS ALB Controller, etc.
+
+Without a controller, an Ingress object is inert. With a controller, the controller watches the API for Ingress objects and reconfigures its proxy on every change.
+
+### Ingress vs LoadBalancer — when to use which
+
+| Need | Use |
+|---|---|
+| Expose a non-HTTP TCP/UDP Service externally | LoadBalancer (or NodePort on lab) |
+| Expose many HTTP Services through one hostname tier | Ingress |
+| One external IP per app | LoadBalancer (where cluster supports it) |
+| Hostname-based routing, TLS termination, path rules | Ingress |
+
+For HTTP traffic on a real cluster, Ingress is almost always the right answer.
+
+---
+
+## Part 6 — OpenShift's Addition: Route (~10 min)
+
+### What OpenShift adds
+
+OpenShift's Route object predates K8s Ingress (Routes appeared in OpenShift v3, Ingress in K8s v1.1). Routes solve the same problem Ingress does, but with extra TLS modes and tight integration with OpenShift's HAProxy-based ingress router.
+
+### The Route object
+
+```yaml
+# Route — OpenShift's external-access object.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hello
+spec:
+  host: hello.apps.dv-p.ocp.example.com
+  to:
+    kind: Service
+    name: hello                        # which ClusterIP Service to expose
+  port:
+    targetPort: 80
+  tls:
+    termination: reencrypt             # see TLS modes below
+    insecureEdgeTerminationPolicy: Redirect
+```
+
+### Routes live on HAProxy ingress routers
+
+The OpenShift "ingress router" is a small set of HAProxy Pods running on dedicated router nodes (at FCB these are in the Core Zone / Secure Zone). When you create a Route, the OpenShift Ingress Operator picks it up and pushes the hostname into HAProxy's config. HAProxy reloads with the new mapping.
+
+So at the bottom layer, a Route is just: "this hostname goes to that ClusterIP Service, via HAProxy."
+
+### Three TLS modes — pick the one that matches the trust model
+
+| Mode | HAProxy terminates TLS? | Backend speaks | When to use |
+|---|---|---|---|
+| `edge` | Yes | plain HTTP | Backend Pod has no cert; cluster-internal trust is fine |
+| `passthrough` | No (passes bytes through) | TLS | Backend MUST own its own cert; HAProxy only sees SNI |
+| `reencrypt` | Yes (then re-encrypts) | TLS | Both hops want TLS but with different certs (FCB's default) |
+
+**FCB's preferred mode is `reencrypt`.** Why:
+
+- Pod-side TLS is issued per-Service by cert-manager + KeyFactor (narrow trust).
+- HAProxy-side TLS uses the wildcard Ingress Certificate (`*.apps.<env>.ocp.example.com`).
+- HAProxy decrypts → re-encrypts, so the wire is encrypted end-to-end, but with the right cert at each hop.
+
+### Route vs Ingress — OpenShift's POV
+
+OpenShift translates Ingress objects into Routes under the hood. You can declare K8s-standard Ingress YAML and OpenShift will create a matching Route automatically. Tradeoffs:
+
+- **Write Route directly** — full access to OpenShift-specific TLS modes (especially `reencrypt`), tighter integration.
+- **Write Ingress (translates to Route)** — portable across vanilla K8s and OpenShift; some advanced TLS settings can't be expressed.
+
+At FCB, the GitOps repo uses **Ingress YAML** (cloud-portable) and lets OpenShift translate to Routes — see `apps/confluent-platform/<env>/ingress/*.yaml`.
+
+---
+
+## Part 7 — Putting It All Together: The FCB Production Path (~15 min)
+
+The full path a real user HTTPS request takes to reach a Pod at FCB:
+
+```
+User browser
+  │ HTTPS GET https://my-app.apps.dv-p.ocp.example.com/
+  │
+  ▼
+enterprise perimeter firewall (TCP/443 allow → OCP cluster LB IP)
+  │
+  ▼
+OCP cluster Load Balancer IP (10.7.72.209 for DEV)
+  │
+  ▼
+HAProxy Ingress router pod (on a router node — Core Zone or Secure Zone)
+  │  matches the Route by Host: header
+  │  decrypts TLS with the Ingress Certificate
+  │  re-encrypts with the backend cert (reencrypt mode)
+  ▼
+Service ClusterIP (10.x.x.x)
+  │  kube-proxy iptables rule: DNAT ClusterIP:443 → one of the Pod IPs:8080
+  ▼
+Pod IP (10.y.y.y) — the actual Pod that answers
+```
+
+Six hops, six layers, six things that can break. Walk through it one arrow at a time and ask: *"if THIS layer broke, what would the user see?"*
+
+### Failure scenarios — predicting symptoms by layer
+
+| Symptom | Likely cause | Where to check |
+|---|---|---|
+| `connection refused` from the user's browser | Firewall not allowing 443 to the LB IP | Security team / tracker 2.10 firewall |
+| `404 not found` from HAProxy | Route doesn't match the Host: header | `oc get routes` — check `.spec.host` |
+| `503 Service Unavailable` | Route exists but Service has no Ready endpoints | `oc get endpoints <svc-name>` — empty? |
+| `connection refused` from inside the cluster (Pod → Service) | Service `selector` doesn't match Pod labels | `oc get pod -l <selector>` returns empty |
+| TLS handshake failure | Cert mismatch between HAProxy and the backend | Compare cert in HAProxy edge with backend Service's TLS Secret |
+
+Spend the rest of this section running through the [`10-services-routes-traffic-flow.drawio`](10-services-routes-traffic-flow.drawio) diagram, stopping at each hop. If a diagram is the wrong abstraction for someone in the room, walk the table column-by-column instead.
+
+---
+
+## Part 8 — CFK Mapping: How All This Comes Together for Kafka (~10 min)
+
+The CFK (Confluent for Kubernetes) operator translates two Kafka-specific CRs into the K8s primitives we just covered — Services, EndpointSlices, the lot — plus StatefulSets, ConfigMaps, and Secrets from this week's earlier lessons. You'll see these next week in Week 04:
 
 ```yaml
 # CFK Kafka CR (abridged)
@@ -194,45 +447,9 @@ spec:
 #   Secret       kraftcontroller-*-tls                      controller certs
 ```
 
-At FCB, every Service the CFK operator generates is **ClusterIP** (headless is a ClusterIP variant with `ClusterIP: None`). Brokers and controllers are never exposed via NodePort or LoadBalancer directly — external client access is layered on top via Route + HAProxy ingress, with TLS edge/reencrypt termination at the router. That's tomorrow's (Thursday) story; today the Service-side is the focus.
+At FCB, **every Service the CFK operator generates is ClusterIP** (or headless — a ClusterIP variant with `ClusterIP: None`). Brokers and controllers are never exposed via NodePort or LoadBalancer directly. External client access is layered on top via Route + HAProxy ingress with reencrypt TLS termination. That's tomorrow's (Thursday) story; today's job was getting the Service side covered.
 
-## Diagram Walkthrough (~30 min) — trace one HTTPS request from user's browser to Pod
-
-Walk through the diagram, one arrow at a time:
-
-```
-User browser
-  │ HTTPS GET https://my-app.apps.dv-p.ocp.example.com/
-  │
-  ▼
-enterprise perimeter firewall (TCP/443 allow → OCP cluster LB IP)
-  │
-  ▼
-OCP cluster Load Balancer IP (10.7.72.209 for DEV)
-  │
-  ▼
-HAProxy Ingress router pod (on a router node — Core Zone or Secure Zone)
-  │  matches the Route by Host: header
-  │  decrypts TLS with the Ingress Certificate
-  │  re-encrypts with the backend-cert (reencrypt mode)
-  ▼
-Service ClusterIP (10.x.x.x)
-  │  kube-proxy iptables rule: DNAT ClusterIP:443 → one of the Pod IPs:8080
-  ▼
-Pod IP (10.y.y.y) — the actual Pod that answers
-```
-
-Stop at each layer and ask: *"if THIS layer broke, what would the user see?"*
-
-## Failure Scenarios — preview troubleshooting
-
-| Symptom | Likely cause | Where to check |
-|---|---|---|
-| `connection refused` from the user's browser | Firewall not allowing 443 to the LB IP | Security team / tracker 2.10 firewall |
-| `404 not found` from HAProxy | Route doesn't match the Host: header | `oc get routes` — check `.spec.host` |
-| `503 Service Unavailable` | Route exists but Service has no Ready endpoints | `oc get endpoints <svc-name>` — empty? |
-| `connection refused` from inside the cluster (Pod → Service) | Service `selector` doesn't match Pod labels | `oc get pod -l <selector>` returns empty |
-| TLS handshake failure | Cert mismatch between HAProxy and the backend | Compare cert in HAProxy edge with backend Service's TLS Secret |
+---
 
 ## Q&A
 
@@ -241,23 +458,17 @@ Stop at each layer and ask: *"if THIS layer broke, what would the user see?"*
 3. Can a Service have no Pods backing it? What's that state called?
 4. When you delete a Pod, why does the Service automatically stop routing to it?
 5. In production, why is `NodePort` not an option for exposing CFK components externally?
+6. CoreDNS returns an IP for your Service, but `curl` to that IP hangs. What three things would you check first?
+7. What happens if a Pod's `readinessProbe` starts failing mid-request to the Service?
+8. Why does `LoadBalancer` show `EXTERNAL-IP: <pending>` on FCB OCP but resolve quickly on ROSA?
+9. What's the difference between a headless Service (`ClusterIP: None`) and a regular ClusterIP, and why does CFK generate one for the Kafka StatefulSet?
+
+---
 
 ## Common misconceptions
 
-- **"Services proxy traffic"** — kube-proxy writes iptables rules; the kernel routes traffic. There is no userspace proxy in the data path.
-- **"Route IS Ingress"** — Route is the OpenShift-native object; Ingress is the K8s-standard. OpenShift maps Ingress → Route.
-- **"ClusterIP Services are reachable from outside the cluster"** — no, ClusterIP is cluster-internal only. External reach needs a Route or Ingress.
-
-
-## Added Enhancement — DNS & Name Resolution (CFK Readiness)
-
-Why this matters:
-- Most Kafka, Connect, Schema Registry, and Flink connectivity issues ultimately become DNS troubleshooting exercises.
-- Engineers should understand Route -> DNS -> Service -> Pod resolution.
-
-Mini Lab:
-```bash
-oc exec <pod> -- nslookup kubernetes.default.svc
-oc exec <pod> -- nslookup <service-name>
-oc exec <pod> -- getent hosts <service-name>
-```
+- **"Services proxy traffic."** kube-proxy installs iptables (or IPVS) rules; the kernel routes the traffic. There is no userspace proxy in the data path.
+- **"Route IS Ingress."** Route is the OpenShift-native object; Ingress is the K8s standard. OpenShift maps Ingress → Route, but they aren't the same K8s kind.
+- **"ClusterIP Services are reachable from outside the cluster."** No — ClusterIP is cluster-internal only. External reach needs a Route, an Ingress, or one of the external Service types.
+- **"NodePort and LoadBalancer use a different data plane from ClusterIP."** No — they're built on top of ClusterIP. Same kube-proxy, same iptables rules, same EndpointSlice. They just add external exposure.
+- **"DNS for Services is automatic, so I never have to think about it."** When CoreDNS breaks, every Service breaks. Always test name resolution (`nslookup`) before debugging the data path.
