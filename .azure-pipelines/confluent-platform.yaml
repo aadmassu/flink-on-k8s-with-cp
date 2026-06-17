@@ -65,13 +65,14 @@ parameters:
     # below to scope which components get re-applied; "All" (default)
     # applies the whole stack.
     #
-    # Read-only diagnostics moved out of this pipeline into its own —
-    # see .azure-pipelines/diagnostics.yaml. Run that pipeline (same
-    # `environment` parameter) when you want the Secret + CR +
-    # StatefulSet + operator-log dump, either before kicking off an
-    # install-or-update or while triaging a stuck reconcile. It no
-    # longer runs as the first step of install-or-update.
-    values: [create-prereqs, install-or-update, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers]
+    # Read-only diagnostics live in .azure-pipelines/diagnostics.yaml as
+    # the canonical standalone pipeline. The `diagnostics` choice below is
+    # a TEMPORARY workaround until that file is registered as its own
+    # Azure DevOps pipeline (pending Tushar's pipelines-library access
+    # approval). When chosen, this pipeline runs the same step body via
+    # the shared templates/diagnostics-step.yaml template and exits.
+    # REMOVE this `diagnostics` value once diagnostics.yaml is registered.
+    values: [create-prereqs, install-or-update, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers, diagnostics]
   - name: forceFinalizerRemoval
     displayName: "Uninstall: force-clear finalizers on timeout"
     type: boolean
@@ -559,11 +560,16 @@ stages:
                 C3_ALERT_USER: $(${{ parameters.environment }}-c3-alertmanager-username)
                 C3_ALERT_PWD: $(${{ parameters.environment }}-c3-alertmanager-password)
 
-          # Diagnostic dump was previously here as the first step of
-          # action=install-or-update (and as the body of action=diagnostics).
-          # Moved to .azure-pipelines/diagnostics.yaml so it can be invoked
-          # standalone and so install-or-update's startup is faster when
-          # you don't need the dump.
+          # TEMPORARY action=diagnostics path. Calls the shared template
+          # that backs the standalone .azure-pipelines/diagnostics.yaml
+          # pipeline. Remove this conditional + the `diagnostics` value
+          # in the action parameter once diagnostics.yaml is registered
+          # as its own pipeline in Azure DevOps (pending pipelines-library
+          # access approval). install-or-update no longer auto-runs this
+          # step on startup — it lives in this pipeline only as an
+          # explicit action choice.
+          - ${{ if eq(parameters.action, 'diagnostics') }}:
+            - template: templates/diagnostics-step.yaml
 
           - ${{ if eq(parameters.action, 'install-or-update') }}:
             - task: Bash@3
