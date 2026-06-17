@@ -182,14 +182,28 @@ spec:
     # actual usage is ~0.36 vCPU and ~0.36 GiB. The numbers below give
     # ~3x CPU and ~5x memory headroom while freeing ~3 vCPU and 2 GiB
     # per worker for broker / CMF / monitoring co-tenants.
-    # TEMP sizing — see top-of-file comment. Real dev was 1/2 req, 2/2 limit.
+    #
+    # Restored from the prior TEMP (100m/384Mi req, 200m/512Mi lim) to
+    # the documented "real dev" target — the namespace ResourceQuota
+    # has since been raised (11/22 CPU req/lim, 42/84 GiB mem req/lim)
+    # and the prior 384 Mi heap was OOM-killing the controller during
+    # metadata snapshot replay (restart loop ran into the hundreds).
+    # memory.request == memory.limit makes the QoS class Guaranteed on
+    # memory; CFK sizes the JVM heap from the request, so heap lands
+    # near 2 GiB with ~500 Mi headroom for non-heap (TLS buffers,
+    # metaspace, code cache, direct memory).
+    #
+    # Quota budget with this sizing — 3 controllers + 3 brokers + SR +
+    # kafkarest + CMF + 2 Flink jobs (aep-rate-limit + one in dev) fit
+    # at ~6.7/11 CPU req, ~12.75/42 GiB mem req. Connect and C3 stay
+    # replicas: 0 in this env.
     resources:
       requests:
-        cpu: "100m"
-        memory: 384Mi
+        cpu: "1"
+        memory: 2Gi
       limits:
-        cpu: "200m"
-        memory: 512Mi
+        cpu: "2"
+        memory: 2Gi
     probe:
       liveness:
         initialDelaySeconds: 60

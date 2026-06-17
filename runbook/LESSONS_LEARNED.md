@@ -727,6 +727,40 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 * **Why it matters**: C3 RocksDB state is heavy, but in dev we don't
   need long retention.
 
+### F3. TEMP-shrunk KRaftController memory caused chronic OOM after quota raise
+
+* **Symptom**: `kraftcontroller-0/1/2` in CrashLoopBackOff with
+  `exitCode: 137`, lifetime ~60 seconds, `restartCount` climbing into
+  the hundreds (597 observed). Pod becomes Ready briefly after init,
+  then SIGKILLed mid-`MetadataLoader stillNeedToCatchUp` between
+  snapshot load and high-watermark catch-up. KRaft `epoch` field
+  grows into the thousands as the three controllers churn through
+  fresh elections every restart.
+* **Root cause**: TEMP sizing from F1 left the main container at
+  `requests.memory: 384Mi`, `limits.memory: 512Mi`. CFK 3.1.x sizes
+  the JVM heap from `requests.memory` and pins it on the command
+  line with `-Xms`/`-Xmx` (`MaxHeapSize=384Mi {command line}`
+  visible in the PrintFlagsFinal dump). That leaves ~128 Mi between
+  heap and limit for JVM non-heap — metaspace, code cache, direct
+  buffers for the SASL_SSL listener, thread stacks. Snapshot replay
+  + TLS at startup blows past 128 Mi non-heap in seconds → cgroup
+  OOM kill. Every restart adds a new KRaft epoch + records → bigger
+  snapshot for the next attempt → more memory pressure. Vicious
+  loop, self-amplifying.
+* **Fix**: restore the documented "real dev" sizing on
+  `spec.podTemplate.resources` — `requests.cpu: "1"`,
+  `requests.memory: 2Gi`, `limits.cpu: "2"`, `limits.memory: 2Gi`.
+  Heap lands at 2 GiB with ~500 Mi headroom on top for non-heap.
+  Memory request == limit makes the memory QoS class Guaranteed —
+  the kernel won't pick this pod first under node memory pressure.
+* **Why it matters**: the TEMP sizing was set under F1 when the dev
+  quota was 2 CPU / 8 Gi. After the quota was raised to 11/22 CPU
+  and 42/84 Gi mem, the TEMP shrinks weren't reverted and silently
+  broke the cluster the moment metadata volume grew enough to need
+  >128 Mi non-heap. Every `TEMP sizing` comment in
+  `apps/confluent-platform/*/` is a landmine — sweep them all
+  after any quota change, not just the file under the current PR.
+
 ---
 
 ## G. Apache Flink Kubernetes Operator

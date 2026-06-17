@@ -97,6 +97,11 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
 - [ ] Per-CR resources budgeted against the namespace ResourceQuota,
       remembering the ~500m init-container floor
       (`LESSONS_LEARNED.md` A3 / F1)
+- [ ] No leftover `TEMP sizing` comments paired with values smaller
+      than the documented "real dev" target — sweep these after any
+      quota change; tight `requests.memory` pins the JVM heap below
+      what snapshot/metadata replay needs and produces silent
+      OOM-kill loops (`LESSONS_LEARNED.md` F3)
 - [ ] `spec.podTemplate.podSecurityContext: {}` is set (lets OpenShift
       restricted-v2 SCC assign UID from namespace range —
       `LESSONS_LEARNED.md` E1)
