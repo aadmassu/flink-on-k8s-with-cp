@@ -191,6 +191,8 @@ steps:
         # land in OUR namespace, so we can pull them. This usually
         # surfaces "ApplyFailed" / "Reconciling" / "ValidationFailed"
         # messages with the actual reason CFK gave up.
+        # NOTE: bash reserves the name UID (built-in: current-user UID,
+        # readonly). Using CR_UID for our scratch variable instead.
         echo ""
         echo "=== Events per CR (all severities, scoped by .metadata.uid) ==="
         for kind_name in \
@@ -203,11 +205,11 @@ steps:
             "kafkarestclass default"; do
           kind=${kind_name% *}; name=${kind_name#* }
           if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
-            UID=$(oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{.metadata.uid}' 2>/dev/null)
+            CR_UID=$(oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{.metadata.uid}' 2>/dev/null)
             echo ""
-            echo "--- $kind/$name (uid=$UID) ---"
+            echo "--- $kind/$name (uid=$CR_UID) ---"
             EVENTS=$(oc -n "$OC_NS" get events \
-              --field-selector "involvedObject.uid=$UID" \
+              --field-selector "involvedObject.uid=$CR_UID" \
               --sort-by=.lastTimestamp 2>/dev/null \
               -o custom-columns=TIME:.lastTimestamp,TYPE:.type,REASON:.reason,MSG:.message 2>/dev/null)
             if [ -n "$EVENTS" ] && [ "$EVENTS" != "No resources found in $OC_NS namespace." ]; then
@@ -217,6 +219,42 @@ steps:
             fi
           fi
         done
+
+        # NetworkPolicies in the namespace. If the operator's namespace
+        # has an EgressNetworkPolicy or our namespace has an IngressNP
+        # that drops traffic from the operator, that's what shows up as
+        # "i/o timeout" on Jolokia (port 7777) queries — and the kafka
+        # reconciler treats Jolokia timeout as "controller unavailable."
+        echo ""
+        echo "=== NetworkPolicies in $OC_NS ==="
+        oc -n "$OC_NS" get networkpolicies 2>/dev/null || echo "  (no NetworkPolicies, or oc error)"
+        echo ""
+        oc -n "$OC_NS" describe networkpolicies 2>/dev/null \
+          | sed -n '/^Name:/,/^Events:/p' | head -80 \
+          || echo "  (no NetworkPolicies to describe)"
+
+        # Tail of each Confluent component pod's main container log.
+        # The operator log is unreachable from our SA, but the component
+        # pods themselves run in our namespace and we can read their
+        # logs. Catches: init-container script errors, JVM heap settings,
+        # listener bind failures, Jolokia start banner, OAuth token
+        # validation, ESO Secret lookup failures.
+        echo ""
+        echo "=== Component pod logs (last 60 lines per pod, filtered) ==="
+        for pod in $(oc -n "$OC_NS" get pods -o jsonpath='{range .items[?(@.metadata.labels.confluent-platform=="true")]}{.metadata.name}{"\n"}{end}' 2>/dev/null); do
+          echo ""
+          echo "############### pod/$pod (main) ###############"
+          oc -n "$OC_NS" logs "$pod" --tail=60 2>&1 \
+            | grep -iE 'error|warn|exception|listener|jolokia|startup|kafka.controller|raft|oauth' \
+            | tail -40 \
+            || echo "  (no matching log lines)"
+        done
+
+        # Pod age + node placement — catches partial rolls (some pods on
+        # new revision, some on old) and anti-affinity outcomes.
+        echo ""
+        echo "=== Pod age + node placement (catch stuck rolls) ==="
+        oc -n "$OC_NS" get pods -o custom-columns='POD:.metadata.name,STATUS:.status.phase,AGE:.metadata.creationTimestamp,NODE:.spec.nodeName' --sort-by=.metadata.creationTimestamp 2>/dev/null
 
         echo ""
         echo "=== Recent Warning events (last 30) ==="
