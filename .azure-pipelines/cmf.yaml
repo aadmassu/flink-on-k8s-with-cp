@@ -165,7 +165,57 @@ stages:
                   else
                     create_labeled_secret confluent-license  license.txt "$CMF_LICENSE"
                     create_labeled_secret cmf-db-credentials password    "$CMF_DB_PWD"
-                    create_labeled_secret cmf-encryption-key key         "$CMF_ENC_KEY"
+
+                    # cmf-encryption-key is NOT a UTF-8 string; it is 16 or 32 RAW
+                    # BYTES that CMF reads from data.key. The variable group value
+                    # *-cmf-encryption-key is the base64 encoding of those raw bytes
+                    # (the format `openssl rand -base64 32` emits, and the same format
+                    # CyberArk will store once this Secret is onboarded into ESO). We
+                    # write that base64 verbatim into Secret.data.key — because data.*
+                    # IS the base64 field in a Kubernetes Secret, no additional
+                    # encoding step is required.
+                    #
+                    # Do NOT go through `oc create secret --from-literal=key=$VALUE`
+                    # for this key: --from-literal treats $VALUE as a UTF-8 string and
+                    # base64-encodes it for transport into data.key, which double-
+                    # encodes our already-base64 input. At read time CMF then receives
+                    # the un-decoded base64 string as raw bytes (44 bytes = 352 bits)
+                    # and fails encryptionConfigInitializer with "key is of 352 bits".
+                    # See runbook/LESSONS_LEARNED.md for the incident write-up.
+                    if [ -z "$CMF_ENC_KEY" ]; then
+                      echo "ERROR: CMF_ENC_KEY is empty — variable '${TARGET_ENV}-cmf-encryption-key' is unset or blank."
+                      exit 1
+                    fi
+                    if ! printf '%s' "$CMF_ENC_KEY" | base64 -d >/dev/null 2>&1; then
+                      echo "ERROR: CMF_ENC_KEY is not valid base64."
+                      echo "       Expected: base64 encoding of 16 or 32 random bytes,"
+                      echo "       e.g. the output of \`openssl rand -base64 32\`."
+                      exit 1
+                    fi
+                    DECODED_BYTES=$(printf '%s' "$CMF_ENC_KEY" | base64 -d | wc -c | tr -d ' ')
+                    if [ "$DECODED_BYTES" != "16" ] && [ "$DECODED_BYTES" != "32" ]; then
+                      echo "ERROR: CMF_ENC_KEY decodes to $DECODED_BYTES bytes; must be 16 (AES-128) or 32 (AES-256)."
+                      exit 1
+                    fi
+                    echo "  cmf-encryption-key: validated — base64 of $DECODED_BYTES raw bytes ($((DECODED_BYTES * 8))-bit AES)."
+                    # The heredoc body + EOF terminator below sit at the script:|
+                    # block-scalar base column. After YAML strips the common indent,
+                    # bash sees the YAML at column 0 (so `EOF` terminates and `oc
+                    # apply` receives top-level keys at column 0).
+                    cat <<EOF | oc apply -n "$OC_NS" -f -
+                  apiVersion: v1
+                  kind: Secret
+                  metadata:
+                    name: cmf-encryption-key
+                    labels:
+                      app.kubernetes.io/name: confluent-manager-for-apache-flink
+                      app.kubernetes.io/instance: cmf-encryption-key
+                      app.kubernetes.io/component: cmf
+                      fcbint.net/app-id: "11547"
+                  type: Opaque
+                  data:
+                    key: ${CMF_ENC_KEY}
+                  EOF
                   fi
 
                   echo ""

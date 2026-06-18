@@ -574,6 +574,58 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 * **Why it matters**: keeps the K8s name stable even if the CyberArk
   record gets renamed.
 
+### C5. CMF encryption key — must be base64 everywhere; `oc create --from-literal` double-encodes
+
+* **Symptom**: UAT CMF pod crashloops at boot with
+  `BeanCreationException: 'encryptionConfigInitializer' init failed`
+  caused by `IllegalStateException: The provided encryption key is of
+  352 bits. The encryption key should be either 128 or 256 bits long…`.
+  The `cmf-encryption-key` Secret in the namespace has
+  `data.key: NGxm…MD0=` (44-char base64 of a 44-char base64 string).
+* **Root cause**: CMF's encryption key is 16 or 32 *raw bytes*. Those
+  bytes are non-printable, so the canonical transport format
+  (variable groups, CyberArk records, Helm `--set`, anything string-
+  shaped) is the base64 encoding produced by `openssl rand -base64
+  {16,32}` (i.e. a 24- or 44-char ASCII string). The Kubernetes Secret
+  field where those bytes belong is `data.key`, which is itself
+  defined to hold base64-encoded bytes — so the variable's value
+  should be copied verbatim into `data.key`. Using
+  `oc create secret generic --from-literal=key=$VAR` instead treats
+  `$VAR` as a UTF-8 string and base64-encodes it a *second* time for
+  transport into `data.key`. K8s decodes once at read time, CMF gets
+  the original 44-char base64 string back as raw bytes (44 bytes = 352
+  bits), rejects it, and refuses to boot.
+* **Fix**:
+  1. **Storage invariant (variable groups + CyberArk)**: always store the
+     **base64** form (e.g. `4lfC07xMkR75PJOsu0RDMN0yCepTs8gdBK+FSAgyx30=`),
+     never the raw 32-byte form. This applies equally to the
+     `*-cmf-encryption-key` Azure DevOps variables today and to the
+     CyberArk record CMF will read via ESO once onboarded.
+  2. **Pipeline**: in `.azure-pipelines/cmf.yaml`, the non-dev branch
+     creates the Secret via a dedicated `oc apply -f -` heredoc that
+     writes `${CMF_ENC_KEY}` straight into `data.key` (the field where
+     base64 belongs). Includes pre-flight validation: must be valid
+     base64, must decode to exactly 16 or 32 bytes. Do **not** route
+     this Secret through `create_labeled_secret` — that helper uses
+     `--from-literal` and is right for `confluent-license` /
+     `cmf-db-credentials` (which hold UTF-8 strings) but wrong here.
+  3. **Re-deploy**: delete the corrupted Secret
+     (`oc -n dah-flink-<env> delete secret cmf-encryption-key`) before
+     the next pipeline run so the new `oc apply` writes a clean object.
+     If CMF ever managed to write encrypted rows with the broken key
+     (it hasn't in our case — it never finished boot), those rows are
+     unrecoverable; a DB-level reset is required.
+* **Why it matters**: this is a near-invisible foot-gun — the Secret
+  object is created successfully, the labels are right, the field name
+  is right; only the *byte length* is wrong, and only CMF notices, at
+  init time. The double-encoding was already in the pipeline since
+  uat was first wired up; dev only escaped because dev uses ESO/
+  CyberArk (path renders the bytes correctly). The fix locks the
+  base64-everywhere invariant so qa/uat/prd and the eventual CyberArk
+  cut-over all behave identically. **Reference**: dumps/dump-2026-06-18*
+  (UAT CMF crashloop); commit that landed the pipeline fix + this
+  entry.
+
 ---
 
 ## D. Image versioning + CFK operator alignment

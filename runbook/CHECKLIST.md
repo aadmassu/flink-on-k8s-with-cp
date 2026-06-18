@@ -35,7 +35,15 @@ touching any manifests for the target env.
 - [ ] **All required CyberArk records exist** in the right safes:
   - [ ] CFK license JWT
   - [ ] CMF DB password (SQL Server)
-  - [ ] CMF encryption key (**DO NOT ROTATE**)
+  - [ ] CMF encryption key (**DO NOT ROTATE**) — value MUST be the
+        **base64-encoded** form of 16 or 32 random bytes (i.e. the
+        output of `openssl rand -base64 16` or `openssl rand -base64
+        32`, a 24- or 44-char ASCII string ending in `=`). Same
+        invariant applies to the `*-cmf-encryption-key` Azure DevOps
+        variable group entries today. Storing the raw bytes or any
+        other length is a guaranteed CMF boot failure
+        (`encryptionConfigInitializer ... key is of N bits`). See
+        `LESSONS_LEARNED.md` C5.
   - [ ] OAuth client secrets per CFK component (one per CR)
   - [ ] MDS token keypair
   - [ ] SASL plain internal credentials
