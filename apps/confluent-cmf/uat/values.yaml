@@ -21,33 +21,37 @@ cmf:
   # remove) after the next deploy's stack trace is captured and analyzed.
   stackTraceLogging: true
 
-  # OAuth authentication for the CMF REST API — requires valid Okta token on every request
-  authentication:
-    type: oauth
-    config:
-      ## TODO: Replace all Okta endpoints with FCB's Okta org/authorization server
-      # Okta JWKS endpoint — CMF fetches public keys to verify token signatures
-      oauthbearer.jwks.endpoint.url: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
-      # Expected token issuer — rejects tokens from other issuers
-      oauthbearer.expected.issuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
-      # JWT claim used as the user identity
-      oauthbearer.sub.claim.name: sub
-      # JWT claim containing group memberships for RBAC
-      oauthbearer.groups.claim.name: groups
-      # Expected audience in the token — must match Okta app config
-      oauthbearer.expected.audience: api://confluent
-
-      # MDS connectivity — CMF checks RBAC permissions via Kafka's Metadata Service
-      ## TODO: Update MDS URL to match the environment namespace
-      confluent.metadata.bootstrap.server.urls: https://kafka.confluent.svc.cluster.local:8090
-      # Use OAuth to authenticate CMF's own requests to MDS
-      confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
-      # Okta token endpoint for CMF to obtain its own access token
-      confluent.metadata.oauthbearer.token.endpoint.url: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
-      ## TODO: Replace with FCB's CMF OAuth client credentials
-      ## CyberArk vault path (production): /confluent/<env>/cmf-oauth-credentials
-      confluent.metadata.oauthbearer.login.client.id: <fcb-cmf-oauth-client-id>
-      confluent.metadata.oauthbearer.login.client.secret: <fcb-cmf-oauth-client-secret>
+  # OAuth authentication for the CMF REST API — requires valid Okta token on every request.
+  # DISABLED for uat: the Okta endpoints / audience / OAuth client credentials below are
+  # placeholders. Re-enable (un-comment) once the real Okta authorization server and the
+  # CyberArk-issued client id/secret are wired in. Until then CMF runs with authentication
+  # disabled (same posture as dev/qa) so the rest of the chart can be exercised.
+  # authentication:
+  #   type: oauth
+  #   config:
+  #     ## TODO: Replace all Okta endpoints with FCB's Okta org/authorization server
+  #     # Okta JWKS endpoint — CMF fetches public keys to verify token signatures
+  #     oauthbearer.jwks.endpoint.url: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
+  #     # Expected token issuer — rejects tokens from other issuers
+  #     oauthbearer.expected.issuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
+  #     # JWT claim used as the user identity
+  #     oauthbearer.sub.claim.name: sub
+  #     # JWT claim containing group memberships for RBAC
+  #     oauthbearer.groups.claim.name: groups
+  #     # Expected audience in the token — must match Okta app config
+  #     oauthbearer.expected.audience: api://confluent
+  #
+  #     # MDS connectivity — CMF checks RBAC permissions via Kafka's Metadata Service
+  #     ## TODO: Update MDS URL to match the environment namespace
+  #     confluent.metadata.bootstrap.server.urls: https://kafka.confluent.svc.cluster.local:8090
+  #     # Use OAuth to authenticate CMF's own requests to MDS
+  #     confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+  #     # Okta token endpoint for CMF to obtain its own access token
+  #     confluent.metadata.oauthbearer.token.endpoint.url: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
+  #     ## TODO: Replace with FCB's CMF OAuth client credentials
+  #     ## CyberArk vault path (production): /confluent/<env>/cmf-oauth-credentials
+  #     confluent.metadata.oauthbearer.login.client.id: <fcb-cmf-oauth-client-id>
+  #     confluent.metadata.oauthbearer.login.client.secret: <fcb-cmf-oauth-client-secret>
 
   # External database for CMF catalog (environments, statements, credentials)
   database:
