@@ -184,6 +184,40 @@ steps:
             || echo "(CR not found yet — expected on first install)"
         done
 
+        # Per-CR events (every severity, scoped by .metadata.uid). The
+        # operator's pod is in a different namespace and the pipeline SA
+        # is namespace-scoped to dah-flink-<env> — so we can't read the
+        # operator log directly. But the events it emits on these CRs
+        # land in OUR namespace, so we can pull them. This usually
+        # surfaces "ApplyFailed" / "Reconciling" / "ValidationFailed"
+        # messages with the actual reason CFK gave up.
+        echo ""
+        echo "=== Events per CR (all severities, scoped by .metadata.uid) ==="
+        for kind_name in \
+            "kraftcontroller kraftcontroller" \
+            "kafka kafka" \
+            "schemaregistry schemaregistry" \
+            "connect connect" \
+            "kafkarestproxy kafkarest" \
+            "controlcenter controlcenter" \
+            "kafkarestclass default"; do
+          kind=${kind_name% *}; name=${kind_name#* }
+          if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+            UID=$(oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{.metadata.uid}' 2>/dev/null)
+            echo ""
+            echo "--- $kind/$name (uid=$UID) ---"
+            EVENTS=$(oc -n "$OC_NS" get events \
+              --field-selector "involvedObject.uid=$UID" \
+              --sort-by=.lastTimestamp 2>/dev/null \
+              -o custom-columns=TIME:.lastTimestamp,TYPE:.type,REASON:.reason,MSG:.message 2>/dev/null)
+            if [ -n "$EVENTS" ] && [ "$EVENTS" != "No resources found in $OC_NS namespace." ]; then
+              echo "$EVENTS" | tail -15
+            else
+              echo "  (no events for this CR within the K8s event retention window — typically 1h)"
+            fi
+          fi
+        done
+
         echo ""
         echo "=== Recent Warning events (last 30) ==="
         # The KIND/.involvedObject.name slash syntax above doesn't
