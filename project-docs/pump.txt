@@ -375,3 +375,33 @@ Ayele
 ================================================================================
 END OF EMAIL DRAFT
 ================================================================================
+
+
+
+================================================================================
+CMF ENCRYPTION KEY — UAT (INTERIM SCRATCH)
+================================================================================
+Notes for self while the *-cmf-encryption-key variable groups get set and the
+ESO/CyberArk onboarding is sorted. Value below is the base64-encoded form of
+32 random bytes (output of `openssl rand -base64 32`). Same value goes in BOTH
+the Azure DevOps variable group AND, later, the CyberArk record — verbatim,
+no transform.
+
+uat-cmf-encryption-key:
+  4lfC07xMkR75PJOsu0RDMN0yCepTs8gdBK+FSAgyx30=
+
+How to validate locally before pasting into the variable group:
+  KEY="4lfC07xMkR75PJOsu0RDMN0yCepTs8gdBK+FSAgyx30="
+  printf '%s' "$KEY" | base64 -d | wc -c    # expect 32
+
+Re-deploy steps for UAT (once the variable is set):
+  oc -n dah-flink-uat delete secret cmf-encryption-key
+  # then re-run the cmf pipeline; pipeline now validates length and applies
+  # the Secret with data.key carrying the variable value verbatim.
+
+WARNING: this file is git-tracked. The key value above will live in git
+history forever. Treat it as the UAT bootstrap key only — rotate (and replace
+this stash with a placeholder) once UAT is wired up and the value has moved
+to CyberArk. Do NOT add the qa or prd keys here; those go straight into their
+variable groups and never touch the repo.
+================================================================================
