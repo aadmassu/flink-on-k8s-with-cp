@@ -17,7 +17,19 @@ By the end of the day an engineer should be able to:
 
 K8s storage has four layers. Engineers who don't understand the difference between PVC and PV will not be able to triage CFK PVC-stuck-Pending issues.
 
-- **StorageClass** — describes a *type* of storage available on the cluster (e.g. `ceph-rbd-fast-ssd`, `gp3-encrypted`). Cluster admin defines them. Each has a `provisioner` (the CSI driver that creates volumes) and parameters (replication factor, encryption, IOPS tier).
+- **StorageClass** — describes a *type* of storage available on the cluster. Cluster admin defines them. Each has a `provisioner` (the CSI driver that creates volumes) and parameters (replication factor, encryption, IOPS tier, throughput, disk SKU). Concrete examples you'll see in the wild:
+
+    | Platform | Common StorageClass names | Provisioner | Notes |
+    |---|---|---|---|
+    | AWS EKS | `gp2`, `gp3`, `io1`, `io2` | `ebs.csi.aws.com` | `gp3` is the modern default; `io2` for high-IOPS Kafka |
+    | AWS EKS (file) | `efs-sc` | `efs.csi.aws.com` | NFS-shaped — **not for Kafka** |
+    | Azure AKS | `managed-csi` (default), `managed-csi-premium`, `managed-premium-v2` | `disk.csi.azure.com` | Premium SSD v2 (`managed-premium-v2`) is the prod-grade pick |
+    | Azure AKS (file) | `azurefile-csi`, `azurefile-csi-premium` | `file.csi.azure.com` | SMB/NFS — **not for Kafka** |
+    | GCP GKE | `standard-rwo`, `premium-rwo`, `standard-rwx`, `enterprise-rwx` | `pd.csi.storage.gke.io`, `filestore.csi.storage.gke.io` | `premium-rwo` = SSD PD (block, prod-grade); `*-rwx` = Filestore (**not for Kafka**) |
+    | Red Hat ROSA | `gp3-csi` (default), `gp2-csi`, `io2-csi` | `ebs.csi.aws.com` | Same EBS underneath EKS — ROSA pre-creates the CSI-suffixed names |
+    | OpenShift on-prem (ODF) | `ocs-storagecluster-ceph-rbd` (block), `ocs-storagecluster-cephfs` (file) | `openshift-storage.rbd.csi.ceph.com`, `…cephfs.csi.ceph.com` | Use `ceph-rbd` for Kafka; `cephfs` is RWX and **not for Kafka** |
+
+    The names above are conventions the cloud providers ship out of the box; a cluster admin can rename anything (e.g. `ceph-rbd-fast-ssd`, `gp3-encrypted-prod`) and parameter-tune it for their fleet. Always `kubectl get storageclass` on an unfamiliar cluster — names are not portable.
 
 - **PersistentVolume (PV)** — a *specific* volume that exists somewhere — a Ceph RBD image, an EBS volume, an NFS share. Has capacity, access modes, a storage class label, and a reclaim policy (`Retain` vs `Delete`). Cluster-scoped resource — Pods don't reference PVs directly.
 
