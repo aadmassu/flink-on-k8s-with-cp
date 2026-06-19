@@ -320,6 +320,205 @@ The Secrets these references resolve to follow a per-component naming convention
 
 CFK validates the Secret's *content* before mounting (e.g., `kubernetes.io/tls` Secrets must carry `tls.crt` + `tls.key`; OAuth Secrets must carry the expected key names). A Secret that exists with the right name but wrong keys causes the Pod to crashloop with messages from the init container's config-rendering script — not from CFK itself.
 
+### 2.3.1 External Secrets Operator — sourcing Secrets from a vault
+
+In production you don't want OAuth client secrets, license JWTs, or DB passwords sitting in a repo or in `kubectl create secret --from-literal=…` history. The mainstream answer is **External Secrets Operator (ESO)** — a separate K8s operator that watches `ExternalSecret` CRs, fetches values from an external secret store, and synthesizes plain `Secret` objects in the namespace. CFK consumes those Secrets exactly the same way it would consume any other — via the `secretRef:` blocks shown above. CFK is unaware ESO is involved.
+
+ESO supports many providers — AWS Secrets Manager, Azure Key Vault, HashiCorp Vault, GCP Secret Manager, CyberArk CCP, 1Password Connect, and others — all behind the same two CRDs:
+
+- **`SecretStore`** (namespaced) or **`ClusterSecretStore`** (cluster-scoped) — declares "how to reach the provider": endpoint, auth method, region/tenant. One per provider configuration.
+- **`ExternalSecret`** — declares "pull THIS value(s) from the provider, write THAT K8s Secret." One per K8s Secret you want synthesized.
+
+The worked example below uses **AWS Secrets Manager** because it's the most common cloud-native pairing — and because the same shape (swap the provider block) gives you Azure Key Vault or any other backend.
+
+#### The full chain
+
+```mermaid
+flowchart LR
+  subgraph CLOUD["AWS account"]
+    SM["AWS Secrets Manager<br/>secret: prod/kafka/tls<br/>JSON value: { tls.crt, tls.key }"]
+    IAM["IAM Role<br/>(IRSA: AssumeRoleWithWebIdentity)"]
+  end
+
+  subgraph K8S["Kubernetes cluster (kafka-dev namespace)"]
+    CSS["ClusterSecretStore<br/>aws-secrets-manager-prod"]
+    ES["ExternalSecret<br/>kafka-tls"]
+    SEC["Secret: kafka-tls<br/>(type: kubernetes.io/tls)<br/>owner: ExternalSecret/kafka-tls"]
+    KCR["Kafka CR<br/>spec.tls.secretRef: kafka-tls"]
+    POD["Pod kafka-0<br/>mounts /mnt/sslcerts/kafka-tls"]
+  end
+
+  CSS -- "auth via IRSA" --> IAM
+  IAM -- "GetSecretValue" --> SM
+  ES  -- "references" --> CSS
+  ES  -- "creates + owns" --> SEC
+  SM  -- "value flows through ESO controller" --> SEC
+  KCR -- "secretRef.name = kafka-tls" --> SEC
+  POD -- "kubelet projects" --> SEC
+```
+
+Five concrete handoffs:
+
+1. **AWS Secrets Manager** holds the canonical value (e.g. a TLS keypair as a JSON document `{"tls.crt":"<PEM>","tls.key":"<PEM>"}` under the secret name `prod/kafka/tls`).
+2. **ClusterSecretStore** in K8s declares the endpoint + auth — here, AWS Secrets Manager in region `us-west-2`, authenticating via an IAM Role attached to a K8s ServiceAccount (IRSA).
+3. **ExternalSecret** in `kafka-dev` says "from that store, fetch `prod/kafka/tls` and project it into a K8s Secret named `kafka-tls` whose `data.tls.crt` and `data.tls.key` come from the matching JSON keys."
+4. **K8s Secret** `kafka-tls` is created (and re-created on the configured refresh interval). It carries an `ownerReference` back to the `ExternalSecret` — delete the `ExternalSecret` and the Secret follows.
+5. **CFK Kafka CR** references `kafka-tls` from `spec.tls.secretRef` — unchanged from the manually-created case. The kubelet projects the Secret into the broker Pod at startup.
+
+#### Manifests in dependency order
+
+**ClusterSecretStore** — declared once per cluster + provider configuration:
+
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: aws-secrets-manager-prod
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-west-2
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: external-secrets-irsa     # SA in the ESO namespace that
+            namespace: external-secrets     # carries the IRSA annotation
+                                            # eks.amazonaws.com/role-arn=…
+```
+
+The `ServiceAccount` referenced above is annotated with the IAM role ARN that has `secretsmanager:GetSecretValue` on the relevant resource paths. That's how the cluster authenticates to AWS without static credentials.
+
+**ExternalSecret** — one per K8s Secret you want synthesized (this would land in the `kafka-dev` namespace alongside the CFK CRs):
+
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: kafka-tls
+  namespace: kafka-dev
+spec:
+  refreshInterval: 1h                         # re-fetch from AWS every hour
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-secrets-manager-prod
+  target:
+    name: kafka-tls                           # K8s Secret to create
+    creationPolicy: Owner                     # ESO owns + GCs the Secret
+    template:
+      type: kubernetes.io/tls                 # forces the typed shape CFK expects
+      data:
+        tls.crt: "{{ .crt }}"
+        tls.key: "{{ .key }}"
+  data:
+    - secretKey: crt                          # local key name (used in template above)
+      remoteRef:
+        key: prod/kafka/tls                   # AWS Secrets Manager secret name
+        property: tls.crt                     # JSON key inside the secret value
+    - secretKey: key
+      remoteRef:
+        key: prod/kafka/tls
+        property: tls.key
+```
+
+**The K8s Secret that ESO produces** — you don't author this; ESO writes it. Useful to recognize it on a cluster:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kafka-tls
+  namespace: kafka-dev
+  ownerReferences:                            # <— tells you ESO owns this
+    - apiVersion: external-secrets.io/v1beta1
+      kind: ExternalSecret
+      name: kafka-tls
+      controller: true
+      blockOwnerDeletion: true
+  labels:
+    reconcile.external-secrets.io/created-by: external-secrets-controller
+type: kubernetes.io/tls                       # matches the ExternalSecret target.template.type
+data:
+  tls.crt: <base64 of PEM>
+  tls.key: <base64 of PEM>
+```
+
+**The CFK Kafka CR** — exactly the same as before; no change because ESO is transparent to CFK:
+
+```yaml
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: kafka-dev
+spec:
+  replicas: 3
+  tls:
+    secretRef: kafka-tls            # ← the ESO-synthesized Secret, by name
+```
+
+#### Other providers — same two CRDs, swap the provider block
+
+The `SecretStore`/`ClusterSecretStore` provider block is the only thing that changes per backend. A few common examples:
+
+```yaml
+# Azure Key Vault
+spec:
+  provider:
+    azurekv:
+      tenantId: <tenant-uuid>
+      vaultUrl: https://<vault-name>.vault.azure.net
+      authType: WorkloadIdentity       # or ServicePrincipal / ManagedIdentity
+      serviceAccountRef: { name: external-secrets-wi, namespace: external-secrets }
+```
+
+```yaml
+# HashiCorp Vault
+spec:
+  provider:
+    vault:
+      server: https://vault.example.internal:8200
+      path: secret                     # KV v2 mount
+      version: v2
+      auth:
+        kubernetes:
+          mountPath: kubernetes
+          role: external-secrets
+          serviceAccountRef: { name: external-secrets }
+```
+
+```yaml
+# CyberArk CCP (via webhook provider — used by enterprises that standardize on CyberArk)
+spec:
+  provider:
+    webhook:
+      url: 'https://ccp.example.internal/AIMWebService/api/Accounts?AppID=CFK&Safe=Confluent&Object={{ .remoteRef.key }}'
+      headers:
+        Content-Type: application/json
+      result:
+        jsonPath: '$.Content'
+      caBundle: <base64 internal CA>
+```
+
+The corresponding `ExternalSecret` against any of these looks identical to the AWS example above — only the `secretStoreRef.name` and the `remoteRef.key` path differ.
+
+#### Why this matters for CFK installs
+
+- **No Secret values in git.** Every CFK install in this bootcamp (and in any production posture) treats Secrets the same way: the *reference* lives in code (CFK CR's `secretRef`), the *value* lives in a vault. ESO is the bridge.
+- **Rotations are decoupled from deploys.** When the upstream secret rotates in AWS Secrets Manager, ESO updates the K8s Secret on its next `refreshInterval`. The CFK Pod doesn't pick up the new value until it restarts (env-var consumer) or re-reads the file (mounted-file consumer) — same property as the ConfigMap reload story from Part 1.
+- **One operational pattern across components.** TLS Secrets (from cert-manager) and credential Secrets (from a vault via ESO) coexist — every CFK CR points at named Secrets, doesn't care which operator wrote them.
+- **Audit trail.** Every Secret on the cluster either has a `cert-manager.io/certificate-name` annotation (cert-manager) or an `ownerReferences` block pointing at an `ExternalSecret` (ESO) — or it's hand-applied (treat as a smell in any non-trivial environment).
+
+#### Common ESO failure modes
+
+| Symptom | Likely cause |
+|---|---|
+| `ExternalSecret` shows `SecretSyncedError`, `status: False` | Provider auth failure (IRSA misconfigured, IAM permissions missing, Vault role not bound to the SA) |
+| ExternalSecret Ready=True but the resulting Secret has wrong keys | `target.template` keys don't match what the consumer expects, OR `remoteRef.property` doesn't match a JSON key in the source secret |
+| CFK pod crashloops despite the ExternalSecret syncing fine | Source secret value was rotated but the consumer Pod hasn't restarted — Pod env vars are stale (mounted files would have updated) |
+| ESO controller events show `connection refused` to the provider | Network policy / egress firewall blocking the provider endpoint from the ESO controller's namespace |
+| The K8s Secret was deleted manually | ESO recreates it on the next refresh — but until then, dependent Pods may crashloop |
+
 ### 2.4 ServiceAccount deep-dive — one per CFK component
 
 For each CFK CR you apply, the operator generates a ServiceAccount whose name matches the CR. That SA is the identity the component's Pods run as. By default it has:
