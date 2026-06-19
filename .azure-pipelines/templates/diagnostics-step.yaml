@@ -1,7 +1,9 @@
 # Reusable template: diagnostics step body.
 # Wraps the single Bash@3 task that dumps Secret + CR + StatefulSet +
-# operator-log state for the CFK-managed cluster. Read-only — set +e
-# and a trailing exit 0 keep it strictly observational.
+# operator-log state for the CFK-managed cluster AND the CMF (Confluent
+# Manager for Apache Flink) install that lives in the same namespace.
+# Read-only — set +e and a trailing exit 0 keep it strictly
+# observational.
 #
 # Used by:
 #   - .azure-pipelines/diagnostics.yaml         (standalone — preferred)
@@ -13,6 +15,33 @@
 #   - Run templates/install-tools.yaml so `oc` is on PATH
 #   - Logged into OpenShift (oc login + oc project to the target namespace)
 #   - Bound the variable `openshift-namespace` via the env Variable Group
+#
+# Section index (top → bottom):
+#   - ESO-managed Secrets inventory
+#   - Stuck-Terminating Secrets pre-flight
+#   - Operator vs init-container version cross-check (LESSONS_LEARNED D1)
+#   - CFK Secrets present/missing matrix (prereq + TLS + OAuth)
+#   - cert-manager Certificates Ready condition
+#   - CFK CR spec.authentication
+#   - Per-CR events scoped by .metadata.uid
+#   - NetworkPolicies + describe
+#   - Component pod logs filtered for error/warn/listener/etc.
+#   - Pod age + node placement
+#   - Recent Warning events
+#   - CFK CR status.conditions
+#   - Pods (wide) + container restart history + non-Ready pod events
+#   - PVCs + events on non-Bound PVCs
+#   - StatefulSets + ResourceQuota + LimitRange + Services/Endpoints
+#   - Full StatefulSet yaml
+#   - Full CR yaml
+#   - Focused CR status.conditions table
+#   - oc explain — CRD schema as the cluster sees it
+#   - CFK operator pod logs filtered
+#   - CMF block (Helm release, prereq Secrets shape inc. encryption-key
+#     byte-length validation, Deployment + Pod state, RBAC, ConfigMap,
+#     Service/Endpoints, DB reachability from inside the pod, pod log
+#     tail filtered for boot markers, REST API health probe, image tag
+#     vs FCB-required 2.3.0-fcb-preview-2)
 
 steps:
   - task: Bash@3
@@ -503,6 +532,288 @@ steps:
           echo "Listing all pods across all namespaces to help locate it:"
           oc get pods -A 2>/dev/null | grep -iE 'operator|confluent' | head -20
         fi
+
+        # =====================================================================
+        # CMF (Confluent Manager for Apache Flink)
+        # =====================================================================
+        # CMF is deployed as a standalone Helm chart (not via CFK CRDs) into
+        # the same namespace as the Confluent Platform CRs. Diagnostics below
+        # are deliberately self-contained: every probe handles the absent /
+        # crashlooping case so the section still produces useful output when
+        # the install has never succeeded.
+
+        echo ""
+        echo "================================================================"
+        echo "=== CMF diagnostics ============================================"
+        echo "================================================================"
+
+        # CMF.1 — Helm release state.
+        # Try `helm status` first (richer output). If helm isn't on PATH or
+        # the release isn't found, fall back to listing the Helm release
+        # Secrets directly (sh.helm.release.v1.confluent-cmf.v<n>), which
+        # K8s holds even without helm CLI.
+        echo ""
+        echo "=== CMF.1  Helm release state (confluent-cmf) ==="
+        if command -v helm >/dev/null 2>&1; then
+          helm status confluent-cmf -n "$OC_NS" 2>&1 | head -40 \
+            || echo "  (helm status failed — release may not be installed)"
+        else
+          echo "  (helm CLI not on PATH — listing release Secrets instead)"
+        fi
+        echo ""
+        echo "--- Helm release Secrets (most recent first) ---"
+        oc -n "$OC_NS" get secrets \
+          --field-selector type=helm.sh/release.v1 \
+          --sort-by=.metadata.creationTimestamp 2>/dev/null \
+          | grep -E 'NAME|confluent-cmf' | tail -10 \
+          || echo "  (no helm release Secrets found)"
+
+        # CMF.2 — Prereq Secrets present/missing matrix (CMF-specific).
+        # The CFK matrix above includes cmf-encryption-key + cmf-db-credentials
+        # but CMF also relies on cmf-tls (TLS Secret for the REST endpoint —
+        # cmf.yaml fails fast if it's missing) and confluent-license (shared
+        # with CFK Kafka but consumed in raw-JWT form by CMF per LESSONS_LEARNED
+        # C1).
+        echo ""
+        echo "=== CMF.2  Prereq Secrets — present/missing matrix ==="
+        for s in confluent-license cmf-db-credentials cmf-encryption-key cmf-tls; do
+          if oc -n "$OC_NS" get secret "$s" >/dev/null 2>&1; then
+            AGE=$(oc -n "$OC_NS" get secret "$s" -o jsonpath='{.metadata.creationTimestamp}')
+            TYPE=$(oc -n "$OC_NS" get secret "$s" -o jsonpath='{.type}')
+            KEYS=$(oc -n "$OC_NS" get secret "$s" -o jsonpath='{.data}' 2>/dev/null \
+              | python3 -c "import json,sys; d=json.load(sys.stdin); print(','.join(sorted(d.keys())))" 2>/dev/null)
+            printf "  %-25s PRESENT  type=%-22s keys=[%s]  created=%s\n" "$s" "$TYPE" "$KEYS" "$AGE"
+          else
+            printf "  %-25s MISSING\n" "$s"
+          fi
+        done
+
+        # CMF.3 — cmf-encryption-key SHAPE validation.
+        # This is the single highest-signal CMF check. CMF accepts only
+        # 128-bit (16-byte) or 256-bit (32-byte) raw keys, stored as
+        # base64 in Secret.data.key. The 2026-06-18 UAT install was
+        # blocked for hours by a double-base64-encoded key (44 raw bytes
+        # = 352 bits). Decoding once here mirrors exactly what CMF does
+        # at boot, so the output is a hard yes/no on whether
+        # encryptionConfigInitializer will pass.
+        # See: runbook/LESSONS_LEARNED.md C5.
+        echo ""
+        echo "=== CMF.3  cmf-encryption-key byte-length validation ==="
+        KEY_B64=$(oc -n "$OC_NS" get secret cmf-encryption-key \
+          -o jsonpath='{.data.key}' 2>/dev/null)
+        if [ -z "$KEY_B64" ]; then
+          echo "  MISSING — Secret cmf-encryption-key not present or has no .data.key field"
+          echo "  Action: set the *-cmf-encryption-key Azure DevOps variable to the output"
+          echo "          of 'openssl rand -base64 32' and re-run the cmf pipeline."
+        else
+          # K8s stores .data.* base64-encoded for transport; decode once to
+          # see exactly the bytes CMF receives at read time.
+          DECODED_LEN=$(printf '%s' "$KEY_B64" | base64 -d 2>/dev/null | wc -c | tr -d ' ')
+          BITS=$((DECODED_LEN * 8))
+          if [ "$DECODED_LEN" = "16" ] || [ "$DECODED_LEN" = "32" ]; then
+            echo "  OK — cmf-encryption-key decodes to $DECODED_LEN raw bytes (${BITS}-bit AES)."
+            echo "       CMF's encryptionConfigInitializer will accept this."
+          else
+            echo "  PROBLEM — cmf-encryption-key decodes to $DECODED_LEN bytes (${BITS} bits)."
+            echo "  CMF accepts only 16 (AES-128) or 32 (AES-256) raw bytes."
+            echo "  Symptom at boot: 'Fatal exception: The provided encryption key is of ${BITS} bits'."
+            echo "  Most common cause: the variable value got base64-encoded twice (e.g. via"
+            echo "  'oc create secret --from-literal=key=\$(openssl rand -base64 32)'). The"
+            echo "  cmf.yaml pipeline now branches off create_labeled_secret for this Secret —"
+            echo "  see commit 343a93f and runbook/LESSONS_LEARNED.md C5."
+          fi
+        fi
+
+        # CMF.4 — Deployment + Pod state. CMF runs as a single Deployment
+        # named `cmf` (Helm chart's default release name). Replicas, ready
+        # count, restart count, and lastState.terminated tell us in one
+        # screen whether the pod ever got past init.
+        echo ""
+        echo "=== CMF.4  Deployment + Pod state ==="
+        if oc -n "$OC_NS" get deploy cmf >/dev/null 2>&1; then
+          oc -n "$OC_NS" get deploy cmf -o wide 2>/dev/null
+          echo ""
+          echo "--- ReplicaSet history (most recent on top) ---"
+          oc -n "$OC_NS" get rs -l app.kubernetes.io/name=confluent-manager-for-apache-flink \
+            --sort-by=.metadata.creationTimestamp -o wide 2>/dev/null | tac
+          echo ""
+          echo "--- Pod state ---"
+          oc -n "$OC_NS" get pods -l app.kubernetes.io/name=confluent-manager-for-apache-flink \
+            -o wide 2>/dev/null
+          echo ""
+          echo "--- Container restart history (CMF pod) ---"
+          oc -n "$OC_NS" get pods -l app.kubernetes.io/name=confluent-manager-for-apache-flink \
+            -o jsonpath='{range .items[*]}POD={.metadata.name}{"\n"}{range .status.containerStatuses[*]}  container={.name} restartCount={.restartCount} lastExit={.lastState.terminated.exitCode} lastReason={.lastState.terminated.reason} lastFinishedAt={.lastState.terminated.finishedAt}{"\n"}{end}{end}' 2>/dev/null
+        else
+          echo "  Deployment/cmf not found — Helm install never completed (or chart name differs)."
+        fi
+
+        # CMF.5 — image tag.
+        # FCB requires 2.3.0-fcb-preview-2 (stock 2.3.0 has known bugs at FCB —
+        # see [[project-cmf-image-tag]] memory). Surface the tag in use vs the
+        # expected one so a drift is immediately visible.
+        echo ""
+        echo "=== CMF.5  Image tag (vs FCB-required 2.3.0-fcb-preview-2) ==="
+        IMG=$(oc -n "$OC_NS" get deploy cmf \
+          -o jsonpath='{.spec.template.spec.containers[?(@.name=="cmf")].image}' 2>/dev/null)
+        if [ -z "$IMG" ]; then
+          # Fall back to whatever's listed as the main container if the name
+          # doesn't match `cmf`.
+          IMG=$(oc -n "$OC_NS" get deploy cmf \
+            -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null)
+        fi
+        if [ -z "$IMG" ]; then
+          echo "  (Deployment/cmf not found — cannot read image)"
+        else
+          echo "  Running image: $IMG"
+          case "$IMG" in
+            *2.3.0-fcb-preview-2*) echo "  OK — matches FCB-required tag.";;
+            *)                     echo "  WARNING — does NOT contain '2.3.0-fcb-preview-2'. Stock 2.3.0 has known bugs at FCB; verify with Confluent before promoting.";;
+          esac
+        fi
+
+        # CMF.6 — namespace-scoped RBAC (ServiceAccount + Role + RoleBinding).
+        # CMF at FCB runs namespace-scoped against dah-flink-<env>, NOT
+        # cluster-wide (per [[project-cmf-namespace-scoped]]). The Helm chart
+        # emits Role/RoleBinding when `namespaced=true` is set; if it ever
+        # emits ClusterRole/ClusterRoleBinding instead, that's the chart
+        # rendering the wrong scope and the install will fail Gatekeeper
+        # admission for cluster-scoped SA wiring.
+        echo ""
+        echo "=== CMF.6  Namespace-scoped RBAC (SA + Role + RoleBinding) ==="
+        echo "--- ServiceAccount ---"
+        oc -n "$OC_NS" get sa -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null \
+          || echo "  (no SA matched)"
+        echo ""
+        echo "--- Role (namespace-scoped — expected) ---"
+        oc -n "$OC_NS" get role -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null \
+          || echo "  (no Role matched)"
+        echo "--- RoleBinding ---"
+        oc -n "$OC_NS" get rolebinding -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null \
+          || echo "  (no RoleBinding matched)"
+        echo ""
+        echo "--- ClusterRole / ClusterRoleBinding (should NOT exist for namespaced install) ---"
+        oc get clusterrole -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null \
+          | grep -v '^NAME' | head -5
+        oc get clusterrolebinding -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null \
+          | grep -v '^NAME' | head -5
+        echo "  (above two lists should be EMPTY for a namespaced install)"
+
+        # CMF.7 — cmf-config.yaml ConfigMap contents.
+        # This is the rendered Helm output of values.yaml + chart templates.
+        # If something authored in apps/confluent-cmf/<env>/values.yaml didn't
+        # land in cmf-config.yaml, the chart silently dropped the field or
+        # the helm --set overrides clobbered it. The container reads this
+        # file at startup (see dump.txt line 1: '/opt/config/cmf-config.yaml').
+        echo ""
+        echo "=== CMF.7  ConfigMap cmf-config.yaml (rendered) ==="
+        # CFK Helm chart names this ConfigMap 'cmf-config' or 'confluent-cmf-config'
+        # depending on chart version. Try both.
+        for cm in cmf-config confluent-cmf-config cmf; do
+          if oc -n "$OC_NS" get cm "$cm" >/dev/null 2>&1; then
+            echo "--- ConfigMap/$cm ---"
+            oc -n "$OC_NS" get cm "$cm" -o jsonpath='{.data}' 2>/dev/null \
+              | python3 -c "import json,sys; d=json.load(sys.stdin); [print(f'=== {k} ===\n{v}\n') for k,v in d.items()]" 2>/dev/null
+            break
+          fi
+        done
+
+        # CMF.8 — Service + Endpoints. Zero-Endpoint Service means the
+        # selector doesn't match a Ready pod — the CMF pod is unhealthy
+        # or the chart's labels drifted from the Service selector.
+        echo ""
+        echo "=== CMF.8  Service + Endpoints ==="
+        oc -n "$OC_NS" get svc -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null \
+          || echo "  (no CMF Service matched)"
+        echo ""
+        oc -n "$OC_NS" get endpoints -l app.kubernetes.io/name=confluent-manager-for-apache-flink 2>/dev/null \
+          || echo "  (no CMF Endpoints matched)"
+        echo "  (Endpoints <none> means the Service selector matches no Ready pod.)"
+
+        # CMF.9 — DB reachability from inside the pod.
+        # CMF connects to SQL Server (per [[project-fcb-infrastructure]] and
+        # the dump.txt JDBC URL). If DNS or TCP to port 3085 is broken, CMF
+        # boot hangs at the Flyway migration step with cryptic
+        # 'Could not get Connection for extracting meta-data'. This probe
+        # uses bash's built-in /dev/tcp redirect (no nc/curl required) and
+        # uses getent hosts to confirm DNS resolves.
+        echo ""
+        echo "=== CMF.9  DB reachability from inside the cmf pod ==="
+        CMF_POD=$(oc -n "$OC_NS" get pods -l app.kubernetes.io/name=confluent-manager-for-apache-flink \
+          -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+        if [ -z "$CMF_POD" ]; then
+          echo "  (no CMF pod found — cannot probe from inside)"
+        else
+          # Pull the JDBC URL from the rendered ConfigMap so we test the
+          # *actual* configured host, not a hard-coded guess.
+          JDBC_URL=$(oc -n "$OC_NS" get cm cmf-config -o jsonpath='{.data.cmf-config\.yaml}' 2>/dev/null \
+            | grep -E '^\s*url:' | head -1 | sed -E 's/.*url:\s*"?([^"]+).*/\1/')
+          if [ -z "$JDBC_URL" ]; then
+            JDBC_URL=$(oc -n "$OC_NS" get cm confluent-cmf-config -o jsonpath='{.data.cmf-config\.yaml}' 2>/dev/null \
+              | grep -E '^\s*url:' | head -1 | sed -E 's/.*url:\s*"?([^"]+).*/\1/')
+          fi
+          DB_HOST=$(printf '%s' "$JDBC_URL" | sed -E 's#jdbc:sqlserver://([^:;]+).*#\1#')
+          DB_PORT=$(oc -n "$OC_NS" get cm cmf-config -o jsonpath='{.data.cmf-config\.yaml}' 2>/dev/null \
+            | grep -E '^\s*port:' | head -1 | awk '{print $2}')
+          [ -z "$DB_PORT" ] && DB_PORT=3085
+          if [ -n "$DB_HOST" ]; then
+            echo "  Probing $DB_HOST:$DB_PORT from $CMF_POD..."
+            oc -n "$OC_NS" exec "$CMF_POD" -- bash -c "getent hosts $DB_HOST 2>/dev/null || echo 'DNS lookup FAILED'" 2>&1 | head -3
+            oc -n "$OC_NS" exec "$CMF_POD" -- bash -c "timeout 5 bash -c '</dev/tcp/$DB_HOST/$DB_PORT' 2>&1 && echo 'TCP OK ($DB_HOST:$DB_PORT reachable)' || echo 'TCP probe FAILED — check NetworkPolicy / firewall / SQL Server listening'" 2>&1 | head -3
+          else
+            echo "  (could not extract DB host from ConfigMap; skipping probe)"
+          fi
+        fi
+
+        # CMF.10 — pod log tail filtered for boot markers.
+        # Greps for the specific Spring/CMF log lines that mark each boot
+        # milestone: encryption init pass/fail, Flyway DB schema apply,
+        # Tomcat startup, the started-application banner, and any fatal
+        # exception. Tighter filter than the generic component-pod-logs
+        # block above (which only handles confluent-platform-labeled pods,
+        # not CMF).
+        echo ""
+        echo "=== CMF.10  Pod log tail filtered for boot markers (last 200 matched lines) ==="
+        if [ -n "$CMF_POD" ]; then
+          oc -n "$OC_NS" logs "$CMF_POD" --tail=2000 2>&1 \
+            | grep -iE 'error|fatal|exception|caused by|encryptionConfigInitializer|flyway|migrat|tomcat|Started CmfApplication|listener|jdbc|authentication|oauth|jwks' \
+            | tail -200 \
+            || echo "  (no matching log lines)"
+        else
+          echo "  (no CMF pod — cannot fetch logs)"
+        fi
+
+        # CMF.11 — REST API health probe from inside the pod.
+        # If the pod is Ready, the REST endpoint listens on https://localhost:8080.
+        # The endpoint shape varies by build — try a few common probes and report
+        # the first non-empty response. With OAuth disabled (current uat posture)
+        # an unauthenticated GET to / should at least return a 401/403/200, which
+        # is enough to confirm Tomcat is up.
+        echo ""
+        echo "=== CMF.11  REST API health probe (https://localhost:8080) ==="
+        if [ -n "$CMF_POD" ]; then
+          for path in /actuator/health /cmf/api/v1/environments /; do
+            echo "--- GET $path ---"
+            oc -n "$OC_NS" exec "$CMF_POD" -- bash -c \
+              "curl -sk --max-time 5 -o /tmp/r -w 'HTTP %{http_code} (%{size_download}B in %{time_total}s)\n' https://localhost:8080$path && head -c 400 /tmp/r ; echo" 2>&1 \
+              | head -8 \
+              || echo "  (probe failed)"
+            echo ""
+          done
+        else
+          echo "  (no CMF pod — cannot probe REST endpoint)"
+        fi
+
+        # CMF.12 — recent Warning events scoped to CMF objects.
+        # The generic Warning event block above lists every Warning in the
+        # namespace; this filters to CMF Deployment / Pod / ConfigMap /
+        # Secret events so the CMF-side noise is isolated.
+        echo ""
+        echo "=== CMF.12  Recent events scoped to CMF objects (last 20) ==="
+        oc -n "$OC_NS" get events --sort-by=.lastTimestamp 2>/dev/null \
+          | awk 'NR==1 || /cmf|confluent-manager-for-apache-flink/' \
+          | tail -20 \
+          || echo "  (no CMF-tagged events)"
 
         echo ""
         echo "=== End of diagnostics ==="

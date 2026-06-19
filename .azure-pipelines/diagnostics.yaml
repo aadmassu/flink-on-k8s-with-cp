@@ -1,12 +1,24 @@
 # Pipeline:  diagnostics
 # Purpose:   Read-only dump of the CFK-managed Confluent Platform cluster
-#            state in dah-flink-<env>: ESO-managed Secrets inventory,
-#            Secrets stuck in Terminating, key prerequisite Secrets,
-#            CR auth spec, recent Warning events, full CR + StatefulSet
-#            yaml, status.conditions table, `oc explain` against the
-#            live CRD schema, and the last 200 lines of the operator
-#            log filtered for errors. Touches nothing — `set +e` and a
-#            trailing `exit 0` keep it strictly observational.
+#            state in dah-flink-<env> AND the CMF (Confluent Manager for
+#            Apache Flink) install in the same namespace:
+#              CFK side — ESO-managed Secrets inventory, Secrets stuck in
+#              Terminating, prerequisite Secrets matrix, CR auth spec,
+#              recent Warning events, full CR + StatefulSet yaml,
+#              status.conditions table, `oc explain` against the live CRD
+#              schema, the last 200 lines of the operator log filtered
+#              for errors.
+#              CMF side — Helm release state, prereq Secrets (incl.
+#              cmf-encryption-key byte-length validation that mirrors
+#              CMF's encryptionConfigInitializer check), Deployment +
+#              Pod state, image-tag drift vs the FCB-required
+#              2.3.0-fcb-preview-2 build, namespace-scoped RBAC, rendered
+#              cmf-config ConfigMap, Service/Endpoints, DB reachability
+#              from inside the pod (DNS + TCP probe), pod log tail
+#              filtered for Spring/CMF boot markers, REST API health
+#              probe, and CMF-scoped events.
+#            Touches nothing — `set +e` and a trailing `exit 0` keep it
+#            strictly observational.
 # Author:    Ayele Admassu
 # Created:   2026-06-17
 #
