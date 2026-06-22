@@ -16,12 +16,16 @@ Report period: June 15 – June 19, 2026.
 ## Blockers
 
 - **UAT CMF deploy** — encryption-key double-base64 bug isolated and fixed pipeline-side (commit `343a93f`); waiting on: (a) `uat-cmf-encryption-key` variable-group value set to the base64 string in `project-docs/pump.txt`, (b) corrupted Secret deleted, (c) pipeline re-run. Tracker 3.4 (DBA-side CREATE DATABASE permission on `ut_db_DAH_kafka-svc`) still open in parallel.
-- **Tracker 3.2 (RITM1050600)** — `fcb-security` ArgoCD chart still hasn't applied per-env SA/Role/RoleBinding to `dah-flink-uat`. Container team.
+- **Tracker 3.2 (RITM1050600) — now the active Flink-UAT blocker** — `dah-flink-uat` namespace is missing **(a)** the per-env Flink ServiceAccount + Role + RoleBinding the env-specific Flink job consumes, AND **(b)** additional RoleBindings on the cluster-wide `flink-operator` SA so it can reconcile resources in `dah-flink-uat`. `fcb-security` ArgoCD chart still hasn't applied either piece. Container team. Flink in DEV is already running with this RBAC shape — UAT just needs the same scaffolding applied.
+- **DEV Artifactory image pull secret broken** (reported Monday 2026-06-22 by Tushar in the group channel) — surfaced after the DEV Flink Operator restart on Friday revealed downstream image pulls failing. Container/Platform team owns the pull-secret rotation; needs identification of which secret + which images are affected before next DEV apply.
 - **Tracker 1.4** — CyberArk safes don't yet hold the per-env CMF secrets for QA/UAT/PRD (RITM1085071/692/693). Variable-group fallback in place.
 - **Tracker 3.5** — prd CMF RBAC scaffolding (8 objects + flink-operator Role update) not yet applied. Tushar to file SNOW; namespace name to confirm.
-- **Tracker 2.9** — Okta egress per-namespace allowlist (`myapps.firstcitizens.com:443`) still blocked at perimeter.
 - **Tracker 2.10** — CFK broker custom-TCP-port exposure (9092 + 9094) pending non-standard request form, per env.
 - **SOW signature** — blocks Ayu's hours extension and the QA-on-VM commitment; blocks Asmerom's AEP job delivery.
+
+**Cleared from blockers this week:**
+
+- **Tracker 2.9** — Okta egress per-namespace allowlist (`myapps.firstcitizens.com:443`) — perimeter rule landed; egress from `dah-flink-<env>` namespaces now reaches Okta. Unblocks the OAuth/JWKS path for CFK components and the eventual CMF REST API authentication re-enable.
 
 ## Accomplishments
 
@@ -33,6 +37,8 @@ Report period: June 15 – June 19, 2026.
 - **Training Week 1 Friday (ConfigMaps/Secrets/SA/RBAC) — discussion.md + lab.md rewritten** (commits `e5b78a5`, `333ac18`) — five primitives in plain K8s, what CFK CRs generate vs. consume, namespace-scoped vs cluster-scoped operator posture, who-creates-what matrix, ESO section covering AWS Secrets Manager (primary), Azure Key Vault, Vault, CyberArk CCP. Lab covers each primitive with break-then-fix exercises and a final Pod-consumes-all-five scenario.
 - **kind training lab cluster — full rebuild** (today) — `kind delete cluster --name training` → fresh cluster → CFK operator `0.1514.40` (CFK 3.2.2) → KRaftController (3/3) → Kafka (3/3) → SchemaRegistry (2/2) → ControlCenter (1/1). All Pods Running, anti-affinity spread one-per-node on KRaft + Kafka. Ready for next week's training delivery.
 - **Diagnostics pipeline operator-vs-init-container cross-check** (commit `2e9c880`) — explicit pull of `.status.operatorVersion` from a CR plus every CR's `spec.image.init`, so the LESSONS_LEARNED D1 mismatch is the first thing visible after the secrets block.
+- **Okta egress allowlist landed** (Tracker 2.9 cleared) — `myapps.firstcitizens.com:443` is now reachable from `dah-flink-<env>` namespaces. Unblocks OAuth/JWKS calls and the eventual CMF REST API authentication re-enable for UAT/PRD.
+- **Flink Operator in DEV restarted Friday 2026-06-19** — the parked Flink job is unblocked. DEV Flink data path is functional end-to-end (catalog/database registration via `flink-environments`, then the job runs through to the VM Kafka brokers per `LESSONS_LEARNED.md` H3).
 
 ## Next Week Action Items
 
@@ -46,4 +52,6 @@ Report period: June 15 – June 19, 2026.
 - **Tushar files tracker 3.5 SNOW** — confirm `dah-flink-prd` vs `dah-flink-prod` namespace name with Container team; reference repo template `openshift-prereqs/prd/manifests/flink-sa-role-rolebinding.yaml`.
 - **DBA-team follow-through on tracker 3.4** — grant `CREATE DATABASE` to `ut_db_DAH_kafka-svc` (or pre-create `DAHFLINK` with the Flyway-required rows). Once landed, re-attempt UAT CMF deploy.
 - **Revert UAT cmf values.yaml DEBUG + stackTraceLogging** (commits `e327716` + `137cae6`) once UAT CMF startup is clean — not safe to leave verbose JDBC + driver-level logs on in upper envs.
-- **Continue waiting on**: RITM1050600, RITM1085071/692/693, tracker 2.9 (Okta egress).
+- **Unblock Flink UAT — get the env SA + RoleBindings applied** (tracker 3.2 / RITM1050600). The two pieces needed: (a) the per-env Flink SA + Role + RoleBinding in `dah-flink-uat`, (b) the extra RoleBindings on the cluster-wide `flink-operator` SA so it can reconcile in `dah-flink-uat`. Mirror what DEV already has; reference repo template `openshift-prereqs/uat/manifests/flink-sa-role-rolebinding.yaml`. Tushar follows up with Container team on the existing RITM1050600.
+- **Investigate the Monday 2026-06-22 DEV Artifactory image pull secret breakage** (Tushar's group-channel report). Identify which pull secret is broken (likely the namespace-level one in `dah-flink-dev` or `dah-kafka-dev`), which images stopped pulling, and the rotation path. Coordinate with Container team. Re-deploys in DEV are at risk until this is restored.
+- **Continue waiting on**: RITM1050600, RITM1085071/692/693.
