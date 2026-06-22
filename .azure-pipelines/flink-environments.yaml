@@ -70,7 +70,7 @@ stages:
             inputs:
               targetType: inline
               script: |
-                set -uo pipefail
+                set -euo pipefail
 
                 ENV_NAME="${{ parameters.environment }}"
                 ENV_FILE="apps/confluent-flink/$ENV_NAME/environment.json"
@@ -107,14 +107,30 @@ stages:
                 OC_TOKEN=$(oc whoami -t)
                 PROXY_BASE="$API_SERVER/api/v1/namespaces/$OC_NS/services/https:cmf-service:443/proxy"
 
+                # Portable equivalent of `curl --fail-with-body` (that flag is curl
+                # 7.76+ / Apr-2021 — older than the DevOpsLinux agent's curl). Writes
+                # response body to a temp file, captures the HTTP status code via -w,
+                # prints the body so CMF's error message is visible, and returns
+                # non-zero on any 4xx/5xx so `set -e` aborts the script. If we ever
+                # bump to a newer agent image, the one-liner with --fail-with-body
+                # remains the simpler form.
                 cmf_post() {
                   local path=$1
                   local file=$2
-                  curl --fail-with-body -sS -k -X POST \
+                  local body http
+                  body=$(mktemp)
+                  http=$(curl -sS -k -X POST \
                     -H "Authorization: Bearer $OC_TOKEN" \
                     -H "Content-Type: application/json" \
                     --data-binary "@$file" \
-                    "$PROXY_BASE$path"
+                    -o "$body" -w "%{http_code}" \
+                    "$PROXY_BASE$path")
+                  cat "$body"; echo
+                  rm -f "$body"
+                  if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
+                    echo "ERROR: POST $path failed with HTTP $http"
+                    return 1
+                  fi
                 }
 
                 cmf_get() {
