@@ -225,6 +225,15 @@ so a manual recovery follows the same shape.
 - [ ] At least one round-trip producer/consumer through KafkaRest
 - [ ] (For envs past dev) cluster link from VM CP is up and lagging
       within target bounds — confirm with Tushar
+- [ ] **Flink catalog integration end-to-end smoke test** — a green
+      `flink-environments` pipeline only proves CMF accepted the
+      catalog/database JSON; it does NOT prove the data path works.
+      Run one actual Flink SQL statement that touches a Kafka topic
+      through the registered catalog (`fcb-catalog`) and confirm rows
+      flow. If `connectionConfig.security.protocol` doesn't match the
+      broker listener bound to the bootstrap port, the
+      catalog registers fine but real traffic fails at first use.
+      See `LESSONS_LEARNED.md` H5.
 
 ## 4. Hand-off
 

@@ -910,6 +910,60 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   trail. Caught 2026-06-10 in `clear-stuck-prereq-finalizers`;
   fixed in the same commit as this entry.
 
+### H5. CMF Kafka catalog/database registers successfully but won't carry real traffic if `security.protocol` doesn't match the broker's listener
+
+* **Symptom**: `flink-environments` pipeline succeeds, `cmf_get
+  /cmf/api/v1/catalogs/kafka` and `.../databases` both list the new
+  catalog and database. Engineers conclude the integration "works."
+  The first real Flink SQL statement against the catalog later fails
+  with SSL handshake or authentication errors, sometimes hours or
+  days after the apparently-successful pipeline run.
+* **Root cause**: CMF's `POST /cmf/api/v1/catalogs/kafka/...` and
+  `.../databases` endpoints only **store the connection metadata**;
+  they don't open a Kafka connection at creation time. So a
+  `connectionConfig` block with the wrong `security.protocol` for the
+  port being bootstrapped will register successfully and look
+  healthy in every listing endpoint — but Flink jobs that actually
+  use the catalog hit the real broker listener and fail.
+  At FCB the VM brokers' `listeners=...` line binds:
+  - `INTERNAL://:9092` mapped to `SASL_SSL` (Okta OAUTHBEARER)
+  - `BROKER://:9091` mapped to `SASL_SSL` (PLAIN, interbroker)
+  - `CERTONLY://:9094` mapped to `SSL` with
+    `listener.name.certonly.ssl.client.auth=required` (mTLS)
+
+  The dev and uat `apps/confluent-flink/<env>/kafka-database.json`
+  files both point at `:9094` with `security.protocol: PLAINTEXT`
+  today. That registers in CMF without complaint, but a real client
+  connection sends plaintext bytes into a port that expects a TLS
+  ClientHello + client certificate and gets reset immediately.
+* **Fix (when ready to actually run Flink SQL through the catalog)**:
+  fix the `connectionConfig` to match the listener. Two viable
+  shapes:
+  1. **Keep port 9094 (CERTONLY) with proper mTLS** — set
+     `security.protocol: SSL`, and add `ssl.truststore.location`,
+     `ssl.truststore.password`, `ssl.keystore.location`,
+     `ssl.keystore.password`, `ssl.key.password`. The truststore +
+     keystore must be projected into the CMF pod filesystem (via a
+     mounted Secret) at the configured paths.
+  2. **Switch to port 9092 (INTERNAL) with SASL_SSL OAUTHBEARER** —
+     set `security.protocol: SASL_SSL`, `sasl.mechanism:
+     OAUTHBEARER`, the OAuth `sasl.jaas.config` clientId/secret/scope
+     block, the
+     `io.confluent.kafka.clients.plugins.auth.oauth.OAuthBearerLoginCallbackHandler`
+     callback, and Okta's token endpoint URL. Recommended long-term
+     because it reuses the Okta wiring the rest of the platform
+     already has — no per-component truststore/keystore mounts.
+* **Why it matters**: this is a silent integration-test escape. The
+  `flink-environments` pipeline going green proves CMF accepted the
+  JSON, not that the data path works. Don't let a green pipeline
+  close out the Flink-to-Kafka integration ticket — there has to be
+  an actual SQL statement that reads or writes a Kafka topic before
+  the catalog is "real." The current `:9094 + PLAINTEXT` config is
+  deliberate during the dev/uat bootstrap (Tracker 2.10 is the
+  ongoing non-standard-port + mTLS-credential workstream); flip to
+  the right protocol per-env as Tracker 2.10 lands the broker-side
+  pieces.
+
 ---
 
 ## How to add an entry here
