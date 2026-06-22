@@ -11,7 +11,7 @@
   "spec": {
     "srInstance": {
       "connectionConfig": {
-        "schema.registry.url": "http://REPLACE_WITH_UAT_SR_HOST:8081"
+        "schema.registry.url": "https://schemaregistry.uat.fcbint.net:8081"
       }
     }
   }
