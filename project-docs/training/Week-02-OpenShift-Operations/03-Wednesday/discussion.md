@@ -11,25 +11,6 @@ By the end of the day an engineer should be able to:
 - Map each hop in the path to the observability tool that exposes it (CloudWatch, VPC Flow Logs, Dynatrace, Splunk, OpenShift Console).
 - Explain why Kafka's bootstrap → metadata → direct-broker handshake breaks naïve "one hostname in front of three brokers" Ingress patterns.
 
-## Diagrams referenced
-
-The discussion is anchored on seven images under [`images/`](./images/). The first three are recaps of last Wednesday's Kubernetes-networking material; the last four are the new OpenShift-network-architecture material introduced today.
-
-| # | File | Purpose |
-|---|---|---|
-| R1 | `Pod to Service in-cluster traffic path.png` | Wk1 recap — Pod → CoreDNS → Service → EndpointSlice → Ready Pod; kube-proxy programs the rules but is not in the data path |
-| R2 | `Kubernetes Service Type Compared.png` | Wk1 recap — ClusterIP vs NodePort vs LoadBalancer side-by-side, what each exposes and where it sits |
-| R3 | `Ingress vs OpenShift Route.png` | Wk1 recap — Ingress (controller-based) vs OpenShift Route (HAProxy router), with a preview inset of the three TLS modes |
-| 1 | `ROSA-Networking-01.png` | ROSA VPC / Subnet / NAT / Security Group design — where the cluster actually lives in AWS |
-| 2 | `Monitoring and Observability.png` | The same traffic path with telemetry sources at each hop (CloudWatch, VPC Flow Logs, Dynatrace, Splunk, OCP Console) |
-| 3 | `TLS-Encryption.png` | OpenShift Route TLS termination modes — edge / re-encrypt / passthrough |
-| 3-detail | `SNI-How-It-Works.png` | The TLS extension (Server Name Indication) that makes passthrough possible — handshake walkthrough + the OpenShift-Router-routing-3-brokers-via-SNI example |
-| 4 | `Broker Ingress Traffic.png` | Kafka-specific ingress + egress — why brokers need 9092 OAuth + 9094 mTLS and TCP passthrough |
-
-Walk the diagrams in order. Each one extends the previous one — by the time you reach image 4, the broker-traffic story should feel inevitable.
-
----
-
 ## Part 0 — Recap of Wk1 Wednesday (10–15 min)
 
 We spent Wednesday of Week 1 building up Kubernetes networking from first principles. Re-anchor that material in three short passes before introducing the OpenShift-specific layers.
