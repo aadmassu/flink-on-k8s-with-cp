@@ -1,6 +1,20 @@
 # Lab Cluster — Minimal CFK-managed Kafka on kind
 
-A bare-minimum Kafka cluster running on kind, managed by **Confluent for Kubernetes (CFK)**. Used to demonstrate Service concepts during training; extended with features (TLS, auth, Connect, etc.) as the weeks progress.
+A bare-minimum Kafka cluster running on kind, managed by **Confluent for Kubernetes (CFK)**. Used as the **shared target cluster** across the training; extended with features (TLS, auth, Connect, ArgoCD, etc.) as the weeks progress.
+
+## Where this cluster fits in the training
+
+| Week / Day | How the lab-cluster is used |
+|---|---|
+| **Wk1 Wednesday** (Services / EndpointSlices / DNS / Routes) | Sample Kafka Services + EndpointSlices for the in-cluster traffic-path exercises |
+| **Wk1 Thursday** (Storage) | The `ssd` StorageClass + per-broker PVCs for the Pod→PVC→PV→SC chain walk |
+| **Wk1 Friday** (ConfigMaps / Secrets / SA / RBAC) | The five primitives observed against a real CFK install |
+| **Wk2 Wednesday** (OpenShift Network Architecture) | Part 4 broker ingress hands-on (`kafka-topics`, advertised listeners, partial-failure simulation) |
+| **Wk2 Thursday** (GitOps Strategies) | Parts 2–4 — engineers install ArgoCD on top of this cluster and exercise pull-based GitOps. The `kubectl apply` flow below is conceptually equivalent to Strategy A (push-once, drift-blind) |
+| **Wk4 CFK** | Same cluster, extended with the Confluent CRs the bootcamp builds out |
+| **Wk5 Kafka Operations** | Used as the test bed for upgrade / rolling restart / partition rebalance exercises |
+
+**Operational note**: applying these manifests with `kubectl apply` is the **push-style equivalent** of Strategy A from Wk2 Thursday — you run the apply once, the cluster lands in the desired state, and there's no controller watching for drift afterwards. The Wk2 Thursday lab installs ArgoCD on top of this same cluster to give engineers the felt experience of Strategy B (continuous reconcile + `selfHeal` reverting drift). Both strategies operate on the *same* manifests; what differs is the reconcile model.
 
 ## Composition
 
@@ -32,6 +46,7 @@ kind create cluster --name training --config 00-kind-cluster-config.yaml
 Numeric prefixes apply in order. Simplest path after the operator is up:
 
 ```bash
+# kubectl
 kubectl apply -f 01-namespace.yaml
 kubectl apply -f 02-storageclass-ssd.yaml
 kubectl apply -f 10-kraftcontroller.yaml
@@ -45,6 +60,21 @@ kubectl -n kafka-dev wait --for=condition=Ready pod -l app=schemaregistry --time
 
 kubectl apply -f 40-controlcenter.yaml
 kubectl -n kafka-dev wait --for=condition=Ready pod -l app=controlcenter --timeout=600s
+
+# oc
+oc apply -f 01-namespace.yaml
+oc apply -f 02-storageclass-ssd.yaml
+oc apply -f 10-kraftcontroller.yaml
+oc -n kafka-dev wait --for=condition=Ready pod -l app=kraftcontroller --timeout=300s
+
+oc apply -f 20-kafka.yaml
+oc -n kafka-dev wait --for=condition=Ready pod -l app=kafka --timeout=300s
+
+oc apply -f 30-schemaregistry.yaml
+oc -n kafka-dev wait --for=condition=Ready pod -l app=schemaregistry --timeout=300s
+
+oc apply -f 40-controlcenter.yaml
+oc -n kafka-dev wait --for=condition=Ready pod -l app=controlcenter --timeout=600s
 ```
 
 Apply order matters: the broker references the controller via `dependencies.kRaftController.clusterRef`; Schema Registry references the broker via `dependencies.kafka.bootstrapEndpoint`; Control Center references Schema Registry via `dependencies.schemaRegistry.url` and discovers Kafka from the same namespace. The operator pauses reconciliation until each dependency is Ready.
@@ -52,45 +82,64 @@ Apply order matters: the broker references the controller via `dependencies.kRaf
 ## Opening the Control Center UI
 
 ```bash
+# kubectl
 kubectl -n kafka-dev port-forward svc/controlcenter 9021:9021
-# then open http://localhost:9021 in a browser
-# default credentials: admin / Developer1
+
+# oc
+oc -n kafka-dev port-forward svc/controlcenter 9021:9021
 ```
+
+Then open <http://localhost:9021> in a browser. Default credentials: `admin` / `Developer1`.
 
 ## Verify
 
 ```bash
-# Confluent CRs and their status:
-kubectl -n kafka-dev get kraftcontroller,kafka,schemaregistry
-
-# What the operator generated from each CR:
+# kubectl
+kubectl -n kafka-dev get kraftcontroller,kafka,schemaregistry,controlcenter
 kubectl -n kafka-dev get sts,deploy,svc,cm,pvc
-
-# Pod layout (anti-affinity should spread brokers and controllers across worker nodes):
 kubectl -n kafka-dev get pods -o wide
-
-# EndpointSlices — which pods each Service routes to:
 kubectl -n kafka-dev get endpointslice
+
+# oc
+oc -n kafka-dev get kraftcontroller,kafka,schemaregistry,controlcenter
+oc -n kafka-dev get sts,deploy,svc,cm,pvc
+oc -n kafka-dev get pods -o wide
+oc -n kafka-dev get endpointslice
 ```
 
-Functional check — list internal topics from inside a broker:
+Each line answers a different question — Confluent CR status, what the operator generated, pod layout (anti-affinity should spread brokers + controllers one-per-worker-node), and which Pod IPs each Service currently routes to.
+
+### Functional check — list internal topics from inside a broker
 
 ```bash
+# kubectl
 kubectl -n kafka-dev exec kafka-0 -- \
+  kafka-topics --bootstrap-server kafka.kafka-dev.svc.cluster.local:9071 --list
+
+# oc
+oc -n kafka-dev exec kafka-0 -- \
   kafka-topics --bootstrap-server kafka.kafka-dev.svc.cluster.local:9071 --list
 ```
 
-Functional check — register and read back a schema via Schema Registry:
+### Functional check — register and read back a schema via Schema Registry
 
 ```bash
-# Register
+# kubectl
 kubectl -n kafka-dev exec deploy/schemaregistry -- \
   curl -s -X POST -H 'Content-Type: application/vnd.schemaregistry.v1+json' \
   --data '{"schema":"{\"type\":\"string\"}"}' \
   http://schemaregistry.kafka-dev.svc.cluster.local:8081/subjects/test-value/versions
 
-# List
 kubectl -n kafka-dev exec deploy/schemaregistry -- \
+  curl -s http://schemaregistry.kafka-dev.svc.cluster.local:8081/subjects
+
+# oc
+oc -n kafka-dev exec deploy/schemaregistry -- \
+  curl -s -X POST -H 'Content-Type: application/vnd.schemaregistry.v1+json' \
+  --data '{"schema":"{\"type\":\"string\"}"}' \
+  http://schemaregistry.kafka-dev.svc.cluster.local:8081/subjects/test-value/versions
+
+oc -n kafka-dev exec deploy/schemaregistry -- \
   curl -s http://schemaregistry.kafka-dev.svc.cluster.local:8081/subjects
 ```
 
@@ -265,6 +314,7 @@ For a full operator uninstall see [`03-operator-install.md`](03-operator-install
 - No monitoring / metrics stack
 - No Connect, ksqlDB, REST Proxy
 - No RBAC for Confluent
+- **No ArgoCD by default** — the lab-cluster is installed via straight `kubectl apply` (Strategy A from Wk2 Thursday). Engineers add ArgoCD on top during the Wk2 Thursday lab to experience Strategy B (continuous reconcile + `selfHeal`).
 
 Each week of training adds one or more of these as an additive overlay (or a tweak to the existing CRs — CFK keeps all of it in-place via the CR `spec`).
 
