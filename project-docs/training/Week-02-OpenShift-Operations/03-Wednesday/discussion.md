@@ -149,7 +149,9 @@ The bottom takeaway (green banner): *For Kafka 9092 and 9094, avoid breaking bro
 
 ## Part 4 — Kafka broker ingress: why it doesn't fit the HTTP shape
 
-Show `images/Broker Ingress Traffic.png`. This is the diagram that ties the day together. Walk it slowly — most engineers expect Kafka to behave like an HTTP API and are surprised by what actually happens.
+![4 — Kafka Broker Ingress and Egress (9092 OAuth / 9094 mTLS)](<images/Broker Ingress Traffic.png>)
+
+This is the diagram that ties the day together. Walk it slowly — most engineers expect Kafka to behave like an HTTP API and are surprised by what actually happens.
 
 ### The bootstrap → metadata → broker handshake
 
