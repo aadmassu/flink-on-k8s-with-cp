@@ -161,6 +161,35 @@ This is the diagram that ties the day together. Walk it slowly — most engineer
 
 This is why Kafka cannot be hidden behind a single hostname that proxies HTTP-style to "the brokers." The client *has* to be able to reach each broker independently at its advertised address.
 
+### Inside the cluster: two Service shapes back every Kafka CR
+
+The bootstrap → metadata → direct-broker handshake works because CFK creates **two different Service shapes for every Kafka CR**. Both are needed; they do different jobs.
+
+| Service | Shape | `CLUSTER-IP` column | What it does |
+|---|---|---|---|
+| `kafka` | **Headless** (`clusterIP: None`) | `None` | DNS-only Service. `kafka.<ns>.svc.cluster.local` returns one A record per Ready broker Pod IP. Per-pod DNS `kafka-0.kafka.<ns>.svc.cluster.local`, `kafka-1.…`, `kafka-2.…` returns exactly that broker's Pod IP. This is the DNS source that `advertised.listeners` names. |
+| `kafka-N-internal` | **Standard ClusterIP** (real VIP) | `10.96.x.x` | One per broker. Selector pins to exactly one Pod (`statefulset.kubernetes.io/pod-name: kafka-N`). Stable VIP per broker — used by OpenShift Route backends, by callers that prefer not to chase DNS, and by per-broker scrape targets. |
+
+The same pattern repeats for every CFK component: `kraftcontroller` + `kraftcontroller-N-internal`, `schemaregistry` + `schemaregistry-N-internal`, `controlcenter` + `controlcenter-N-internal`. **Headless front door for DNS + per-pod ClusterIP for stable addressing.**
+
+Why both? A single front-door VIP backed by all three brokers would break Kafka — kube-proxy would round-robin clients randomly across brokers, and metadata responses would conflict. The client could never address "broker-1 specifically." So:
+
+- **Bootstrap and per-pod DNS** go through the **headless** `kafka` Service. DNS returns one address per Pod; the client picks where to go.
+- **Stable per-broker VIPs** — for Route backends, for clients with cached DNS, for per-broker Prometheus/Dynatrace scrapes — are the **`kafka-N-internal` ClusterIP Services**.
+
+Live evidence from the lab-cluster:
+
+```
+$ kubectl -n kafka-dev get svc
+NAME                  TYPE        CLUSTER-IP      PORTS
+kafka                 ClusterIP   None            9074,9092,8090,9071,…   ← bootstrap + per-pod DNS (headless)
+kafka-0-internal      ClusterIP   10.96.212.102   9074,9092,8090,9071,…   ← broker-0 stable VIP
+kafka-1-internal      ClusterIP   10.96.55.96     9074,9092,8090,9071,…   ← broker-1 stable VIP
+kafka-2-internal      ClusterIP   10.96.83.214    9074,9092,8090,9071,…   ← broker-2 stable VIP
+```
+
+**Operational consequence**: when you triage "broker-1 unreachable," check **both** `kafka-1-internal`'s EndpointSlice **and** the headless `kafka` Service's endpoint list. Either can break independently — and the symptoms look similar from a producer's perspective.
+
 ### 9092 vs 9094
 
 Two listeners are exposed to external traffic; both carry real Kafka protocol traffic, but they differ in how the client authenticates:
