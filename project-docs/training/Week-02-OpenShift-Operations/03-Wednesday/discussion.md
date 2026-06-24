@@ -35,7 +35,7 @@ We spent Wednesday of Week 1 building up Kubernetes networking from first princi
 
 ### R1 — Pod to Service path
 
-Show `images/Pod to Service in-cluster traffic path.png` and walk the five numbered steps. Hit these talking points:
+![R1 — Pod to Service in-cluster traffic path](<images/Pod to Service in-cluster traffic path.png>)
 
 - **Pod IPs are ephemeral and internal**. Clients never depend on Pod IPs. The Service DNS name is the contract.
 - **CoreDNS** resolves the Service DNS to a stable ClusterIP. Failure of DNS is a separate failure mode from failure of the data path.
@@ -45,7 +45,7 @@ Show `images/Pod to Service in-cluster traffic path.png` and walk the five numbe
 
 ### R2 — Service types compared
 
-Show `images/Kubernetes Service Type Compared.png`. Three columns, same broker row at the bottom, different entry points:
+![R2 — Kubernetes Service types compared](<images/Kubernetes Service Type Compared.png>)
 
 - **ClusterIP** — the only type reachable in-cluster by default. Every other type layers on top.
 - **NodePort** — exposes the same Service on a port (30000–32767) on every node. Often rejected by enterprise OpenShift admission policy because it bypasses Route/TLS governance.
@@ -55,7 +55,7 @@ For internal callers: ClusterIP. For external HTTP/S: Route (next diagram). For 
 
 ### R3 — Ingress vs OpenShift Route + the TLS modes inset
 
-Show `images/Ingress vs OpenShift Route.png`. Two parallel front doors:
+![R3 — Ingress vs OpenShift Route](<images/Ingress vs OpenShift Route.png>)
 
 - **Ingress (vanilla K8s)** — Ingress object = declarative rules; Ingress Controller = the actual proxy. Without a controller, an Ingress object is configuration with no data plane.
 - **OpenShift Route** — Route object = rules; the OCP Router pod (HAProxy) is the proxy. Comes built into the cluster, knows about TLS, defaults to a wildcard `*.apps.<cluster>` hostname.
@@ -68,7 +68,7 @@ The bottom inset previews the three TLS termination modes. We come back to those
 
 ## Part 1 — Where the cluster actually lives: ROSA VPC, subnets, NAT, security groups
 
-Show `images/ROSA-Networking-01.png`. Five numbered steps; here are the talking points behind each:
+![1 — ROSA VPC / Subnet / NAT / Security Group Design](images/ROSA-Networking-01.png)
 
 - **Public subnets** hold only the *entry points* — Internet Gateway, NAT Gateway, public DNS (Route53), and the Ingress LoadBalancer that fronts the OCP Router. Nothing application-level lives here.
 - **Private subnets** hold:
@@ -97,7 +97,9 @@ Every one of those hops is a place where the path can break. Image 4 (Broker Ing
 
 ## Part 2 — Observability along the path
 
-Show `images/Monitoring and Observability.png`. The diagram restates the traffic path (Client → Route53/DNS → Ingress LB → OCP Router → Service/Endpoint → Pod/Broker) but pairs every hop with the **observability tool** that gives you visibility into that hop. Building this mental map early is what separates a triage that takes 5 minutes from one that takes hours.
+![2 — Network Monitoring and Observability](<images/Monitoring and Observability.png>)
+
+The diagram restates the traffic path (Client → Route53/DNS → Ingress LB → OCP Router → Service/Endpoint → Pod/Broker) but pairs every hop with the **observability tool** that gives you visibility into that hop. Building this mental map early is what separates a triage that takes 5 minutes from one that takes hours.
 
 | Hop | What can break | Tool to inspect first |
 |---|---|---|
@@ -116,7 +118,7 @@ This is the operational counterpart to last week's troubleshooting decision tree
 
 ## Part 3 — OpenShift Route TLS termination modes
 
-Show `images/TLS-Encryption.png`. Three columns:
+![3 — SSL / TLS Termination and Forwarding Models](images/TLS-Encryption.png)
 
 ### Edge termination
 
@@ -239,4 +241,3 @@ This is the same surface as last week's UAT flink-environments issue. The `kafka
 - ROSA AWS networking: <https://docs.aws.amazon.com/ROSA/latest/userguide/rosa-sts-aws-prereqs.html>
 - VPC Flow Logs: <https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html>
 - Kafka listeners and advertised listeners: <https://docs.confluent.io/platform/current/installation/configuration/broker-configs.html#listeners>
-- See also: `runbook/LESSONS_LEARNED.md` H5 for the catalog/database `security.protocol` trap that's exactly an instance of this story.
