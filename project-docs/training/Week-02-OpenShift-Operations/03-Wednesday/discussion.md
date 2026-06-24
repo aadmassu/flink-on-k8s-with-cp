@@ -23,6 +23,7 @@ The discussion is anchored on seven images under [`images/`](./images/). The fir
 | 1 | `ROSA-Networking-01.png` | ROSA VPC / Subnet / NAT / Security Group design — where the cluster actually lives in AWS |
 | 2 | `Monitoring and Observability.png` | The same traffic path with telemetry sources at each hop (CloudWatch, VPC Flow Logs, Dynatrace, Splunk, OCP Console) |
 | 3 | `TLS-Encryption.png` | OpenShift Route TLS termination modes — edge / re-encrypt / passthrough |
+| 3-detail | `SNI-How-It-Works.png` | The TLS extension (Server Name Indication) that makes passthrough possible — handshake walkthrough + the OpenShift-Router-routing-3-brokers-via-SNI example |
 | 4 | `Broker Ingress Traffic.png` | Kafka-specific ingress + egress — why brokers need 9092 OAuth + 9094 mTLS and TCP passthrough |
 
 Walk the diagrams in order. Each one extends the previous one — by the time you reach image 4, the broker-traffic story should feel inevitable.
@@ -140,6 +141,30 @@ This is the operational counterpart to last week's troubleshooting decision tree
 - Router uses **SNI** to pick the right backend based on the hostname the client requested.
 - **Required for Kafka broker listeners** — brokers present their own cert, terminate TLS themselves, and validate client certs against their own truststore.
 - **Required for Schema Registry / Connect / Control Center** when those services have a strong mTLS posture that the router shouldn't interpose in.
+
+### Under the hood: what SNI actually is and why passthrough depends on it
+
+![SNI — Server Name Indication, the mechanism behind passthrough](images/SNI-How-It-Works.png)
+
+The Passthrough block above keeps saying "the router uses SNI to pick the right backend." That sentence hides one of the most important pieces of TLS — and you can't reason about Kafka-over-port-443 designs without it. The diagram above is the full picture; the prose here is the short version.
+
+**Server Name Indication (SNI)** is a TLS extension that lets a client tell the server *which hostname it's trying to reach* — **in the plaintext ClientHello**, *before* the TLS handshake establishes encryption. That one design choice is what makes shared TLS endpoints possible.
+
+The handshake, condensed:
+
+1. Client opens TCP to the server IP on port 443.
+2. Client sends `ClientHello` (plaintext on the wire) including the `server_name` extension = the hostname it wants (e.g. `broker-1.kafka.example.com`).
+3. Server (or proxy) reads the SNI value **without decrypting anything else**, picks the matching certificate / backend, and proceeds.
+4. Server completes the handshake with the chosen cert; encryption starts.
+5. For passthrough: the proxy uses **only** the SNI to decide which backend to forward the raw TCP bytes to — the backend terminates TLS itself.
+
+The consequences are everywhere in OpenShift networking:
+
+- **One IP + port 443** can host **N TLS-protected hostnames** — each with its own cert — because the router peeks at SNI and demultiplexes.
+- **One OpenShift Ingress LB on port 443** can front three Kafka brokers (`broker-0.example.com`, `broker-1.example.com`, `broker-2.example.com`) at once, even with TCP passthrough. Each gets its own per-broker Route; the Router picks which Route to forward by SNI.
+- **The router never sees the encrypted application payload** in passthrough mode — it only reads SNI from the handshake metadata. That's the property mTLS-enforced services (Kafka brokers, mTLS REST APIs) absolutely require.
+
+**Client-side requirement** — the client must send SNI in its ClientHello. Modern Kafka clients (Java 2.0+, librdkafka 1.0+, Go sarama with TLS config, Python kafka-python 2.0+) include SNI automatically. **Pre-2018 clients without SNI cannot reach multiple brokers behind a shared port 443** — they'd need a separate IP or port per broker. This is why the Kafka-on-port-443 design (mentioned during the Wk2 Wed Q&A on whether 443 can be mapped to 9092) only works for SNI-capable clients.
 
 **Rule of thumb**: if the backend needs to see the *real client cert* or terminate TLS with *its own keystore*, you must use passthrough. Everything else can usually use edge or re-encrypt.
 
