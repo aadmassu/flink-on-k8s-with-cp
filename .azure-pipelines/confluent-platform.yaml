@@ -848,6 +848,24 @@ stages:
                     return 1
                   }
 
+                  # Pre-Phase: NetworkPolicy allowing ingress from the CFK
+                  # operator namespace. Must be in place before any CFK pod
+                  # comes up — the operator's Jolokia probe on TCP/7777
+                  # otherwise times out, KRaft CR goes ApplyFailed, and
+                  # Kafka stays at replicas=0 (see network-policy.yaml
+                  # header and runbook/LESSONS_LEARNED.md). Applied
+                  # conditionally so envs that haven't adopted the file
+                  # yet (uat/qa/stg/prd/dr) don't fail this task. Apply
+                  # is idempotent — same file on re-run is a no-op.
+                  if [ -f "$ENV_DIR/network-policy.yaml" ]; then
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/network-policy.yaml"
+                    oc apply -f "$ENV_DIR/network-policy.yaml"
+                  else
+                    echo ""
+                    echo "(NetworkPolicy file $ENV_DIR/network-policy.yaml not present — skipping)"
+                  fi
+
                   echo "=== Phase 1: KRaftController + Kafka ==="
                   if is_true "$APPLY_KRAFT"; then
                     echo ""

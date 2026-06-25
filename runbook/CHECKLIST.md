@@ -56,6 +56,17 @@ touching any manifests for the target env.
       `confluent-init-container:<operator-minor>` (currently `3.1.2`).
 - [ ] **KeyFactor PKI ClusterIssuer reachable** if any CR uses
       cert-manager-issued TLS material. Owner: Rick.
+- [ ] **NetworkPolicy allowing ingress from the CFK operator namespace**
+      exists in `dah-flink-<env>`. The three security-chart NPs
+      (`allow-from-ingress`, `allow-from-monitoring`,
+      `allow-same-namespace`) do NOT cover ingress from the operator
+      namespace, so default-deny drops the operator's Jolokia probe on
+      TCP/7777 and KRaft sits at `cluster-ready=False, ApplyFailed,
+      i/o timeout` forever. The pipeline applies
+      `apps/confluent-platform/<env>/network-policy.yaml` at the top
+      of the CR apply phase (conditional on file existence) — confirm
+      the file exists for this env before kicking off install-or-update.
+      See `LESSONS_LEARNED.md` H6.
 
 ## 1. Per-CR manifest review (every CR in `apps/confluent-platform/<env>/`)
 

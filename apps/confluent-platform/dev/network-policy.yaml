@@ -1,0 +1,82 @@
+# NetworkPolicy — allow inbound traffic from the CFK operator namespace
+# to CFK component management ports in dah-flink-dev.
+#
+# Why this exists:
+# The namespace already carries three Helm/Argo-managed NPs from the
+# 'security' chart (RITM0993435):
+#   - allow-from-ingress       (ns label policy-group=ingress)
+#   - allow-from-monitoring    (ns label policy-group=monitoring)
+#   - allow-same-namespace     (pods in dah-flink-dev only)
+#
+# None of those cover ingress from the CFK operator's namespace
+# (confluent-operator). The CFK operator probes each KRaft controller
+# via Jolokia on TCP/7777 to read the controller's log end offset
+# before allowing Kafka brokers to be reconciled. Default-deny drops
+# those packets, the probe fails with i/o timeout, and the operator
+# marks the KRaft CR cluster-ready=False (reason: ApplyFailed). Kafka
+# then sits at replicas=0 indefinitely.
+#
+# Symptom in diagnostics.yaml:
+#   FailedToUpdate  KRaftController  failed to query kRaft controller N
+#   for log end offset: ... dial tcp <pod-ip>:7777: i/o timeout
+#
+# Permitted ports cover everything the operator + cross-component
+# traffic touch over the cluster network:
+#   7777   Jolokia        operator health probe (the one that was
+#                         timing out)
+#   7778   Prometheus     operator metrics scrape
+#   7203   JMX            inter-pod metrics path
+#   9074   KRaft          controller listener (KRaft quorum)
+#   9071   Kafka internal SASL_SSL inter-broker listener
+#   9092   Kafka external broker listener (clients reach this through
+#                         the loadBalancer; cluster-internal callers
+#                         also use it during reconcile)
+#   9094   Kafka CERTONLY mTLS listener
+#   8081   Schema Registry REST
+#   8082   Kafka REST Proxy REST
+#   8083   Kafka Connect REST
+#   8090   MDS REST
+#   9021   Control Center REST
+#
+# Egress is unaffected — this NP is Ingress-only, matching the other
+# three policies in the namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-confluent-operator
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: confluent-platform
+    app.kubernetes.io/component: network-policy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+    fcbint.net/app-tier: "4"
+    fcbint.net/network: core
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  # Apply to every Pod in dah-flink-dev — every CFK component is a
+  # potential operator-reconcile target.
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              # Auto-added by the kubelet for every namespace
+              # (K8s 1.21+ / OpenShift 4.10+). Avoids requiring
+              # the operator namespace to be re-labeled.
+              kubernetes.io/metadata.name: confluent-operator
+      ports:
+        - { protocol: TCP, port: 7777 }
+        - { protocol: TCP, port: 7778 }
+        - { protocol: TCP, port: 7203 }
+        - { protocol: TCP, port: 9074 }
+        - { protocol: TCP, port: 9071 }
+        - { protocol: TCP, port: 9092 }
+        - { protocol: TCP, port: 9094 }
+        - { protocol: TCP, port: 8081 }
+        - { protocol: TCP, port: 8082 }
+        - { protocol: TCP, port: 8083 }
+        - { protocol: TCP, port: 8090 }
+        - { protocol: TCP, port: 9021 }

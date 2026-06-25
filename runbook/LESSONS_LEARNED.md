@@ -964,6 +964,56 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   the right protocol per-env as Tracker 2.10 lands the broker-side
   pieces.
 
+### H6. CFK operator-to-broker traffic is dropped by default-deny NetworkPolicies
+
+* **Symptom**: KRaftController CR shows `cluster-ready=False`,
+  `reason=ApplyFailed`, with the message
+  `failed to query kRaft controller N for log end offset: ...
+  dial tcp <pod-ip>:7777: i/o timeout`. KRaft pods themselves are
+  Ready, the StatefulSet shows `readyReplicas: 3`, and
+  `currentRevision != updateRevision` so the operator wants to roll
+  but `rolling=True, 0/3 pods updated, ignore=false`. Downstream:
+  Kafka CR sits at `replicas: 0` with
+  `Timeout: request did not complete within requested timeout -
+  context deadline exceeded`. No Kafka StatefulSet ever gets
+  created. Dependents (SR, Connect, REST, C3) never get applied
+  because the pipeline gates on `wait_for_cr_ready kafka`.
+* **Root cause**: the namespace carries three Helm/Argo-managed
+  NetworkPolicies from the `security` chart
+  (RITM0993435 — `allow-from-ingress`, `allow-from-monitoring`,
+  `allow-same-namespace`). None of them permit ingress from the
+  CFK operator's namespace (`confluent-operator`). The operator's
+  reconcile loop calls Jolokia on TCP/7777 on every KRaft pod
+  before letting Kafka be reconciled — those packets get
+  default-denied by the cluster's NP enforcer. Operator only sees
+  `i/o timeout`, can't distinguish the no-route case from a real
+  broker problem, and refuses to proceed.
+* **Fix**: a fourth NetworkPolicy in the workload namespace —
+  `apps/confluent-platform/<env>/network-policy.yaml`,
+  `allow-from-confluent-operator` — Ingress-only, scoped to the
+  CFK component management ports (7777 Jolokia, 7778 Prometheus,
+  7203 JMX, 9074 KRaft, 9071 internal listener, 9092/9094 external
+  + CERTONLY, 8081/8082/8083 SR/REST/Connect, 8090 MDS,
+  9021 C3). Selector matches the operator namespace via the
+  auto-applied `kubernetes.io/metadata.name=confluent-operator`
+  label so the operator namespace doesn't have to be retro-labeled.
+  Applied by `.azure-pipelines/confluent-platform.yaml` at the top
+  of the CR apply phase, conditional on the file existing — so an
+  env-by-env rollout works without breaking pipelines for envs
+  that haven't adopted the file yet.
+* **Why it matters**: this is the failure mode that masquerades as
+  a CFK / KRaft / Kafka bug for the first hour of triage. The
+  pods look healthy, the Secrets are in place, the CR spec is
+  valid, but nothing converges. The signal is in the **CR status
+  conditions** and the **`FailedToUpdate` events on the CR** —
+  not in pod logs (the affected pods aren't even running yet) and
+  not in the cert-manager / Secrets state. `diagnostics.yaml`'s
+  per-CR events block and the NetworkPolicy dump section together
+  catch it in one pass. When promoting to uat/qa/stg/prd/dr,
+  drop the same `network-policy.yaml` into each env's folder —
+  the security chart's three default NPs are identical across
+  envs, so the same operator-namespace gap exists in all of them.
+
 ---
 
 ## How to add an entry here
