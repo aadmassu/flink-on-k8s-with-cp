@@ -668,6 +668,119 @@ stages:
                 oc -n "$OPNS" get endpoints -o jsonpath='{range .items[*]}{.metadata.name}{"  subsets="}{range .subsets[*]}addrs=[{range .addresses[*]}{.ip},{end}] ports=[{range .ports[*]}{.port}/{.protocol},{end}] {end}{"\n"}{end}' 2>&1 \
                   || echo "(forbidden)"
 
+                # The narrow probe above only catches webhooks pointing AT $OPNS,
+                # but the Kafka CR's status condition message "Timeout: request
+                # did not complete within requested timeout - context deadline
+                # exceeded" comes from the K8s API server when an admission
+                # webhook in the apply path times out. The operator applies
+                # downstream resources for the Kafka CR (StatefulSet, Service,
+                # ConfigMap, Secret). ANY webhook that matches those resource
+                # kinds will fire — regardless of where its backend Service
+                # lives — and can stall the apply if its endpoints are gone or
+                # its constraint is slow.
+                echo ""
+                echo "=== ALL cluster webhooks that could fire on a Kafka-CR apply (broader probe) ==="
+                # Rule shape we care about: rules.apiGroups intersects
+                # {"", "apps", "platform.confluent.io"} AND rules.resources
+                # intersects {kafkas, statefulsets, services, configmaps,
+                # secrets, persistentvolumeclaims} AND operations contains
+                # CREATE or UPDATE. Anything else can't block the Kafka
+                # reconcile and is filtered out to keep the dump readable.
+                for whkind in mutatingwebhookconfiguration validatingwebhookconfiguration; do
+                  echo ""
+                  echo "--- $whkind entries matching Kafka-CR apply path ---"
+                  oc get "$whkind" -o json 2>/dev/null \
+                    | python3 -c "
+                import json, sys
+                try:
+                    data = json.load(sys.stdin)
+                except Exception as e:
+                    print('(could not parse: %s)' % e); sys.exit(0)
+                TARGET_RESOURCES = {'kafkas','statefulsets','services','configmaps','secrets','persistentvolumeclaims','*'}
+                TARGET_GROUPS = {'', 'apps', 'platform.confluent.io', '*'}
+                hits = 0
+                for item in data.get('items', []):
+                    cfg_name = item['metadata']['name']
+                    for wh in item.get('webhooks', []):
+                        matched_rule = None
+                        for r in (wh.get('rules') or []):
+                            groups = set(r.get('apiGroups') or [])
+                            resources = set(r.get('resources') or [])
+                            ops = set(r.get('operations') or [])
+                            if (groups & TARGET_GROUPS) and (resources & TARGET_RESOURCES) and ({'CREATE','UPDATE','*'} & ops):
+                                matched_rule = r
+                                break
+                        if not matched_rule:
+                            continue
+                        hits += 1
+                        svc = (wh.get('clientConfig') or {}).get('service') or {}
+                        url = (wh.get('clientConfig') or {}).get('url')
+                        ns_sel = wh.get('namespaceSelector') or {}
+                        print('  config=%s' % cfg_name)
+                        print('    webhook=%s' % wh.get('name'))
+                        if svc:
+                            print('    service=%s/%s:%s path=%s' % (svc.get('namespace'),svc.get('name'),svc.get('port',443),svc.get('path')))
+                        if url:
+                            print('    url=%s' % url)
+                        print('    timeout=%ss  failurePolicy=%s  sideEffects=%s' % (
+                            wh.get('timeoutSeconds'), wh.get('failurePolicy'), wh.get('sideEffects')))
+                        print('    matched-rule: groups=%s resources=%s ops=%s scope=%s' % (
+                            matched_rule.get('apiGroups'), matched_rule.get('resources'),
+                            matched_rule.get('operations'), matched_rule.get('scope')))
+                        if ns_sel:
+                            print('    namespaceSelector=%s' % json.dumps(ns_sel))
+                if hits == 0:
+                    print('  (no webhook found whose rules cover Kafka CR apply-path resources)')
+                "
+                done
+
+                # For every webhook flagged above, the next question is whether
+                # its backend Service actually has Endpoints. Since the SA can
+                # list cluster-scoped MWC/VWC but is typically denied listing
+                # endpoints in other namespaces (we already see this for
+                # confluent-operator), try anyway per webhook namespace and
+                # report which ones returned zero addresses or forbidden.
+                echo ""
+                echo "--- Endpoint reachability for webhook backend services flagged above ---"
+                oc get mutatingwebhookconfiguration validatingwebhookconfiguration -o json 2>/dev/null \
+                  | python3 -c "
+                import json, sys, subprocess
+                try:
+                    data = json.load(sys.stdin)
+                except Exception as e:
+                    print('(could not parse: %s)' % e); sys.exit(0)
+                TARGET_RESOURCES = {'kafkas','statefulsets','services','configmaps','secrets','persistentvolumeclaims','*'}
+                TARGET_GROUPS = {'', 'apps', 'platform.confluent.io', '*'}
+                seen = set()
+                for item in data.get('items', []):
+                    for wh in item.get('webhooks', []):
+                        for r in (wh.get('rules') or []):
+                            groups = set(r.get('apiGroups') or [])
+                            resources = set(r.get('resources') or [])
+                            ops = set(r.get('operations') or [])
+                            if not ((groups & TARGET_GROUPS) and (resources & TARGET_RESOURCES) and ({'CREATE','UPDATE','*'} & ops)):
+                                continue
+                            svc = (wh.get('clientConfig') or {}).get('service') or {}
+                            ns = svc.get('namespace')
+                            nm = svc.get('name')
+                            if not ns or not nm:
+                                break
+                            key = (ns, nm)
+                            if key in seen:
+                                break
+                            seen.add(key)
+                            print('  endpoint check: %s/%s' % (ns, nm))
+                            r = subprocess.run(['oc','-n',ns,'get','endpoints',nm,'-o','jsonpath={range .subsets[*]}addresses=[{range .addresses[*]}{.ip},{end}] ports=[{range .ports[*]}{.port}/{.protocol},{end}]{end}'],
+                                               capture_output=True, text=True)
+                            out = (r.stdout or '').strip() or '(empty subsets — ZERO ENDPOINTS, this webhook will time out)'
+                            err = (r.stderr or '').strip()
+                            if r.returncode != 0:
+                                print('    %s' % (err or 'forbidden'))
+                            else:
+                                print('    %s' % out)
+                            break
+                "
+
                 # When the operator silently stops touching a CR (Kafka CR in
                 # dev sat 8 days without a status update while KRaftController
                 # kept reconciling), the only on-cluster record of who-wrote-
