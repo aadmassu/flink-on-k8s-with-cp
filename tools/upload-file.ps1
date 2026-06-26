@@ -9,7 +9,7 @@ if (-not (Test-Path -LiteralPath $path)) {
 $name = [System.IO.Path]::GetFileName($path)
 $size = (Get-Item -LiteralPath $path).Length
 if ($size -gt 4MB) {
-    Write-Warning ("File is {0:N2} MB — proxy upload caps around 4 MB and may fail." -f ($size / 1MB))
+    Write-Warning ("File is {0:N2} MB -- proxy upload caps around 4 MB and may fail." -f ($size / 1MB))
 }
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
