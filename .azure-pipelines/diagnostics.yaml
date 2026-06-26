@@ -687,6 +687,63 @@ stages:
                   fi
                 done
 
+                # Kafka reconciler in dah-flink-dev sat 8 days with cluster-ready=False;
+                # operator log shows every loop dials
+                # kraftcontroller-{0,1,2}.kraftcontroller.dah-flink-dev:7777/jolokia/
+                # and gets "i/o timeout". confluent-operator namespace is RBAC-blocked
+                # from this SA, so we probe :7777 from inside dah-flink-dev (where the
+                # SA has access) to separate "jolokia not listening" from "operator-
+                # namespace can't egress to dah-flink-dev pod IPs". Uses pure bash
+                # /dev/tcp so we don't depend on curl/ss/netstat being in the image.
+                echo ""
+                echo "=== kraftcontroller :7777 jolokia reachability probe ==="
+                for i in 0 1 2; do
+                  pod="kraftcontroller-$i"
+                  echo ""
+                  echo "--- $pod local listen (from inside the pod) ---"
+                  if oc -n "$OC_NS" get pod "$pod" >/dev/null 2>&1; then
+                    oc -n "$OC_NS" exec "$pod" -c kraftcontroller -- bash -c '
+                      if (exec 5<>/dev/tcp/127.0.0.1/7777) 2>/dev/null; then
+                        echo "LOCAL 7777 OPEN"
+                        exec 5<&-
+                      else
+                        echo "LOCAL 7777 CLOSED"
+                      fi
+                      if (exec 5<>/dev/tcp/127.0.0.1/7203) 2>/dev/null; then
+                        echo "LOCAL 7203 OPEN (jmx)"
+                        exec 5<&-
+                      else
+                        echo "LOCAL 7203 CLOSED (jmx)"
+                      fi
+                    ' 2>&1 || echo "(exec failed)"
+                  else
+                    echo "(pod not found)"
+                  fi
+                done
+
+                # Cross-pod reachability: from cmf-service (in the same namespace),
+                # try to reach kraftcontroller-0:7777. If LOCAL is OPEN but this is
+                # CLOSED, the problem is dah-flink-dev ingress; if both OPEN, the
+                # operator-namespace egress is the only remaining suspect.
+                echo ""
+                echo "--- intra-namespace probe (from cmf-service pod) ---"
+                CMF_POD=$(oc -n "$OC_NS" get pods -l app.kubernetes.io/name=confluent-manager-for-apache-flink -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+                if [ -n "$CMF_POD" ]; then
+                  oc -n "$OC_NS" exec "$CMF_POD" -- bash -c '
+                    for target in kraftcontroller-0 kraftcontroller-1 kraftcontroller-2; do
+                      host="${target}.kraftcontroller.dah-flink-dev.svc.cluster.local"
+                      if (exec 5<>/dev/tcp/${host}/7777) 2>/dev/null; then
+                        echo "INTRA-NS ${target}:7777 OPEN"
+                        exec 5<&-
+                      else
+                        echo "INTRA-NS ${target}:7777 CLOSED"
+                      fi
+                    done
+                  ' 2>&1 || echo "(exec failed)"
+                else
+                  echo "(no cmf pod found — skipping cross-pod probe)"
+                fi
+
                 # =====================================================================
                 # CMF (Confluent Manager for Apache Flink)
                 # =====================================================================

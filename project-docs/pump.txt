@@ -1,53 +1,5 @@
-FOLLOW-UP SPLUNK SEARCHES — confirm why operator can't reach kraftcontroller:7777
-====================================================================================
+Sanity rerun without the namespace_name field filter — confirm whether kraftcontroller pods log to Splunk at all, then check what IPs the operator is dialing right now.
 
-Round 1 verdict (from SEARCH-1/3/4/5): the Kafka reconciler in dah-flink-dev is stuck
-on a precondition check — every ~45s the operator dials
-  http://kraftcontroller-{0,1,2}.kraftcontroller.dah-flink-dev.svc.cluster.local:7777/jolokia/
-to read LogEndOffset, every dial returns "dial tcp <pod-ip>:7777: i/o timeout", so it
-returns early and never reaches the sts/kafka apply. Not a webhook, not a panic, not
-a restart. The 2026-06-18T13:25:05Z "context deadline exceeded" on the CR status was
-a one-shot API-server timeout that locked the condition; since then the reconciler
-loops forever on the jolokia dial. SEARCH-5 confirms 46/50 events in last 2h are the
-same "apply failed: waiting for at-least one kafka pod availability" at 15s cadence.
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) openshift_pod_name="kraftcontroller-*" earliest=-1h latest=now | stats count by openshift_pod_name
 
-Three candidates for the :7777 timeout:
-  1. Jolokia not listening inside the kraftcontroller pods (CFK 3.2.0 init container
-     wiring issue) — does NOT require touching the confluent-operator namespace to fix.
-  2. Egress NetworkPolicy in confluent-operator namespace blocking 7777 to dah-flink-dev
-     — RBAC-blocked from the diagnostic SA, unknown.
-  3. OpenShift OVN egress firewall at the SDN level.
-
-Ingress on dah-flink-dev side is OK — allow-from-confluent-operator NetworkPolicy
-permits 7777 (dump.txt L139). Run A first; A's outcome decides whether B/C are needed.
-
-------------------------------------------------------------------------------------
-SEARCH A — is jolokia actually listening inside the kraftcontroller pods?
-------------------------------------------------------------------------------------
-Want back: any startup / config line referencing jolokia, JMX, or port 7777 from the
-kraftcontroller pods over the last 7 days. Zero hits = jolokia never starts =
-config/image issue inside the kraftcontroller pods, fixable without touching the
-operator namespace. Hits showing "Jolokia agent started" or similar = jolokia IS up,
-push to Search C.
-
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) openshift_pod_name="kraftcontroller-*" openshift_namespace_name="dah-flink-dev" ("jolokia" OR "Jolokia" OR "7777" OR "JMX" OR "jmx") earliest=-7d latest=now | sort _time | head 100
-
-------------------------------------------------------------------------------------
-SEARCH B — are all three kraftcontroller pods alive and logging right now?
-------------------------------------------------------------------------------------
-Want back: 3 rows (kraftcontroller-0, -1, -2) all with non-trivial counts. Confirms
-the pods themselves aren't down/restarting. A missing pod or near-zero count for one
-pod points at pod-level health (separate from the jolokia question).
-
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) openshift_pod_name="kraftcontroller-*" openshift_namespace_name="dah-flink-dev" earliest=-1h latest=now | stats count by openshift_pod_name
-
-------------------------------------------------------------------------------------
-SEARCH C — OVN / NetworkPolicy egress denials touching confluent-operator namespace
-------------------------------------------------------------------------------------
-Only worth running if A confirms jolokia IS listening. Want back: any OVN-Kubernetes
-egress-drop or NetworkPolicy-denied lines mentioning the confluent-operator namespace
-over the last 7 days. Hits here = SDN-level block; empty = push to the diagnostic-
-pipeline extension for outbound webhook timeouts and consider asking Container
-Platforms whether they apply any egress policy on the operator namespace.
-
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) ("egress" OR "denied" OR "drop" OR "OVN-Kubernetes" OR "networkpolicy") "confluent-operator" earliest=-7d latest=now | sort _time | head 100
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) openshift_pod_name="confluent-operator-*" "i/o timeout" earliest=-1h latest=now | head 20
