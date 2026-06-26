@@ -1,4 +1,4 @@
-﻿$path = 'C:\git-repos\flink-on-k8s-with-cp\tools\upload-file.ps1'
+﻿$path = 'C:\git-repos\flink-on-k8s-with-cp\project-docs\dump.txt'
 
 $base = 'https://text.psyncopate.io'
 

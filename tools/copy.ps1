@@ -1,5 +1,5 @@
 ﻿Add-Type -AssemblyName System.Web
-$path    = 'C:\git-repos\flink-on-k8s-with-cp\project-docs\pump.txt'
+$path    = 'C:\git-repos\flink-on-k8s-with-cp\project-docs\dump.txt'
 $text    = [System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false))
 $escaped = [System.Web.HttpUtility]::JavaScriptStringEncode($text)
 $json    = '{"text":"' + $escaped + '"}'
