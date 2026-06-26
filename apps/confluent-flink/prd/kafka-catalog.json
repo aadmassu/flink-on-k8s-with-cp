@@ -11,7 +11,7 @@
   "spec": {
     "srInstance": {
       "connectionConfig": {
-        "schema.registry.url": "http://REPLACE_WITH_PRD_SR_HOST:8081"
+        "schema.registry.url": "https://schemaregistry.dah-kafka-pdc.fcbint.net:8081"
       }
     }
   }
