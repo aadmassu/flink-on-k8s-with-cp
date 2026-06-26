@@ -120,13 +120,25 @@ steps:
         # status. Surface both versions at the top, side by side.
         echo ""
         echo "=== Operator version vs init container versions in CR specs ==="
-        OP_VERSION=$(oc -n "$OC_NS" get kraftcontroller kraftcontroller \
-          -o jsonpath='{.status.operatorVersion}' 2>/dev/null)
-        if [ -z "$OP_VERSION" ]; then
-          OP_VERSION=$(oc -n "$OC_NS" get kafka kafka \
-            -o jsonpath='{.status.operatorVersion}' 2>/dev/null)
-        fi
-        echo "  Operator (from CR .status.operatorVersion):  ${OP_VERSION:-<not reported>}"
+        # Print the version each CR reports independently. After a 3.1→3.2
+        # operator roll, one CR's controller may be reconciling (version
+        # stamped) while another sits cold (no version stamped). The
+        # difference is the signal — collapsing to a single number hides it.
+        echo "  Operator (from CR .status.operatorVersion):"
+        for kind_name in \
+            "kraftcontroller kraftcontroller" \
+            "kafka kafka" \
+            "schemaregistry schemaregistry" \
+            "connect connect" \
+            "kafkarestproxy kafkarest" \
+            "controlcenter controlcenter"; do
+          kind=${kind_name% *}; name=${kind_name#* }
+          if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+            V=$(oc -n "$OC_NS" get "$kind" "$name" \
+              -o jsonpath='{.status.operatorVersion}' 2>/dev/null)
+            printf "    %-25s %s\n" "$kind/$name" "${V:-<not stamped>}"
+          fi
+        done
         echo "  (chart 0.1351.x = CFK 3.1.x; 0.1514.x = CFK 3.2.x)"
         echo ""
         echo "  Per-CR init container images (must match operator minor):"
@@ -503,35 +515,128 @@ steps:
           oc explain "$query" 2>&1 || true
         done
 
+        # The CFK operator and the Apache Flink operator both live in the
+        # `confluent-operator` namespace at FCB. Probe it by name — the
+        # previous wildcard `oc get pods -A | grep confluent-operator`
+        # approach silently returned empty when the namespace-scoped
+        # service account doesn't have cluster-wide pod-list, which
+        # erased every signal we had about operator health (D1).
+        OPNS=confluent-operator
         echo ""
-        echo "=== CFK operator pod logs (last 200 lines, filtered) ==="
-        # The operator runs in its own namespace. Different installs
-        # label the pod differently — search by image name as the
-        # most reliable fingerprint (any container image containing
-        # `confluent-operator`).
-        # Match `confluent-operator` substring anywhere in the image
-        # — FCB retags through Artifactory so the image will be
-        # artifactory.fcbint.net/.../confluent-operator:<tag>, not
-        # confluentinc/confluent-operator. The full-substring match
-        # catches both.
-        OP_LINE=$(oc get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}|{.metadata.name}|{.spec.containers[*].image}{"\n"}{end}' 2>/dev/null \
-          | grep -E '\|[^|]*confluent-operator' \
-          | head -1)
-        OPNS=$(echo "$OP_LINE" | cut -d'|' -f1)
-        OPPOD=$(echo "$OP_LINE" | cut -d'|' -f2)
-        if [ -n "$OPNS" ] && [ -n "$OPPOD" ]; then
-          echo "Operator: $OPNS/$OPPOD"
-          echo ""
-          echo "--- Last 200 lines, filtered for our components / errors ---"
-          oc -n "$OPNS" logs "$OPPOD" --tail=200 2>&1 \
-            | grep -iE 'error|warn|oauth|interbroker|schemaregistry|kraftcontroller|connect|kafkarest|controlcenter|kafka ' \
-            | tail -60 \
-            || echo "(no matching log lines)"
+        echo "=== CFK operator namespace probe ($OPNS) ==="
+        echo "--- Deployments ---"
+        oc -n "$OPNS" get deploy -o wide 2>&1 || echo "(forbidden or namespace missing)"
+        echo ""
+        echo "--- Pods (with restart counts + node) ---"
+        oc -n "$OPNS" get pods -o wide 2>&1 || echo "(forbidden or namespace missing)"
+        echo ""
+        echo "--- Pod readiness + restartCount breakdown ---"
+        oc -n "$OPNS" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"  phase="}{.status.phase}{"  "}{range .status.containerStatuses[*]}{.name}=ready:{.ready}/restarts:{.restartCount} {end}{"\n"}{end}' 2>&1 \
+          || echo "(forbidden)"
+        echo ""
+        echo "--- Services ---"
+        oc -n "$OPNS" get svc 2>&1 || echo "(forbidden)"
+        echo ""
+        echo "--- Endpoints (catch zero-endpoint services — webhook services break here) ---"
+        oc -n "$OPNS" get endpoints 2>&1 || echo "(forbidden)"
+
+        echo ""
+        echo "=== CFK operator pod logs (last 400 lines, filtered) ==="
+        # Iterate every pod in confluent-operator and tail their logs.
+        # Filter for the reconcile signals we care about. Don't pre-grep
+        # for `confluent-operator` in the pod name — the Apache Flink
+        # operator pod name doesn't carry it, and we want its logs too
+        # because the CMF→FlinkDeployment apply failures observed in the
+        # CMF tail trace back to it.
+        OP_PODS=$(oc -n "$OPNS" get pods -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
+        if [ -z "$OP_PODS" ]; then
+          echo "(no pods found in $OPNS — namespace empty, missing, or list denied)"
         else
-          echo "(could not locate confluent-operator pod — searched by image fingerprint)"
-          echo "Listing all pods across all namespaces to help locate it:"
-          oc get pods -A 2>/dev/null | grep -iE 'operator|confluent' | head -20
+          for p in $OP_PODS; do
+            echo ""
+            echo "############### $OPNS/$p ###############"
+            oc -n "$OPNS" logs "$p" --tail=400 --all-containers=true 2>&1 \
+              | grep -iE 'error|warn|reconcile|apply|webhook|timeout|context deadline|kafka|kraft|kraftcontroller|dah-flink' \
+              | tail -80 \
+              || echo "(no matching log lines)"
+          done
         fi
+
+        # Webhook services with empty Endpoints are the most common
+        # cause of CR-apply timeouts ("context deadline exceeded") that
+        # have no event trail on the CR itself — the kube-apiserver
+        # blocks on a Pre-/Post- webhook call to a Service with no
+        # backing pods and finally times out. Filter the webhook
+        # configs down by name pattern (confluent/cfk/flink/kafka) AND
+        # by clientConfig.service.namespace, then cross-check those
+        # services against the Endpoints in the operator namespace.
+        # Python parse beats yaml-grep here — the indentation pattern
+        # varies between OpenShift releases and a brittle filter would
+        # silently regress on the next cluster upgrade.
+        echo ""
+        echo "=== Webhooks targeting $OPNS namespace (apply-timeout suspects) ==="
+        for whkind in mutatingwebhookconfiguration validatingwebhookconfiguration; do
+          echo ""
+          echo "--- $whkind entries with clientConfig.service.namespace=$OPNS ---"
+          oc get "$whkind" -o json 2>/dev/null \
+            | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception as e:
+    print('(could not parse — likely forbidden cluster-scoped read: %s)' % e); sys.exit(0)
+hits = 0
+for item in data.get('items', []):
+    cfg_name = item['metadata']['name']
+    for wh in item.get('webhooks', []):
+        svc = (wh.get('clientConfig') or {}).get('service') or {}
+        if svc.get('namespace') == '$OPNS':
+            hits += 1
+            print('  config=%s' % cfg_name)
+            print('    webhook=%s' % wh.get('name'))
+            print('    service=%s/%s:%s' % (svc.get('namespace'), svc.get('name'), svc.get('port', 443)))
+            print('    timeoutSeconds=%s  failurePolicy=%s  sideEffects=%s' % (
+                wh.get('timeoutSeconds'), wh.get('failurePolicy'), wh.get('sideEffects')))
+            rules = wh.get('rules') or []
+            for r in rules:
+                print('    rule: groups=%s versions=%s ops=%s resources=%s scope=%s' % (
+                    r.get('apiGroups'), r.get('apiVersions'),
+                    r.get('operations'), r.get('resources'), r.get('scope')))
+if hits == 0:
+    print('  (no webhook found whose clientConfig.service.namespace=$OPNS)')
+"
+        done
+        echo ""
+        echo "--- Webhook-targeted services in $OPNS — Endpoints cross-check ---"
+        # Side-by-side: every Service in $OPNS plus its Endpoints. A
+        # service that webhooks point at with zero Endpoints is the
+        # smoking gun (matches "no endpoints available for service X"
+        # in CMF tail at line ~1861 of the prior diagnostic dump).
+        echo "Services in $OPNS:"
+        oc -n "$OPNS" get svc 2>&1 || echo "(forbidden)"
+        echo ""
+        echo "Endpoints in $OPNS (look for zero-address subsets):"
+        oc -n "$OPNS" get endpoints -o jsonpath='{range .items[*]}{.metadata.name}{"  subsets="}{range .subsets[*]}addrs=[{range .addresses[*]}{.ip},{end}] ports=[{range .ports[*]}{.port}/{.protocol},{end}] {end}{"\n"}{end}' 2>&1 \
+          || echo "(forbidden)"
+
+        # When the operator silently stops touching a CR (Kafka CR in
+        # dev sat 8 days without a status update while KRaftController
+        # kept reconciling), the only on-cluster record of who-wrote-
+        # what-and-when is metadata.managedFields. Compact view of each
+        # entry's manager + operation + subresource + time is enough to
+        # spot a reconciler that's gone cold.
+        echo ""
+        echo "=== Kafka + KRaftController managedFields timeline (who/what/when) ==="
+        for kind_name in "kafka kafka" "kraftcontroller kraftcontroller"; do
+          kind=${kind_name% *}; name=${kind_name#* }
+          echo ""
+          echo "--- $kind/$name ---"
+          if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+            oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{range .metadata.managedFields[*]}{.time}  manager={.manager}  op={.operation}  sub={.subresource}{"\n"}{end}' 2>&1
+          else
+            echo "(CR not found)"
+          fi
+        done
 
         # =====================================================================
         # CMF (Confluent Manager for Apache Flink)
