@@ -31,6 +31,8 @@ kind: Kafka
 metadata:
   name: kafka
   namespace: dah-flink-dev
+  annotations:
+    platform.confluent.io/force-reconcile: "2026-06-26"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
