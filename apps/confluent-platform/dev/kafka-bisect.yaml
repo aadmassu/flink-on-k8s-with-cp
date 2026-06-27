@@ -50,14 +50,41 @@
 #   run captures the correct v1beta1 shape for MDS to use AFTER we
 #   identify the silent-bail trigger.
 #
-# Round 3 (Try C): bisect-after-A + spec.listeners.external     [CURRENT]
-#   Adds the OAuth + ClusterIP external listener block lifted verbatim
-#   from kafka.yaml lines 144-175. spec.services.mds is NOT carried over
-#   (it would be a no-op since it gets stripped) — we'll come back to
-#   MDS once we identify the trigger and have the correct v1beta1 shape
-#   from the next diagnostic. If THIS round reproduces silent-bail,
-#   listeners.external is the trigger. If operator is happy, it's
-#   listeners.custom (the mTLS certonly listener) — Round 4.
+# Round 3 (Try C): bisect-after-A + spec.listeners.external   [INCONCLUSIVE —
+#                                                              BLOCK STRIPPED
+#                                                              AT ADMISSION]
+#   Tested 2026-06-27T17:09Z. Operator reconciled cleanly (events +
+#   status + sts/kafka 3/3 + 3 pods). Brokers CrashLoopBackOff on same
+#   RBAC-needs-MDS error as Rounds 1+2 (expected). Post-admission kafka
+#   CR yaml showed `spec.listeners:` contained ONLY the `internal:`
+#   block — the entire `external:` block we applied (authentication.type
+#   =oauth + oauthSettings + tls.enabled=true) was silently dropped at
+#   admission. CFK 3.2.0 still created an external listener with
+#   PLAINTEXT defaults regardless (broker config line 792:
+#   `advertised.listeners = EXTERNAL://...:9092` with
+#   `security.protocol=PLAINTEXT`), so OAuth-on-external has NEVER
+#   actually taken effect on this cluster either. Same silent-strip
+#   pattern as services.mds in Round 2. The Round-3 oc explain queries
+#   added to diagnostics.yaml at commit e67188f did NOT appear in this
+#   dump's diagnostic output, so diagnostics.yaml needs to be synced to
+#   the FCB ADO side before the next run.
+#
+# Round 4 (Try D): bisect-after-A + spec.listeners.custom        [CURRENT]
+#   Adds the mTLS certonly listener on port 9094 lifted verbatim from
+#   kafka.yaml lines 176-182. listeners.external (stripped) and
+#   services.mds (stripped) are still NOT carried over since they don't
+#   affect the operator-reconcile signal. This is the LAST remaining
+#   block from the production spec to test. Two possible outcomes:
+#   - Silent-bail returns -> listeners.custom IS the trigger (specifically
+#     the certonly+mtls combination, or the port 9094 conflict with
+#     something CFK 3.2.0 default-allocates).
+#   - Operator stays happy -> NONE of the spec sections trigger
+#     silent-bail. The original production silent-bail (2026-06-27
+#     diagnostic showing zero events / zero conditions / no sts-kafka)
+#     was operator-state corruption from a prior partial install rather
+#     than a spec-driven trigger. Production kafka.yaml is then safe to
+#     apply directly after wipe+install; the silent-bail was a one-time
+#     stuck state cleared by the wipePVCs path.
 #
 # DO NOT use this as a production manifest under any circumstances. This
 # file's spec is intentionally an in-progress diagnostic snapshot.
@@ -68,7 +95,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-27-bisect-C"
+    platform.confluent.io/force-reconcile: "2026-06-27-bisect-D"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -111,25 +138,20 @@ spec:
           secretRef: sasl-plain-internal
       tls:
         enabled: true
-    # Round 3 (Try C) addition: spec.listeners.external lifted verbatim
-    # from kafka.yaml lines 144-175. OAuth (Okta) listener exposed via
-    # ClusterIP (no externalAccess block — that was already removed
-    # at commit 7d90bba on suspicion of the precondition-gate bug).
-    # If THIS triggers silent-bail, the original kafka.yaml regression
-    # is here.
-    external:
-      authentication:
-        type: oauth
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(Dev)
-          subClaimName: sub
-          groupsClaimName: dahDev_groups
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-      tls:
-        enabled: true
+    # Round 4 (Try D) addition: spec.listeners.custom lifted verbatim
+    # from kafka.yaml lines 176-182. mTLS certonly listener on port 9094.
+    # listeners.external was REMOVED from the bisect file (gets silently
+    # stripped at admission anyway per Round 3, so it would be inert
+    # noise here). If THIS triggers silent-bail, listeners.custom is
+    # the trigger; otherwise the original production silent-bail was
+    # operator-state corruption rather than a spec-driven trigger.
+    custom:
+      - name: certonly
+        port: 9094
+        authentication:
+          type: mtls
+        tls:
+          enabled: true
 
   tls:
     secretRef: kafka-tls
