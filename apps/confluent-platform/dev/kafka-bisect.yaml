@@ -26,19 +26,38 @@
 #   wants MDS — and is fixed when services.mds gets added in Round 2.
 #   It does NOT affect the silent-bail signal we're hunting.
 #
-# Round 2 (Try B): bisect-after-A + spec.services.mds          [CURRENT]
-#   Adds the embedded MDS (Metadata Service) block with OAuth/Okta
-#   provider wiring. This is the most exotic remaining feature and the
-#   highest-suspicion silent-bail trigger: MDS is the only block that
-#   makes the operator stand up an extra service inside the broker
-#   StatefulSet (port 8090) AND validates Okta endpoints at admission.
-#   CFK 3.2.0 has more surface area to choke on here than on listener
-#   blocks. Bonus: adding services.mds also fixes the Round-1 broker
-#   crash because CFK can now auto-populate
-#   confluent.metadata.bootstrap.servers from the MDS service, so the
-#   RBAC authorizer initializes cleanly. Required Secrets in dah-flink-dev:
-#   mds-token-keypair and oauth-mds-rest (both present per the Round 1
-#   diagnostic ESO-managed Secrets list).
+# Round 2 (Try B): bisect-after-A + spec.services.mds   [INCONCLUSIVE —
+#                                                        BLOCK IS STRIPPED
+#                                                        AT ADMISSION]
+#   Tested 2026-06-27T16:55Z. Operator reconciled cleanly (events +
+#   status + sts/kafka 3/3 + 3 broker pods), but the kafka CR yaml AFTER
+#   admission showed `services:` containing ONLY the auto-added
+#   `kafka-rest.internalEndpoint`, NOT our `mds:` sub-block. CFK 3.2.0
+#   v1beta1 silently dropped the entire `services.mds:` block we lifted
+#   from kafka.yaml — same family of CRD-schema reshape rejections we
+#   already hit with `dependencies.kRaftController.authentication`
+#   (needed `controllerListener` wrapping) and with the flat OAuth
+#   fields under `listeners.external.authentication.*` (needed
+#   `oauthSettings` wrapping). Brokers consequently failed the same
+#   RBAC-needs-MDS check as Round 1 because no MDS was actually
+#   provisioned. CRITICAL implication: the production kafka.yaml's
+#   services.mds block is ALSO being stripped on every apply — so the
+#   original production silent-bail cannot be attributed to MDS (the
+#   operator never sees MDS). The trigger must be in one of the two
+#   remaining sections: spec.listeners.external or spec.listeners.custom.
+#   diagnostics.yaml now explains kafka.spec.services / .services.mds /
+#   .services.kafkaRest / .authorization / .identityProvider so the next
+#   run captures the correct v1beta1 shape for MDS to use AFTER we
+#   identify the silent-bail trigger.
+#
+# Round 3 (Try C): bisect-after-A + spec.listeners.external     [CURRENT]
+#   Adds the OAuth + ClusterIP external listener block lifted verbatim
+#   from kafka.yaml lines 144-175. spec.services.mds is NOT carried over
+#   (it would be a no-op since it gets stripped) — we'll come back to
+#   MDS once we identify the trigger and have the correct v1beta1 shape
+#   from the next diagnostic. If THIS round reproduces silent-bail,
+#   listeners.external is the trigger. If operator is happy, it's
+#   listeners.custom (the mTLS certonly listener) — Round 4.
 #
 # DO NOT use this as a production manifest under any circumstances. This
 # file's spec is intentionally an in-progress diagnostic snapshot.
@@ -49,7 +68,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-27-bisect-B"
+    platform.confluent.io/force-reconcile: "2026-06-27-bisect-C"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -92,6 +111,25 @@ spec:
           secretRef: sasl-plain-internal
       tls:
         enabled: true
+    # Round 3 (Try C) addition: spec.listeners.external lifted verbatim
+    # from kafka.yaml lines 144-175. OAuth (Okta) listener exposed via
+    # ClusterIP (no externalAccess block — that was already removed
+    # at commit 7d90bba on suspicion of the precondition-gate bug).
+    # If THIS triggers silent-bail, the original kafka.yaml regression
+    # is here.
+    external:
+      authentication:
+        type: oauth
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(Dev)
+          subClaimName: sub
+          groupsClaimName: dahDev_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
 
   tls:
     secretRef: kafka-tls
@@ -111,36 +149,6 @@ spec:
   pdb:
     enabled: true
     maxUnavailable: 1
-
-  # Round 2 (Try B) addition: spec.services.mds — embedded Metadata Service
-  # lifted verbatim from kafka.yaml lines 226-247. Required for the RBAC
-  # provider in configOverrides.server to find a metadata bootstrap (the
-  # Round 1 broker crash). Uses Okta as the OAuth issuer and the
-  # ESO-provisioned mds-token-keypair + oauth-mds-rest Secrets in
-  # dah-flink-dev. If THIS is the silent-bail trigger, the kafka CR will
-  # have zero events / zero status / no sts-kafka after the apply.
-  services:
-    mds:
-      tokenKeyPair:
-        secretRef: mds-token-keypair
-      tls:
-        enabled: true
-      authentication:
-        type: bearer
-      provider:
-        type: oauth
-        oauth:
-          clientCredentials:
-            secretRef: oauth-mds-rest
-          configurations:
-            audience: "Confluent,account,api://default"
-            authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
-            issuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            refreshToken: true
-            tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            subClaimName: sub
-            groupsClaimName: dahDev_groups
 
   # Round 1 (Try A) addition: full configOverrides.server[*] block lifted
   # verbatim from apps/confluent-platform/dev/kafka.yaml (lines 265-293).
