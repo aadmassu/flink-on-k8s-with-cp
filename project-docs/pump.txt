@@ -1,68 +1,87 @@
-REGRESSION DIAGNOSIS - kafka CR stuck "waiting for at-least one kRaft controller pod availability"
-=================================================================================================
+BISECT NEXT STEPS — kafka.yaml (production) silently fails to reconcile
+=======================================================================
 
-What the 2026-06-27T15:06Z diagnostic showed
---------------------------------------------
-- kraftcontroller sts 3/3 Ready at age 3m27s
-- kraftcontroller-0/1/2 all Running, quorum elected (9990,9991,9992)
-- kraftcontroller services + endpoints all populated on :9074,:7203,:7777,:7778
-- kraftcontroller CR cluster-ready=True ClusterIsReady "Cluster is ready"
-- INTRA-NS kraftcontroller-0:7777 OPEN (jolokia probe from inside pod)
-- kafka CR cluster-ready=False ApplyFailed
-    "waiting for at-least one kRaft controller pod availability"
-- sts/kafka NOT FOUND (operator never built it)
-- No webhooks targeting confluent-operator namespace or matching Kafka CR
-  apply path -> not webhook-blocked
+State after 2026-06-27T15:22Z run with the Phase-1a/1b reorder
+---------------------------------------------------------------
+- Phase 1a worked: kraftcontroller cluster-ready=True after 40s, 3/3 Ready,
+  quorum elected, jolokia OPEN on :7777 from all three controller pods.
+- Phase 1b applied apps/confluent-platform/dev/kafka.yaml (production variant)
+  at 15:22:25. The Kafka CR was admitted (managedFields shows
+  manager=kubectl-client-side-apply + manager=manager op=Update at 15:22:25
+  -- the operator's mutating webhook ran).
+- BUT the operator never reconciled it: kafka/kafka events list is EMPTY,
+  managedFields has NO sub=status entry, status.conditions is empty,
+  sts/kafka was never created. After 300s the pipeline wait_for_cr_ready
+  gave up with no condition output.
+- Compare with kraftcontroller at the same diagnostic capture time:
+  6 SuccessfulCreate events, full status.conditions, sub=status managedFields
+  entry at 15:22:23. So the operator is alive and reconciling kraftcontroller
+  fine -- it's silently choking on the kafka.yaml production spec only.
+- The "waiting for at-least one kafka pod availability" event in the dump is
+  from KafkaRestClass/default, NOT from the Kafka CR. It's downstream of the
+  missing sts/kafka, not the cause.
+- 2026-06-27T08:49Z run with kafkaCRVariant=minimal succeeded end-to-end.
+  So the poison pill is in one of the features kafka-minimal.yaml strips:
+    1. spec.listeners.external          (OAuth + ClusterIP-now block)
+    2. spec.listeners.custom            (mTLS certonly listener)
+    3. spec.services.mds                (embedded MDS with OAuth)
+    4. spec.configOverrides.server[*]   (~15 broker config lines)
 
-Root cause
-----------
-Apply ordering bug in .azure-pipelines/confluent-platform.yaml install step:
+Bisect plan (in order)
+----------------------
+Step 1 -- Confirm minimal still works after the pipeline reorder. Run:
+    Pipeline: confluent-platform.yaml
+      action=uninstall, wipePVCs=true, env=dev    (clear stuck kafka CR)
+    Then:
+      action=install,   env=dev, kafkaCRVariant=minimal
+    Expected: sts/kafka 3/3 Ready, kafka cluster-ready=True in ~3-5 min.
+    If this fails, the problem is operator-side, not spec-side -- jump to
+    the Splunk query at the bottom of this file.
 
-    PREVIOUS ORDER (broken):
-      1. apply kraftcontroller.yaml
-      2. apply kafkarestclass.yaml + kafka.yaml   <-- kafka applied while
-         controllers were still coming up
-      3. wait for kraftcontroller cluster-ready=True (took 40s)
-      4. wait for kafka cluster-ready=True (fails)
+Step 2 -- Bisect kafka.yaml features.  Once minimal is confirmed working,
+    add features back one at a time (each time: wipePVCs=true uninstall,
+    then install with the modified production kafka.yaml). Order:
+      Try A:  minimal + spec.configOverrides.server[*]
+      Try B:  Try A + spec.listeners.external (OAuth+ClusterIP block)
+      Try C:  Try B + spec.listeners.custom (mTLS listener)
+      Try D:  Try C + spec.services.mds (embedded MDS with OAuth)
+    The first Try that reproduces empty-events+no-status is the trigger.
 
-CFK 3.2.0 reconciler behavior: when the Kafka CR is created while zero
-kraftcontroller pods are Ready, the reconciler evaluates kRaft availability
-on its first pass, fails, sets cluster-ready=False reason=ApplyFailed
-message="waiting for at-least one kRaft controller pod availability", and
-does NOT re-queue when the controllers later become Ready. The Kafka CR
-stays in ApplyFailed indefinitely until the operator restarts or the CR is
-deleted+recreated. Same family of bug as the precondition-gate
-"skipping cluster scale due to cluster not healthy" we hit on earlier
-attempts -- different code path, same "first-reconcile-decides" anti-pattern.
+Step 3 -- Once the trigger is identified, either:
+      a) Re-encode it in a form CFK 3.2.0 accepts (most likely fix path
+         for spec.services.mds — same OAuth issuer/scope wiring problem),
+      b) Defer it (drop feature on initial install, add via subsequent
+         re-apply after kafka is up — works for listener additions),
+      c) Open Confluent support with the bisect evidence.
 
-Fix applied
------------
-Reordered the install step so kraftcontroller readiness is gated BEFORE
-kafka.yaml is applied:
 
-    NEW ORDER (correct):
-      Phase 1a:
-        1. apply kraftcontroller.yaml
-        2. wait for kraftcontroller cluster-ready=True
-      Phase 1b:
-        3. apply kafkarestclass.yaml
-        4. apply kafka.yaml (or kafka-minimal.yaml per kafkaCRVariant)
-        5. wait for kafka cluster-ready=True
+Splunk query for the silent-bail window (run if Step 1 still fails)
+-------------------------------------------------------------------
+Run this in Splunk, export the result, save as ~/Downloads/Diagnostics.zip
+and tell Claude. The query covers the 5-minute window around the kafka.yaml
+apply in the most recent run; tweak earliest/latest if the run was different.
 
-This guarantees the Kafka reconciler's first pass sees controllers Ready and
-takes the normal path (build sts/kafka, scale broker pods).
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+  openshift_pod_name="confluent-operator-*"
+  earliest=-2h latest=now
+  ("kafka" OR "Kafka" OR "Reconcile" OR "reconcile" OR "panic" OR "ERROR"
+   OR "error" OR "leader" OR "election")
+  | sort _time
 
-How to verify
--------------
-Run the install pipeline against dah-flink-dev with action=uninstall
-+ wipePVCs=true first (clears the latched-ApplyFailed kafka CR and the
-sts/kafka-side PVCs if any). Then run action=install with kafkaCRVariant=
-production. Expected:
-  - Phase 1a:  kraftcontroller cluster-ready=True (~40s)
-  - Phase 1b:  kafka cluster-ready=True (~3-5 min, sts/kafka 3/3 Ready)
+Specifically look for:
+  - "panic:" (operator crashed on the kafka spec, restarted, lost the queue)
+  - "leader election lost" (HA flip — would explain status not landing)
+  - "Reconciler error" with kafka/kafka in the message
+  - any cfk-resources/core-resources webhook 5xx for v1beta1 Kafka spec
+  - silent skip-without-status messages from the kafka controller
 
-If kafka still hits "waiting for at-least one kRaft controller pod
-availability" AFTER this reorder lands, the problem is not the
-apply-time race -- pull the operator pod log from Splunk for the window
-around the kafka apply and look for the specific availability check that
-fails.
+
+Known cosmetic regression in wait_for_cr_ready
+----------------------------------------------
+The recent `|| true` defenses on the wait function swallow the conditions
+output, so the pipeline log now prints
+    "Nxxs elapsed, kafka/kafka not yet ready. Current conditions:"
+with nothing after the colon. The truth is still in the CFK CR status
+conditions block of the Diagnostics step a few hundred lines below. Worth
+fixing in a follow-up so the inline timeline is readable again, but does
+not block this bisect.
