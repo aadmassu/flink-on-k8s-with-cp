@@ -1514,14 +1514,38 @@ stages:
               inputs:
                 targetType: inline
                 script: |
-                  set -euo pipefail
+                  # Debug header first — must print BEFORE set -uo pipefail
+                  # so we can see what state the script entered with even if
+                  # something below crashes silently. Previous run of this
+                  # step exited with code 1 in 350 ms and produced zero
+                  # stdout/stderr, which means an early bash-level crash
+                  # before any echo had a chance to fire. Pre-pending an
+                  # unconditional debug block makes that mode visible.
+                  echo "=== reset-kafka-cr: safety gates entered ==="
+                  echo "  parameters.environment            = ${{ parameters.environment }}"
+                  echo "  parameters.action                 = ${{ parameters.action }}"
+                  echo "  parameters.confirmKafkaCRReset    = ${{ parameters.confirmKafkaCRReset }}"
+                  echo "  env.OC_NS (from variable group)   = ${OC_NS:-<unset>}"
+                  echo "  env.TARGET_ENV (from parameter)   = ${TARGET_ENV:-<unset>}"
+                  echo "  bash version                      = $BASH_VERSION"
+                  echo "  whoami                            = $(whoami 2>/dev/null || echo unknown)"
+                  echo "  oc on PATH                        = $(command -v oc || echo NOT-FOUND)"
+                  echo ""
+
+                  # Match the same shell options the other destructive
+                  # actions in this file use (uninstall, wipe-pvcs,
+                  # clear-stuck-prereq-finalizers — all `set -uo pipefail`,
+                  # no -e). Skipping -e because each gate below ends with
+                  # an explicit `exit 1` on failure; -e adds an extra
+                  # implicit-exit surface that obscures which gate fired.
+                  set -uo pipefail
 
                   # ADO boolean parameters interpolate to "True" / "False"
                   # at compile time; accept lowercase too if ever rewired
                   # from $(var) at runtime.
                   CONFIRM="${{ parameters.confirmKafkaCRReset }}"
                   if [ "$CONFIRM" != "True" ] && [ "$CONFIRM" != "true" ]; then
-                    echo "ABORT: confirmKafkaCRReset parameter is false."
+                    echo "ABORT: confirmKafkaCRReset parameter is '$CONFIRM' (need True)."
                     echo "       Re-run with 'reset-kafka-cr: I understand this"
                     echo "       DELETES and re-creates the Kafka CR' checked."
                     exit 1
@@ -1560,8 +1584,9 @@ stages:
                   # been created; check defensively).
                   KAFKA_PVCS=$(oc -n "$OC_NS" get pvc \
                     -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-                    2>/dev/null | grep -E '^data0-kafka-[0-9]+$' | wc -l | tr -d ' ')
-                  if [ "${KAFKA_PVCS:-0}" -gt 0 ]; then
+                    2>/dev/null | grep -cE '^data0-kafka-[0-9]+$' || true)
+                  KAFKA_PVCS=${KAFKA_PVCS:-0}
+                  if [ "$KAFKA_PVCS" -gt 0 ]; then
                     echo "ABORT: $KAFKA_PVCS data0-kafka-* PVC(s) exist in $OC_NS."
                     echo "       Use action=wipe-pvcs first."
                     exit 1
