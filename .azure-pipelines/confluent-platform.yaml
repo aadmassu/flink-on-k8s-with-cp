@@ -37,14 +37,34 @@ parameters:
     displayName: "Action"
     type: string
     default: install-or-update
-    # wipe-pvcs: hard-delete the orphaned CFK PVCs (data0-kafka-*,
-    # data0-kraftcontroller-*, data0-controlcenter-*). Intended for the
-    # re-install flow after `uninstall` when the CRs are gone but PVCs
-    # linger. Without a clean wipe, CFK re-creates the StatefulSet
-    # without storageClassName on the vct (it expects to re-bind the
-    # existing PVCs by name), which FCB Gatekeeper's [ceph-storage]
-    # policy rejects ("storage class name <dummy>"). Run AFTER uninstall
-    # and BEFORE install.
+    # install-or-update: `oc apply` against the env's CFK CR manifests.
+    # `apply` is idempotent — same action does the initial install AND
+    # subsequent updates / upgrades. Use the per-component checkboxes
+    # below to scope which components get re-applied; "All" (default)
+    # applies the whole stack.
+    #
+    # uninstall: tear down every CFK CR in reverse dependency order.
+    # The cfk-resources webhook refuses CR deletion when the backing PVs
+    # use reclaimPolicy=Delete (data-loss guardrail), so this step labels
+    # each stateful CR with allow-pv-deletion=true before delete. After
+    # the delete loop, stuck CRs with a deletionTimestamp get their
+    # finalizers patched to [] when their backing StatefulSet + Pods are
+    # already gone (runbook A14 + LESSONS_LEARNED E3, the typical
+    # Connect-stuck-on-broker-graceful-flush case) — this used to be
+    # behind a forceFinalizerRemoval opt-in but the safety gate inside
+    # the loop already prevents short-circuiting an in-progress operator
+    # cleanup, so always-on is the right default. To also delete the
+    # orphaned PVCs (data0-kafka-*, data0-kraftcontroller-*,
+    # data0-controlcenter-*) in the same run, check `wipePVCs`. PVC wipe
+    # is the only reliable way to recover from CFK's vct-without-
+    # storageClassName re-install bug (FCB Gatekeeper [ceph-storage]
+    # policy rejects "storage class name <dummy>" otherwise), so it's
+    # almost always wanted on a full wipe-and-rebuild.
+    #
+    # create-prereqs: provision the namespace-scoped prerequisite Secrets
+    # (confluent-license, oauth-* / mds-token-keypair / sasl-plain-
+    # internal, c3-*-basic-auth). Run once at namespace bootstrap or
+    # after a `clear-stuck-prereq-finalizers` recovery.
     #
     # clear-stuck-prereq-finalizers: recover from a stuck prereq Secret
     # left in Terminating state after an uninstall. Cascade-delete via
@@ -59,33 +79,24 @@ parameters:
     # then completes deletion; the next `create-prereqs` re-creates it
     # fresh. See runbook/LESSONS_LEARNED.md A13.
     #
-    # install-or-update: `oc apply` against the env's CFK CR manifests.
-    # `apply` is idempotent — same action does the initial install AND
-    # subsequent updates / upgrades. Use the per-component checkboxes
-    # below to scope which components get re-applied; "All" (default)
-    # applies the whole stack.
-    #
-    # When the cluster gets into a stuck state we no longer try
-    # surgical recovery on a single CR — the CFK admission webhooks
-    # (cfk-resources, core-resources) reject every shortcut we tried in
-    # the 2026-06-27 reset-kafka-cr attempt: direct sts deletion is
-    # blocked ("statefulsets should not be deleted, instead delete kafka
-    # [kafka] itself"), CR deletion is blocked unless the
-    # allow-pv-deletion label is set, PVC cleanup orders matter, etc.
-    # Instead we standardize on a full wipe-and-rebuild: action=uninstall
-    # tears down all CFK CRs in reverse dependency order (which clears
-    # the cfk-resources webhook concerns automatically), then
-    # action=wipe-pvcs cleans the orphaned PVCs, then a fresh
-    # action=install-or-update brings everything back. This is the
-    # streamlined recovery path now — see runbook/ for the wipe-rebuild
-    # checklist.
+    # When the cluster gets into a stuck state we no longer try surgical
+    # recovery on a single CR — the CFK admission webhooks (cfk-resources,
+    # core-resources) reject every shortcut we tried in the 2026-06-27
+    # reset-kafka-cr attempt: direct sts deletion is blocked
+    # ("statefulsets should not be deleted, instead delete kafka [kafka]
+    # itself"), CR deletion is blocked unless the allow-pv-deletion label
+    # is set, PVC cleanup orders matter, etc. Instead we standardize on a
+    # full wipe-and-rebuild: action=uninstall with wipePVCs=true tears
+    # down all CFK CRs in reverse dependency order AND cleans the
+    # orphaned PVCs in the same run, then a fresh action=install-or-update
+    # brings everything back.
     #
     # Read-only diagnostics are NOT in this pipeline — they live in the
     # standalone .azure-pipelines/diagnostics.yaml pipeline (consolidated
     # into a single file 2026-06-26 — diagnostic body inlined; the old
     # templates/diagnostics-step.yaml shared template is gone). Run that
     # pipeline directly.
-    values: [create-prereqs, install-or-update, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers]
+    values: [create-prereqs, install-or-update, uninstall, clear-stuck-prereq-finalizers]
   - name: kafkaCRVariant
     displayName: "install-or-update: which Kafka CR spec to apply"
     type: string
@@ -108,19 +119,25 @@ parameters:
     # have no external listener, no MDS, no mTLS path, and (for minimal)
     # no broker telemetry / SBC / cluster-link metadata replication-factor
     # overrides. Once the bisect identifies the trigger, repair production
-    # kafka.yaml, then run action=uninstall + wipe-pvcs + install-or-update
-    # with variant=production for the real cluster.
-  - name: forceFinalizerRemoval
-    displayName: "Uninstall: force-clear finalizers on timeout"
+    # kafka.yaml, then run action=uninstall with wipePVCs=true followed by
+    # action=install-or-update with variant=production for the real cluster.
+  - name: wipePVCs
+    displayName: "Uninstall: also wipe orphaned CFK PVCs (data0-kafka-*, data0-kraftcontroller-*, data0-controlcenter-*)"
     type: boolean
     default: false
-    # Opt-in safety valve for the uninstall action. When `true`, after the
-    # standard `oc delete --wait=true --timeout=5m` loop, any CR that's
-    # still stuck with a deletionTimestamp gets its `metadata.finalizers`
-    # patched to []  — but only when the underlying StatefulSet and Pods
-    # are already gone (the typical Connect-stuck-on-broker-graceful-flush
-    # scenario; runbook/LESSONS_LEARNED.md E3). Leave `false` for normal
-    # operation so a genuine operator bug fails the pipeline loudly.
+    # Only meaningful when action=uninstall. When `true`, after the CRs
+    # are deleted (and any stuck finalizers patched), the same step
+    # hard-deletes the matching PVCs from the namespace. Without a PVC
+    # wipe, CFK's next install detects the existing PVC names and
+    # generates the StatefulSet's volumeClaimTemplate WITHOUT
+    # storageClassName, which FCB Gatekeeper's [ceph-storage] policy
+    # then rejects ("storage class name <dummy>"). The PVC wipe forces
+    # a fresh PVC creation path on the next install. Almost always
+    # wanted on a full wipe-and-rebuild; leave unchecked if you want to
+    # preserve broker / controller / control-center data across the
+    # uninstall (rare — usually only when staging a transient repair
+    # of the operator state). When action != uninstall this parameter
+    # is ignored.
 
   # ----------------------------------------------------------------------
   # install-or-update: which components to apply
@@ -1160,8 +1177,8 @@ stages:
                   # where the cfk-resources webhook silently rejected
                   # ctrlcenter+kraftcontroller deletion and the pipeline
                   # reported "success", leaving the operator to immediately
-                  # recreate any PVCs the next wipe-pvcs action tried to
-                  # delete).
+                  # recreate any PVCs the wipePVCs sub-step further down
+                  # then tried to delete).
                   DELETE_ORDER=(
                     controlcenter.yaml
                     kafkarest.yaml
@@ -1183,19 +1200,19 @@ stages:
                     fi
                   done
 
-                  # Optional fallback: if any CR is still stuck with a
-                  # deletionTimestamp AND the operator-managed StatefulSet
-                  # + Pods are already gone, drop its finalizers so the API
-                  # server GCs it. Triggered by the `forceFinalizerRemoval`
-                  # pipeline parameter. See runbook/LESSONS_LEARNED.md E3
-                  # for the canonical case (Connect's graceful-flush call
-                  # hangs when the broker cluster never came up).
-                  # ADO interpolates a `type: boolean` parameter to "True"
-                  # at compile time. Accept the lowercase form too in case
-                  # the variable is ever re-wired from $(var) at runtime.
-                  if [ "$FAIL" -ne 0 ] && { [ "$FORCE_FINALIZER_REMOVAL" = "True" ] || [ "$FORCE_FINALIZER_REMOVAL" = "true" ]; }; then
+                  # Force-finalizer fallback (always-on): if any CR is
+                  # still stuck with a deletionTimestamp AND the
+                  # operator-managed StatefulSet + Pods are already gone,
+                  # drop its finalizers so the API server GCs it. The
+                  # safety gate inside the loop refuses to patch when a
+                  # live sts/pod still exists for the CR, so always-on is
+                  # safe — it only kicks in for the
+                  # Connect-stuck-on-broker-graceful-flush style stuck
+                  # case (runbook/LESSONS_LEARNED.md E3) and stays a no-op
+                  # otherwise.
+                  if [ "$FAIL" -ne 0 ]; then
                     echo ""
-                    echo "=== forceFinalizerRemoval=true — checking for CRs stuck in Terminating ==="
+                    echo "=== Uninstall didn't go clean — checking for CRs stuck in Terminating ==="
                     STUCK=$(oc -n "$OC_NS" get \
                       kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
                       -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.kind}{"/"}{.metadata.name}{"\n"}{end}' \
@@ -1264,13 +1281,62 @@ stages:
                     -n "$OC_NS" 2>&1 || true
                   oc get pods -n "$OC_NS" -l app.kubernetes.io/part-of=confluent-platform 2>&1 || true
 
+                  # Optional PVC wipe — folded in here so a wipe-and-rebuild
+                  # is a single uninstall run, not two pipeline invocations.
+                  # Guarded by the wipePVCs parameter. ADO interpolates a
+                  # `type: boolean` to "True"/"False"; tolerate the
+                  # lowercase form too in case the variable is ever
+                  # re-wired from $(var) at runtime. The CR delete loop
+                  # above guarantees the StatefulSets and CRs are gone
+                  # before we get here, so the additional sts/CR-still-
+                  # present safety gates the old standalone wipe-pvcs
+                  # action carried would never fire — we drop them. We
+                  # do still verify there are no matching PVCs before
+                  # exiting silently.
+                  if [ "$WIPE_PVCS" = "True" ] || [ "$WIPE_PVCS" = "true" ]; then
+                    echo ""
+                    echo "=== wipePVCs=true — deleting orphaned CFK PVCs ==="
+                    # All CFK-managed PVCs follow the pattern
+                    # data<N>-<sts>-<ordinal>. We target the three
+                    # stateful workloads we know exist.
+                    PVC_PATTERNS=(
+                      'data[0-9]*-kafka-[0-9]*'
+                      'data[0-9]*-kraftcontroller-[0-9]*'
+                      'data[0-9]*-controlcenter-[0-9]*'
+                    )
+                    MATCHED=$(
+                      oc -n "$OC_NS" get pvc \
+                        -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
+                        | grep -E "^($(IFS='|'; echo "${PVC_PATTERNS[*]}"))$" \
+                        || true
+                    )
+                    if [ -z "$MATCHED" ]; then
+                      echo "No matching PVCs found — nothing to delete."
+                    else
+                      echo "PVCs to delete:"
+                      echo "$MATCHED" | sed 's/^/  - /'
+                      for pvc in $MATCHED; do
+                        echo "+ oc delete pvc/$pvc -n $OC_NS --wait=true --timeout=2m"
+                        oc -n "$OC_NS" delete pvc "$pvc" --wait=true --timeout=2m || true
+                      done
+                      echo ""
+                      echo "=== Remaining PVCs in $OC_NS ==="
+                      oc -n "$OC_NS" get pvc 2>&1 || true
+                    fi
+                  else
+                    echo ""
+                    echo "NOTE: PVCs from the Kafka, KRaftController, and ControlCenter"
+                    echo "StatefulSets are preserved (wipePVCs=false). On the next install"
+                    echo "CFK will try to re-bind by PVC name, and FCB Gatekeeper's"
+                    echo "[ceph-storage] policy will reject the StatefulSet because the"
+                    echo "regenerated volumeClaimTemplate omits storageClassName. To"
+                    echo "force a fresh PVC creation path, re-run this pipeline with"
+                    echo "action=uninstall AND wipePVCs=true."
+                  fi
+
                   echo ""
                   echo "NOTE: prerequisite Secrets (confluent-license, oauth-*, mds-token-keypair,"
-                  echo "sasl-plain-internal, c3-*-basic-auth) are intentionally preserved. PVCs"
-                  echo "from the Kafka, KRaftController, and ControlCenter StatefulSets persist"
-                  echo "after CR deletion. To delete them too, run the pipeline again with"
-                  echo "action=wipe-pvcs (separate explicit action so this destruction is"
-                  echo "always opt-in)."
+                  echo "sasl-plain-internal, c3-*-basic-auth) are intentionally preserved."
 
                   if [ "$FAIL" -ne 0 ]; then
                     echo ""
@@ -1280,108 +1346,12 @@ stages:
                     echo "allow-pv-deletion=true before deleting, but the label step only"
                     echo "runs for CRs that exist at the time. If a stale finalizer is"
                     echo "the cause, investigate with: oc -n $OC_NS get <kind>/<name> -o yaml"
-                    echo ""
-                    echo "For the well-known Connect-stuck-on-broker-graceful-flush case"
-                    echo "(see runbook/LESSONS_LEARNED.md E3), re-run this pipeline with"
-                    echo "the forceFinalizerRemoval=true parameter set."
                     exit 1
                   fi
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
-                FORCE_FINALIZER_REMOVAL: ${{ parameters.forceFinalizerRemoval }}
-
-          - ${{ if eq(parameters.action, 'wipe-pvcs') }}:
-            - task: Bash@3
-              displayName: "Wipe orphaned CFK PVCs"
-              inputs:
-                targetType: inline
-                script: |
-                  set -uo pipefail
-
-                  # Why this exists:
-                  # After `uninstall` the CRs and StatefulSets are gone, but
-                  # their PVCs (data0-kafka-*, data0-kraftcontroller-*,
-                  # data0-controlcenter-*) remain on Ceph RBD because CFK's
-                  # default volumeClaimRetentionPolicy is Retain. On the
-                  # NEXT install, CFK detects matching PVC names and
-                  # generates the StatefulSet's volumeClaimTemplate WITHOUT
-                  # storageClassName (assuming PVC reuse). FCB Gatekeeper's
-                  # [ceph-storage] policy then rejects the StatefulSet with
-                  # "storage class name <dummy>". Wiping the PVCs forces a
-                  # fresh PVC creation path, on which CFK does include
-                  # storageClassName from spec.storageClass.name.
-
-                  echo "=== Checking for orphaned CFK PVCs in $OC_NS ==="
-                  # All CFK-managed PVCs follow the pattern data<N>-<sts>-<ordinal>.
-                  # We target the three stateful workloads we know exist.
-                  PVC_PATTERNS=(
-                    'data[0-9]*-kafka-[0-9]*'
-                    'data[0-9]*-kraftcontroller-[0-9]*'
-                    'data[0-9]*-controlcenter-[0-9]*'
-                  )
-                  MATCHED=$(
-                    oc -n "$OC_NS" get pvc -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
-                      | grep -E "^($(IFS='|'; echo "${PVC_PATTERNS[*]}"))$" \
-                      || true
-                  )
-
-                  if [ -z "$MATCHED" ]; then
-                    echo "No matching PVCs found — nothing to delete."
-                    exit 0
-                  fi
-
-                  echo "PVCs to delete:"
-                  echo "$MATCHED" | sed 's/^/  - /'
-
-                  # Refuse to wipe if any of the stateful StatefulSets is still
-                  # around — those should have been removed by `uninstall` first.
-                  # Wiping a PVC that an active StatefulSet still references
-                  # would leave the cluster in a half-deleted state.
-                  REMAINING_STS=$(oc -n "$OC_NS" get sts -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
-                    | grep -E '^(kafka|kraftcontroller|controlcenter)$' \
-                    || true)
-                  if [ -n "$REMAINING_STS" ]; then
-                    echo ""
-                    echo "ERROR: refusing to wipe PVCs — these StatefulSets still exist:"
-                    echo "$REMAINING_STS" | sed 's/^/  - /'
-                    echo "Run the pipeline with action=uninstall first, then re-run wipe-pvcs."
-                    exit 1
-                  fi
-
-                  # Also refuse if the CFK CRs themselves still exist — even
-                  # when the StatefulSet is in ApplyFailed state and never
-                  # materialized, the operator continues reconciling and will
-                  # immediately recreate any PVC we delete. (We hit this:
-                  # PVCs deleted cleanly, then `oc get pvc` showed them back
-                  # at age 0s.) The CRs must be removed via `uninstall`
-                  # before this action does anything useful.
-                  REMAINING_CRS=$(oc -n "$OC_NS" get kafka,kraftcontroller,controlcenter \
-                    -o jsonpath='{range .items[*]}{.kind}/{.metadata.name}{"\n"}{end}' 2>/dev/null \
-                    || true)
-                  if [ -n "$REMAINING_CRS" ]; then
-                    echo ""
-                    echo "ERROR: refusing to wipe PVCs — these CFK CRs still exist:"
-                    echo "$REMAINING_CRS" | sed 's/^/  - /'
-                    echo "While these CRs exist, the operator will recreate any PVC"
-                    echo "we delete within seconds. Run action=uninstall first, then"
-                    echo "re-run wipe-pvcs."
-                    exit 1
-                  fi
-
-                  echo ""
-                  echo "=== Deleting PVCs ==="
-                  for pvc in $MATCHED; do
-                    echo "+ oc delete pvc/$pvc -n $OC_NS --wait=true --timeout=2m"
-                    oc -n "$OC_NS" delete pvc "$pvc" --wait=true --timeout=2m || true
-                  done
-
-                  echo ""
-                  echo "=== Remaining PVCs in $OC_NS ==="
-                  oc -n "$OC_NS" get pvc 2>&1 || true
-              env:
-                OC_NS: $(openshift-namespace)
-                TARGET_ENV: ${{ parameters.environment }}
+                WIPE_PVCS: ${{ parameters.wipePVCs }}
 
           - ${{ if eq(parameters.action, 'clear-stuck-prereq-finalizers') }}:
             - task: Bash@3

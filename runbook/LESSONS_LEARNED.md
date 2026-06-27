@@ -736,12 +736,14 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   Safe because the underlying StatefulSet and pods are already
   gone (the operator removed them before getting stuck on the
   graceful-flush call).
-* **Fix (pipeline)**: add an explicit
-  `force-finalizer-removal: true|false` parameter to
-  `.azure-pipelines/confluent-platform.yaml` so the uninstall step
-  can fall back to patching `metadata.finalizers: []` on a
-  per-CR timeout. Default false; opt-in only, matching the pattern
-  used by `wipe-pvcs`.
+* **Fix (pipeline)**: the uninstall step in
+  `.azure-pipelines/confluent-platform.yaml` already falls back to
+  patching `metadata.finalizers: []` on any CR stuck with a
+  deletionTimestamp after the per-CR delete timeout. This used to be
+  behind a `forceFinalizerRemoval=true` opt-in but is now always-on:
+  the inner safety gate refuses to patch when a live StatefulSet or
+  Pod for the CR still exists, so the fallback only fires for the
+  exact stuck-on-graceful-flush class of cases described here.
 * **Why it matters**: this isn't a CFK bug per se — the operator
   doing graceful shutdown is the right behavior. It's the
   combination *broken cluster + uninstall* that gets you. Every
