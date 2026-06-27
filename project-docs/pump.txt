@@ -18,18 +18,30 @@ every round on the same RBAC-needs-MDS error (expected collateral —
 configOverrides.server has the CONFLUENT/RBAC provider but services.mds
 gets silently stripped).
 
-Production kafka.yaml — interim ACL-only spec    [LANDED THIS COMMIT]
----------------------------------------------------------------------
+Production kafka.yaml — interim "no Confluent authorizer" spec   [LANDED]
+-------------------------------------------------------------------------
 apps/confluent-platform/dev/kafka.yaml was edited in-place to:
-1. Drop CONFLUENT from
-     `confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL`
-   -> now KRAFT_ACL only. ACL-based authorization, MDS-independent.
+1. Drop the ENTIRE ConfluentServerAuthorizer line AND the
+     `confluent.authorizer.access.rule.providers` line. The earlier
+   attempt at the fix kept ConfluentServerAuthorizer + set providers=
+   KRAFT_ACL on the theory that listing only KRAFT_ACL would skip
+   RBAC init. That doesn't hold up -- ConfluentServerAuthorizer loads
+   its RBAC provider on startup regardless of the providers list, so
+   the broker still demands confluent.metadata.bootstrap.servers (line
+   2202 of kafka-2-kafka.log across rounds 1-4). Until MDS is wired
+   correctly, ConfluentServerAuthorizer cannot be loaded at all.
+   Brokers now run with no broker-side authorizer; client access is
+   gated by the listener-level auth (PLAIN+TLS on internal).
+   super.users=User:admin retained (inert without an authorizer but
+   harmless, restores prior intent when the schema-fix re-enables
+   ConfluentServerAuthorizer). Re-enable both lines together once
+   MDS is in.
 2. Remove the three telemetry-reporter lines
      metric.reporters=...TelemetryReporter,...ConfluentMetricsReporter
      confluent.telemetry.enabled=true
      confluent.reporters.telemetry.auto.enable=true
    (FCB has no telemetry API creds; same reason we already disabled
-   these on KRaftController — memory project_fcb_telemetry_audit_
+   these on KRaftController -- memory project_fcb_telemetry_audit_
    reenable_later. Commented out in-place so re-enable is one-line.)
 3. Remove the silently-stripped blocks so the yaml matches reality:
      spec.services.mds            (entire block)
@@ -37,14 +49,21 @@ apps/confluent-platform/dev/kafka.yaml was edited in-place to:
      spec.listeners.custom        (entire array)
 4. New top-of-file comment block documents the bisect findings, the
    interim state, and the follow-up schema-fix workstream.
-5. force-reconcile annotation bumped to 2026-06-27-interim-acl-only.
+5. force-reconcile annotation bumped to 2026-06-27-interim-no-authz.
+
+kafka-bisect.yaml gets the same ConfluentServerAuthorizer drop so
+future bisect rounds don't re-introduce the broken combo (the
+2026-06-27T17:25Z Round-4 dump showed bisect.yaml still carried
+ConfluentServerAuthorizer + CONFLUENT,KRAFT_ACL because the bisect
+file was originally lifted verbatim from the pre-fix kafka.yaml).
 
 Expected outcome of `action=uninstall wipePVCs=true` followed by
 `action=install-or-update kafkaCRVariant=production`:
   - Phase 1a: kraftcontroller cluster-ready=True in ~40s.
   - Phase 1b: kafka cluster-ready=True in ~3-5 min, sts/kafka 3/3,
     brokers Ready. PLAIN+TLS internal listener + PLAINTEXT default
-    external listener + KRAFT_ACL authz. No MDS, no OAuth, no mTLS.
+    external listener + NO authorizer (open within listener auth).
+    No MDS, no OAuth, no mTLS-certonly.
 
 Schema-fix workstream — NEXT (not blocking the interim cluster)
 ---------------------------------------------------------------

@@ -55,15 +55,24 @@
 #     kafka.spec.listeners.{external,custom}).
 #
 # Interim spec changes that follow from (2) — also done in this commit:
-#   - configOverrides.server: drop CONFLUENT from
-#     `confluent.authorizer.access.rule.providers` (keep KRAFT_ACL).
-#     The CONFLUENT (RBAC) provider needs
-#     `confluent.metadata.bootstrap.servers` which CFK auto-populates
-#     from spec.services.mds — but services.mds gets silently stripped,
-#     so the broker fatals at startup with
-#     "You must specify confluent.metadata.bootstrap.servers to
-#      configure the RBAC provider" (kafka-2-kafka.log line 2202 across
-#     rounds 1-4). KRAFT_ACL alone is MDS-independent.
+#   - configOverrides.server: drop BOTH the ConfluentServerAuthorizer
+#     `authorizer.class.name` line AND the `confluent.authorizer.
+#     access.rule.providers` line. An earlier attempt at this fix kept
+#     ConfluentServerAuthorizer + set providers=KRAFT_ACL (no CONFLUENT)
+#     on the theory that listing only KRAFT_ACL would skip RBAC
+#     initialization. That doesn't hold up: ConfluentServerAuthorizer
+#     loads its RBAC provider on startup regardless of the providers
+#     list (the providers list narrows which rules are evaluated, not
+#     whether RBAC plumbing is loaded), so the broker still fatal'ed
+#     with "You must specify confluent.metadata.bootstrap.servers to
+#     configure the RBAC provider" (kafka-2-kafka.log line 2202 across
+#     rounds 1-4 and the post-bisect production run). Until MDS is
+#     correctly defined in CFK 3.2 v1beta1 (schema-fix follow-up),
+#     ConfluentServerAuthorizer cannot be loaded at all. Brokers run
+#     with no authorizer; client access is gated by the listener-level
+#     auth (PLAIN+TLS on internal). super.users=User:admin is kept
+#     (inert without an authorizer but harmless, restores prior intent
+#     when ConfluentServerAuthorizer is re-enabled).
 #   - configOverrides.server: remove the three telemetry-reporter lines
 #     (metric.reporters / confluent.telemetry.enabled /
 #     confluent.reporters.telemetry.auto.enable). FCB hasn't provisioned
@@ -73,10 +82,11 @@
 #     when the credentials land.
 #
 # Net effect of this interim spec: brokers come up green with PLAIN+TLS
-# internal listener + PLAINTEXT default external (CFK auto-creates) +
-# KRAFT_ACL authorizer. OAuth, MDS, and mTLS-certonly listeners will be
-# re-added correctly once the schema-fix workstream finishes — see the
-# follow-up in project-docs/pump.txt.
+# internal listener + PLAINTEXT default external (CFK auto-creates) and
+# no broker-side authorizer (open within listener-level auth). OAuth,
+# MDS, and mTLS-certonly listeners + ConfluentServerAuthorizer +
+# telemetry will be re-added correctly once the schema-fix workstream
+# finishes — see the follow-up in project-docs/pump.txt.
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
@@ -84,7 +94,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-27-interim-acl-only"
+    platform.confluent.io/force-reconcile: "2026-06-27-interim-no-authz"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -260,14 +270,25 @@ spec:
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
-      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
-      # Interim: CONFLUENT (RBAC) provider removed because it requires
-      # confluent.metadata.bootstrap.servers, which CFK auto-populates from
-      # spec.services.mds — but services.mds is silently stripped at
-      # admission (see top-of-file bisect note + memory
-      # project_cfk_v1beta1_silent_strips). KRAFT_ACL is MDS-independent
-      # and gives us ACL-based authz until MDS is re-wired correctly.
-      - confluent.authorizer.access.rule.providers=KRAFT_ACL
+      # Interim: BOTH the ConfluentServerAuthorizer class AND its provider
+      # list are removed. The earlier attempt that kept
+      # `authorizer.class.name=ConfluentServerAuthorizer` and set
+      # `confluent.authorizer.access.rule.providers=KRAFT_ACL` (no
+      # CONFLUENT) still fatal'ed the broker with
+      #   "You must specify confluent.metadata.bootstrap.servers to
+      #    configure the RBAC provider"
+      # because ConfluentServerAuthorizer initializes its RBAC provider
+      # on startup regardless of what's in the providers list — the
+      # providers list narrows which rules are evaluated, not whether
+      # RBAC plumbing is loaded. Until MDS is correctly defined in CFK
+      # 3.2 v1beta1 (the schema-fix follow-up), drop ConfluentServer-
+      # Authorizer entirely. Brokers will start with NO authorizer; client
+      # access is gated by the listener-level auth (PLAIN+TLS on
+      # internal). super.users is kept (inert without an authorizer but
+      # harmless) so the one-line re-enable below restores prior intent.
+      # Re-enable once MDS is wired correctly:
+      #   - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
+      #   - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
       - super.users=User:admin
       - inter.broker.listener.name=internal
       - log.retention.hours=168

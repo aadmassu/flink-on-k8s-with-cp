@@ -503,14 +503,24 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   streamlined recovery path now.
 * **Fix (silent-strip, interim)**: remove the stripped blocks from
   `kafka.yaml` so the file reflects what's actually running on the
-  cluster, and drop the `CONFLUENT` (RBAC) provider from the
-  authorizer (it needs `confluent.metadata.bootstrap.servers` which
-  `services.mds` would have populated — but MDS is stripped, so the
-  broker fatals at startup with "You must specify
+  cluster, and drop the **entire `ConfluentServerAuthorizer` line**
+  alongside the `confluent.authorizer.access.rule.providers` line —
+  not just `CONFLUENT` from the providers list. An earlier attempt at
+  this fix kept `authorizer.class.name=ConfluentServerAuthorizer` and
+  set `providers=KRAFT_ACL` (no CONFLUENT) on the theory that listing
+  only KRAFT_ACL would skip RBAC initialization. That doesn't hold up:
+  ConfluentServerAuthorizer loads its RBAC provider on startup
+  regardless of the providers list (the list narrows *which rules are
+  evaluated*, not *whether RBAC plumbing is loaded*), so the broker
+  still fatals with "You must specify
   `confluent.metadata.bootstrap.servers` to configure the RBAC
-  provider"). Keep `KRAFT_ACL`; it's MDS-independent. Telemetry
-  reporters dropped at the same time (already disabled on
-  KRaftController for unprovisioned API creds — see memory
+  provider". Until MDS is correctly defined in CFK 3.2 v1beta1,
+  ConfluentServerAuthorizer cannot be loaded at all — brokers run
+  with no authorizer; client access is gated by the listener-level
+  auth (PLAIN+TLS on internal). `super.users=User:admin` is kept
+  (inert without an authorizer but harmless). Telemetry reporters
+  dropped at the same time (already disabled on KRaftController for
+  unprovisioned API creds — see memory
   `project_fcb_telemetry_audit_reenable_later`).
 * **Fix (silent-strip, follow-up)**: the diagnostics.yaml `oc explain`
   coverage was extended at commit e67188f to cover
