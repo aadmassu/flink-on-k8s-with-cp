@@ -551,10 +551,16 @@ stages:
                     "kraftcontroller.spec.volumeClaimTemplates" \
                     "kraftcontroller.spec.storageClass" \
                     "kraftcontroller.spec.podTemplate" \
+                    "kraftcontroller.spec.listeners" \
+                    "kraftcontroller.spec.listeners.controller" \
                     "kafka" \
                     "kafka.spec" \
                     "kafka.spec.volumeClaimTemplates" \
                     "kafka.spec.storageClass" \
+                    "kafka.spec.dependencies" \
+                    "kafka.spec.dependencies.kRaftController" \
+                    "kafka.spec.listeners" \
+                    "kafka.spec.listeners.internal" \
                     "controlcenter" \
                     "controlcenter.spec" \
                     "controlcenter.spec.volumeClaimTemplates" \
