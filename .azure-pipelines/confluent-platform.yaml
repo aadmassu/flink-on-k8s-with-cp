@@ -103,6 +103,27 @@ parameters:
     type: string
     default: production
     values: [production, minimal]
+  - name: tearDownFailedStatefulSet
+    displayName: "reset-kafka-cr: also tear down sts/kafka if every broker is failed (recover from crash-looped attempt)"
+    type: boolean
+    default: false
+    # Opt-in escape hatch for the case where a prior reset-kafka-cr run
+    # got past the precondition gate, the operator created sts/kafka,
+    # but the broker pods crashed (e.g. controller-auth mismatch surfaced
+    # 2026-06-27 with the CFK 3.2.0 PLAIN+TLS default-to-PLAINTEXT bug
+    # — fixed in apps/confluent-platform/dev/kafka{,-minimal}.yaml in
+    # commit adfc8d4 by spelling out dependencies.kRaftController
+    # authentication + tls). Without this flag, the safety gate would
+    # refuse on sts/kafka existing — correct behavior for "is there a
+    # live cluster I might destroy?" but wrong for "the previous attempt
+    # crashed and I need to redo it with a patched yaml". When this
+    # flag is true AND every kafka-N broker pod has restartCount > 0
+    # AND no broker pod has ever been Ready=True, the action allows
+    # itself to proceed, and adds two cleanup steps (delete sts/kafka,
+    # delete data0-kafka-* PVCs) before the CR delete so the next
+    # re-apply gets a clean slate. If a broker pod has EVER been Ready,
+    # the gate still refuses — that's a real running cluster and
+    # action=uninstall is the right tool.
     # Which Kafka-CR yaml the reset-kafka-cr action re-applies after the
     # delete step. Default 'production' = apps/confluent-platform/<env>/kafka.yaml
     # (the real spec — internal SASL_PLAIN + external OAuth/LoadBalancer +
@@ -1585,36 +1606,62 @@ stages:
                     exit 1
                   fi
 
-                  # If sts/kafka exists, brokers exist (or are mid-creation).
-                  # Deleting the CR mid-create can leak PVCs and orphan a
-                  # StatefulSet. Refuse — use action=uninstall instead.
-                  if oc -n "$OC_NS" get sts kafka >/dev/null 2>&1; then
-                    echo "ABORT: sts/kafka exists in $OC_NS. reset-kafka-cr is only"
-                    echo "       safe BEFORE sts/kafka has ever been created. Use"
-                    echo "       action=uninstall for a full tear-down instead."
-                    exit 1
-                  fi
-
-                  # Same for stray broker pods.
+                  # Discover sts/kafka and broker pod state up front so the
+                  # gates below can either refuse (live cluster) or accept
+                  # with the failed-StatefulSet override (previous attempt
+                  # crashed). Counted defensively with || true on the
+                  # filtering pipes so an empty grep doesn't fall through
+                  # to set -e behavior in a future re-add of -e.
+                  STS_EXISTS=$(oc -n "$OC_NS" get sts kafka --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+                  STS_EXISTS=${STS_EXISTS:-0}
                   BROKER_PODS=$(oc -n "$OC_NS" get pods \
                     -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' \
                     --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
-                  if [ "${BROKER_PODS:-0}" -gt 0 ]; then
-                    echo "ABORT: $BROKER_PODS kafka broker pod(s) exist in $OC_NS."
-                    echo "       Use action=uninstall first."
-                    exit 1
-                  fi
-
-                  # Same for kafka PVCs (should be none if sts has never
-                  # been created; check defensively).
+                  BROKER_PODS=${BROKER_PODS:-0}
                   KAFKA_PVCS=$(oc -n "$OC_NS" get pvc \
                     -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
                     2>/dev/null | grep -cE '^data0-kafka-[0-9]+$' || true)
                   KAFKA_PVCS=${KAFKA_PVCS:-0}
-                  if [ "$KAFKA_PVCS" -gt 0 ]; then
-                    echo "ABORT: $KAFKA_PVCS data0-kafka-* PVC(s) exist in $OC_NS."
-                    echo "       Use action=wipe-pvcs first."
-                    exit 1
+
+                  # The "is this a live cluster?" check. A broker pod that
+                  # has EVER reached Ready=True is the canonical signal a
+                  # real cluster is or was up. crashlooped pods have
+                  # restartCount > 0 with no ContainersReady=True — those
+                  # are recoverable failed-attempt state, not a live
+                  # cluster. Count pods that have ever had a Ready
+                  # condition with status=True (lastTransitionTime check
+                  # is overkill — presence of a True transition at any
+                  # point means the pod served traffic).
+                  EVER_READY=$(oc -n "$OC_NS" get pods \
+                    -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' \
+                    -o jsonpath='{range .items[*]}{range .status.conditions[?(@.type=="Ready")]}{.status}{"\n"}{end}{end}' \
+                    2>/dev/null | grep -c '^True$' || true)
+                  EVER_READY=${EVER_READY:-0}
+
+                  # ADO interpolates a boolean parameter to True/False at
+                  # compile time; accept lowercase too for $(var) rewires.
+                  TEAR_DOWN_FLAG="${{ parameters.tearDownFailedStatefulSet }}"
+                  case "$TEAR_DOWN_FLAG" in True|true) TEAR_DOWN=1 ;; *) TEAR_DOWN=0 ;; esac
+
+                  if [ "$STS_EXISTS" -gt 0 ] || [ "$BROKER_PODS" -gt 0 ] || [ "$KAFKA_PVCS" -gt 0 ]; then
+                    if [ "$EVER_READY" -gt 0 ]; then
+                      echo "ABORT: sts/kafka exists AND at least one broker has been Ready=True."
+                      echo "       This is a live (or recently live) cluster. Use action=uninstall."
+                      echo "       sts=$STS_EXISTS broker_pods=$BROKER_PODS pvcs=$KAFKA_PVCS ever_ready=$EVER_READY"
+                      exit 1
+                    fi
+                    if [ "$TEAR_DOWN" -ne 1 ]; then
+                      echo "ABORT: sts/kafka and/or broker pods exist (none have ever been Ready)."
+                      echo "       This looks like a previous reset-kafka-cr attempt left brokers crashlooping."
+                      echo "       Re-run with 'reset-kafka-cr: also tear down sts/kafka if every broker"
+                      echo "       is failed (recover from crash-looped attempt)' checked to clean up."
+                      echo "       sts=$STS_EXISTS broker_pods=$BROKER_PODS pvcs=$KAFKA_PVCS ever_ready=$EVER_READY"
+                      exit 1
+                    fi
+                    echo "NOTICE: tearDownFailedStatefulSet=true and no broker has ever been Ready."
+                    echo "        Will tear down sts/kafka + broker pods + data0-kafka-* PVCs"
+                    echo "        before the CR delete + re-apply."
+                    echo "        sts=$STS_EXISTS broker_pods=$BROKER_PODS pvcs=$KAFKA_PVCS ever_ready=$EVER_READY"
                   fi
 
                   # Refuse if the CR doesn't exist — nothing to reset.
@@ -1675,6 +1722,70 @@ stages:
                   echo "=== spec sha256 (for round-trip integrity check) ==="
                   oc -n "$OC_NS" get kafka kafka -o json \
                     | python3 -c "import json,sys,hashlib; spec=json.load(sys.stdin).get('spec',{}); print(hashlib.sha256(json.dumps(spec,sort_keys=True).encode()).hexdigest())" 2>&1 || true
+              env:
+                OC_NS: $(openshift-namespace)
+
+            - task: Bash@3
+              displayName: "reset-kafka-cr: tear down failed sts/kafka (only if tearDownFailedStatefulSet=true)"
+              condition: and(succeeded(), eq('${{ parameters.tearDownFailedStatefulSet }}', true))
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  # Reach here only when the safety gates accepted the
+                  # failed-StatefulSet override (every broker pod has
+                  # restartCount > 0 and none have ever been Ready=True).
+                  # Tear sts/kafka down explicitly so the subsequent CR
+                  # delete + re-apply gets a clean slate even if the
+                  # operator's owner-reference cascade hangs (it has been
+                  # observed to hang when the reconciler can't write
+                  # status, which is the exact stuck state we're
+                  # recovering from).
+
+                  echo "+ oc -n $OC_NS delete sts kafka --wait=true --timeout=60s --ignore-not-found"
+                  oc -n "$OC_NS" delete sts kafka --wait=true --timeout=60s --ignore-not-found
+
+                  echo ""
+                  echo "+ oc -n $OC_NS delete pods -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' --wait=true --timeout=60s --ignore-not-found"
+                  oc -n "$OC_NS" delete pods \
+                    -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' \
+                    --wait=true --timeout=60s --ignore-not-found
+
+                  echo ""
+                  echo "=== Discovering data0-kafka-* PVCs to delete ==="
+                  KAFKA_PVC_LIST=$(oc -n "$OC_NS" get pvc \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                    2>/dev/null | grep -E '^data0-kafka-[0-9]+$' || true)
+
+                  if [ -z "$KAFKA_PVC_LIST" ]; then
+                    echo "(no data0-kafka-* PVCs present — sts probably never created them)"
+                  else
+                    echo "PVCs to delete:"
+                    echo "$KAFKA_PVC_LIST" | sed 's/^/  /'
+                    while IFS= read -r pvc; do
+                      [ -z "$pvc" ] && continue
+                      echo "+ oc -n $OC_NS delete pvc $pvc --wait=true --timeout=60s"
+                      oc -n "$OC_NS" delete pvc "$pvc" --wait=true --timeout=60s
+                    done <<< "$KAFKA_PVC_LIST"
+                  fi
+
+                  echo ""
+                  echo "=== Confirming sts/kafka + broker pods + data0-kafka-* PVCs are gone ==="
+                  STS_LEFT=$(oc -n "$OC_NS" get sts kafka --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+                  PODS_LEFT=$(oc -n "$OC_NS" get pods \
+                    -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' \
+                    --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+                  PVCS_LEFT=$(oc -n "$OC_NS" get pvc \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                    2>/dev/null | grep -cE '^data0-kafka-[0-9]+$' || true)
+                  echo "sts/kafka:           ${STS_LEFT:-0}"
+                  echo "kafka broker pods:   ${PODS_LEFT:-0}"
+                  echo "data0-kafka-* PVCs:  ${PVCS_LEFT:-0}"
+                  if [ "${STS_LEFT:-0}" -ne 0 ] || [ "${PODS_LEFT:-0}" -ne 0 ] || [ "${PVCS_LEFT:-0}" -ne 0 ]; then
+                    echo "FAIL: tear-down left residual resources behind."
+                    exit 1
+                  fi
               env:
                 OC_NS: $(openshift-namespace)
 
