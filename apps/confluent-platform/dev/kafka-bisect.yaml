@@ -11,16 +11,34 @@
 # pristine as the known-good fallback. Selected via
 # confluent-platform.yaml install with kafkaCRVariant=bisect.
 #
-# Round 1 (Try A): minimal + spec.configOverrides.server[*]
-#   Hypothesis: the configOverrides.server list (28 broker config lines) is
-#   the trigger. Highest-suspicion lines in this set are the telemetry-
-#   reporter ones (metric.reporters / confluent.telemetry.enabled /
-#   confluent.reporters.telemetry.auto.enable) because per memory
-#   [project_fcb_telemetry_audit_reenable_later] FCB has not provisioned
-#   telemetry API creds — the same lines we disabled on KRaftController
-#   for that reason. Other lines (replication factors, num threads, log
-#   retention) are post-bootstrap settings and should be inert at first
-#   reconcile.
+# Round 1 (Try A): minimal + spec.configOverrides.server[*]    [DONE — NOT
+#                                                                THE TRIGGER]
+#   Tested 2026-06-27T16:42Z. Operator reconciled cleanly: SuccessfulCreate
+#   events present, status conditions populated (cluster-ready=False
+#   ReplicasNotReady), sts/kafka 3/3 created, kafka-0/1/2 pods scheduled.
+#   No silent-bail. Brokers DID crash with
+#     org.apache.kafka.common.config.ConfigException: You must specify
+#     confluent.metadata.bootstrap.servers to configure the RBAC provider.
+#   because the configOverrides.server list includes
+#   `confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL` (RBAC
+#   provider) but services.mds was stripped, so CFK had no MDS bootstrap
+#   to auto-populate. That's expected collateral of the bisect — RBAC
+#   wants MDS — and is fixed when services.mds gets added in Round 2.
+#   It does NOT affect the silent-bail signal we're hunting.
+#
+# Round 2 (Try B): bisect-after-A + spec.services.mds          [CURRENT]
+#   Adds the embedded MDS (Metadata Service) block with OAuth/Okta
+#   provider wiring. This is the most exotic remaining feature and the
+#   highest-suspicion silent-bail trigger: MDS is the only block that
+#   makes the operator stand up an extra service inside the broker
+#   StatefulSet (port 8090) AND validates Okta endpoints at admission.
+#   CFK 3.2.0 has more surface area to choke on here than on listener
+#   blocks. Bonus: adding services.mds also fixes the Round-1 broker
+#   crash because CFK can now auto-populate
+#   confluent.metadata.bootstrap.servers from the MDS service, so the
+#   RBAC authorizer initializes cleanly. Required Secrets in dah-flink-dev:
+#   mds-token-keypair and oauth-mds-rest (both present per the Round 1
+#   diagnostic ESO-managed Secrets list).
 #
 # DO NOT use this as a production manifest under any circumstances. This
 # file's spec is intentionally an in-progress diagnostic snapshot.
@@ -31,7 +49,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-27-bisect-A"
+    platform.confluent.io/force-reconcile: "2026-06-27-bisect-B"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -93,6 +111,36 @@ spec:
   pdb:
     enabled: true
     maxUnavailable: 1
+
+  # Round 2 (Try B) addition: spec.services.mds — embedded Metadata Service
+  # lifted verbatim from kafka.yaml lines 226-247. Required for the RBAC
+  # provider in configOverrides.server to find a metadata bootstrap (the
+  # Round 1 broker crash). Uses Okta as the OAuth issuer and the
+  # ESO-provisioned mds-token-keypair + oauth-mds-rest Secrets in
+  # dah-flink-dev. If THIS is the silent-bail trigger, the kafka CR will
+  # have zero events / zero status / no sts-kafka after the apply.
+  services:
+    mds:
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      tls:
+        enabled: true
+      authentication:
+        type: bearer
+      provider:
+        type: oauth
+        oauth:
+          clientCredentials:
+            secretRef: oauth-mds-rest
+          configurations:
+            audience: "Confluent,account,api://default"
+            authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
+            issuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            refreshToken: true
+            tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
 
   # Round 1 (Try A) addition: full configOverrides.server[*] block lifted
   # verbatim from apps/confluent-platform/dev/kafka.yaml (lines 265-293).
