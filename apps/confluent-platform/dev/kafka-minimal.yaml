@@ -1,0 +1,158 @@
+---
+# CFK Kafka CR — MINIMAL VARIANT for dev (diagnostic use only)
+#
+# Purpose: isolate which spec feature in apps/confluent-platform/dev/kafka.yaml
+# triggers CFK 3.2.0's `skipping cluster scale due to cluster not healthy`
+# precondition-gate bug on initial install. Applied via
+# confluent-platform.yaml action=reset-kafka-cr with parameter
+# kafkaCRVariant=minimal so the production kafka.yaml stays intact and
+# the experiment is A/B-able.
+#
+# Stripped from kafka.yaml:
+#   - spec.listeners.external           (OAuth + LoadBalancer — primary suspect)
+#   - spec.listeners.custom             (mTLS certonly listener — secondary)
+#   - spec.services.mds                 (embedded MDS with OAuth)
+#   - spec.configOverrides.server[*]    (whole list — all are post-bootstrap
+#                                        settings: topic replication factors,
+#                                        SBC, telemetry, authorizer; none
+#                                        needed for initial-install to succeed)
+# Kept (because removing breaks Kafka startup OR breaks FCB Gatekeeper):
+#   - spec.replicas, image, dataVolumeCapacity, storageClass
+#   - spec.dependencies.kRaftController (required — Kafka can't start without
+#                                        controller quorum)
+#   - spec.listeners.internal           (required — inter-broker comms)
+#   - spec.tls.secretRef                (operator validates this on apply)
+#   - spec.license.secretRef            (CFK refuses to apply without it)
+#   - spec.mountedVolumes               (fcb-trust-bundle for JVM trustStore;
+#                                        broker container may fail TLS handshakes
+#                                        without it)
+#   - spec.configOverrides.jvm          (JVM trustStore wiring — see above)
+#   - spec.pdb                          (FCB [pod-disruption-budget] policy)
+#   - spec.injectLabels + spec.podTemplate.labels
+#                                       (FCB Gatekeeper [required-workload-labels]
+#                                        enforces these at admission)
+#   - spec.podTemplate.{resources, podSecurityContext, affinity, probe}
+#                                       (OpenShift SCC + dev quota fit + node
+#                                        spread)
+#
+# Outcome map:
+#   - If applying this still hits the same gate ("skipping cluster scale due
+#     to cluster not healthy phase=\"\""):  the bug is unrelated to external
+#     listener / OAuth / MDS / configOverrides; almost certainly a CFK 3.2.0
+#     reconciler bug. Open Confluent support with this evidence.
+#   - If applying this LANDS sts/kafka and broker pods come up:  the
+#     stripped section contains the trigger. Add features back one at a
+#     time (external → custom → services.mds → server configOverrides)
+#     and bisect until the failing add reproduces the gate.
+#
+# DO NOT use this as a production manifest. Brokers brought up against this
+# spec have no external listener (Flink jobs can't reach them from outside
+# the namespace), no MDS (no centralized auth for SR/Connect/REST/C3 to use),
+# no mTLS listener (no cert-only client path), and no broker telemetry /
+# SBC / cluster-link metadata replication-factor overrides.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: dah-flink-dev
+  annotations:
+    platform.confluent.io/force-reconcile: "2026-06-27-minimal"
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: kafka-broker
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 3
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
+
+  injectLabels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka
+    app.kubernetes.io/component: kafka-broker
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+
+  dataVolumeCapacity: 10Gi
+  storageClass:
+    name: ocs-storagecluster-ceph-rbd
+
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller
+
+  # ONLY internal listener — strip external (OAuth+LoadBalancer) and custom (mTLS)
+  # so the operator has nothing exotic to provision before sts/kafka comes up.
+  listeners:
+    internal:
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+      tls:
+        enabled: true
+
+  tls:
+    secretRef: kafka-tls
+  license:
+    secretRef: cfk-license
+
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /mnt/sslcerts/fcb-trust-bundle
+        readOnly: true
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  configOverrides:
+    jvm:
+      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStorePassword=changeit"
+      - "-Djavax.net.ssl.trustStoreType=JKS"
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    probe:
+      liveness:
+        initialDelaySeconds: 90
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/instance: kafka
+      app.kubernetes.io/component: kafka-broker
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
+      cfk-role: kafka-broker
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                cfk-role: kafka-broker
+            topologyKey: kubernetes.io/hostname

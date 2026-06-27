@@ -98,6 +98,31 @@ parameters:
     # path. The sts/kafka and broker-pod safety gates in the action
     # itself are the real protection; this checkbox is the
     # "did-you-mean-to-do-this" tripwire.
+  - name: kafkaCRVariant
+    displayName: "reset-kafka-cr: which Kafka CR spec to re-apply"
+    type: string
+    default: production
+    values: [production, minimal]
+    # Which Kafka-CR yaml the reset-kafka-cr action re-applies after the
+    # delete step. Default 'production' = apps/confluent-platform/<env>/kafka.yaml
+    # (the real spec — internal SASL_PLAIN + external OAuth/LoadBalancer +
+    # custom mTLS + MDS + full configOverrides). The 'minimal' variant =
+    # apps/confluent-platform/<env>/kafka-minimal.yaml exists ONLY to
+    # bisect the CFK 3.2.0 `skipping cluster scale due to cluster not
+    # healthy phase=""` precondition-gate bug — it strips external/custom
+    # listeners, MDS, and the entire spec.configOverrides.server list so
+    # the operator has nothing exotic to provision before sts/kafka comes
+    # up. If reset-kafka-cr + variant=minimal lands sts/kafka where
+    # variant=production hits the gate, the stripped sections contain the
+    # trigger and we can bisect from there. If variant=minimal ALSO hits
+    # the gate, the bug is CFK-internal and unrelated to spec shape —
+    # open Confluent support with that evidence. Do not run variant=minimal
+    # to completion as a "real" install — brokers brought up against the
+    # minimal spec have no external listener, no MDS, no mTLS path, and
+    # no broker telemetry / SBC / cluster-link metadata replication-factor
+    # overrides. Once a variant brings up sts/kafka, run action=uninstall
+    # to tear it down, then action=install-or-update with the production
+    # yaml.
   - name: forceFinalizerRemoval
     displayName: "Uninstall: force-clear finalizers on timeout"
     type: boolean
@@ -1700,17 +1725,46 @@ stages:
                 OC_NS: $(openshift-namespace)
 
             - task: Bash@3
-              displayName: "reset-kafka-cr: re-apply apps/confluent-platform/${{ parameters.environment }}/kafka.yaml"
+              displayName: "reset-kafka-cr: re-apply Kafka CR (variant=${{ parameters.kafkaCRVariant }})"
               inputs:
                 targetType: inline
                 script: |
-                  set -euo pipefail
-                  KAFKA_YAML="apps/confluent-platform/$TARGET_ENV/kafka.yaml"
+                  set -uo pipefail
+
+                  # Pick the Kafka CR yaml to re-apply based on the
+                  # kafkaCRVariant parameter:
+                  #   production -> apps/confluent-platform/<env>/kafka.yaml
+                  #                 (real spec: external OAuth+LB + custom mTLS +
+                  #                  MDS + full configOverrides)
+                  #   minimal    -> apps/confluent-platform/<env>/kafka-minimal.yaml
+                  #                 (diagnostic: internal listener only,
+                  #                  bisects the precondition-gate bug)
+                  case "$VARIANT" in
+                    production)
+                      KAFKA_YAML="apps/confluent-platform/$TARGET_ENV/kafka.yaml"
+                      ;;
+                    minimal)
+                      KAFKA_YAML="apps/confluent-platform/$TARGET_ENV/kafka-minimal.yaml"
+                      ;;
+                    *)
+                      echo "ABORT: unknown kafkaCRVariant '$VARIANT' (expected production|minimal)."
+                      exit 1
+                      ;;
+                  esac
+
+                  if [ ! -f "$KAFKA_YAML" ]; then
+                    echo "ABORT: $KAFKA_YAML not found in checkout."
+                    exit 1
+                  fi
+
+                  echo "Re-applying Kafka CR from $KAFKA_YAML"
+                  echo ""
                   echo "+ oc apply -f $KAFKA_YAML"
                   oc apply -f "$KAFKA_YAML"
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
+                VARIANT: ${{ parameters.kafkaCRVariant }}
 
             - task: Bash@3
               displayName: "reset-kafka-cr: wait for reconciler to write something on the fresh CR"
