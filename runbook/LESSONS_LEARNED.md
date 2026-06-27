@@ -463,6 +463,54 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   the 15 min ceiling is generous for a working install and a
   conservative ceiling for a broken one.
 
+### A17. FIPS-mode CFK operator requires `tls.enabled: true` explicitly on `spec.tls` (not just `secretRef:`)
+
+* **Symptom**: every CFK CR (Kafka, KRaftController, SchemaRegistry, …)
+  sits at `cluster-ready=False ApplyFailed` with
+  ```
+  Cannot create http client: TLS not Enabled in Application when
+  FIPS mode is true in Operator
+  ```
+  Pods may even be `1/1 Running` on the underlying StatefulSet, but the
+  operator refuses to flip the CR ready and the install pipeline's
+  900s wait loop times out.
+* **Root cause**: the CFK operator at FCB ships with FIPS mode enabled
+  (Container team's build profile). In FIPS mode the operator's internal
+  HTTP client requires *every* CFK Application CR to declare TLS as
+  explicitly enabled — not just have a `secretRef:` for cert material.
+  `spec.tls.secretRef: <name>` alone is read as "TLS material present
+  but not in use"; the operator then refuses to instantiate its HTTP
+  client against the Application (it would have to fall back to plain
+  HTTP) and writes the ApplyFailed condition. This is asymmetric with
+  non-FIPS clusters where `secretRef:` alone is sufficient.
+* **Fix**: set `enabled: true` alongside `secretRef:` on `spec.tls` for
+  every CFK CR in this repo:
+  ```yaml
+  spec:
+    tls:
+      enabled: true
+      secretRef: <cr>-tls
+  ```
+  Same change in `apps/confluent-platform/dev/kafka.yaml`,
+  `kraftcontroller.yaml`, `schemaregistry.yaml`, and the diagnostic
+  `kafka-bisect.yaml` (commit `9bcc8c0`-ish + follow-up). The
+  `connect.yaml`, `kafkarest.yaml`, and `controlcenter.yaml` files will
+  need the same change before Phase 2 brings them online.
+* **Why it matters**: this is silent in a different way from the
+  v1beta1 schema strip pattern (A15) — the spec stays intact, the
+  operator just refuses to mark the CR ready. The CFK 3.2 documentation
+  presents `tls.secretRef:` and `tls.enabled: true` as separate optional
+  fields, not "secretRef implies enabled". Always set both explicitly
+  on FIPS-mode clusters. Discovered 2026-06-27T18:57Z during the SR
+  Phase-2 install attempt — the same FIPS check then surfaced on
+  Kafka after the wipe/install cycle. Worked previously (Kafka was
+  `cluster-ready=True` at 17:59Z) most likely because the operator's
+  FIPS evaluation kicks in on initial apply but isn't re-evaluated on
+  subsequent reconciles of an already-ready CR; on a fresh apply (post
+  wipePVCs) the check fires and trips without the `enabled: true` flag.
+
+---
+
 ### A16. `inter.broker.listener.name=internal` strands outbound broker-broker without client JAAS
 
 * **Symptom**: Kafka cluster comes up (brokers `1/1 Running`, sts/kafka
