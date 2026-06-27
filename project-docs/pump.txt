@@ -1,5 +1,1 @@
-Sanity rerun without the namespace_name field filter — confirm whether kraftcontroller pods log to Splunk at all, then check what IPs the operator is dialing right now.
-
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) openshift_pod_name="kraftcontroller-*" earliest=-1h latest=now | stats count by openshift_pod_name
-
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) openshift_pod_name="confluent-operator-*" "i/o timeout" earliest=-1h latest=now | head 20
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) openshift_pod_name="confluent-operator-*" earliest=-8h latest=now ("dah-flink-dev" OR "panic" OR "fatal" OR "FATAL" OR "Starting operator" OR "leader election" OR "stopped leading" OR "Reconciler error") | sort _time
