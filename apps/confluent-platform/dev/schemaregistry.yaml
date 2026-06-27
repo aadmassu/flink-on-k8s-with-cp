@@ -1,9 +1,9 @@
 ---
-# CFK SchemaRegistry CR — dev (1 replica, matching VM)
+# CFK SchemaRegistry CR — dev (1 replica)
 #
 # Source: apps/confluent-platform/cp-confluent/dev/d11547varc-4559-schema-registry.properties
 #
-# Per-VM config carried over:
+# Per-VM config carried over to the future-state (RBAC) target:
 #   listeners=https://0.0.0.0:8081
 #   kafkastore.bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
 #   kafkastore.topic=_schemas, kafkastore.topic.replication.factor=3
@@ -17,12 +17,42 @@
 #
 # Replica count is 1 to match the VM topology. CFK SR is HA-capable; if FCB
 # wants HA, bump replicas to 3 and add a Service-level discovery config.
+#
+# ----------------------------------------------------------------------
+# Interim state (2026-06-27, see runbook A15/A16 + project-docs/pump.txt)
+# ----------------------------------------------------------------------
+# The dev Kafka cluster currently runs without an authorizer and without
+# MDS (services.mds + listeners.external OAuth blocks were silently
+# stripped by CFK 3.2.0 v1beta1 admission — never actually took effect
+# on this cluster; see memory project_cfk_v1beta1_silent_strips). Until
+# the schema-fix workstream re-adds OAuth + MDS in the correct v1beta1
+# shape, SR cannot use OAUTHBEARER to brokers, OAuth on its own HTTP
+# API, or RBAC for authorization — there's no MDS to back any of them.
+#
+# Interim spec changes from the original full-RBAC target:
+#   - dependencies.kafka: connect to the CFK-auto-created PLAINTEXT
+#     external listener on :9092 (no auth, no TLS). Anonymous client.
+#     The OAUTHBEARER block is commented out below for one-pass re-add.
+#   - dependencies.mds: REMOVED (MDS doesn't exist on this cluster).
+#   - spec.authentication: REMOVED. SR's HTTP API has no client auth
+#     during the interim — anyone in dah-flink-dev who can reach the
+#     ClusterIP can call SR. Acceptable for dev (NetworkPolicy already
+#     scopes inbound to dah-flink-dev pods).
+#   - spec.authorization: REMOVED. No RBAC without MDS.
+#   - configOverrides.server: drop JETTY_AUTH (no auth to enforce) and
+#     drop SchemaRegistrySecurityResourceExtension (requires auth).
+#     Keep the Schema Exporter extension and topic/replication settings.
+#
+# All four removed/changed blocks are kept as commented-out yaml below
+# so re-enable is mechanical once the schema-fix workstream finishes.
 
 apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry
 metadata:
   name: schemaregistry
   namespace: dah-flink-dev
+  annotations:
+    platform.confluent.io/force-reconcile: "2026-06-27-interim-no-authz"
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -52,67 +82,76 @@ spec:
   # every pod with "must specify limits.cpu for: schemaregistry ...".
 
   dependencies:
-    # dependencies.kafka uses SASL OAUTHBEARER to brokers — CRD shape is:
-    #   type: oauthbearer
-    #   oauthbearer.secretRef: <Secret with clientId, clientSecret>
-    #   oauthSettings: { OIDC discovery + claims config }
+    # Interim: anonymous PLAINTEXT to the CFK-auto-created EXTERNAL
+    # listener on :9092. Re-enable OAUTHBEARER over INTERNAL:9071 once
+    # OAuth+MDS are wired correctly in v1beta1 shape. Original full-
+    # RBAC config below for reference / re-add:
+    #
+    # kafka:
+    #   bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+    #   authentication:
+    #     type: oauthbearer
+    #     oauthbearer:
+    #       secretRef: oauth-schemaregistry
+    #     oauthSettings:
+    #       audience: "Confluent,account,api://default"
+    #       expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+    #       jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+    #       scope: 11547.DAH(Dev)
+    #       subClaimName: sub
+    #       groupsClaimName: dahDev_groups
+    #       tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    #   tls:
+    #     enabled: true
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
-      authentication:
-        type: oauthbearer
-        oauthbearer:
-          secretRef: oauth-schemaregistry
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(Dev)
-          subClaimName: sub
-          groupsClaimName: dahDev_groups
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-      tls:
-        enabled: true
-    # dependencies.mds uses OAuth client_credentials grant against Okta to get
-    # a bearer token, then presents that token to MDS. CRD shape is:
-    #   type: oauth
-    #   oauth.secretRef: <same Secret as above>
-    #   oauth.configuration: { same OIDC fields, just nested differently }
-    mds:
-      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
-      tokenKeyPair:
-        secretRef: mds-token-keypair
-      authentication:
-        type: oauth
-        oauth:
-          secretRef: oauth-schemaregistry
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(Dev)
-            subClaimName: sub
-            groupsClaimName: dahDev_groups
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
 
-  # CFK 3.1.1 requires OAuth config nested under authentication.oauth.{secretRef,configuration}
-  # — flat fields directly under authentication.* don't fit the schema.
-  authentication:
-    type: oauth
-    oauth:
-      secretRef: oauth-schemaregistry
-      configuration:
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        audience: "Confluent,account,api://default"
-        subClaimName: sub
-        groupsClaimName: dahDev_groups
-        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-        scope: 11547.DAH(Dev)
+  # dependencies.mds — REMOVED for the interim (MDS not provisioned).
+  # Re-add when MDS is wired:
+  #
+  # mds:
+  #   endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+  #   tokenKeyPair:
+  #     secretRef: mds-token-keypair
+  #   authentication:
+  #     type: oauth
+  #     oauth:
+  #       secretRef: oauth-schemaregistry
+  #       configuration:
+  #         audience: "Confluent,account,api://default"
+  #         expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+  #         jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+  #         scope: 11547.DAH(Dev)
+  #         subClaimName: sub
+  #         groupsClaimName: dahDev_groups
+  #         tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
 
-  authorization:
-    type: rbac
-    superUsers:
-      - User:admin
+  # spec.authentication — REMOVED for the interim. SR HTTP API has no
+  # client auth; in-cluster Flink jobs and other clients reach
+  # https://schemaregistry.dah-flink-dev.svc.cluster.local:8081 directly.
+  # NetworkPolicy + namespace scoping is the only access control today.
+  # Re-add when OAuth is wired:
+  #
+  # authentication:
+  #   type: oauth
+  #   oauth:
+  #     secretRef: oauth-schemaregistry
+  #     configuration:
+  #       jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+  #       expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+  #       audience: "Confluent,account,api://default"
+  #       subClaimName: sub
+  #       groupsClaimName: dahDev_groups
+  #       tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+  #       scope: 11547.DAH(Dev)
+
+  # spec.authorization — REMOVED for the interim (no RBAC without MDS).
+  # Re-add when MDS is wired:
+  #
+  # authorization:
+  #   type: rbac
+  #   superUsers:
+  #     - User:admin
 
   tls:
     secretRef: schemaregistry-tls
@@ -120,9 +159,9 @@ spec:
     secretRef: cfk-license
 
   # FCB org-wide trust bundle — see kafka.yaml for the full rationale.
-  # SR uses the JVM default truststore for every outbound HTTPS: the OAuth
-  # token + JWKS endpoints (myapps.firstcitizens.com) and MDS-over-HTTPS
-  # against the broker on port 8090.
+  # SR uses the JVM default truststore for outbound HTTPS — during the
+  # interim only the inter-SR replica probe matters; once OAuth is back
+  # this also covers token / JWKS / MDS calls.
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -144,8 +183,10 @@ spec:
     enabled: true
     maxUnavailable: 1
 
-  # Carry-over for SR linking (Schema Exporter), encoder secret, and the
-  # JETTY_AUTH mechanism the VM cluster uses.
+  # Carry-over for SR linking (Schema Exporter), topic + replication
+  # settings. JETTY_AUTH and the SchemaRegistrySecurityResourceExtension
+  # are dropped in the interim (no auth = nothing to enforce); both come
+  # back when OAuth + MDS are re-added.
   configOverrides:
     # JVM-default truststore → fcb-trust-bundle (see kafka.yaml for rationale).
     # Password is trust-manager's default ("changeit"); confirm with Container
@@ -159,8 +200,15 @@ spec:
       - kafkastore.topic=_schemas
       - kafkastore.topic.replication.factor=3
       - inter.instance.protocol=https
-      - confluent.schema.registry.auth.mechanism=JETTY_AUTH
-      - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
+      # Re-add when OAuth + RBAC are back:
+      # - confluent.schema.registry.auth.mechanism=JETTY_AUTH
+      # - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
+      # - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
+      #
+      # Interim: keep only the Schema Exporter extension (no security
+      # extension). Schema Exporter doesn't require auth on the
+      # source-side SR.
+      - resource.extension.class=io.confluent.schema.exporter.SchemaExporterResourceExtension
       - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
 
   podTemplate:
