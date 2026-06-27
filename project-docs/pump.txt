@@ -1,1 +1,68 @@
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*)) openshift_pod_name="confluent-operator-*" earliest=-2h latest=now "dah-flink-dev" | sort _time
+REGRESSION DIAGNOSIS - kafka CR stuck "waiting for at-least one kRaft controller pod availability"
+=================================================================================================
+
+What the 2026-06-27T15:06Z diagnostic showed
+--------------------------------------------
+- kraftcontroller sts 3/3 Ready at age 3m27s
+- kraftcontroller-0/1/2 all Running, quorum elected (9990,9991,9992)
+- kraftcontroller services + endpoints all populated on :9074,:7203,:7777,:7778
+- kraftcontroller CR cluster-ready=True ClusterIsReady "Cluster is ready"
+- INTRA-NS kraftcontroller-0:7777 OPEN (jolokia probe from inside pod)
+- kafka CR cluster-ready=False ApplyFailed
+    "waiting for at-least one kRaft controller pod availability"
+- sts/kafka NOT FOUND (operator never built it)
+- No webhooks targeting confluent-operator namespace or matching Kafka CR
+  apply path -> not webhook-blocked
+
+Root cause
+----------
+Apply ordering bug in .azure-pipelines/confluent-platform.yaml install step:
+
+    PREVIOUS ORDER (broken):
+      1. apply kraftcontroller.yaml
+      2. apply kafkarestclass.yaml + kafka.yaml   <-- kafka applied while
+         controllers were still coming up
+      3. wait for kraftcontroller cluster-ready=True (took 40s)
+      4. wait for kafka cluster-ready=True (fails)
+
+CFK 3.2.0 reconciler behavior: when the Kafka CR is created while zero
+kraftcontroller pods are Ready, the reconciler evaluates kRaft availability
+on its first pass, fails, sets cluster-ready=False reason=ApplyFailed
+message="waiting for at-least one kRaft controller pod availability", and
+does NOT re-queue when the controllers later become Ready. The Kafka CR
+stays in ApplyFailed indefinitely until the operator restarts or the CR is
+deleted+recreated. Same family of bug as the precondition-gate
+"skipping cluster scale due to cluster not healthy" we hit on earlier
+attempts -- different code path, same "first-reconcile-decides" anti-pattern.
+
+Fix applied
+-----------
+Reordered the install step so kraftcontroller readiness is gated BEFORE
+kafka.yaml is applied:
+
+    NEW ORDER (correct):
+      Phase 1a:
+        1. apply kraftcontroller.yaml
+        2. wait for kraftcontroller cluster-ready=True
+      Phase 1b:
+        3. apply kafkarestclass.yaml
+        4. apply kafka.yaml (or kafka-minimal.yaml per kafkaCRVariant)
+        5. wait for kafka cluster-ready=True
+
+This guarantees the Kafka reconciler's first pass sees controllers Ready and
+takes the normal path (build sts/kafka, scale broker pods).
+
+How to verify
+-------------
+Run the install pipeline against dah-flink-dev with action=uninstall
++ wipePVCs=true first (clears the latched-ApplyFailed kafka CR and the
+sts/kafka-side PVCs if any). Then run action=install with kafkaCRVariant=
+production. Expected:
+  - Phase 1a:  kraftcontroller cluster-ready=True (~40s)
+  - Phase 1b:  kafka cluster-ready=True (~3-5 min, sts/kafka 3/3 Ready)
+
+If kafka still hits "waiting for at-least one kRaft controller pod
+availability" AFTER this reorder lands, the problem is not the
+apply-time race -- pull the operator pod log from Splunk for the window
+around the kafka apply and look for the specific availability check that
+fails.

@@ -911,7 +911,7 @@ stages:
                     echo "(NetworkPolicy file $ENV_DIR/network-policy.yaml not present — skipping)"
                   fi
 
-                  echo "=== Phase 1: KRaftController + Kafka ==="
+                  echo "=== Phase 1a: KRaftController ==="
                   if is_true "$APPLY_KRAFT"; then
                     echo ""
                     echo "+ oc apply -f $ENV_DIR/kraftcontroller.yaml"
@@ -919,6 +919,22 @@ stages:
                   else
                     echo "(KRaft Controller skipped — checkbox off)"
                   fi
+
+                  # KRaftController readiness gate runs BEFORE the Kafka apply.
+                  # CFK 3.2.0 evaluates kRaft-pod availability on the first
+                  # reconcile of the Kafka CR; if controllers are still coming
+                  # up at that moment, the reconciler latches into
+                  # "waiting for at-least one kRaft controller pod availability"
+                  # and does not re-queue once controllers settle. Applying
+                  # Kafka only after kraftcontroller cluster-ready=True avoids
+                  # that race. Wait when we just applied kraftcontroller OR
+                  # when we're about to apply Kafka.
+                  if is_true "$APPLY_KRAFT" || is_true "$APPLY_KAFKA"; then
+                    wait_for_cr_ready kraftcontroller kraftcontroller 900
+                  fi
+
+                  echo ""
+                  echo "=== Phase 1b: Kafka ==="
                   if is_true "$APPLY_KAFKA"; then
                     # kafkarestclass.yaml is config-only (no pods), bundled
                     # with Kafka because the Kafka CR advertises it.
@@ -950,16 +966,6 @@ stages:
                     oc apply -f "$KAFKA_YAML"
                   else
                     echo "(Kafka Broker skipped — checkbox off; kafkarestclass.yaml also not applied)"
-                  fi
-
-                  # KRaftController readiness gate. Needed if we just applied
-                  # it (verify the new spec converged) OR if we're about to
-                  # apply Kafka (Kafka can't go ready until its controllers
-                  # can serve metadata). Skipped when the user is upgrading
-                  # only a phase 2 component — kraft is assumed already
-                  # healthy and the kafka wait below would catch it anyway.
-                  if is_true "$APPLY_KRAFT" || is_true "$APPLY_KAFKA"; then
-                    wait_for_cr_ready kraftcontroller kraftcontroller 900
                   fi
 
                   # Kafka readiness gate. Needed before ANY phase 2 component
