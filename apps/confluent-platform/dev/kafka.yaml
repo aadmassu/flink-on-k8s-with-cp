@@ -96,29 +96,38 @@ spec:
 
   # KRaft mode — points at the KRaftController CR (kraftcontroller.yaml).
   #
-  # authentication + tls MUST mirror the kraftcontroller's listener config
-  # (apps/confluent-platform/dev/kraftcontroller.yaml -> spec.listeners.controller).
-  # When dependencies.kRaftController carries only `clusterRef.name`,
-  # CFK 3.2.0 defaults the broker's CONTROLLER listener security to
-  # PLAINTEXT — kafka-0 in dev confirmed this on 2026-06-27 with
-  # listener.security.protocol.map = "CONTROLLER:PLAINTEXT,..." and a
-  # fatal "Shutting down because we were unable to register with the
-  # controller quorum" after a 60s registration timeout, because the
-  # kraftcontroller side actually serves PLAIN+TLS on :9074. Spelling
-  # out both blocks here aligns the broker's controller-dial config
-  # with the controller's listener; CFK then generates
-  # CONTROLLER:SASL_SSL in the broker's protocol map and the
-  # PLAIN+TLS handshake succeeds.
+  # In CFK 3.2.0 v1beta1, spec.dependencies.kRaftController accepts two
+  # fields per the CRD schema (verified via `oc explain
+  # kafka.spec.dependencies.kRaftController` on 2026-06-27):
+  #   - clusterRef         — points at the KRaftController CR by name.
+  #   - controllerListener — describes how the BROKER should dial the
+  #     controller's listener. Must mirror the controller-side config in
+  #     kraftcontroller.yaml -> spec.listeners.controller (same secret,
+  #     same auth type, same tls.enabled setting).
+  # Without the controllerListener block CFK defaults the broker's
+  # CONTROLLER protocol-map entry to PLAINTEXT — kafka-0 confirmed this
+  # on 2026-06-27 with listener.security.protocol.map = "CONTROLLER:
+  # PLAINTEXT,..." and a fatal "Shutting down because we were unable to
+  # register with the controller quorum" after a 60s registration
+  # timeout, because the kraftcontroller side actually serves PLAIN+TLS
+  # on :9074. The first attempt at fixing this (commit adfc8d4) placed
+  # authentication + tls directly under kRaftController as siblings of
+  # clusterRef — those sub-fields don't exist in the v1beta1 schema and
+  # were silently stripped at admission (last-applied-configuration kept
+  # them; live .spec did not). Wrapping them under controllerListener
+  # matches the CRD and CFK then propagates the auth+tls config to the
+  # broker's CONTROLLER protocol-map.
   dependencies:
     kRaftController:
       clusterRef:
         name: kraftcontroller
-      authentication:
-        type: plain
-        jaasConfig:
-          secretRef: sasl-plain-internal
-      tls:
-        enabled: true
+      controllerListener:
+        authentication:
+          type: plain
+          jaasConfig:
+            secretRef: sasl-plain-internal
+        tls:
+          enabled: true
 
   # Listeners — mirror the VM listener model:
   #   internal  (SASL_SSL, PLAIN)        — replaces VM BROKER:9091 inter-broker
