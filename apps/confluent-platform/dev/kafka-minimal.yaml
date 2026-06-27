@@ -80,10 +80,21 @@ spec:
   storageClass:
     name: ocs-storagecluster-ceph-rbd
 
+  # See kafka.yaml comment for why authentication + tls are required here
+  # and not just clusterRef.name — CFK 3.2.0 defaults broker -> controller
+  # to PLAINTEXT without these blocks, which doesn't match the
+  # kraftcontroller's PLAIN+TLS listener and fatally fails broker
+  # registration with the controller quorum.
   dependencies:
     kRaftController:
       clusterRef:
         name: kraftcontroller
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+      tls:
+        enabled: true
 
   # ONLY internal listener — strip external (OAuth+LoadBalancer) and custom (mTLS)
   # so the operator has nothing exotic to provision before sts/kafka comes up.
