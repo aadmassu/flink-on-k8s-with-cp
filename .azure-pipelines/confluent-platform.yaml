@@ -1726,70 +1726,6 @@ stages:
                 OC_NS: $(openshift-namespace)
 
             - task: Bash@3
-              displayName: "reset-kafka-cr: tear down failed sts/kafka (only if tearDownFailedStatefulSet=true)"
-              condition: and(succeeded(), eq('${{ parameters.tearDownFailedStatefulSet }}', true))
-              inputs:
-                targetType: inline
-                script: |
-                  set -uo pipefail
-
-                  # Reach here only when the safety gates accepted the
-                  # failed-StatefulSet override (every broker pod has
-                  # restartCount > 0 and none have ever been Ready=True).
-                  # Tear sts/kafka down explicitly so the subsequent CR
-                  # delete + re-apply gets a clean slate even if the
-                  # operator's owner-reference cascade hangs (it has been
-                  # observed to hang when the reconciler can't write
-                  # status, which is the exact stuck state we're
-                  # recovering from).
-
-                  echo "+ oc -n $OC_NS delete sts kafka --wait=true --timeout=60s --ignore-not-found"
-                  oc -n "$OC_NS" delete sts kafka --wait=true --timeout=60s --ignore-not-found
-
-                  echo ""
-                  echo "+ oc -n $OC_NS delete pods -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' --wait=true --timeout=60s --ignore-not-found"
-                  oc -n "$OC_NS" delete pods \
-                    -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' \
-                    --wait=true --timeout=60s --ignore-not-found
-
-                  echo ""
-                  echo "=== Discovering data0-kafka-* PVCs to delete ==="
-                  KAFKA_PVC_LIST=$(oc -n "$OC_NS" get pvc \
-                    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-                    2>/dev/null | grep -E '^data0-kafka-[0-9]+$' || true)
-
-                  if [ -z "$KAFKA_PVC_LIST" ]; then
-                    echo "(no data0-kafka-* PVCs present — sts probably never created them)"
-                  else
-                    echo "PVCs to delete:"
-                    echo "$KAFKA_PVC_LIST" | sed 's/^/  /'
-                    while IFS= read -r pvc; do
-                      [ -z "$pvc" ] && continue
-                      echo "+ oc -n $OC_NS delete pvc $pvc --wait=true --timeout=60s"
-                      oc -n "$OC_NS" delete pvc "$pvc" --wait=true --timeout=60s
-                    done <<< "$KAFKA_PVC_LIST"
-                  fi
-
-                  echo ""
-                  echo "=== Confirming sts/kafka + broker pods + data0-kafka-* PVCs are gone ==="
-                  STS_LEFT=$(oc -n "$OC_NS" get sts kafka --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
-                  PODS_LEFT=$(oc -n "$OC_NS" get pods \
-                    -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' \
-                    --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
-                  PVCS_LEFT=$(oc -n "$OC_NS" get pvc \
-                    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-                    2>/dev/null | grep -cE '^data0-kafka-[0-9]+$' || true)
-                  echo "sts/kafka:           ${STS_LEFT:-0}"
-                  echo "kafka broker pods:   ${PODS_LEFT:-0}"
-                  echo "data0-kafka-* PVCs:  ${PVCS_LEFT:-0}"
-                  if [ "${STS_LEFT:-0}" -ne 0 ] || [ "${PODS_LEFT:-0}" -ne 0 ] || [ "${PVCS_LEFT:-0}" -ne 0 ]; then
-                    echo "FAIL: tear-down left residual resources behind."
-                    exit 1
-                  fi
-              env:
-                OC_NS: $(openshift-namespace)
-
-            - task: Bash@3
               displayName: "reset-kafka-cr: patch finalizers off and delete the Kafka CR"
               inputs:
                 targetType: inline
@@ -1832,6 +1768,127 @@ stages:
                     echo "      Inspect with: oc -n $OC_NS get kafka kafka -o yaml"
                     exit 1
                   fi
+              env:
+                OC_NS: $(openshift-namespace)
+
+            - task: Bash@3
+              displayName: "reset-kafka-cr: wait for cascade + clean up data0-kafka-* PVCs (only if tearDownFailedStatefulSet=true)"
+              condition: and(succeeded(), eq('${{ parameters.tearDownFailedStatefulSet }}', true))
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  # Reach here only when tearDownFailedStatefulSet=true,
+                  # which the safety gate accepted because every broker
+                  # pod is in a failed state (none ever Ready=True). The
+                  # CR has just been deleted in the previous step. We
+                  # cannot delete sts/kafka directly: CFK's
+                  # core-resources.webhooks.platform.confluent.io
+                  # admission webhook rejects it with "statefulsets
+                  # should not be deleted, instead delete kafka [kafka]
+                  # itself". Instead we rely on the CR-delete cascade
+                  # via ownerReferences — Kubernetes GC removes sts/kafka
+                  # once the owning Kafka CR is gone. Pods then follow
+                  # because they're owned by the sts.
+
+                  # ---- Phase 1: wait for the cascade to clear sts + broker pods.
+                  echo "Waiting up to 120s for sts/kafka + kafka broker pods to clear via owner-reference cascade..."
+                  START=$(date +%s)
+                  MAX=120
+                  while true; do
+                    NOW=$(date +%s)
+                    ELAPSED=$((NOW - START))
+                    STS_LEFT=$(oc -n "$OC_NS" get sts kafka --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+                    PODS_LEFT=$(oc -n "$OC_NS" get pods \
+                      -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' \
+                      --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+                    if [ "${STS_LEFT:-0}" -eq 0 ] && [ "${PODS_LEFT:-0}" -eq 0 ]; then
+                      echo "OK — sts/kafka and broker pods cleared after ${ELAPSED}s."
+                      break
+                    fi
+                    if [ $ELAPSED -ge $MAX ]; then
+                      echo "TIMEOUT: after ${MAX}s sts=${STS_LEFT} pods=${PODS_LEFT} — cascade did not finish."
+                      echo "        This usually means owner-reference GC is wedged; cannot proceed safely."
+                      exit 1
+                    fi
+                    if [ $((ELAPSED % 15)) -lt 5 ]; then
+                      echo "  ${ELAPSED}s elapsed — sts=${STS_LEFT} pods=${PODS_LEFT}"
+                    fi
+                    sleep 5
+                  done
+
+                  # ---- Phase 2: discover and delete data0-kafka-* PVCs.
+                  # PVCs survive sts deletion by design (volumeClaimRetentionPolicy
+                  # defaults to Retain). With the broker pods now gone the
+                  # kubernetes.io/pvc-protection finalizer auto-clears on
+                  # the next reconcile, so a normal delete will finalize.
+                  echo ""
+                  echo "=== Discovering data0-kafka-* PVCs ==="
+                  KAFKA_PVC_LIST=$(oc -n "$OC_NS" get pvc \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                    2>/dev/null | grep -E '^data0-kafka-[0-9]+$' || true)
+                  if [ -z "$KAFKA_PVC_LIST" ]; then
+                    echo "(no data0-kafka-* PVCs present — sts may not have created them, or they cleared via PV reclaim policy)"
+                    exit 0
+                  fi
+                  echo "PVCs to delete:"
+                  echo "$KAFKA_PVC_LIST" | sed 's/^/  /'
+
+                  # Issue delete --wait=false on each (fire-and-forget), then
+                  # poll for them to actually disappear. Ceph RBD volume
+                  # cleanup can take longer than the per-pvc default timeout
+                  # so we batch all three deletes first, then watch.
+                  echo ""
+                  while IFS= read -r pvc; do
+                    [ -z "$pvc" ] && continue
+                    echo "+ oc -n $OC_NS delete pvc $pvc --wait=false --ignore-not-found"
+                    oc -n "$OC_NS" delete pvc "$pvc" --wait=false --ignore-not-found
+                  done <<< "$KAFKA_PVC_LIST"
+
+                  echo ""
+                  echo "Waiting up to 180s for the PVCs to finalize (Ceph RBD volume cleanup is the long pole)..."
+                  START=$(date +%s)
+                  MAX=180
+                  while true; do
+                    NOW=$(date +%s)
+                    ELAPSED=$((NOW - START))
+                    PVCS_LEFT=$(oc -n "$OC_NS" get pvc \
+                      -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                      2>/dev/null | grep -cE '^data0-kafka-[0-9]+$' || true)
+                    PVCS_LEFT=${PVCS_LEFT:-0}
+                    if [ "$PVCS_LEFT" -eq 0 ]; then
+                      echo "OK — all data0-kafka-* PVCs gone after ${ELAPSED}s."
+                      break
+                    fi
+                    if [ $ELAPSED -ge $MAX ]; then
+                      echo "TIMEOUT: ${PVCS_LEFT} PVC(s) still present after ${MAX}s. Force-clearing kubernetes.io/pvc-protection finalizers..."
+                      STILL=$(oc -n "$OC_NS" get pvc \
+                        -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                        2>/dev/null | grep -E '^data0-kafka-[0-9]+$' || true)
+                      while IFS= read -r p; do
+                        [ -z "$p" ] && continue
+                        echo "+ oc -n $OC_NS patch pvc $p --type=merge -p '{\"metadata\":{\"finalizers\":null}}'"
+                        oc -n "$OC_NS" patch pvc "$p" --type=merge -p '{"metadata":{"finalizers":null}}' || true
+                      done <<< "$STILL"
+                      sleep 5
+                      FINAL=$(oc -n "$OC_NS" get pvc \
+                        -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                        2>/dev/null | grep -cE '^data0-kafka-[0-9]+$' || true)
+                      FINAL=${FINAL:-0}
+                      if [ "$FINAL" -ne 0 ]; then
+                        echo "FAIL: ${FINAL} PVC(s) still present after force-clear. Inspect manually:"
+                        oc -n "$OC_NS" get pvc -o jsonpath='{range .items[*]}{.metadata.name}{"  status="}{.status.phase}{"  finalizers="}{.metadata.finalizers}{"\n"}{end}' 2>&1 || true
+                        exit 1
+                      fi
+                      echo "OK — finalizer force-clear succeeded."
+                      break
+                    fi
+                    if [ $((ELAPSED % 30)) -lt 5 ]; then
+                      echo "  ${ELAPSED}s elapsed — ${PVCS_LEFT} PVC(s) still present"
+                    fi
+                    sleep 5
+                  done
               env:
                 OC_NS: $(openshift-namespace)
 
