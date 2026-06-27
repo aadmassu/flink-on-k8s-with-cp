@@ -1,3 +1,26 @@
+FOLLOW-UP — inter.broker.listener.name override pulled
+======================================================
+Even though the cluster came up green (sts/kafka 3/3, brokers 1/1
+Running), inspection of the rendered broker server.properties showed
+the INTERNAL listener's `listener.name.internal.plain.sasl.jaas.config`
+only had the server-side accept-side credentials (apikeys.json on
+disk), no client-side `username=${file:.../plain.txt:username}` /
+`password=${file:.../plain.txt:password}` references. So inbound
+inter-broker connections succeed (apikeys.json validates), but
+outbound broker-to-broker on :9071 has no client credentials to
+present and fails.
+CFK auto-renders BOTH sides of the JAAS handshake only for its
+auto-managed `replication` listener on :9072 — not for `internal`.
+Forcing `inter.broker.listener.name=internal` via configOverrides
+moves inter-broker traffic off the listener that has client creds
+onto one that doesn't.
+Fix: remove `inter.broker.listener.name=internal` from
+configOverrides.server in both kafka.yaml and kafka-bisect.yaml.
+CFK reverts to its default (inter-broker over the auto-generated
+`replication` listener) and both sides of the handshake are wired.
+force-reconcile annotation bumped to 2026-06-27-replication-interbroker.
+Run the wipe + install path to validate.
+
 CLUSTER GREEN — 2026-06-27T17:59Z
 ==================================
 First successful Kafka cluster on CFK 3.2.0 at FCB after the bisect +

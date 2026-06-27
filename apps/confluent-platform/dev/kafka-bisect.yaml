@@ -198,7 +198,11 @@ spec:
       # with the interim kafka.yaml so future bisect rounds don't
       # re-introduce the broken combo.
       - super.users=User:admin
-      - inter.broker.listener.name=internal
+      # Match the interim kafka.yaml: do NOT set inter.broker.listener
+      # .name=internal. CFK only wires client-side JAAS for its
+      # auto-managed `replication` listener on :9072; forcing inter-
+      # broker onto `internal` leaves outbound broker-broker without
+      # credentials.
       - log.retention.hours=168
       - log.segment.bytes=1073741824
       - log.retention.check.interval.ms=300000

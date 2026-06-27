@@ -463,6 +463,43 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   the 15 min ceiling is generous for a working install and a
   conservative ceiling for a broken one.
 
+### A16. `inter.broker.listener.name=internal` strands outbound broker-broker without client JAAS
+
+* **Symptom**: Kafka cluster comes up (brokers `1/1 Running`, sts/kafka
+  3/3, CR `cluster-ready=True`), but inter-broker operations
+  (replication, controlled shutdown, controller-leader requests)
+  silently fail or hang because outbound broker-to-broker connections
+  have no client credentials to present on the `internal` listener.
+* **Root cause**: when `inter.broker.listener.name=internal` is set as
+  a `configOverrides.server` line in the Kafka CR, CFK wires only the
+  **server-side** SASL/PLAIN accept-side credentials for `internal:9071`
+  (the `apikeys.json` mount from the `sasl-plain-internal` Secret). CFK
+  does NOT render the matching **client-side**
+  `listener.name.internal.plain.sasl.jaas.config` `username=${file:...}` /
+  `password=${file:...}` references — those are only generated for the
+  auto-managed `replication:9072` listener that CFK uses by default for
+  inter-broker traffic. The override moves inter-broker off the
+  listener that has both sides of the JAAS handshake onto one that has
+  only the inbound half.
+* **Fix**: remove the `inter.broker.listener.name=internal` line from
+  `spec.configOverrides.server`. CFK reverts to using its auto-managed
+  `replication` listener for inter-broker, which has both sides wired.
+  `internal` remains available as the in-cluster client listener for
+  Flink / SR / Connect / REST / C3 — it just isn't used for
+  broker-to-broker.
+* **Why it matters**: the symptom is silent — brokers report
+  `cluster-ready=True` because the listener-up healthcheck only
+  exercises the server side. Cluster-link metadata replication, ACL
+  propagation, and ISR maintenance start failing only when a broker
+  actually needs to call another broker on the listener that has no
+  client creds. Discovered 2026-06-27 by Ayu while diffing the
+  rendered `server.properties` against the mounted Secret contents
+  (`plain-interbroker.txt` had the credentials; the rendered
+  `listener.name.internal.plain.sasl.jaas.config` did not reference
+  them). The Secret was fine; the listener wiring was wrong.
+
+---
+
 ### A15. CFK 3.2.0 v1beta1 silent-strip pattern + Kafka CR silent-bail-on-state-corruption
 
 * **Symptom (silent-bail)**: a fresh `apply` of the production

@@ -94,7 +94,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-27-interim-no-authz"
+    platform.confluent.io/force-reconcile: "2026-06-27-replication-interbroker"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -290,7 +290,14 @@ spec:
       #   - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
       #   - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
       - super.users=User:admin
-      - inter.broker.listener.name=internal
+      # `inter.broker.listener.name=internal` is intentionally NOT set.
+      # CFK only generates client-side JAAS creds (username + password
+      # file references) for its auto-managed `replication` listener
+      # on :9072 — not for `internal`. Forcing inter-broker traffic
+      # onto `internal` works server-side (apikeys.json is mounted) but
+      # leaves outbound broker-to-broker connections with no client
+      # credentials. Letting this default to `replication` keeps both
+      # sides of the JAAS handshake wired.
       - log.retention.hours=168
       - log.segment.bytes=1073741824
       - log.retention.check.interval.ms=300000
