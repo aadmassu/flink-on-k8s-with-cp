@@ -65,12 +65,39 @@ parameters:
     # below to scope which components get re-applied; "All" (default)
     # applies the whole stack.
     #
+    # reset-kafka-cr: surgical recovery from a stuck Kafka-CR reconcile.
+    # Symptom: the operator log shows every Kafka Reconcile() loop bailing
+    # at `skipping cluster scale due to cluster not healthy phase=""` and
+    # the Kafka CR's status condition is frozen for many days at
+    # reason=ApplyFailed with no managedFields refresh — the CFK
+    # reconciler treats an initial install as a scale operation and
+    # short-circuits because the cluster doesn't exist yet (chicken-and-
+    # egg). Patches kafka.platform.confluent.io/kafka's finalizers to []
+    # (the operator can't clear its own finalizer through the stuck
+    # reconciler), deletes the CR, re-applies apps/confluent-platform/
+    # <env>/kafka.yaml, then polls up to 5 min for any reconciler write.
+    # Hard-gated: refuses to run if sts/kafka exists, if any kafka broker
+    # pods exist, if any data0-kafka-* PVCs exist, or in any env other
+    # than dev. Touches only the Kafka CR — KRaftController, CMF, and
+    # prereq Secrets are untouched.
+    #
     # Read-only diagnostics are NOT in this pipeline — they live in the
     # standalone .azure-pipelines/diagnostics.yaml pipeline (consolidated
     # into a single file 2026-06-26 — diagnostic body inlined; the old
     # templates/diagnostics-step.yaml shared template is gone). Run that
     # pipeline directly.
-    values: [create-prereqs, install-or-update, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers]
+    values: [create-prereqs, install-or-update, uninstall, wipe-pvcs, clear-stuck-prereq-finalizers, reset-kafka-cr]
+  - name: confirmKafkaCRReset
+    displayName: "reset-kafka-cr: I understand this DELETES and re-creates the Kafka CR"
+    type: boolean
+    default: false
+    # Hard gate for action=reset-kafka-cr. Without this checked the
+    # action aborts before touching anything. Deliberately a separate
+    # parameter from forceFinalizerRemoval (which is for uninstall) so
+    # neither action can accidentally enable the other's destructive
+    # path. The sts/kafka and broker-pod safety gates in the action
+    # itself are the real protection; this checkbox is the
+    # "did-you-mean-to-do-this" tripwire.
   - name: forceFinalizerRemoval
     displayName: "Uninstall: force-clear finalizers on timeout"
     type: boolean
@@ -1469,3 +1496,258 @@ stages:
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
+
+          # ----------------------------------------------------------------
+          # action=reset-kafka-cr
+          # ----------------------------------------------------------------
+          # One-shot surgical reset of the Kafka CR when the reconciler is
+          # stuck on the `skipping cluster scale due to cluster not healthy
+          # phase=""` precondition gate (CFK 3.2.0 treats an initial install
+          # as a scale workflow because phase=="" never advances). Verified
+          # via Splunk export of confluent-operator logs from both pod
+          # instances over an 8h window: 0 panics, 0 fatals, just
+          # deterministic bail-out at this gate on every loop in both pods.
+          # See README.md row + commit 3c45f22 for the diagnosis writeup.
+          - ${{ if eq(parameters.action, 'reset-kafka-cr') }}:
+            - task: Bash@3
+              displayName: "reset-kafka-cr: safety gates"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  # ADO boolean parameters interpolate to "True" / "False"
+                  # at compile time; accept lowercase too if ever rewired
+                  # from $(var) at runtime.
+                  CONFIRM="${{ parameters.confirmKafkaCRReset }}"
+                  if [ "$CONFIRM" != "True" ] && [ "$CONFIRM" != "true" ]; then
+                    echo "ABORT: confirmKafkaCRReset parameter is false."
+                    echo "       Re-run with 'reset-kafka-cr: I understand this"
+                    echo "       DELETES and re-creates the Kafka CR' checked."
+                    exit 1
+                  fi
+
+                  # Restrict to dev. This branch's only kafka deployment is
+                  # dev; qa/uat/prd/dr need an explicit approval before this
+                  # action can run there.
+                  if [ "$TARGET_ENV" != "dev" ]; then
+                    echo "ABORT: reset-kafka-cr is only enabled for dev. Got '$TARGET_ENV'."
+                    echo "       Wire up an env-specific approval before running in qa/uat/prd/dr."
+                    exit 1
+                  fi
+
+                  # If sts/kafka exists, brokers exist (or are mid-creation).
+                  # Deleting the CR mid-create can leak PVCs and orphan a
+                  # StatefulSet. Refuse — use action=uninstall instead.
+                  if oc -n "$OC_NS" get sts kafka >/dev/null 2>&1; then
+                    echo "ABORT: sts/kafka exists in $OC_NS. reset-kafka-cr is only"
+                    echo "       safe BEFORE sts/kafka has ever been created. Use"
+                    echo "       action=uninstall for a full tear-down instead."
+                    exit 1
+                  fi
+
+                  # Same for stray broker pods.
+                  BROKER_PODS=$(oc -n "$OC_NS" get pods \
+                    -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' \
+                    --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+                  if [ "${BROKER_PODS:-0}" -gt 0 ]; then
+                    echo "ABORT: $BROKER_PODS kafka broker pod(s) exist in $OC_NS."
+                    echo "       Use action=uninstall first."
+                    exit 1
+                  fi
+
+                  # Same for kafka PVCs (should be none if sts has never
+                  # been created; check defensively).
+                  KAFKA_PVCS=$(oc -n "$OC_NS" get pvc \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                    2>/dev/null | grep -E '^data0-kafka-[0-9]+$' | wc -l | tr -d ' ')
+                  if [ "${KAFKA_PVCS:-0}" -gt 0 ]; then
+                    echo "ABORT: $KAFKA_PVCS data0-kafka-* PVC(s) exist in $OC_NS."
+                    echo "       Use action=wipe-pvcs first."
+                    exit 1
+                  fi
+
+                  # Refuse if the CR doesn't exist — nothing to reset.
+                  if ! oc -n "$OC_NS" get kafka kafka >/dev/null 2>&1; then
+                    echo "ABORT: kafka/kafka does not exist in $OC_NS. Nothing to reset."
+                    echo "       Run action=install-or-update to create it."
+                    exit 1
+                  fi
+
+                  echo "All safety gates passed:"
+                  echo "  - confirmKafkaCRReset=true"
+                  echo "  - environment=$TARGET_ENV"
+                  echo "  - sts/kafka:           absent"
+                  echo "  - kafka broker pods:   $BROKER_PODS"
+                  echo "  - data0-kafka-* PVCs:  $KAFKA_PVCS"
+                  echo "  - kafka/kafka CR:      present (proceeding)"
+              env:
+                OC_NS: $(openshift-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
+              displayName: "reset-kafka-cr: snapshot Kafka CR state (pre-delete audit trail)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  # Snapshot dumped into the pipeline log so the destructive
+                  # action can be reconstructed from CI artifacts later if
+                  # questions come up. Not stored elsewhere.
+
+                  echo "=== metadata.annotations ==="
+                  oc -n "$OC_NS" get kafka kafka -o jsonpath='{.metadata.annotations}' | python3 -m json.tool 2>&1 || true
+
+                  echo ""
+                  echo "=== metadata.labels ==="
+                  oc -n "$OC_NS" get kafka kafka -o jsonpath='{.metadata.labels}' | python3 -m json.tool 2>&1 || true
+
+                  echo ""
+                  echo "=== metadata.finalizers ==="
+                  oc -n "$OC_NS" get kafka kafka -o jsonpath='{.metadata.finalizers}' 2>&1 || true
+                  echo ""
+
+                  echo ""
+                  echo "=== metadata.generation / resourceVersion / uid ==="
+                  oc -n "$OC_NS" get kafka kafka -o jsonpath='generation={.metadata.generation}{"\n"}resourceVersion={.metadata.resourceVersion}{"\n"}uid={.metadata.uid}{"\n"}' 2>&1 || true
+
+                  echo ""
+                  echo "=== managedFields timeline ==="
+                  oc -n "$OC_NS" get kafka kafka \
+                    -o jsonpath='{range .metadata.managedFields[*]}{.time}  manager={.manager}  op={.operation}  sub={.subresource}{"\n"}{end}' 2>&1 || true
+
+                  echo ""
+                  echo "=== status.conditions ==="
+                  oc -n "$OC_NS" get kafka kafka -o jsonpath='{range .status.conditions[*]}{.type}={.status} reason={.reason} message={.message} probedAt={.lastProbeTime} transitionedAt={.lastTransitionTime}{"\n"}{end}' 2>&1 || true
+
+                  echo ""
+                  echo "=== spec sha256 (for round-trip integrity check) ==="
+                  oc -n "$OC_NS" get kafka kafka -o json \
+                    | python3 -c "import json,sys,hashlib; spec=json.load(sys.stdin).get('spec',{}); print(hashlib.sha256(json.dumps(spec,sort_keys=True).encode()).hexdigest())" 2>&1 || true
+              env:
+                OC_NS: $(openshift-namespace)
+
+            - task: Bash@3
+              displayName: "reset-kafka-cr: patch finalizers off and delete the Kafka CR"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  # The kafka CR carries the finalizer
+                  # kafka.finalizers.platform.confluent.io. The operator is
+                  # responsible for clearing that finalizer during deletion,
+                  # but the reconciler is stuck — so a normal `oc delete`
+                  # would hang in Terminating forever. Patch finalizers to
+                  # [] BEFORE issuing the delete. Safe in this scenario
+                  # because no operator-owned resources exist for this CR
+                  # to clean up (no sts/kafka, no broker pods, no PVCs —
+                  # all verified by the safety gate above).
+                  echo "+ oc -n $OC_NS patch kafka kafka --type merge -p '{\"metadata\":{\"finalizers\":[]}}'"
+                  oc -n "$OC_NS" patch kafka kafka --type merge -p '{"metadata":{"finalizers":[]}}'
+
+                  echo ""
+                  echo "+ oc -n $OC_NS delete kafka kafka --wait=true --timeout=120s"
+                  oc -n "$OC_NS" delete kafka kafka --wait=true --timeout=120s
+
+                  # Confirm gone. --wait usually returns only when the
+                  # object is fully removed, but verify explicitly with a
+                  # short retry loop in case the API server is slow.
+                  echo ""
+                  echo "=== Confirming kafka/kafka is gone (up to 60s) ==="
+                  ATTEMPT=0
+                  while [ $ATTEMPT -lt 12 ]; do
+                    if ! oc -n "$OC_NS" get kafka kafka >/dev/null 2>&1; then
+                      echo "OK — kafka/kafka no longer exists after $((ATTEMPT * 5))s."
+                      break
+                    fi
+                    ATTEMPT=$((ATTEMPT + 1))
+                    sleep 5
+                  done
+
+                  if oc -n "$OC_NS" get kafka kafka >/dev/null 2>&1; then
+                    echo "FAIL: kafka/kafka still present after 60s. Aborting before re-apply."
+                    echo "      Inspect with: oc -n $OC_NS get kafka kafka -o yaml"
+                    exit 1
+                  fi
+              env:
+                OC_NS: $(openshift-namespace)
+
+            - task: Bash@3
+              displayName: "reset-kafka-cr: re-apply apps/confluent-platform/${{ parameters.environment }}/kafka.yaml"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  KAFKA_YAML="apps/confluent-platform/$TARGET_ENV/kafka.yaml"
+                  echo "+ oc apply -f $KAFKA_YAML"
+                  oc apply -f "$KAFKA_YAML"
+              env:
+                OC_NS: $(openshift-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
+              displayName: "reset-kafka-cr: wait for reconciler to write something on the fresh CR"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  # On a clean Kafka CR with empty .status and empty phase,
+                  # CFK's reconciler should take the initial-install branch
+                  # and start applying sts/kafka, Services, ConfigMaps,
+                  # Secrets within a couple of reconcile loops (the create
+                  # event re-enqueues immediately, so the first attempt
+                  # lands in seconds; subsequent loops are ~7 min in steady
+                  # state). Poll up to 5 minutes for any sign of activity —
+                  # a status condition, a managedFields entry under
+                  # manager=manager, or sts/kafka appearing.
+                  echo "Polling for reconciler activity on kafka/kafka (up to 5 min)..."
+                  START=$(date +%s)
+                  MAX=300
+                  while true; do
+                    NOW=$(date +%s)
+                    ELAPSED=$((NOW - START))
+                    if [ $ELAPSED -ge $MAX ]; then
+                      echo ""
+                      echo "Timed out after ${MAX}s. Reconciler has not written anything."
+                      break
+                    fi
+
+                    HAS_CONDITION=$(oc -n "$OC_NS" get kafka kafka -o jsonpath='{.status.conditions[*].type}' 2>/dev/null | wc -w | tr -d ' ')
+                    OPERATOR_MF=$(oc -n "$OC_NS" get kafka kafka \
+                      -o jsonpath='{range .metadata.managedFields[?(@.manager=="manager")]}{.time}{"|"}{end}' 2>/dev/null)
+                    STS_EXISTS=$(oc -n "$OC_NS" get sts kafka --no-headers --ignore-not-found 2>/dev/null | wc -l | tr -d ' ')
+
+                    if [ "${HAS_CONDITION:-0}" -gt 0 ] || [ -n "$OPERATOR_MF" ] || [ "${STS_EXISTS:-0}" -gt 0 ]; then
+                      echo ""
+                      echo "Reconciler activity detected after ${ELAPSED}s:"
+                      echo "  status.conditions entries: ${HAS_CONDITION}"
+                      echo "  manager=manager managedFields times: ${OPERATOR_MF}"
+                      echo "  sts/kafka exists: ${STS_EXISTS}"
+                      break
+                    fi
+
+                    if [ $((ELAPSED % 30)) -lt 5 ]; then
+                      echo "  ${ELAPSED}s elapsed — no reconciler write yet."
+                    fi
+                    sleep 5
+                  done
+
+                  echo ""
+                  echo "=== Final Kafka CR snapshot ==="
+                  echo "--- managedFields ---"
+                  oc -n "$OC_NS" get kafka kafka \
+                    -o jsonpath='{range .metadata.managedFields[*]}{.time}  manager={.manager}  op={.operation}  sub={.subresource}{"\n"}{end}' 2>&1 || true
+                  echo ""
+                  echo "--- status.conditions ---"
+                  oc -n "$OC_NS" get kafka kafka -o jsonpath='{range .status.conditions[*]}{.type}={.status} reason={.reason} message={.message} probedAt={.lastProbeTime} transitionedAt={.lastTransitionTime}{"\n"}{end}' 2>&1 || true
+                  echo ""
+                  echo "--- sts/kafka ---"
+                  oc -n "$OC_NS" get sts kafka 2>&1 || true
+                  echo ""
+                  echo "--- pods labeled as kafka brokers ---"
+                  oc -n "$OC_NS" get pods -l 'app.kubernetes.io/instance=kafka,app.kubernetes.io/component=kafka-broker' 2>&1 || true
+              env:
+                OC_NS: $(openshift-namespace)
