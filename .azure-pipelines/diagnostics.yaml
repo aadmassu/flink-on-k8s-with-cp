@@ -564,12 +564,20 @@ stages:
                     "kafka.spec.listeners.internal" \
                     "kafka.spec.listeners.external" \
                     "kafka.spec.listeners.external.authentication" \
+                    "kafka.spec.listeners.external.authentication.oauthSettings" \
                     "kafka.spec.listeners.custom" \
                     "kafka.spec.services" \
                     "kafka.spec.services.mds" \
+                    "kafka.spec.services.mds.provider" \
+                    "kafka.spec.services.mds.provider.oauth" \
+                    "kafka.spec.services.mds.provider.oauth.configurations" \
+                    "kafka.spec.services.mds.provider.oauth.clientCredentials" \
                     "kafka.spec.services.kafkaRest" \
+                    "kafka.spec.services.observer" \
                     "kafka.spec.authorization" \
+                    "kafka.spec.authorization.type" \
                     "kafka.spec.identityProvider" \
+                    "kafka.spec.identityProvider.file" \
                     "controlcenter" \
                     "controlcenter.spec" \
                     "controlcenter.spec.volumeClaimTemplates" \
