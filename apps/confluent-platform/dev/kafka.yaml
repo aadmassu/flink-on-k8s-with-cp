@@ -158,22 +158,21 @@ spec:
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
       tls:
         enabled: true
-      externalAccess:
-        type: loadBalancer
-        loadBalancer:
-          # Per-broker LBs + a bootstrap LB are created by CFK. The cluster
-          # domain controls the advertised hostname suffix; brokers will be
-          # advertised as <brokerPrefix><N>.<domain> and the bootstrap as
-          # <bootstrapPrefix>.<domain>. Add the matching SANs in
-          # kafka-tls-certificate.yaml before applying.
-          # TENTATIVE — confirm with Tom 2026-05-12. Brokers will be advertised
-          # as b<N>.kafka.dev.dah.fcbint.net and the bootstrap as
-          # bootstrap.kafka.dev.dah.fcbint.net. Matching SANs are in
-          # kafka-tls-certificate.yaml; if the domain changes, update both
-          # files in lockstep.
-          domain: kafka.dev.dah.fcbint.net
-          brokerPrefix: b
-          bootstrapPrefix: bootstrap
+      # No externalAccess block here — exposing this listener via a per-broker
+      # LoadBalancer was the suspected trigger for the CFK 3.2.0 precondition
+      # gate ("skipping cluster scale due to cluster not healthy phase=\"\""
+      # in the operator log on every reconcile): the LB-Service workflow
+      # appears to require existing broker endpoints to back the Services,
+      # but the brokers can't come up until the operator's reconcile clears
+      # the gate. Removing externalAccess lets CFK create plain ClusterIP
+      # Services for this listener, which is what the in-cluster Flink jobs
+      # (all in dah-flink-dev) actually need anyway — they reach the brokers
+      # via `kafka-N.kafka.dah-flink-dev.svc.cluster.local:<external-port>`.
+      # There are no out-of-cluster Kafka clients to expose at FCB on this
+      # branch. If that ever changes, add the externalAccess block back —
+      # CFK 3.2.x or later may have fixed the precondition-gate workflow by
+      # then; if not, route or static would be the next thing to try
+      # instead of loadBalancer.
     custom:
       - name: certonly
         port: 9094

@@ -844,10 +844,25 @@ stages:
                     echo ""
                     echo "=== Waiting up to ${timeout}s for $kind/$name to report cluster-ready ==="
                     while [ "$elapsed" -lt "$timeout" ]; do
-                      local status
+                      # `|| true` on every oc call here so a transient
+                      # NotFound during the first few seconds after `oc
+                      # apply` (the API server is still admitting + the
+                      # operator hasn't started writing status conditions
+                      # yet) doesn't propagate through `set -e` and kill
+                      # the pipeline. 2026-06-27 install run aborted at
+                      # 20s of a 900s wait for exactly this reason —
+                      # kafka/kafka was created at T0, oc-get inside the
+                      # poll at T+10s returned NotFound (the operator
+                      # hadn't created the CR's .status block yet), and
+                      # the script exited even though both CRs reached
+                      # cluster-ready=True 2 minutes later. The defense
+                      # below makes the poll loop tolerant of that early
+                      # window and only exits via the explicit `return 1`
+                      # on the actual ${timeout}s expiry.
+                      local status=""
                       status=$(oc -n "$OC_NS" get "$kind" "$name" \
                         -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status}' \
-                        2>/dev/null)
+                        2>/dev/null || echo "")
                       if [ "$status" = "True" ]; then
                         echo "  $kind/$name cluster-ready=True after ${elapsed}s."
                         return 0
@@ -859,9 +874,10 @@ stages:
                         echo "  ${elapsed}s elapsed, $kind/$name not yet ready. Current conditions:"
                         oc -n "$OC_NS" get "$kind" "$name" \
                           -o jsonpath='{range .status.conditions[*]}    {.type}={.status} ({.reason}: {.message}){"\n"}{end}' \
-                          2>/dev/null
+                          2>/dev/null \
+                          || echo "    (status block not populated yet — CR just admitted)"
                       fi
-                      sleep "$step"
+                      sleep "$step" || true
                       elapsed=$((elapsed + step))
                     done
 
@@ -870,7 +886,8 @@ stages:
                     echo "Final conditions:"
                     oc -n "$OC_NS" get "$kind" "$name" \
                       -o jsonpath='{range .status.conditions[*]}    {.type}={.status} ({.reason}: {.message}){"\n"}{end}' \
-                      2>/dev/null
+                      2>/dev/null \
+                      || echo "    (no status block present at all)"
                     echo ""
                     echo "Investigate before applying the dependent CRs (SR / Connect / REST / C3)."
                     return 1
