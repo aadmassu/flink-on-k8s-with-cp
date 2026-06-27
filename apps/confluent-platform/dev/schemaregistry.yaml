@@ -30,9 +30,17 @@
 # API, or RBAC for authorization — there's no MDS to back any of them.
 #
 # Interim spec changes from the original full-RBAC target:
-#   - dependencies.kafka: connect to the CFK-auto-created PLAINTEXT
-#     external listener on :9092 (no auth, no TLS). Anonymous client.
-#     The OAUTHBEARER block is commented out below for one-pass re-add.
+#   - dependencies.kafka: connect to the INTERNAL listener on :9071 with
+#     SASL_SSL/PLAIN. The CFK operator runs in FIPS-strict mode and the
+#     first SR install attempt failed admission with
+#       cluster-ready=False ApplyFailed: "Cannot create http client: TLS
+#       not Enabled in Application when FIPS mode is true in Operator"
+#     because the anonymous PLAINTEXT-to-EXTERNAL:9092 dep block we
+#     tried first had no tls sub-block. INTERNAL:9071 satisfies the
+#     FIPS check (tls.enabled=true) AND has the SASL/PLAIN user database
+#     CFK pre-wires from the sasl-plain-internal Secret (the same one
+#     the broker uses). The OAUTHBEARER block is commented out below
+#     for one-pass re-add.
 #   - dependencies.mds: REMOVED (MDS doesn't exist on this cluster).
 #   - spec.authentication: REMOVED. SR's HTTP API has no client auth
 #     during the interim — anyone in dah-flink-dev who can reach the
@@ -52,7 +60,7 @@ metadata:
   name: schemaregistry
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-27-interim-no-authz"
+    platform.confluent.io/force-reconcile: "2026-06-27-sr-sasl-plain-tls"
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -82,10 +90,13 @@ spec:
   # every pod with "must specify limits.cpu for: schemaregistry ...".
 
   dependencies:
-    # Interim: anonymous PLAINTEXT to the CFK-auto-created EXTERNAL
-    # listener on :9092. Re-enable OAUTHBEARER over INTERNAL:9071 once
-    # OAuth+MDS are wired correctly in v1beta1 shape. Original full-
-    # RBAC config below for reference / re-add:
+    # Interim: SASL_SSL/PLAIN to the INTERNAL listener on :9071, using
+    # the sasl-plain-internal Secret CFK already pre-wires for the
+    # broker's own internal listener. INTERNAL has SASL_SSL (so FIPS
+    # mode's tls.enabled=true requirement is satisfied) plus the user
+    # database CFK auto-mounts at /mnt/secrets/sasl-plain-internal.
+    # Re-enable OAUTHBEARER once OAuth+MDS are wired correctly in
+    # v1beta1 shape. Original full-RBAC config for reference / re-add:
     #
     # kafka:
     #   bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
@@ -104,7 +115,13 @@ spec:
     #   tls:
     #     enabled: true
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
+      authentication:
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
+      tls:
+        enabled: true
 
   # dependencies.mds — REMOVED for the interim (MDS not provisioned).
   # Re-add when MDS is wired:

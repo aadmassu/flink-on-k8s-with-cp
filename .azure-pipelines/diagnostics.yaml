@@ -578,6 +578,16 @@ stages:
                     "kafka.spec.authorization.type" \
                     "kafka.spec.identityProvider" \
                     "kafka.spec.identityProvider.file" \
+                    "schemaregistry" \
+                    "schemaregistry.spec" \
+                    "schemaregistry.spec.tls" \
+                    "schemaregistry.spec.dependencies" \
+                    "schemaregistry.spec.dependencies.kafka" \
+                    "schemaregistry.spec.dependencies.kafka.authentication" \
+                    "schemaregistry.spec.dependencies.kafka.tls" \
+                    "schemaregistry.spec.dependencies.mds" \
+                    "schemaregistry.spec.authentication" \
+                    "schemaregistry.spec.authorization" \
                     "controlcenter" \
                     "controlcenter.spec" \
                     "controlcenter.spec.volumeClaimTemplates" \
