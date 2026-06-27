@@ -1,135 +1,105 @@
-BISECT — kafka.yaml (production) silently fails to reconcile
-=============================================================
+BISECT — CONCLUDED 2026-06-27
+=============================
+Production kafka.yaml's 2026-06-27T15:22Z silent-bail (zero events /
+zero conditions / no sts-kafka after 5 min) was operator-state
+corruption from prior partial installs, NOT spec-driven. The
+.azure-pipelines/confluent-platform.yaml `uninstall` action with
+`wipePVCs=true` (folded together in commit 840e0e2) prevents that
+state from accumulating going forward.
 
-Step 1 (baseline) — DONE 2026-06-27T16:14Z
-------------------------------------------
-kafkaCRVariant=minimal: cluster green end-to-end.
+Bisect table (all 4 rounds run on dah-flink-dev, 2026-06-27):
+  Round  Add to bisect.yaml                Survived?     Silent-bail?
+  A      configOverrides.server[*]          yes           no
+  B      services.mds (OAuth/Okta)          NO (stripped)  no
+  C      listeners.external (OAuth/Okta)    NO (stripped)  no
+  D      listeners.custom (mTLS 9094)       NO (stripped)  no
+Operator reconciled cleanly in every round. Brokers crashed in
+every round on the same RBAC-needs-MDS error (expected collateral —
+configOverrides.server has the CONFLUENT/RBAC provider but services.mds
+gets silently stripped).
 
-Round 1 (Try A) — DONE 2026-06-27T16:42Z [NOT the silent-bail trigger]
-----------------------------------------------------------------------
-bisect.yaml = minimal + spec.configOverrides.server[*]. Operator
-reconciled cleanly. Brokers CrashLoopBackOff on RBAC-needs-MDS (expected,
-because services.mds was stripped).
-Verdict: configOverrides.server is operator-safe.
+Production kafka.yaml — interim ACL-only spec    [LANDED THIS COMMIT]
+---------------------------------------------------------------------
+apps/confluent-platform/dev/kafka.yaml was edited in-place to:
+1. Drop CONFLUENT from
+     `confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL`
+   -> now KRAFT_ACL only. ACL-based authorization, MDS-independent.
+2. Remove the three telemetry-reporter lines
+     metric.reporters=...TelemetryReporter,...ConfluentMetricsReporter
+     confluent.telemetry.enabled=true
+     confluent.reporters.telemetry.auto.enable=true
+   (FCB has no telemetry API creds; same reason we already disabled
+   these on KRaftController — memory project_fcb_telemetry_audit_
+   reenable_later. Commented out in-place so re-enable is one-line.)
+3. Remove the silently-stripped blocks so the yaml matches reality:
+     spec.services.mds            (entire block)
+     spec.listeners.external      (entire block)
+     spec.listeners.custom        (entire array)
+4. New top-of-file comment block documents the bisect findings, the
+   interim state, and the follow-up schema-fix workstream.
+5. force-reconcile annotation bumped to 2026-06-27-interim-acl-only.
 
-Round 2 (Try B) — DONE 2026-06-27T16:55Z [STRIPPED AT ADMISSION]
-----------------------------------------------------------------
-bisect.yaml = + spec.services.mds. Post-admission CR showed
-`services:` contained ONLY the auto-added `kafka-rest.internalEndpoint`
--- the entire `mds:` sub-block was silently dropped. Operator behavior
-identical to Round 1 (mds block effectively not there).
-Verdict: services.mds silently strips at admission in CFK 3.2.0 v1beta1.
-The production kafka.yaml has NEVER actually provisioned MDS on this
-cluster -- so production's silent-bail cannot be attributed to MDS.
+Expected outcome of `action=uninstall wipePVCs=true` followed by
+`action=install-or-update kafkaCRVariant=production`:
+  - Phase 1a: kraftcontroller cluster-ready=True in ~40s.
+  - Phase 1b: kafka cluster-ready=True in ~3-5 min, sts/kafka 3/3,
+    brokers Ready. PLAIN+TLS internal listener + PLAINTEXT default
+    external listener + KRAFT_ACL authz. No MDS, no OAuth, no mTLS.
 
-Round 3 (Try C) — DONE 2026-06-27T17:09Z [STRIPPED AT ADMISSION]
-----------------------------------------------------------------
-bisect.yaml = + spec.listeners.external (OAuth+oauthSettings+TLS).
-Post-admission CR showed `spec.listeners:` contained ONLY the
-`internal:` block -- the entire `external:` block we applied was
-silently dropped. Broker config (line 792) shows CFK still created an
-EXTERNAL listener at :9092 but with PLAINTEXT defaults (no OAuth, no
-TLS), so the OAuth-on-external config has ALSO never taken effect on
-this cluster. Same silent-strip family as services.mds.
-Verdict: listeners.external silently strips the OAuth+TLS sub-config
-at admission in CFK 3.2.0 v1beta1. The production kafka.yaml has
-NEVER actually provisioned an OAuth listener -- only the default
-PLAINTEXT external listener. Production's silent-bail cannot be
-attributed to listeners.external either.
-Also: the new oc explain queries added to diagnostics.yaml at e67188f
-did NOT appear in this diagnostic dump. The diagnostics.yaml change
-needs to be synced from GitHub to FCB ADO before the next Diagnostics
-run captures it.
+Schema-fix workstream — NEXT (not blocking the interim cluster)
+---------------------------------------------------------------
+1. Sync .azure-pipelines/diagnostics.yaml from GitHub fcb-flink-cp
+   (commit e67188f or later) to FCB ADO. The new oc explain queries
+   added at e67188f are:
+     kafka.spec.listeners.external{,.authentication}
+     kafka.spec.listeners.custom
+     kafka.spec.services{,.mds,.kafkaRest}
+     kafka.spec.authorization
+     kafka.spec.identityProvider
+2. Run diagnostics.yaml against dah-flink-dev once and capture
+   ~/Downloads/Diagnostics.txt. Read the new oc explain output for
+   each of the paths above.
+3. Match the fields each block expects against what the production
+   yaml WAS trying to express (OAuth/Okta wiring, embedded MDS,
+   mTLS certonly). Rewrite the relevant sub-blocks in v1beta1 shape.
+   Likely outcomes (to confirm against the actual schema):
+   - Embedded MDS: probably moves under spec.identityProvider or
+     spec.authorization (top-level kafka.spec.services may be much
+     smaller than expected).
+   - OAuth listener auth: probably needs a sub-field name other than
+     oauthSettings, OR moves out of listeners into the identity
+     provider / authorization block.
+   - mTLS certonly listener: spec.listeners.custom may have a
+     different schema for the array elements; verify the field names
+     for name/port/authentication.type=mtls/tls.enabled.
+4. Add the rewritten blocks back to apps/confluent-platform/dev/kafka.yaml.
+5. Re-add the CONFLUENT provider to
+     `confluent.authorizer.access.rule.providers`
+   and re-enable the three telemetry reporter lines (uncommented in
+   the interim file).
+6. action=uninstall wipePVCs=true + action=install-or-update
+   kafkaCRVariant=production. Verify sts/kafka 3/3 + brokers Ready +
+   spec.services.mds and spec.listeners.{external,custom} actually
+   present after admission (no silent-strip) via the post-admission
+   `oc get kafka -o yaml` block of the diagnostics output.
 
-State of investigation
-----------------------
-Across Rounds 1-3 the operator reconciled cleanly in every case where
-something landed in the spec, and silently stripped the OAuth/MDS
-sub-blocks where the production yaml uses CFK-3.2.0-incompatible
-shapes. The original 2026-06-27T15:22Z production silent-bail
-(zero events / zero conditions / no sts-kafka after 5 min) was therefore
-NOT triggered by any of configOverrides.server, services.mds, or
-listeners.external. By elimination the only spec block left is
-spec.listeners.custom (mTLS certonly listener on port 9094). If that
-also doesn't trigger silent-bail, the original symptom was
-operator-state corruption from a prior partial install rather than
-anything spec-driven.
-
-Round 4 (Try D) — NEXT
-----------------------
-bisect.yaml = minimal + configOverrides.server + spec.listeners.custom
-(mTLS certonly listener on port 9094, lifted verbatim from
-kafka.yaml lines 176-182). listeners.external and services.mds are
-NOT carried over (would be inert silent-strip noise; revisit once we
-identify the trigger AND know the right v1beta1 shape from the new
-oc explain output).
-
-Pipeline parameters for Round 4
--------------------------------
-Sync first: copy the latest .azure-pipelines/diagnostics.yaml and
-apps/confluent-platform/dev/kafka-bisect.yaml from GitHub fcb-flink-cp
-branch to the FCB ADO DAH.Kafka.OS side, then:
-
+Pipeline parameters for the interim-spec install (RIGHT NOW)
+------------------------------------------------------------
 Run 1 (wipe):
     Pipeline: confluent-platform.yaml
       env       = dev
       action    = uninstall
       wipePVCs  = true
-Run 2 (test Round 4):
+Run 2 (install production interim spec):
     Pipeline: confluent-platform.yaml
       env             = dev
       action          = install-or-update
-      kafkaCRVariant  = bisect
+      kafkaCRVariant  = production
       applyAll        = false
       applyKRaft      = true
       applyKafka      = true
-Run 3 (capture new oc explain output):
-    Pipeline: diagnostics.yaml
-      env = dev
 
-Outcome map for Round 4
------------------------
-A) Operator reconciled (events + status + sts-kafka created), brokers
-   may still CrashLoopBackOff on RBAC (MDS unwired)
-   -> listeners.custom is NOT the silent-bail trigger. By elimination
-   the original production silent-bail was operator-state corruption
-   from the prior partial install loop, not spec-driven. Production
-   kafka.yaml should now apply cleanly after a wipe + install -- but
-   it will keep its current PLAINTEXT-only effective config (OAuth /
-   mTLS / MDS all silently stripped). Next phase: use the new oc
-   explain output to figure out the correct v1beta1 shape for OAuth +
-   MDS + mTLS listener, then add them back to production kafka.yaml
-   in the right shape.
-B) Operator silent-bails (zero events / zero conditions / no sts-kafka
-   after 5 min)
-   -> listeners.custom IS the silent-bail trigger. Sub-bisect:
-   (i) try authentication.type=tls (server cert validation, no client
-       cert required) instead of mtls, (ii) try a different port (the
-       9094 used by the production yaml may collide with something CFK
-       3.2.0 default-allocates), (iii) drop the listener-tls subspec
-       entirely and use authentication only.
-C) Operator reconciled AND brokers Ready (cluster fully green)
-   -> Round 1's RBAC issue is somehow resolved by adding custom
-   listener; investigate -- could be CFK auto-populating
-   confluent.metadata.bootstrap.servers from the custom listener.
-
-After the bisect resolves
--------------------------
-1. Repair production kafka.yaml: either remove blocks that silently
-   strip (so the yaml matches reality), or rewrite them in the correct
-   v1beta1 shape (so they actually take effect).
-2. Use the new diagnostic oc explain output to find the correct v1beta1
-   shape for embedded MDS (likely under kafka.spec.identityProvider or
-   kafka.spec.authorization based on the kafka.spec FIELDS list at line
-   2067 of the 2026-06-27T16:59 diagnostic) and for OAuth listener auth.
-3. Re-test production directly (action=install-or-update,
-   kafkaCRVariant=production).
-
-Splunk query — only if Outcome B
---------------------------------
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-  openshift_pod_name="confluent-operator-*"
-  earliest=-2h latest=now
-  ("kafka" OR "Kafka" OR "Reconcile" OR "reconcile" OR "panic" OR "ERROR"
-   OR "error" OR "mtls" OR "certonly" OR "listener" OR "9094")
-  | sort _time
+If brokers still CrashLoopBackOff after Run 2, pull
+~/Downloads/kafka-0-kafka.log — the symptom will be a DIFFERENT
+fatal than the RBAC-needs-MDS one (which the interim spec resolves
+by dropping CONFLUENT from the authorizer providers).

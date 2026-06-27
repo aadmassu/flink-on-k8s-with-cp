@@ -19,12 +19,64 @@
 #   num.io.threads=16, num.network.threads=8
 #   process.roles=broker
 #   controller.quorum.voters=1@<jxvh>:9093,2@<pnvg>:9093,3@<d2kd>:9093 (resolved by CFK from KRaftController CR)
-#   authorizer=ConfluentServerAuthorizer with CONFLUENT,KRAFT_ACL
-#   SBC + telemetry enabled
+#   authorizer=ConfluentServerAuthorizer (interim: KRAFT_ACL provider only — CONFLUENT pulled out, see below)
+#   SBC enabled, telemetry disabled (interim: telemetry API creds not provisioned at FCB, see below)
 #
-# OAuth (Okta) carried over: issuer myapps.firstcitizens.com/oauth2/default,
-#   JWKS endpoint, expected audience Confluent,account,api://default,
-#   sub claim sub, groups claim dahDev_groups, scope 11547.DAH(Dev).
+# OAuth (Okta) carried over for future re-enable: issuer
+#   myapps.firstcitizens.com/oauth2/default, JWKS endpoint, expected audience
+#   Confluent,account,api://default, sub claim sub, groups claim dahDev_groups,
+#   scope 11547.DAH(Dev). Not in this file's spec right now — see below.
+#
+# Bisect 2026-06-27 (rounds A-D, see project-docs/pump.txt + runbook/
+# LESSONS_LEARNED.md A15) established two things about this cluster:
+# (1) The original 2026-06-27T15:22Z silent-bail of this CR (operator
+#     emitted zero events / zero status conditions / no sts/kafka after
+#     5 min) was operator-state corruption from prior partial installs,
+#     NOT spec-driven. The .azure-pipelines/confluent-platform.yaml
+#     uninstall-with-wipePVCs path now prevents that state from
+#     accumulating.
+# (2) CFK 3.2.0 v1beta1 silently strips THREE blocks the original
+#     production yaml had on first install ever — they have NEVER taken
+#     effect on this cluster:
+#       - spec.services.mds                       (entire block)
+#       - spec.listeners.external (auth + TLS)    (auth/tls sub-config;
+#                                                  CFK still creates an
+#                                                  EXTERNAL listener with
+#                                                  PLAINTEXT defaults)
+#       - spec.listeners.custom (mTLS certonly)   (entire array)
+#     See memory project_cfk_v1beta1_silent_strips for the recurring
+#     pattern (same family as the kRaftController auth/tls strip we
+#     already fixed via dependencies.kRaftController.controllerListener).
+#     These three blocks are REMOVED from this file so the yaml matches
+#     the cluster — a re-add in the correct v1beta1 shape is a separate
+#     workstream gated on the diagnostics.yaml oc explain coverage that
+#     landed at e67188f (kafka.spec.services{,.mds,.kafkaRest},
+#     kafka.spec.authorization, kafka.spec.identityProvider,
+#     kafka.spec.listeners.{external,custom}).
+#
+# Interim spec changes that follow from (2) — also done in this commit:
+#   - configOverrides.server: drop CONFLUENT from
+#     `confluent.authorizer.access.rule.providers` (keep KRAFT_ACL).
+#     The CONFLUENT (RBAC) provider needs
+#     `confluent.metadata.bootstrap.servers` which CFK auto-populates
+#     from spec.services.mds — but services.mds gets silently stripped,
+#     so the broker fatals at startup with
+#     "You must specify confluent.metadata.bootstrap.servers to
+#      configure the RBAC provider" (kafka-2-kafka.log line 2202 across
+#     rounds 1-4). KRAFT_ACL alone is MDS-independent.
+#   - configOverrides.server: remove the three telemetry-reporter lines
+#     (metric.reporters / confluent.telemetry.enabled /
+#     confluent.reporters.telemetry.auto.enable). FCB hasn't provisioned
+#     the telemetry API creds; we already disabled the same lines on
+#     KRaftController for that reason (memory
+#     project_fcb_telemetry_audit_reenable_later). Both will be re-added
+#     when the credentials land.
+#
+# Net effect of this interim spec: brokers come up green with PLAIN+TLS
+# internal listener + PLAINTEXT default external (CFK auto-creates) +
+# KRAFT_ACL authorizer. OAuth, MDS, and mTLS-certonly listeners will be
+# re-added correctly once the schema-fix workstream finishes — see the
+# follow-up in project-docs/pump.txt.
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
@@ -32,7 +84,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-26"
+    platform.confluent.io/force-reconcile: "2026-06-27-interim-acl-only"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -129,10 +181,18 @@ spec:
         tls:
           enabled: true
 
-  # Listeners — mirror the VM listener model:
-  #   internal  (SASL_SSL, PLAIN)        — replaces VM BROKER:9091 inter-broker
-  #   external  (SASL_SSL, OAUTHBEARER)  — replaces VM INTERNAL:9092 (client OAuth)
-  #   custom    (SSL, mTLS)              — replaces VM CERTONLY:9094 (mTLS-only clients)
+  # Listeners — interim state, only `internal` declared (PLAIN+TLS,
+  # replaces VM BROKER:9091 inter-broker). CFK 3.2.0 auto-creates a
+  # default EXTERNAL listener at :9092 with PLAINTEXT regardless of
+  # what we declare; in-cluster Flink jobs reach the brokers via
+  # `kafka-N.kafka.dah-flink-dev.svc.cluster.local:9092`.
+  #
+  # The earlier OAuth-on-external block (audience Confluent,account,
+  # api://default; issuer myapps.firstcitizens.com/oauth2/default; JWKS,
+  # token, sub, groups, scope) and the mTLS certonly listener on 9094
+  # were both silently dropped by CFK 3.2.0 v1beta1 admission — see the
+  # top-of-file bisect note. They're removed from the spec until the
+  # schema-fix workstream re-adds them in the correct v1beta1 shape.
   listeners:
     internal:
       authentication:
@@ -141,45 +201,6 @@ spec:
           secretRef: sasl-plain-internal
       tls:
         enabled: true
-    external:
-      # Kafka listener auth is the SERVER side — brokers accept SASL/OAUTHBEARER
-      # client connections. CRD wants OIDC config nested under oauthSettings.
-      # Flat fields (jwksEndpointUri, expectedIssuer, etc.) directly under
-      # authentication.* are silently dropped during CRD admission.
-      authentication:
-        type: oauth
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(Dev)
-          subClaimName: sub
-          groupsClaimName: dahDev_groups
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-      tls:
-        enabled: true
-      # No externalAccess block here — exposing this listener via a per-broker
-      # LoadBalancer was the suspected trigger for the CFK 3.2.0 precondition
-      # gate ("skipping cluster scale due to cluster not healthy phase=\"\""
-      # in the operator log on every reconcile): the LB-Service workflow
-      # appears to require existing broker endpoints to back the Services,
-      # but the brokers can't come up until the operator's reconcile clears
-      # the gate. Removing externalAccess lets CFK create plain ClusterIP
-      # Services for this listener, which is what the in-cluster Flink jobs
-      # (all in dah-flink-dev) actually need anyway — they reach the brokers
-      # via `kafka-N.kafka.dah-flink-dev.svc.cluster.local:<external-port>`.
-      # There are no out-of-cluster Kafka clients to expose at FCB on this
-      # branch. If that ever changes, add the externalAccess block back —
-      # CFK 3.2.x or later may have fixed the precondition-gate workflow by
-      # then; if not, route or static would be the next thing to try
-      # instead of loadBalancer.
-    custom:
-      - name: certonly
-        port: 9094
-        authentication:
-          type: mtls
-        tls:
-          enabled: true
 
   tls:
     secretRef: kafka-tls
@@ -213,38 +234,14 @@ spec:
     enabled: true
     maxUnavailable: 1
 
-  # Embedded MDS (Metadata Service) — VM equivalent is the broker-hosted
-  # MDS on port 8090. In CFK, the correct path is spec.services.mds (the
-  # earlier `metadataServer:` block was NOT in the CRD schema and got
-  # silently dropped during admission, which is why SR / Connect / REST /
-  # C3 couldn't reach MDS at all).
-  #
-  # provider.oauth.{clientCredentials, configurations} is what tells MDS
-  # how to validate incoming bearer tokens against Okta and how to mint
-  # tokens of its own. configurations.{authorizeBaseEndpointUri, issuer,
-  # jwksEndpointUri, refreshToken, tokenBaseEndpointUri} are REQUIRED.
-  services:
-    mds:
-      tokenKeyPair:
-        secretRef: mds-token-keypair
-      tls:
-        enabled: true
-      authentication:
-        type: bearer
-      provider:
-        type: oauth
-        oauth:
-          clientCredentials:
-            secretRef: oauth-mds-rest
-          configurations:
-            audience: "Confluent,account,api://default"
-            authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
-            issuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            refreshToken: true
-            tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            subClaimName: sub
-            groupsClaimName: dahDev_groups
+  # Embedded MDS (Metadata Service) — REMOVED in the 2026-06-27 interim
+  # spec. The `spec.services.mds` shape was silently dropped by CFK 3.2.0
+  # v1beta1 admission across the bisect rounds; MDS has therefore NEVER
+  # actually been provisioned on this cluster. Will be re-added in the
+  # correct v1beta1 shape (likely under `spec.identityProvider` or
+  # `spec.authorization` based on the kafka.spec FIELDS list captured by
+  # `oc explain` in the next diagnostics run) once that workstream
+  # finishes. See top-of-file note.
 
   # Carry-over Kafka server settings that don't have a structured CR field.
   # Keep this list aligned with the broker .properties — drift here breaks
@@ -264,7 +261,13 @@ spec:
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
       - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
-      - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+      # Interim: CONFLUENT (RBAC) provider removed because it requires
+      # confluent.metadata.bootstrap.servers, which CFK auto-populates from
+      # spec.services.mds — but services.mds is silently stripped at
+      # admission (see top-of-file bisect note + memory
+      # project_cfk_v1beta1_silent_strips). KRAFT_ACL is MDS-independent
+      # and gives us ACL-based authz until MDS is re-wired correctly.
+      - confluent.authorizer.access.rule.providers=KRAFT_ACL
       - super.users=User:admin
       - inter.broker.listener.name=internal
       - log.retention.hours=168
@@ -287,9 +290,13 @@ spec:
       - confluent.balancer.enable=true
       - confluent.balancer.data.enabled=true
       - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
-      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
-      - confluent.telemetry.enabled=true
-      - confluent.reporters.telemetry.auto.enable=true
+      # Interim: TelemetryReporter + ConfluentMetricsReporter dropped
+      # because FCB hasn't provisioned telemetry API creds (memory
+      # project_fcb_telemetry_audit_reenable_later — same reason we
+      # disabled these lines on KRaftController). Re-add once creds land:
+      #   - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+      #   - confluent.telemetry.enabled=true
+      #   - confluent.reporters.telemetry.auto.enable=true
       - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
 
   podTemplate:

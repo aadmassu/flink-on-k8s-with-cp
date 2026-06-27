@@ -463,6 +463,69 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   the 15 min ceiling is generous for a working install and a
   conservative ceiling for a broken one.
 
+### A15. CFK 3.2.0 v1beta1 silent-strip pattern + Kafka CR silent-bail-on-state-corruption
+
+* **Symptom (silent-bail)**: a fresh `apply` of the production
+  `apps/confluent-platform/dev/kafka.yaml` succeeds at the API server,
+  but the operator emits zero events, never updates the CR status, and
+  never creates `sts/kafka`. The CR sits there indefinitely.
+* **Symptom (silent-strip)**: sub-blocks declared in the Kafka CR
+  yaml are absent from the post-admission CR (`oc get kafka -o yaml`)
+  even though the original spec is preserved in the
+  `last-applied-configuration` annotation. The operator behaves
+  correctly with respect to what it actually sees, but the cluster
+  ends up missing OAuth / MDS / mTLS features the yaml declares.
+* **Root cause (silent-bail)**: operator-state corruption from prior
+  partial installs (orphaned PVCs, leftover finalizers, stale
+  informer cache) — NOT a spec-driven trigger. Verified by a 4-round
+  bisect (Try A=`configOverrides.server`, Try B=`services.mds`, Try
+  C=`listeners.external` OAuth, Try D=`listeners.custom` mTLS) on
+  2026-06-27. The operator reconciled cleanly in every round; the
+  original silent-bail did not reproduce after a clean
+  `uninstall + wipePVCs=true`.
+* **Root cause (silent-strip)**: CFK 3.2.0 v1beta1 prunes
+  schema-mismatched sub-blocks at admission with no warning and no
+  rejection. Confirmed-stripped sub-blocks at the time of bisect:
+  `dependencies.kRaftController.{authentication,tls}` as siblings of
+  `clusterRef` (must be nested under `controllerListener`),
+  `listeners.external.authentication.oauthSettings` (whole sub-block
+  silently dropped — CFK falls back to a PLAINTEXT external default),
+  `listeners.custom` (entire array dropped), and `services.mds`
+  (entire block dropped). The production yaml has carried these
+  blocks since initial commit and they have NEVER taken effect on
+  this cluster — OAuth, mTLS-certonly, and embedded MDS have never
+  actually been provisioned at FCB on CFK 3.2.0.
+* **Fix (silent-bail)**: the consolidated `action=uninstall` step in
+  `.azure-pipelines/confluent-platform.yaml` (commit 840e0e2) with
+  the `wipePVCs=true` checkbox tears down CRs, patches stuck
+  finalizers, and wipes orphaned PVCs in one run. Run that before
+  every `install-or-update` on a stuck cluster — that's the
+  streamlined recovery path now.
+* **Fix (silent-strip, interim)**: remove the stripped blocks from
+  `kafka.yaml` so the file reflects what's actually running on the
+  cluster, and drop the `CONFLUENT` (RBAC) provider from the
+  authorizer (it needs `confluent.metadata.bootstrap.servers` which
+  `services.mds` would have populated — but MDS is stripped, so the
+  broker fatals at startup with "You must specify
+  `confluent.metadata.bootstrap.servers` to configure the RBAC
+  provider"). Keep `KRAFT_ACL`; it's MDS-independent. Telemetry
+  reporters dropped at the same time (already disabled on
+  KRaftController for unprovisioned API creds — see memory
+  `project_fcb_telemetry_audit_reenable_later`).
+* **Fix (silent-strip, follow-up)**: the diagnostics.yaml `oc explain`
+  coverage was extended at commit e67188f to cover
+  `kafka.spec.services{,.mds,.kafkaRest}`,
+  `kafka.spec.authorization`, `kafka.spec.identityProvider`,
+  `kafka.spec.listeners.{external,custom}`. Once that runs against
+  the cluster, the v1beta1 schema for each path is known and the
+  OAuth / MDS / mTLS blocks can be re-added in the correct shape.
+* **Why it matters**: a yaml that looks like the VM config is not the
+  same as a cluster configured like the VM. Always verify
+  post-admission yaml with `oc get kafka -o yaml` before assuming a
+  feature is enabled. See memory `project_cfk_v1beta1_silent_strips`
+  for the recurring pattern and `project-docs/pump.txt` for the
+  schema-fix follow-up workstream.
+
 ---
 
 ## B. FCB Gatekeeper policies
