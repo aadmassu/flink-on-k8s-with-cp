@@ -90,28 +90,26 @@ parameters:
     displayName: "install-or-update: which Kafka CR spec to apply"
     type: string
     default: production
-    values: [production, minimal]
+    values: [production, minimal, bisect]
     # Which Kafka-CR yaml install-or-update applies for the Kafka step.
     # Default 'production' = apps/confluent-platform/<env>/kafka.yaml
     # (real spec — internal SASL_PLAIN + external OAuth/LoadBalancer +
     # custom mTLS + MDS + full configOverrides). 'minimal' =
-    # apps/confluent-platform/<env>/kafka-minimal.yaml exists ONLY to
-    # bisect the CFK 3.2.0 `skipping cluster scale due to cluster not
-    # healthy phase=""` precondition-gate bug — it strips external/custom
-    # listeners, MDS, and the entire spec.configOverrides.server list so
-    # the operator has nothing exotic to provision before sts/kafka comes
-    # up. If install-or-update + variant=minimal lands sts/kafka where
-    # variant=production hits the gate, the stripped sections contain the
-    # trigger and we add features back one at a time to bisect. If
-    # variant=minimal ALSO hits the gate, the bug is CFK-internal and
-    # unrelated to spec shape — open Confluent support with that evidence.
-    # Do not run variant=minimal to completion as a "real" install —
-    # brokers brought up against the minimal spec have no external
-    # listener, no MDS, no mTLS path, and no broker telemetry / SBC /
-    # cluster-link metadata replication-factor overrides. Once the bisect
-    # identifies the trigger, repair production kafka.yaml, then run
-    # action=uninstall + wipe-pvcs + install-or-update with
-    # variant=production for the real cluster.
+    # apps/confluent-platform/<env>/kafka-minimal.yaml is the known-good
+    # baseline used to confirm the operator is healthy when production
+    # silently bails. 'bisect' =
+    # apps/confluent-platform/<env>/kafka-bisect.yaml is the mutable
+    # diagnostic file used to add features from kafka.yaml back on top of
+    # the minimal baseline one chunk at a time, isolating which chunk
+    # makes the operator silently bail without writing status conditions
+    # or events on the Kafka CR. See project-docs/pump.txt for the
+    # round-by-round log. Do not run variant=minimal or variant=bisect to
+    # completion as a "real" install — brokers brought up against either
+    # have no external listener, no MDS, no mTLS path, and (for minimal)
+    # no broker telemetry / SBC / cluster-link metadata replication-factor
+    # overrides. Once the bisect identifies the trigger, repair production
+    # kafka.yaml, then run action=uninstall + wipe-pvcs + install-or-update
+    # with variant=production for the real cluster.
   - name: forceFinalizerRemoval
     displayName: "Uninstall: force-clear finalizers on timeout"
     type: boolean
@@ -945,14 +943,18 @@ stages:
                     # Pick the Kafka CR yaml based on kafkaCRVariant param:
                     #   production -> apps/confluent-platform/<env>/kafka.yaml
                     #   minimal    -> apps/confluent-platform/<env>/kafka-minimal.yaml
-                    # The minimal variant exists for bisecting the CFK 3.2.0
-                    # precondition-gate bug; see the kafkaCRVariant doc at
-                    # the top of this file for the full rationale.
+                    #   bisect     -> apps/confluent-platform/<env>/kafka-bisect.yaml
+                    # The minimal variant is the known-good baseline; the
+                    # bisect variant is the mutable diagnostic file used to
+                    # add features back one chunk at a time. See the
+                    # kafkaCRVariant doc at the top of this file for the
+                    # full rationale.
                     case "$KAFKA_VARIANT" in
                       production) KAFKA_YAML="$ENV_DIR/kafka.yaml" ;;
                       minimal)    KAFKA_YAML="$ENV_DIR/kafka-minimal.yaml" ;;
+                      bisect)     KAFKA_YAML="$ENV_DIR/kafka-bisect.yaml" ;;
                       *)
-                        echo "ABORT: unknown kafkaCRVariant '$KAFKA_VARIANT' (expected production|minimal)."
+                        echo "ABORT: unknown kafkaCRVariant '$KAFKA_VARIANT' (expected production|minimal|bisect)."
                         exit 1
                         ;;
                     esac

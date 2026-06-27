@@ -1,65 +1,91 @@
-BISECT NEXT STEPS — kafka.yaml (production) silently fails to reconcile
-=======================================================================
+BISECT — kafka.yaml (production) silently fails to reconcile
+=============================================================
 
-State after 2026-06-27T15:22Z run with the Phase-1a/1b reorder
----------------------------------------------------------------
-- Phase 1a worked: kraftcontroller cluster-ready=True after 40s, 3/3 Ready,
-  quorum elected, jolokia OPEN on :7777 from all three controller pods.
-- Phase 1b applied apps/confluent-platform/dev/kafka.yaml (production variant)
-  at 15:22:25. The Kafka CR was admitted (managedFields shows
-  manager=kubectl-client-side-apply + manager=manager op=Update at 15:22:25
-  -- the operator's mutating webhook ran).
-- BUT the operator never reconciled it: kafka/kafka events list is EMPTY,
-  managedFields has NO sub=status entry, status.conditions is empty,
-  sts/kafka was never created. After 300s the pipeline wait_for_cr_ready
-  gave up with no condition output.
-- Compare with kraftcontroller at the same diagnostic capture time:
-  6 SuccessfulCreate events, full status.conditions, sub=status managedFields
-  entry at 15:22:23. So the operator is alive and reconciling kraftcontroller
-  fine -- it's silently choking on the kafka.yaml production spec only.
-- The "waiting for at-least one kafka pod availability" event in the dump is
-  from KafkaRestClass/default, NOT from the Kafka CR. It's downstream of the
-  missing sts/kafka, not the cause.
-- 2026-06-27T08:49Z run with kafkaCRVariant=minimal succeeded end-to-end.
-  So the poison pill is in one of the features kafka-minimal.yaml strips:
-    1. spec.listeners.external          (OAuth + ClusterIP-now block)
-    2. spec.listeners.custom            (mTLS certonly listener)
-    3. spec.services.mds                (embedded MDS with OAuth)
-    4. spec.configOverrides.server[*]   (~15 broker config lines)
+Step 1 (baseline confirm) — DONE 2026-06-27T16:14Z
+---------------------------------------------------
+Pipeline run with action=uninstall+wipePVCs then action=install,
+kafkaCRVariant=minimal:
+  - Phase 1a: kraftcontroller cluster-ready=True after 40s.
+  - Phase 1b: kafka cluster-ready=True after 50s using kafka-minimal.yaml.
+  - sts/kafka 3/3 Ready, kafka-0/1/2 Running on 3 distinct worker nodes.
+  - All kafka-{0,1,2}-internal services have endpoints on 9074/9092/8090/
+    9071/7203/7777/7778/9072. Quorum + broker registration both fine.
+The pipeline Phase-1a/1b reorder is solid and the operator IS healthy.
+The poison-pill is confirmed to be in kafka.yaml (production) — one of
+the four sections kafka-minimal.yaml strips:
+   (1) spec.listeners.external           (OAuth + external listener block)
+   (2) spec.listeners.custom             (mTLS certonly listener)
+   (3) spec.services.mds                 (embedded MDS with OAuth)
+   (4) spec.configOverrides.server[*]    (~28 broker config lines)
 
-Bisect plan (in order)
-----------------------
-Step 1 -- Confirm minimal still works after the pipeline reorder. Run:
-    Pipeline: confluent-platform.yaml
-      action=uninstall, wipePVCs=true, env=dev    (clear stuck kafka CR)
-    Then:
-      action=install,   env=dev, kafkaCRVariant=minimal
-    Expected: sts/kafka 3/3 Ready, kafka cluster-ready=True in ~3-5 min.
-    If this fails, the problem is operator-side, not spec-side -- jump to
-    the Splunk query at the bottom of this file.
+Step 2 — bisect by adding features back, one chunk per round
+------------------------------------------------------------
+Mechanics: a third kafkaCRVariant value 'bisect' selects
+apps/confluent-platform/dev/kafka-bisect.yaml. That file is the mutable
+diagnostic — minimal is left pristine as the known-good fallback. Each
+bisect round edits one feature INTO kafka-bisect.yaml and runs:
+    action=uninstall, wipePVCs=true                     (clear stuck state)
+    action=install,   env=dev, kafkaCRVariant=bisect    (test the round)
+Outcome map per round:
+  - kafka cluster-ready=True ~50s, sts/kafka 3/3 -> feature is NOT the
+    poison-pill. Keep it in bisect.yaml and proceed to next round.
+  - kafka CR stays with empty events / no status conditions / no
+    sub=status managedFields entry / no sts/kafka after 300s+ -> feature
+    IS the poison-pill. Sub-bisect inside the chunk if needed.
 
-Step 2 -- Bisect kafka.yaml features.  Once minimal is confirmed working,
-    add features back one at a time (each time: wipePVCs=true uninstall,
-    then install with the modified production kafka.yaml). Order:
-      Try A:  minimal + spec.configOverrides.server[*]
-      Try B:  Try A + spec.listeners.external (OAuth+ClusterIP block)
-      Try C:  Try B + spec.listeners.custom (mTLS listener)
-      Try D:  Try C + spec.services.mds (embedded MDS with OAuth)
-    The first Try that reproduces empty-events+no-status is the trigger.
+Round 1 (Try A) — minimal + spec.configOverrides.server[*]   [NEXT TO RUN]
+--------------------------------------------------------------------------
+kafka-bisect.yaml = kafka-minimal.yaml + the configOverrides.server block
+lifted verbatim from kafka.yaml lines 265-293. 28 broker config lines
+covering replication factors, num threads, log retention, Confluent
+authorizer, SBC, and the telemetry reporter wiring.
+Highest-suspicion lines in this round (sub-bisect order if Round 1 fails):
+   a) metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,
+      io.confluent.metrics.reporter.ConfluentMetricsReporter
+      + confluent.telemetry.enabled=true
+      + confluent.reporters.telemetry.auto.enable=true
+        (top suspect — FCB has no telemetry API creds provisioned;
+         memory project_fcb_telemetry_audit_reenable_later documents
+         we already disabled these on KRaftController CRs for this reason)
+   b) confluent.balancer.enable=true + confluent.balancer.data.enabled=true
+      + confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+        (SBC; needs license + healthy cluster — may trip an internal
+         readiness check during initial apply)
+   c) authorizer.class.name=ConfluentServerAuthorizer +
+      confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
+        (custom authorizer wiring — third-most-likely)
 
-Step 3 -- Once the trigger is identified, either:
-      a) Re-encode it in a form CFK 3.2.0 accepts (most likely fix path
-         for spec.services.mds — same OAuth issuer/scope wiring problem),
-      b) Defer it (drop feature on initial install, add via subsequent
-         re-apply after kafka is up — works for listener additions),
-      c) Open Confluent support with the bisect evidence.
+Pipeline parameters for Round 1
+-------------------------------
+Run 1 (wipe):
+    Pipeline: .azure-pipelines/confluent-platform.yaml
+      env       = dev
+      action    = uninstall
+      wipePVCs  = true
+Run 2 (test Round 1):
+    Pipeline: .azure-pipelines/confluent-platform.yaml
+      env             = dev
+      action          = install
+      kafkaCRVariant  = bisect
+      applyKRaft      = true
+      applyKafka      = true
+      applySR/Connect/KRest/C3 = false   (still skipping Phase 2)
 
+Future rounds (run only after the previous round resolves)
+----------------------------------------------------------
+Round 2 (Try B): bisect-after-A + spec.listeners.external
+                 (OAuth listener block, now wired ClusterIP)
+Round 3 (Try C): bisect-after-B + spec.listeners.custom
+                 (mTLS certonly listener)
+Round 4 (Try D): bisect-after-C + spec.services.mds
+                 (embedded MDS with OAuth — historically the most exotic
+                  feature; expected to be the trigger if 1-3 all pass)
 
-Splunk query for the silent-bail window (run if Step 1 still fails)
--------------------------------------------------------------------
-Run this in Splunk, export the result, save as ~/Downloads/Diagnostics.zip
-and tell Claude. The query covers the 5-minute window around the kafka.yaml
-apply in the most recent run; tweak earliest/latest if the run was different.
+Splunk operator-log query — only if Round 1 surprises us
+--------------------------------------------------------
+Use this if Round 1 also reproduces the silent-bail symptom — that would
+mean the operator chokes the moment ANY broker config is present, which
+is a CFK-internal bug. Tighten the time window to the kafka apply.
 
 ((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
   openshift_pod_name="confluent-operator-*"
@@ -67,21 +93,3 @@ apply in the most recent run; tweak earliest/latest if the run was different.
   ("kafka" OR "Kafka" OR "Reconcile" OR "reconcile" OR "panic" OR "ERROR"
    OR "error" OR "leader" OR "election")
   | sort _time
-
-Specifically look for:
-  - "panic:" (operator crashed on the kafka spec, restarted, lost the queue)
-  - "leader election lost" (HA flip — would explain status not landing)
-  - "Reconciler error" with kafka/kafka in the message
-  - any cfk-resources/core-resources webhook 5xx for v1beta1 Kafka spec
-  - silent skip-without-status messages from the kafka controller
-
-
-Known cosmetic regression in wait_for_cr_ready
-----------------------------------------------
-The recent `|| true` defenses on the wait function swallow the conditions
-output, so the pipeline log now prints
-    "Nxxs elapsed, kafka/kafka not yet ready. Current conditions:"
-with nothing after the colon. The truth is still in the CFK CR status
-conditions block of the Diagnostics step a few hundred lines below. Worth
-fixing in a follow-up so the inline timeline is readable again, but does
-not block this bisect.
