@@ -27,13 +27,23 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-29-phase1-baby-step"
+    platform.confluent.io/force-reconcile: "2026-06-29-phase1-fips-attestation"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
+  # FIPS attestation for the operator. CFK operator at FCB ships with
+  # fipsmode=true; without this block the operator refuses to build its
+  # outbound HTTP client and the CR sits at cluster-ready=False
+  # ApplyFailed "TLS not Enabled in Application when FIPS mode is true
+  # in Operator" -- even when every listener is TLS. Confirmed via
+  # `oc explain kafka.spec.fips` (enabled is a required boolean; mode
+  # is an optional string we leave unset to take the operator default).
+  fips:
+    enabled: true
+
   replicas: 3
 
   image:
