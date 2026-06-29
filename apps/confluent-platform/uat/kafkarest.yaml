@@ -1,18 +1,9 @@
 ---
-# CFK KafkaRestProxy CR — uat (2 replicas, matching VM UAT topology)
-#
-# Sources (apps/confluent-platform/cp-confluent/uat/):
-#   t11547varc-0wjc-rest-proxy-1.properties
-#   t11547varc-amm5-rest-proxy-2.properties
-#
-# Per-VM config carried over:
-#   bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
-#   listeners=https://0.0.0.0:8082
-#   schema.registry.url=https://<sr>:8081
-#   confluent.monitoring.interceptor.topic=_confluent-monitoring
-#   kafka.rest.resource.extension.class=KafkaRestSecurityResourceExtension
-#   OAuth via Okta — issuer/JWKS/audiences/scope per UAT properties
-#   confluent.metadata.bootstrap.server.urls -> MDS endpoint
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK KafkaRestProxy CR — uat.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestProxy

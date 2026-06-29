@@ -1,19 +1,11 @@
 ---
-# cert-manager Certificate for the Kafka broker MDS REST endpoint Ingress — dr.
-#
-# Produces Secret `kafka-mds-ingress-tls` (Keyfactor-signed). Backend is the
-# Kafka bootstrap Service on container port 8090 — the broker's embedded
-# Metadata Service. Exposed via the Ingress at ../ingress/kafka-mds-ingress.yaml
-# so RBAC tools and humans can reach MDS over a Keyfactor-signed public hostname
-# rather than only via the in-cluster TLS Secret `kafka-tls`.
-#
-# This is distinct from `kafka-tls` (existing) — that's the broker's serving
-# cert for both the Kafka protocol listeners AND the MDS HTTPS port inside
-# the cluster. `kafka-mds-ingress-tls` is the edge cert the HAProxy router
-# presents to browsers. Same broker, different DNS names.
-#
-# DNS automatic for dev via the cluster wildcard (https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress
-# Option 1: Internal Bank Network - OCP).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-29 (last-modified)
+# Description: Keyfactor Certificate for the broker MDS REST Ingress
+#              edge — dr.
+########################################################################
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

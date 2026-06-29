@@ -1,16 +1,9 @@
 ---
-# CFK Kafka CR — qa (3-broker, KRaft mode)
-#
-# QA has no VM CP analog (FCB never built a VM QA CP). This CR is modelled
-# on the UAT CFK build at apps/confluent-platform/uat/kafka.yaml, which
-# itself derives from apps/confluent-platform/cp-confluent/uat/.
-#
-# TODO — confirm with FCB Okta admins whether QA shares the UAT Okta
-# tenant or needs its own. If QA needs its own, replace OAuth values
-# everywhere in this folder (scope 11547.DAH(UAT) → 11547.DAH(QA);
-# groupsClaimName dahUAT_groups → dahQA_groups). Until that confirmation,
-# UAT values are reused verbatim so QA can authenticate against the same
-# Okta application during bring-up.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Description: CFK Kafka CR — qa (3-broker, KRaft mode).
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka

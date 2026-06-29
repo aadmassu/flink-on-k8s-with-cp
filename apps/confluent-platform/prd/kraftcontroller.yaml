@@ -1,33 +1,9 @@
 ---
-# CFK KRaftController CR — prd (3-node KRaft quorum)
-#
-# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
-# with env substitutions (namespace, cluster domain, OAuth scope/groups).
-# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
-# claim names all inherit DEV values. Walk the file with FCB ops before
-# applying — at minimum confirm:
-#   - namespace prd matches what Container team provisioned
-#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
-#     correct for the Prod Okta tenant (DR shares the Prod tenant)
-#   - cluster domain matches the cluster's external Load Balancer
-#   - dataVolumeCapacity is appropriate for prd (dev was 10 Gi)
-#   - resources.requests/limits are appropriate for prd (dev is heavily
-#     downsized for the dev quota)
-#
-#
-# Sources (apps/confluent-platform/cp-confluent/prd-1/):
-#   d11547varc-jxvh-controller-1-server.properties  (node.id=1)
-#   d11547varc-pnvg-controller-2-server.properties  (node.id=2)
-#   d11547varc-d2kd-controller-3-server.properties  (node.id=3)
-#
-# Per-VM config carried over here:
-#   process.roles=controller
-#   listeners=CONTROLLER://:9093  (SASL_SSL, PLAIN inter-controller)
-#   listener.security.protocol.map=CONTROLLER:SASL_SSL,BROKER:SASL_SSL
-#   log.dirs=/data/kafka
-#   sasl.mechanism.controller.protocol=PLAIN
-#   metric.reporters=TelemetryReporter,ConfluentMetricsReporter
-#   confluent.balancer.enable=true  (SBC)
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK KRaftController CR — prd (3-node KRaft quorum).
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: KRaftController

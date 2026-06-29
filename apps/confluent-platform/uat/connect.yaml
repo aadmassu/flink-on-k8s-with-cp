@@ -1,25 +1,9 @@
 ---
-# CFK Connect CR — uat (2 workers, matching VM UAT topology)
-#
-# Sources (apps/confluent-platform/cp-confluent/uat/):
-#   t11547varc-4zxw-connect-1.properties
-#   t11547varc-5cr4-connect-2.properties
-#
-# Per-VM config carried over:
-#   bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
-#   group.id=connect-cluster
-#   listeners=https://0.0.0.0:8083
-#   config.storage.topic=connect-cluster-configs (rf=3)
-#   offset.storage.topic=connect-cluster-offsets (rf=3)
-#   status.storage.topic=connect-cluster-status (rf=3)
-#   internal.{key,value}.converter=JsonConverter (schemas off)
-#   key/value.converter=AvroConverter with SR URL
-#   plugin.path=/usr/share/java/connect_plugins
-#   InternalSecretConfigProvider with _confluent-secrets topic (rf=3)
-#   connector.client.config.override.policy=All
-#   rest.extension.classes=ConnectSecurityExtension, ConnectSecretRegistryExtension
-#   monitoring interceptors enabled (consumer/producer/admin)
-#   confluent.monitoring.interceptor.topic=_confluent-monitoring
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Description: CFK Connect CR — uat.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Connect

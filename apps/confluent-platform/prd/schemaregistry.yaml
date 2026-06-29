@@ -1,36 +1,9 @@
 ---
-# CFK SchemaRegistry CR — prd (1 replica, matching VM)
-#
-# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
-# with env substitutions (namespace, cluster domain, OAuth scope/groups).
-# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
-# claim names all inherit DEV values. Walk the file with FCB ops before
-# applying — at minimum confirm:
-#   - namespace prd matches what Container team provisioned
-#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
-#     correct for the Prod Okta tenant (DR shares the Prod tenant)
-#   - cluster domain matches the cluster's external Load Balancer
-#   - dataVolumeCapacity is appropriate for prd (dev was 10 Gi)
-#   - resources.requests/limits are appropriate for prd (dev is heavily
-#     downsized for the dev quota)
-#
-#
-# Source: apps/confluent-platform/cp-confluent/prd-1/d11547varc-4559-schema-registry.properties
-#
-# Per-VM config carried over:
-#   listeners=https://0.0.0.0:8081
-#   kafkastore.bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
-#   kafkastore.topic=_schemas, kafkastore.topic.replication.factor=3
-#   confluent.schema.registry.authorizer.class=...rbac.RbacAuthorizer
-#   confluent.schema.registry.auth.mechanism=JETTY_AUTH
-#   OAuth via Okta — issuer myapps.firstcitizens.com/oauth2/default
-#     scope 11547.DAH(Prod), audiences [Confluent, account, api://default]
-#     sub claim sub, groups claim dahProd_groups
-#   Schema Exporter resource extension enabled (for SR linking)
-#   metadata.encoder.secret=<...> (carry over via Secret)
-#
-# Replica count is 1 to match the VM topology. CFK SR is HA-capable; if FCB
-# wants HA, bump replicas to 3 and add a Service-level discovery config.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK SchemaRegistry CR — prd.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry

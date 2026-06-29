@@ -1,35 +1,9 @@
 ---
-# CFK ControlCenter CR — prd (1 replica, matching VM)
-#
-# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
-# with env substitutions (namespace, cluster domain, OAuth scope/groups).
-# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
-# claim names all inherit DEV values. Walk the file with FCB ops before
-# applying — at minimum confirm:
-#   - namespace prd matches what Container team provisioned
-#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
-#     correct for the Prod Okta tenant (DR shares the Prod tenant)
-#   - cluster domain matches the cluster's external Load Balancer
-#   - dataVolumeCapacity is appropriate for prd (dev was 10 Gi)
-#   - resources.requests/limits are appropriate for prd (dev is heavily
-#     downsized for the dev quota)
-#
-#
-# Source: apps/confluent-platform/cp-confluent/prd-1/d11547varc-g5w0-control-center.properties
-#
-# Per-VM config carried over:
-#   confluent.controlcenter.rest.listeners=https://0.0.0.0:9021
-#   confluent.controlcenter.data.dir=/var/lib/confluent/control-center
-#   confluent.controlcenter.streams.num.stream.threads=12
-#   confluent.controlcenter.command.topic.replication=3
-#   confluent.controlcenter.internal.topics.replication=3
-#   confluent.controlcenter.metrics.topic.replication=3
-#   confluent.controlcenter.monitoring.interceptor.topic.replication=3
-#   bootstrap.servers, schema.registry.url, connect cluster reference -> CFK service DNS
-#   Prometheus enabled (port 9090, basic auth)
-#   AlertManager URL (port 9093, basic auth)
-#   OAuth (Okta) for streams + MDS
-#   confluent.controlcenter.cmf.healthcheck.interval.sec=600000 (CMF noise quieted)
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK ControlCenter CR — prd.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter

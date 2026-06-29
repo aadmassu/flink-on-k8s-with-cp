@@ -1,7 +1,11 @@
 ---
-# cert-manager Certificate for Schema Registry — qa.
-# SANs cover both the round-robin Service DNS and the per-pod DNS for the
-# two-replica HA pair (schemaregistry-0 and schemaregistry-1).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: Keyfactor Certificate for Schema Registry's HTTPS REST
+#              listener — qa.
+########################################################################
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

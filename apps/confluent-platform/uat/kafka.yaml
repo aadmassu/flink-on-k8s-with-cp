@@ -1,30 +1,9 @@
 ---
-# CFK Kafka CR — uat (3-broker, KRaft mode)
-#
-# Sources (apps/confluent-platform/cp-confluent/uat/):
-#   t11547varc-9vdq-broker-1-server.properties  (broker.id=101)
-#   t11547varc-9tcm-broker-2-server.properties  (broker.id=102)
-#   t11547varc-mcae-broker-3-server.properties  (broker.id=103)
-#
-# Per-VM config carried over here:
-#   listeners=INTERNAL://:9092,BROKER://:9091,CERTONLY://:9094
-#   listener.security.protocol.map=INTERNAL:SASL_SSL,BROKER:SASL_SSL,CERTONLY:SSL
-#   inter.broker.listener.name=BROKER
-#   advertised.listeners (internal: 9092, broker: 9091, external mTLS: 7055 via CERTONLY)
-#   confluent.metadata.server.listeners=https://0.0.0.0:8090   (MDS embedded in broker)
-#   log.dirs=/data/kafka
-#   log.retention.hours=168, log.segment.bytes=1073741824
-#   offsets/transaction/license/metrics topic replication = 3
-#   transaction.state.log.min.isr=2
-#   num.io.threads=16, num.network.threads=8
-#   process.roles=broker
-#   controller.quorum.voters=1@<00c1>:9093,2@<zg6u>:9093,3@<kprg>:9093 (resolved by CFK from KRaftController CR)
-#   authorizer=ConfluentServerAuthorizer with CONFLUENT,KRAFT_ACL
-#   SBC + telemetry enabled
-#
-# OAuth (Okta) — UAT-specific: issuer myapps.firstcitizens.com/oauth2/default,
-#   JWKS endpoint, expected audience Confluent,account,api://default,
-#   sub claim sub, groups claim dahUAT_groups, scope 11547.DAH(UAT).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Description: CFK Kafka CR — uat (3-broker, KRaft mode).
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka

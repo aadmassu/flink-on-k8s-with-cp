@@ -1,7 +1,11 @@
 ---
-# cert-manager Certificate for the Schema Registry REST/UI Ingress — dr.
-# Distinct from schemaregistry-tls (backend serving cert) — covers the
-# public host the HAProxy router presents to browsers/clients.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-29 (last-modified)
+# Description: Keyfactor Certificate for the Schema Registry Ingress
+#              edge — dr.
+########################################################################
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

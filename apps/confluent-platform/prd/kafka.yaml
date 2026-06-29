@@ -1,44 +1,9 @@
 ---
-# CFK Kafka CR — prd (3-broker, KRaft mode)
-#
-# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
-# with env substitutions (namespace, cluster domain, OAuth scope/groups).
-# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
-# claim names all inherit DEV values. Walk the file with FCB ops before
-# applying — at minimum confirm:
-#   - namespace prd matches what Container team provisioned
-#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
-#     correct for the Prod Okta tenant (DR shares the Prod tenant)
-#   - cluster domain matches the cluster's external Load Balancer
-#   - dataVolumeCapacity is appropriate for prd (dev was 10 Gi)
-#   - resources.requests/limits are appropriate for prd (dev is heavily
-#     downsized for the dev quota)
-#
-#
-# Sources (apps/confluent-platform/cp-confluent/prd-1/):
-#   d11547varc-pgm8-broker-1-server.properties  (broker.id=101)
-#   d11547varc-g719-broker-2-server.properties  (broker.id=102)
-#   d11547varc-81mb-broker-3-server.properties  (broker.id=103)
-#
-# Per-VM config carried over here:
-#   listeners=INTERNAL://:9092,BROKER://:9091,CERTONLY://:9094
-#   listener.security.protocol.map=INTERNAL:SASL_SSL,BROKER:SASL_SSL,CERTONLY:SSL
-#   inter.broker.listener.name=BROKER
-#   advertised.listeners (internal: 9092, broker: 9091, external mTLS: 7055 via CERTONLY)
-#   confluent.metadata.server.listeners=https://0.0.0.0:8090   (MDS embedded in broker)
-#   log.dirs=/data/kafka
-#   log.retention.hours=168, log.segment.bytes=1073741824
-#   offsets/transaction/license/metrics topic replication = 3
-#   transaction.state.log.min.isr=2
-#   num.io.threads=16, num.network.threads=8
-#   process.roles=broker
-#   controller.quorum.voters=1@<jxvh>:9093,2@<pnvg>:9093,3@<d2kd>:9093 (resolved by CFK from KRaftController CR)
-#   authorizer=ConfluentServerAuthorizer with CONFLUENT,KRAFT_ACL
-#   SBC + telemetry enabled
-#
-# OAuth (Okta) carried over: issuer myapps.firstcitizens.com/oauth2/default,
-#   JWKS endpoint, expected audience Confluent,account,api://default,
-#   sub claim sub, groups claim dahProd_groups, scope 11547.DAH(Prod).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Description: CFK Kafka CR — prd (3-broker, KRaft mode).
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka

@@ -1,12 +1,9 @@
 ---
-# CFK Connect CR — qa (2 workers, matching UAT topology)
-#
-# QA has no VM CP analog. This CR is modelled on the UAT CFK build at
-# apps/confluent-platform/uat/connect.yaml.
-#
-# TODO — see apps/confluent-platform/qa/kafka.yaml for the OAuth-values
-# rationale (UAT scope/groupsClaim reused verbatim until Okta admins
-# confirm QA tenancy).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Description: CFK Connect CR — qa.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Connect

@@ -1,21 +1,9 @@
 ---
-# CFK ControlCenter CR — uat (1 replica, matching VM UAT topology)
-#
-# Source: apps/confluent-platform/cp-confluent/uat/t11547varc-mdnp-control-center.properties
-#
-# Per-VM config carried over:
-#   confluent.controlcenter.rest.listeners=https://0.0.0.0:9021
-#   confluent.controlcenter.data.dir=/var/lib/confluent/control-center
-#   confluent.controlcenter.streams.num.stream.threads=12
-#   confluent.controlcenter.command.topic.replication=3
-#   confluent.controlcenter.internal.topics.replication=3
-#   confluent.controlcenter.metrics.topic.replication=3
-#   confluent.controlcenter.monitoring.interceptor.topic.replication=3
-#   bootstrap.servers, schema.registry.url, connect cluster reference -> CFK service DNS
-#   Prometheus enabled (port 9090, basic auth)
-#   AlertManager URL (port 9093, basic auth)
-#   OAuth (Okta) for streams + MDS — scope 11547.DAH(UAT)
-#   confluent.controlcenter.cmf.healthcheck.interval.sec=600000 (CMF noise quieted)
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK ControlCenter CR — uat.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter

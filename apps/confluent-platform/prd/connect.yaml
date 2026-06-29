@@ -1,39 +1,9 @@
 ---
-# CFK Connect CR — prd (2 workers, matching VM)
-#
-# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
-# with env substitutions (namespace, cluster domain, OAuth scope/groups).
-# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
-# claim names all inherit DEV values. Walk the file with FCB ops before
-# applying — at minimum confirm:
-#   - namespace prd matches what Container team provisioned
-#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
-#     correct for the Prod Okta tenant (DR shares the Prod tenant)
-#   - cluster domain matches the cluster's external Load Balancer
-#   - dataVolumeCapacity is appropriate for prd (dev was 10 Gi)
-#   - resources.requests/limits are appropriate for prd (dev is heavily
-#     downsized for the dev quota)
-#
-#
-# Sources (apps/confluent-platform/cp-confluent/prd-1/):
-#   d11547varc-y0lb-connect-1.properties
-#   d11547varc-rigt-connect-2.properties
-#
-# Per-VM config carried over:
-#   bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
-#   group.id=connect-cluster
-#   listeners=https://0.0.0.0:8083
-#   config.storage.topic=connect-cluster-configs (rf=3)
-#   offset.storage.topic=connect-cluster-offsets (rf=3)
-#   status.storage.topic=connect-cluster-status (rf=3)
-#   internal.{key,value}.converter=JsonConverter (schemas off)
-#   key/value.converter=AvroConverter with SR URL
-#   plugin.path=/usr/share/java/connect_plugins
-#   InternalSecretConfigProvider with _confluent-secrets topic (rf=3)
-#   connector.client.config.override.policy=All
-#   rest.extension.classes=ConnectSecurityExtension, ConnectSecretRegistryExtension
-#   monitoring interceptors enabled (consumer/producer/admin)
-#   confluent.monitoring.interceptor.topic=_confluent-monitoring
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Description: CFK Connect CR — prd.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Connect

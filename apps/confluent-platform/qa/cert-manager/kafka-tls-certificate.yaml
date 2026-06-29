@@ -1,5 +1,11 @@
 ---
-# cert-manager Certificate for the Kafka brokers — qa.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-21 (created), 2026-06-29 (last-modified)
+# Description: Keyfactor Certificate for the Kafka brokers (Secret
+#              kafka-tls) — qa.
+########################################################################
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

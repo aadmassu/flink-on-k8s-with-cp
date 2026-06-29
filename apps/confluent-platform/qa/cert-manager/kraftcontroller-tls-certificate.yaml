@@ -1,5 +1,11 @@
 ---
-# cert-manager Certificate for the KRaft controllers — qa.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: Keyfactor Certificate for the KRaft controllers (Secret
+#              kraftcontroller-tls) — qa.
+########################################################################
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

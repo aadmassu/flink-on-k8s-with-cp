@@ -1,33 +1,10 @@
 ---
-# CFK KafkaRestClass CR — prd.
-#
-# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
-# with env substitutions (namespace, cluster domain, OAuth scope/groups).
-# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
-# claim names all inherit DEV values. Walk the file with FCB ops before
-# applying — at minimum confirm:
-#   - namespace prd matches what Container team provisioned
-#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
-#     correct for the Prod Okta tenant (DR shares the Prod tenant)
-#   - cluster domain matches the cluster's external Load Balancer
-#   - dataVolumeCapacity is appropriate for prd (dev was 10 Gi)
-#   - resources.requests/limits are appropriate for prd (dev is heavily
-#     downsized for the dev quota)
-#
-#
-# A KafkaRestClass is a connection profile that points components (chiefly
-# Control Center, but also Connect for some admin operations) at the Kafka
-# admin REST endpoint. Without this, C3's Cluster Linking / topic-management
-# views fall back to bootstrap-only admin and don't fully populate.
-#
-# We anchor it to the Kafka CR so the operator derives the MDS endpoint
-# (broker port 8090, the same MDS the VM cluster runs at port 8090) and the
-# OAuth/TLS settings automatically — no need to repeat them here.
-#
-# Components reference this with:
-#   dependencies.kafkaRestClassRef:
-#     name: default
-#     namespace: dah-flink-prd
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: KafkaRestClass connection profile — prd (no pods).
+########################################################################
+
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestClass
 metadata:

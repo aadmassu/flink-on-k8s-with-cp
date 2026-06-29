@@ -1,5 +1,11 @@
 ---
-# cert-manager Certificate for the standalone Kafka REST Proxy — dr.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: Keyfactor Certificate for the Kafka REST Proxy HTTPS
+#              listener — dr.
+########################################################################
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

@@ -1,12 +1,9 @@
 ---
-# CFK ControlCenter CR — qa (1 replica, matching UAT topology)
-#
-# QA has no VM CP analog. This CR is modelled on the UAT CFK build at
-# apps/confluent-platform/uat/controlcenter.yaml.
-#
-# TODO — see apps/confluent-platform/qa/kafka.yaml for the OAuth-values
-# rationale (UAT scope/groupsClaim reused verbatim until Okta admins
-# confirm QA tenancy).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-21 (created), 2026-06-29 (last-modified)
+# Description: CFK ControlCenter CR — qa.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter

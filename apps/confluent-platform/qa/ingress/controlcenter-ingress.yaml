@@ -1,8 +1,11 @@
 ---
-# Ingress exposing Control Center UI publicly — qa.
-# Backend serves HTTPS on 9021 with controlcenter-tls → reencrypt.
-# Of all the CFK component Ingresses, this is the one humans hit most often —
-# C3 is the main browser-facing CP dashboard.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-29 (last-modified)
+# Description: Ingress exposing Control Center UI publicly; reencrypt
+#              termination — qa.
+########################################################################
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

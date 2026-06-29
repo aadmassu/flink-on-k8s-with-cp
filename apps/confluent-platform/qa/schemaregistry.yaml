@@ -1,13 +1,9 @@
 ---
-# CFK SchemaRegistry CR — qa (2 replicas, matching UAT topology)
-#
-# QA has no VM CP analog. This CR is modelled on the UAT CFK build at
-# apps/confluent-platform/uat/schemaregistry.yaml.
-#
-# TODO — confirm with FCB Okta admins whether QA shares the UAT Okta
-# tenant or needs its own. UAT OAuth values are reused verbatim until that
-# confirmation. See apps/confluent-platform/qa/kafka.yaml for the full
-# rationale.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-21 (created), 2026-06-29 (last-modified)
+# Description: CFK SchemaRegistry CR — qa.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry

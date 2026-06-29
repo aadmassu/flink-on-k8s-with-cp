@@ -1,32 +1,9 @@
 ---
-# CFK KafkaRestProxy CR — prd (1 replica, matching VM)
-#
-# PLACEHOLDER — copied verbatim from apps/confluent-platform/dev/ on 2026-06-10
-# with env substitutions (namespace, cluster domain, OAuth scope/groups).
-# Sizing, quotas, ResourceQuota assumptions, comment numbers, and OAuth
-# claim names all inherit DEV values. Walk the file with FCB ops before
-# applying — at minimum confirm:
-#   - namespace prd matches what Container team provisioned
-#   - OAuth scope "11547.DAH(Prod)" and groupsClaim "dahProd_groups" are
-#     correct for the Prod Okta tenant (DR shares the Prod tenant)
-#   - cluster domain matches the cluster's external Load Balancer
-#   - dataVolumeCapacity is appropriate for prd (dev was 10 Gi)
-#   - resources.requests/limits are appropriate for prd (dev is heavily
-#     downsized for the dev quota)
-#
-#
-# Source: apps/confluent-platform/cp-confluent/prd-1/d11547varc-hsu5-rest-proxy.properties
-#
-# Per-VM config carried over:
-#   bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
-#   listeners=https://0.0.0.0:8082
-#   schema.registry.url=https://<sr>:8081
-#   confluent.monitoring.interceptor.topic=_confluent-monitoring
-#   kafka.rest.resource.extension.class=KafkaRestSecurityResourceExtension
-#   OAuth via Okta — issuer/JWKS/audiences/scope per dev properties
-#   confluent.metadata.bootstrap.server.urls -> MDS endpoint
-#
-# Replica count is 1 to match the VM. Bump for HA later if needed.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK KafkaRestProxy CR — prd.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestProxy

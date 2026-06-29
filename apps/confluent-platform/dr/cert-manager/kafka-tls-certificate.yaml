@@ -1,9 +1,11 @@
 ---
-# cert-manager Certificate for the Kafka brokers — dr.
-# Issued by FCB's Keyfactor ClusterIssuer; resulting Secret (kafka-tls) is
-# consumed by the Kafka CR via tls.secretRef. SANs cover both the headless
-# Service per-pod DNS and the round-robin Service DNS, since brokers are
-# addressed both ways internally.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: Keyfactor Certificate for the Kafka brokers (Secret
+#              kafka-tls) — dr.
+########################################################################
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

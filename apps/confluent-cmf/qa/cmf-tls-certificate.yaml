@@ -1,5 +1,11 @@
 ---
-# cert-manager Certificate for the CMF REST endpoint TLS — qa.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-29 (created), 2026-06-29 (last-modified)
+# Description: Keyfactor Certificate for the CMF REST endpoint backend
+#              (Secret cmf-tls) — qa.
+########################################################################
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
