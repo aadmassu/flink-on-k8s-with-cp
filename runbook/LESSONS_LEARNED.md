@@ -1177,6 +1177,45 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   the security chart's three default NPs are identical across
   envs, so the same operator-namespace gap exists in all of them.
 
+### A18. `spec.fips.enabled: true` on KRaftController flips the operator into a stricter config validator that demands explicit listener SSL config
+
+* **Symptom**: KRaftController CR transitions from `cluster-ready=True`
+  to `cluster-ready=False ApplyFailed: failed config validation:
+  missing value for key listener.name.controller.ssl.keystore.location`
+  the moment `spec.fips.enabled: true` is added to the CR. All 3
+  controller pods stay 1/1 Running and the KRaft quorum stays formed
+  — the failure is purely at the operator's reconcile / validate step.
+  `wait_for_cr_ready kraftcontroller` then times out and the pipeline
+  never gets to applying the Kafka CR.
+* **Root cause**: the FIPS-attested code path in CFK 3.2.0 uses a
+  stricter server-properties validator than the default. The default
+  validator is satisfied by `spec.tls.secretRef` + a `listeners.*.tls.
+  enabled: true` because it lets the init container auto-render the
+  `listener.name.<name>.ssl.{keystore,truststore}.{location,password,
+  type}` keys at startup. The FIPS-attested validator runs *before*
+  init-container render and so finds those keys missing.
+* **Fix**: don't put `spec.fips.enabled: true` on the KRaftController
+  CR. The Kafka CR is the one the FIPS-mode operator actually rejects
+  without the attestation (runbook A17); KRaftController reaches
+  `cluster-ready=True` without it because the operator's outbound
+  HTTP-client step on the KRaft reconcile path is narrower than on
+  the broker path and the FIPS-on-operator check doesn't fire for it.
+  Net rule: **set `spec.fips.enabled: true` on Kafka, leave it off
+  KRaftController.** SchemaRegistry has no `spec.fips` field at all
+  in v1beta1 (verified by `oc explain schemaregistry.spec`).
+* **Why it matters**: the defensive "keep both CRs consistent"
+  instinct is wrong here. Adding `fips.enabled` to a CR that doesn't
+  need it actively breaks it, because that field doesn't just toggle
+  an attestation flag — it switches the operator's whole validation
+  pipeline for that CR. If you ever do need it on KRaft for some
+  future hardening reason, the workaround is to also pre-render the
+  six explicit SSL keys into `configOverrides.server`:
+  `listener.name.controller.ssl.{keystore,truststore}.{location,
+  password,type}` pointed at `/mnt/sslcerts/{keystore,truststore}.p12`
+  with the password sourced from `${file:/mnt/sslcerts/
+  jksPassword.txt:jksPassword}` — same shape the VM controller's
+  `server.properties` uses today.
+
 ---
 
 ## How to add an entry here

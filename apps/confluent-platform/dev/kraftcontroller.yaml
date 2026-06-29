@@ -19,14 +19,7 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # FIPS attestation for the FIPS-strict operator. KRaftController has
-  # been reaching cluster-ready=True without this so far (probably
-  # because the operator's outbound-HTTP-client step on KRaft is a
-  # narrower code path than on Kafka), but declaring it is defensive
-  # and keeps both CRs consistent. See kafka.yaml top-of-spec for
-  # the full rationale.
-  fips:
-    enabled: true
+  # No spec.fips.enabled — flips the operator to a stricter validator that demands explicit listener.name.controller.ssl.* in configOverrides.server (runbook A18). Kafka CR keeps it.
   # 3-controller quorum (HA-safe, tolerates one loss). Don't drop to 1 — loses quorum on first restart.
   replicas: 3
   image:
