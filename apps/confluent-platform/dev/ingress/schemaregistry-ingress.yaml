@@ -1,6 +1,11 @@
 ---
-# Ingress exposing Schema Registry REST/UI publicly — dev.
-# Backend serves HTTPS on 8081 with schemaregistry-tls → reencrypt.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Ingress exposing Schema Registry REST/UI publicly.
+#              Backend HTTPS on 8081 (schemaregistry-tls); edge
+#              termination reencrypt.
+########################################################################
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

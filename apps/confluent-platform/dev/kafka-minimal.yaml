@@ -1,55 +1,14 @@
 ---
-# CFK Kafka CR — MINIMAL VARIANT for dev (diagnostic use only)
-#
-# Purpose: isolate which spec feature in apps/confluent-platform/dev/kafka.yaml
-# triggers CFK 3.2.0's `skipping cluster scale due to cluster not healthy`
-# precondition-gate bug on initial install. Applied via
-# confluent-platform.yaml action=reset-kafka-cr with parameter
-# kafkaCRVariant=minimal so the production kafka.yaml stays intact and
-# the experiment is A/B-able.
-#
-# Stripped from kafka.yaml:
-#   - spec.listeners.external           (OAuth + LoadBalancer — primary suspect)
-#   - spec.listeners.custom             (mTLS certonly listener — secondary)
-#   - spec.services.mds                 (embedded MDS with OAuth)
-#   - spec.configOverrides.server[*]    (whole list — all are post-bootstrap
-#                                        settings: topic replication factors,
-#                                        SBC, telemetry, authorizer; none
-#                                        needed for initial-install to succeed)
-# Kept (because removing breaks Kafka startup OR breaks FCB Gatekeeper):
-#   - spec.replicas, image, dataVolumeCapacity, storageClass
-#   - spec.dependencies.kRaftController (required — Kafka can't start without
-#                                        controller quorum)
-#   - spec.listeners.internal           (required — inter-broker comms)
-#   - spec.tls.secretRef                (operator validates this on apply)
-#   - spec.license.secretRef            (CFK refuses to apply without it)
-#   - spec.mountedVolumes               (fcb-trust-bundle for JVM trustStore;
-#                                        broker container may fail TLS handshakes
-#                                        without it)
-#   - spec.configOverrides.jvm          (JVM trustStore wiring — see above)
-#   - spec.pdb                          (FCB [pod-disruption-budget] policy)
-#   - spec.injectLabels + spec.podTemplate.labels
-#                                       (FCB Gatekeeper [required-workload-labels]
-#                                        enforces these at admission)
-#   - spec.podTemplate.{resources, podSecurityContext, affinity, probe}
-#                                       (OpenShift SCC + dev quota fit + node
-#                                        spread)
-#
-# Outcome map:
-#   - If applying this still hits the same gate ("skipping cluster scale due
-#     to cluster not healthy phase=\"\""):  the bug is unrelated to external
-#     listener / OAuth / MDS / configOverrides; almost certainly a CFK 3.2.0
-#     reconciler bug. Open Confluent support with this evidence.
-#   - If applying this LANDS sts/kafka and broker pods come up:  the
-#     stripped section contains the trigger. Add features back one at a
-#     time (external → custom → services.mds → server configOverrides)
-#     and bisect until the failing add reproduces the gate.
-#
-# DO NOT use this as a production manifest. Brokers brought up against this
-# spec have no external listener (Flink jobs can't reach them from outside
-# the namespace), no MDS (no centralized auth for SR/Connect/REST/C3 to use),
-# no mTLS listener (no cert-only client path), and no broker telemetry /
-# SBC / cluster-link metadata replication-factor overrides.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-27 (created), 2026-06-27 (last-modified)
+# Description: CFK Kafka CR — minimal variant (known-good baseline,
+#              diagnostic). Selected via confluent-platform.yaml
+#              kafkaCRVariant=minimal. Strips spec.listeners.{external,
+#              custom}, spec.services.mds, and spec.configOverrides.server
+#              from kafka.yaml; keeps only what's needed for sts/kafka to
+#              come up. DO NOT use as a production manifest.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka

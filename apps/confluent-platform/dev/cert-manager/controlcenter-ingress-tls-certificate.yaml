@@ -1,6 +1,10 @@
 ---
-# cert-manager Certificate for the Control Center UI Ingress — dev.
-# Distinct from controlcenter-tls (backend serving cert).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for the Control Center UI Ingress
+#              edge. Distinct from controlcenter-tls (backend serving cert).
+########################################################################
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

@@ -1,21 +1,13 @@
 ---
-# CFK ControlCenter CR — dev (1 replica, matching VM)
-#
-# Source: apps/confluent-platform/cp-confluent/dev/d11547varc-g5w0-control-center.properties
-#
-# Per-VM config carried over:
-#   confluent.controlcenter.rest.listeners=https://0.0.0.0:9021
-#   confluent.controlcenter.data.dir=/var/lib/confluent/control-center
-#   confluent.controlcenter.streams.num.stream.threads=12
-#   confluent.controlcenter.command.topic.replication=3
-#   confluent.controlcenter.internal.topics.replication=3
-#   confluent.controlcenter.metrics.topic.replication=3
-#   confluent.controlcenter.monitoring.interceptor.topic.replication=3
-#   bootstrap.servers, schema.registry.url, connect cluster reference -> CFK service DNS
-#   Prometheus enabled (port 9090, basic auth)
-#   AlertManager URL (port 9093, basic auth)
-#   OAuth (Okta) for streams + MDS
-#   confluent.controlcenter.cmf.healthcheck.interval.sec=600000 (CMF noise quieted)
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK ControlCenter CR — dev. Currently suspended
+#              (replicas: 0; C3 needs 12 CPU / 16 GiB, dev quota can't
+#              fit it). Production-target spec retained; OAuth+MDS+RBAC
+#              will need v1beta1-shape rework before bring-online.
+#              Runbook A15/A17.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter
@@ -28,40 +20,22 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # TEMP — SUSPENDED (replicas: 0) for the dah-flink-dev ResourceQuota.
-  # Control Center next-gen wants 12 CPU / 16 GiB and no honest reduction
-  # gets it close to the current quota (limits.cpu=2, limits.memory=8Gi).
-  # The StatefulSet exists at 0 replicas so the CR is admitted; no Pod
-  # is created so no quota is consumed. Set replicas: 1 once Tom raises
-  # the namespace quota — the original sizing (12/16 req+limit) is what
-  # the VM C3 ran with.
+  # SUSPENDED — C3 next-gen wants 12/16 req+limit, no honest reduction fits dev quota. Revert to replicas: 1 after quota raise.
   replicas: 0
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:2.5.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
-  # FCB Gatekeeper [required-workload-labels] inspects the auto-generated
-  # StatefulSet (not the CR). injectLabels is CFK's mechanism for pushing
-  # labels into every managed resource — keep aligned with the FCB common-
-  # metadata standard (name, instance, component, part-of, app-id).
+  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet, not the CR.
   injectLabels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/instance: controlcenter
     app.kubernetes.io/component: control-center
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # Deterministic per-pod PVC via the StatefulSet's volumeClaimTemplate:
-  # the single C3 pod always binds to PVC `data-controlcenter-0` on a Ceph
-  # RBD PV. C3's RocksDB state under /var/lib/confluent/control-center
-  # persists across pod restarts and node migrations.
-  # TEMPORARY DEV SIZING — pending namespace ResourceQuota increase.
-  # See kafka.yaml for the full quota math. Once Tom raises the quota,
-  # bump this back to 300 GiB (matching the VM C3 disk).
+  # PVC data-controlcenter-0 on Ceph RBD — RocksDB state survives restarts. Temporary 1 Gi; bump to 300 Gi (VM target) after quota raise. Resources under spec.podTemplate.resources.
   dataVolumeCapacity: 1Gi
   storageClass:
-    name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — C3 RocksDB state under /var/lib/confluent/control-center
-  # Resources MUST live under spec.podTemplate.resources — top-level
-  # spec.resources is not in the ControlCenter CRD and gets pruned at
-  # admission. See schemaregistry.yaml for the full rationale.
+    name: ocs-storagecluster-ceph-rbd
 
   dependencies:
     kafka:
@@ -160,10 +134,7 @@ spec:
   license:
     secretRef: cfk-license
 
-  # FCB org-wide trust bundle — see kafka.yaml for the full rationale.
-  # C3 makes outbound HTTPS to: brokers (Kafka SSL), Schema Registry, Connect,
-  # MDS, and Okta (for the OIDC redirect when a human signs in). All of those
-  # outbound legs rely on the JVM default truststore.
+  # FCB trust bundle for outbound HTTPS (brokers/SR/Connect/MDS/Okta-OIDC).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -174,32 +145,15 @@ spec:
         mountPath: /mnt/sslcerts/fcb-trust-bundle
         readOnly: true
 
-  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
-  # maxUnavailable=0. CFK auto-creates a PDB per workload; for the single-
-  # replica C3 StatefulSet it defaults to maxUnavailable=0, which the
-  # policy reads as "blocks drains forever". maxUnavailable=1 makes the
-  # auto-generated PDB drainable. The C3 PVC is RBD-attached so on node
-  # drain the pod reschedules to another node and re-binds the same PVC;
-  # brief UI/monitoring outage during the move is acceptable for dev.
+  # FCB Gatekeeper [pod-disruption-budget] rejects CFK's auto-generated PDB at maxUnavailable=0; setting 1 makes it drainable.
   pdb:
     enabled: true
     maxUnavailable: 1
 
-  # NOTE — Next-gen Prometheus + AlertManager bundle deliberately omitted
-  # for the initial install. The CFK ControlCenter CRD exposes monitoring
-  # under spec.services.{prometheus,alertmanager} (NOT spec.monitoring),
-  # and each block requires its own image, pvc.storageClass.name, basic-auth
-  # secret, and (for prometheus) a sized PVC. Pulling those values together
-  # for FCB needs a separate sizing/SC/secret review with Tom, so we ship
-  # C3 without the embedded monitoring bundle first and add it once the
-  # base install is green. The c3-prometheus-basic-auth and
-  # c3-alertmanager-basic-auth secrets the pipeline creates remain in place
-  # so re-enabling later is a CR-only change.
+  # Next-gen Prometheus + AlertManager bundle deferred — needs spec.services.{prometheus,alertmanager} blocks with image/pvc/basic-auth wiring. c3-prometheus-basic-auth + c3-alertmanager-basic-auth secrets exist so re-enable is CR-only.
 
   configOverrides:
-    # JVM-default truststore → fcb-trust-bundle (see kafka.yaml for rationale).
-    # Password is trust-manager's default ("changeit"); confirm with Container
-    # team if the FCB Bundle was rebuilt with a custom password.
+    # JVM default truststore -> fcb-trust-bundle (see kafka.yaml).
     jvm:
       - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
@@ -215,14 +169,7 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # Dev-appropriate sizing — see LESSONS_LEARNED F2. The original
-    # 12 CPU / 16 GiB block was UAT-shaped and didn't fit a dev
-    # ResourceQuota (it doesn't fit the *current* dev quota either).
-    # 2 CPU / 4 GiB is the documented dev-smoke target; C3's embedded
-    # streams app + RocksDB state needs the heap headroom but not the
-    # retention or fanout that drives uat/prd sizing. Stays at
-    # replicas: 0 until the team explicitly re-enables — these numbers
-    # are what gets applied the moment it does.
+    # Dev-smoke sizing (runbook F2). VM/UAT target is 12/16; these numbers apply when replicas comes off 0.
     resources:
       requests:
         cpu: "1"
@@ -230,14 +177,9 @@ spec:
       limits:
         cpu: "2"
         memory: 4Gi
-    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
-    # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
-    # admission. See kafka.yaml for the full rationale.
+    # Disable operator-injected fsGroup/runAsUser=1001 so OpenShift restricted-v2 SCC picks the namespace UID range (see kafka.yaml).
     podSecurityContext: {}
-    # podTemplate.labels lands on the Pod template inside the StatefulSet.
-    # injectLabels above only labels the StatefulSet; FCB Gatekeeper's
-    # [required-workload-labels] policy also inspects the Pod at admission,
-    # so the FCB common-metadata labels must be repeated here.
+    # Repeated here because FCB Gatekeeper [required-workload-labels] inspects the Pod, not just the StatefulSet.
     labels:
       app.kubernetes.io/name: controlcenter
       app.kubernetes.io/instance: controlcenter

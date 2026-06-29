@@ -1,93 +1,16 @@
 ---
-# CFK Kafka CR — BISECT VARIANT for dev (diagnostic, mutable)
-#
-# Purpose: starting from kafka-minimal.yaml (the confirmed-working baseline
-# from the 2026-06-27T16:14Z run), add back one chunk of features at a time
-# from kafka.yaml (production) to find which chunk causes the operator to
-# silently bail without writing status conditions or events on the Kafka
-# CR. See project-docs/pump.txt for the bisect plan and step log.
-#
-# This file is MUTATED between bisect rounds. kafka-minimal.yaml stays
-# pristine as the known-good fallback. Selected via
-# confluent-platform.yaml install with kafkaCRVariant=bisect.
-#
-# Round 1 (Try A): minimal + spec.configOverrides.server[*]    [DONE — NOT
-#                                                                THE TRIGGER]
-#   Tested 2026-06-27T16:42Z. Operator reconciled cleanly: SuccessfulCreate
-#   events present, status conditions populated (cluster-ready=False
-#   ReplicasNotReady), sts/kafka 3/3 created, kafka-0/1/2 pods scheduled.
-#   No silent-bail. Brokers DID crash with
-#     org.apache.kafka.common.config.ConfigException: You must specify
-#     confluent.metadata.bootstrap.servers to configure the RBAC provider.
-#   because the configOverrides.server list includes
-#   `confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL` (RBAC
-#   provider) but services.mds was stripped, so CFK had no MDS bootstrap
-#   to auto-populate. That's expected collateral of the bisect — RBAC
-#   wants MDS — and is fixed when services.mds gets added in Round 2.
-#   It does NOT affect the silent-bail signal we're hunting.
-#
-# Round 2 (Try B): bisect-after-A + spec.services.mds   [INCONCLUSIVE —
-#                                                        BLOCK IS STRIPPED
-#                                                        AT ADMISSION]
-#   Tested 2026-06-27T16:55Z. Operator reconciled cleanly (events +
-#   status + sts/kafka 3/3 + 3 broker pods), but the kafka CR yaml AFTER
-#   admission showed `services:` containing ONLY the auto-added
-#   `kafka-rest.internalEndpoint`, NOT our `mds:` sub-block. CFK 3.2.0
-#   v1beta1 silently dropped the entire `services.mds:` block we lifted
-#   from kafka.yaml — same family of CRD-schema reshape rejections we
-#   already hit with `dependencies.kRaftController.authentication`
-#   (needed `controllerListener` wrapping) and with the flat OAuth
-#   fields under `listeners.external.authentication.*` (needed
-#   `oauthSettings` wrapping). Brokers consequently failed the same
-#   RBAC-needs-MDS check as Round 1 because no MDS was actually
-#   provisioned. CRITICAL implication: the production kafka.yaml's
-#   services.mds block is ALSO being stripped on every apply — so the
-#   original production silent-bail cannot be attributed to MDS (the
-#   operator never sees MDS). The trigger must be in one of the two
-#   remaining sections: spec.listeners.external or spec.listeners.custom.
-#   diagnostics.yaml now explains kafka.spec.services / .services.mds /
-#   .services.kafkaRest / .authorization / .identityProvider so the next
-#   run captures the correct v1beta1 shape for MDS to use AFTER we
-#   identify the silent-bail trigger.
-#
-# Round 3 (Try C): bisect-after-A + spec.listeners.external   [INCONCLUSIVE —
-#                                                              BLOCK STRIPPED
-#                                                              AT ADMISSION]
-#   Tested 2026-06-27T17:09Z. Operator reconciled cleanly (events +
-#   status + sts/kafka 3/3 + 3 pods). Brokers CrashLoopBackOff on same
-#   RBAC-needs-MDS error as Rounds 1+2 (expected). Post-admission kafka
-#   CR yaml showed `spec.listeners:` contained ONLY the `internal:`
-#   block — the entire `external:` block we applied (authentication.type
-#   =oauth + oauthSettings + tls.enabled=true) was silently dropped at
-#   admission. CFK 3.2.0 still created an external listener with
-#   PLAINTEXT defaults regardless (broker config line 792:
-#   `advertised.listeners = EXTERNAL://...:9092` with
-#   `security.protocol=PLAINTEXT`), so OAuth-on-external has NEVER
-#   actually taken effect on this cluster either. Same silent-strip
-#   pattern as services.mds in Round 2. The Round-3 oc explain queries
-#   added to diagnostics.yaml at commit e67188f did NOT appear in this
-#   dump's diagnostic output, so diagnostics.yaml needs to be synced to
-#   the FCB ADO side before the next run.
-#
-# Round 4 (Try D): bisect-after-A + spec.listeners.custom        [CURRENT]
-#   Adds the mTLS certonly listener on port 9094 lifted verbatim from
-#   kafka.yaml lines 176-182. listeners.external (stripped) and
-#   services.mds (stripped) are still NOT carried over since they don't
-#   affect the operator-reconcile signal. This is the LAST remaining
-#   block from the production spec to test. Two possible outcomes:
-#   - Silent-bail returns -> listeners.custom IS the trigger (specifically
-#     the certonly+mtls combination, or the port 9094 conflict with
-#     something CFK 3.2.0 default-allocates).
-#   - Operator stays happy -> NONE of the spec sections trigger
-#     silent-bail. The original production silent-bail (2026-06-27
-#     diagnostic showing zero events / zero conditions / no sts-kafka)
-#     was operator-state corruption from a prior partial install rather
-#     than a spec-driven trigger. Production kafka.yaml is then safe to
-#     apply directly after wipe+install; the silent-bail was a one-time
-#     stuck state cleared by the wipePVCs path.
-#
-# DO NOT use this as a production manifest under any circumstances. This
-# file's spec is intentionally an in-progress diagnostic snapshot.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Description: CFK Kafka CR — bisect variant (diagnostic, mutable).
+#              Selected via confluent-platform.yaml kafkaCRVariant=bisect.
+#              Layers production-spec features back on top of the
+#              minimal baseline one chunk at a time. Bisect rounds A-D
+#              concluded the original production silent-bail was
+#              operator-state corruption, not spec-driven. See
+#              project-docs/pump.txt + runbook A15. DO NOT use as a
+#              production manifest.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka

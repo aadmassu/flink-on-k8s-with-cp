@@ -19,7 +19,7 @@
 #              probe, and CMF-scoped events.
 #            Touches nothing — `set +e` and a trailing `exit 0` keep it
 #            strictly observational.
-# Author:    Ayele Admassu
+# Author:    Ayu Admassu
 # Created:   2026-06-17
 #
 # Was previously embedded in confluent-platform.yaml under

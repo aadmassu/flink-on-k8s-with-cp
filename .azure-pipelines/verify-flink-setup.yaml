@@ -7,7 +7,7 @@
 #            Proxy, NetApp S3, SQL Server) use connectivity-test.yaml — that
 #            pipeline deploys a busybox pod inside the namespace.
 #
-# Author:    Ayele Admassu
+# Author:    Ayu Admassu
 # Created:   2026-04-29
 #
 # Variable Group: kafka-openshift-credentials-<env>

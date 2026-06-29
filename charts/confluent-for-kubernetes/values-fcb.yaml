@@ -1,16 +1,13 @@
-# Confluent for Kubernetes — actual values applied by FCB Container Platforms
-# (Rick Mulder) to the confluent-operator namespace on the dev OpenShift cluster.
-#
-# REFERENCE ONLY. This repo does NOT deploy the CFK operator — Container
-# Platforms owns the operator install via a separate pipeline. This overlay
-# is the live snapshot of what's running so we can reason about operator
-# behavior (FIPS mode, watched namespaces, RBAC shape) without having to
-# pull it from the cluster every time. See memory
-# project_fcb_cfk_operator_ownership.
-#
-# Captured 2026-06-29 from Rick.
-#
-# To diff against upstream defaults: `diff values.yaml values-fcb.yaml`.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-29 (created), 2026-06-29 (last-modified)
+# Description: CFK operator Helm values applied by FCB Container
+#              Platforms (Rick Mulder) to the confluent-operator
+#              namespace. REFERENCE ONLY — this repo does not deploy
+#              the operator; Container Platforms owns the install.
+#              Diff against upstream defaults: `diff values.yaml
+#              values-fcb.yaml`. Memory project_fcb_cfk_operator_ownership.
+########################################################################
 
 # TODO Onboard secretStore in `shared` repo, update secret in secrets release
 licenseSecretRef: confluent-license-secret

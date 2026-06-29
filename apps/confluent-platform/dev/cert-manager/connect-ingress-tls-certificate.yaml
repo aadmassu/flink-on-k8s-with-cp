@@ -1,6 +1,10 @@
 ---
-# cert-manager Certificate for the Kafka Connect REST/UI Ingress — dev.
-# Distinct from connect-tls (backend serving cert).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for the Kafka Connect Ingress edge.
+#              Distinct from connect-tls (backend serving cert).
+########################################################################
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

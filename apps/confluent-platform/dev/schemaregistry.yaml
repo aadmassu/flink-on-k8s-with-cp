@@ -1,12 +1,14 @@
 ---
-# CFK SchemaRegistry CR — dev (1 replica). VM source:
-# apps/confluent-platform/cp-confluent/dev/d11547varc-4559-schema-registry.properties.
-# Interim spec: SASL_SSL/PLAIN to broker INTERNAL:9071 (anonymous
-# PLAINTEXT:9092 fails FIPS-mode operator check); no spec.authentication,
-# no spec.authorization, no dependencies.mds; configOverrides drops
-# JETTY_AUTH + SR security extension. All four blocks kept as
-# commented-out yaml for one-pass re-add. Runbook A15/A17 + memory
-# project_cfk_v1beta1_silent_strips for the bisect history.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK SchemaRegistry CR — dev (1 replica). Interim spec:
+#              SASL_SSL/PLAIN to broker INTERNAL:9071 (FIPS-mode operator
+#              rejects anonymous PLAINTEXT); no auth, no authz, no MDS
+#              dep; configOverrides drops JETTY_AUTH + SR security
+#              extension. All four kept as commented-out yaml for
+#              one-pass re-add. Runbook A15/A17.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry

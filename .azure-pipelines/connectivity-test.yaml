@@ -1,6 +1,6 @@
 # Pipeline:  connectivity-test
 # Purpose:   Push busybox to Artifactory, deploy in namespace, and test SQL Server connectivity
-# Author:    Ayele Admassu
+# Author:    Ayu Admassu
 # Created:   2026-04-17
 #
 # Variable Group: kafka-openshift-credentials-<env>

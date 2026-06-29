@@ -1,8 +1,11 @@
 ---
-# cert-manager Certificate for Control Center next-gen — dev.
-# C3 next-gen also serves the embedded Prometheus and AlertManager on the
-# same Pod, so the SANs include those endpoints' DNS too even though they
-# reuse the same cert as the C3 REST listener.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for Control Center next-gen (REST
+#              + embedded Prometheus + AlertManager listeners share this
+#              backend cert).
+########################################################################
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

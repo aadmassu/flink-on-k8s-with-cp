@@ -1,14 +1,14 @@
 ---
-# CFK Kafka CR — dev (3-broker, KRaft mode). VM source:
-# apps/confluent-platform/cp-confluent/dev/d11547varc-*-broker-*-server.properties.
-# Interim spec: no authorizer, no MDS, no OAuth listener, no mTLS-certonly,
-# no telemetry. CFK 3.2.0 v1beta1 silently strips services.mds /
-# listeners.external.{auth,tls} / listeners.custom on apply -- removed
-# from file so yaml matches cluster. ConfluentServerAuthorizer also
-# removed because its RBAC provider always demands MDS bootstrap (broker
-# fatals "You must specify confluent.metadata.bootstrap.servers"). All
-# four come back once the schema-fix workstream lands the v1beta1 shape
-# (memory project_cfk_v1beta1_silent_strips, runbook A15/A17, pump.txt).
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Description: CFK Kafka CR — dev (3-broker, KRaft). Interim spec: no
+#              authorizer, no MDS, no OAuth listener, no mTLS-certonly,
+#              no telemetry — services.mds / listeners.external.{auth,
+#              tls} / listeners.custom silent-stripped by CFK 3.2.0
+#              v1beta1. Re-added once schema-fix workstream lands.
+#              Runbook A15/A17 + memory project_cfk_v1beta1_silent_strips.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka

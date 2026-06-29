@@ -1,6 +1,6 @@
 # Pipeline:  flink-environments
 # Purpose:   Create Flink environments and Kafka catalogs via CMF REST API
-# Author:    Ayele Admassu
+# Author:    Ayu Admassu
 # Created:   2026-04-20
 #
 # Variable Group: kafka-openshift-credentials-<env>

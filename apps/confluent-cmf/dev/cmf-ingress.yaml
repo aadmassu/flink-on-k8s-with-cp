@@ -1,21 +1,11 @@
 ---
-# Ingress exposing the CMF management UI publicly — dev.
-#
-# Backend is `cmf-service` (created by the Helm release) on port 443. CMF
-# inside the pod serves HTTPS on container port 8080 with the existing
-# `cmf-tls` Secret as its serving cert — so the data path is:
-#
-#   browser  --HTTPS (cmf-ingress-tls)-->  HAProxy router
-#            --HTTPS (cmf-tls)-->  cmf-service:443  -->  pod:8080
-#
-# Both legs are HTTPS, which is exactly what `reencrypt` termination is for.
-# The PDF (https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress) explicitly recommends reencrypt as the
-# annotation default when the backend is HTTPS.
-#
-# Dev has no OAuth in front of CMF today (cmf.authentication is not set in
-# values.yaml). When UAT+ enables OAuth per FCB data-protection standard,
-# the same Ingress shape still works — Spring Boot inside the pod handles
-# token validation on the backend; the Ingress just transports HTTPS.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Ingress exposing the CMF management UI publicly. Edge
+#              (cmf-ingress-tls) → HAProxy → cmf-service:443 → pod:8080
+#              (cmf-tls). Both legs HTTPS → reencrypt termination.
+########################################################################
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

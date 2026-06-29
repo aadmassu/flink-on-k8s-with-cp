@@ -1,6 +1,13 @@
 ---
-# Confluent Manager for Apache Flink (CMF) values - dev
-# Flink-only validation environment (no local Kafka)
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-03-04 (created), 2026-06-17 (last-modified)
+# Description: CMF (Confluent Manager for Apache Flink) Helm values —
+#              dev. Single-tenant (watches its own namespace via
+#              namespaced=true), SQL Server catalog (external), license
+#              + encryption key via ESO from CyberArk. No local Kafka in
+#              this env; Flink job sinks point at VM Kafka.
+########################################################################
 
 cmf:
   # Single-tenant CMF per env — only watch its own namespace. Pairs with

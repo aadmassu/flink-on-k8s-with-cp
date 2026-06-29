@@ -1,6 +1,6 @@
 # Pipeline:  5-cmf
 # Purpose:   Install Confluent Manager for Apache Flink (CMF) via Helm
-# Author:    Ayele Admassu
+# Author:    Ayu Admassu
 # Created:   2026-04-09
 #
 # Variable Group: kafka-openshift-credentials-<env>

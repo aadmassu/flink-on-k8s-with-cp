@@ -1,6 +1,11 @@
 ---
-# Ingress exposing Kafka Connect REST/UI publicly — dev.
-# Backend serves HTTPS on 8083 with connect-tls → reencrypt.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Ingress exposing Kafka Connect REST/UI publicly. Backend
+#              serves HTTPS on 8083 (connect-tls); edge termination
+#              reencrypt.
+########################################################################
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

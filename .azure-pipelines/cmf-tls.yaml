@@ -1,7 +1,7 @@
 # Pipeline:  cmf-tls
 # Purpose:   Apply the cert-manager Certificate that issues the TLS material
 #            (cmf-tls Secret) used by the CMF REST endpoint.
-# Author:    Ayele Admassu
+# Author:    Ayu Admassu
 # Created:   2026-04-29
 #
 # Variable Group: kafka-openshift-credentials-<env>

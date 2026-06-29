@@ -1,6 +1,6 @@
 # Pipeline:  push-image
 # Purpose:   Load a Docker image from repo tar file and push to Artifactory
-# Author:    Ayele Admassu
+# Author:    Ayu Admassu
 # Created:   2026-04-16
 #
 # Variable Group: kafka-openshift-credentials-<env>

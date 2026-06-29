@@ -1,9 +1,12 @@
 ---
-# cert-manager Certificate for the KRaft controllers — dev.
-# Issued by FCB's Keyfactor ClusterIssuer; resulting Secret (kraftcontroller-tls)
-# is consumed by the KRaftController CR via tls.secretRef. Controllers are
-# internal-only (no external listener) — SANs cover the headless Service
-# per-pod DNS and the Service DNS used by brokers when joining the quorum.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for the KRaft controllers (Secret
+#              kraftcontroller-tls; consumed via tls.secretRef). SANs
+#              cover headless per-pod DNS + Service DNS for quorum
+#              joiners. Internal-only.
+########################################################################
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

@@ -1,5 +1,10 @@
 ---
-# cert-manager Certificate for Schema Registry — dev.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for Schema Registry's HTTPS REST
+#              listener (backend serving cert; in-cluster SANs only).
+########################################################################
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

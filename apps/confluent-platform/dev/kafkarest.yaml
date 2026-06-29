@@ -1,18 +1,12 @@
 ---
-# CFK KafkaRestProxy CR — dev (1 replica, matching VM)
-#
-# Source: apps/confluent-platform/cp-confluent/dev/d11547varc-hsu5-rest-proxy.properties
-#
-# Per-VM config carried over:
-#   bootstrap.servers=<3 brokers>:9092 (SASL_SSL OAUTHBEARER)
-#   listeners=https://0.0.0.0:8082
-#   schema.registry.url=https://<sr>:8081
-#   confluent.monitoring.interceptor.topic=_confluent-monitoring
-#   kafka.rest.resource.extension.class=KafkaRestSecurityResourceExtension
-#   OAuth via Okta — issuer/JWKS/audiences/scope per dev properties
-#   confluent.metadata.bootstrap.server.urls -> MDS endpoint
-#
-# Replica count is 1 to match the VM. Bump for HA later if needed.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Description: CFK KafkaRestProxy CR — dev (1 replica). Production-target
+#              spec with OAuth+MDS+RBAC; needs v1beta1-shape rework before
+#              bring-online against the current FIPS-mode operator.
+#              Runbook A15/A17.
+########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestProxy
@@ -31,19 +25,14 @@ spec:
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
-  # FCB Gatekeeper [required-workload-labels] inspects the auto-generated
-  # StatefulSet (not the CR). injectLabels is CFK's mechanism for pushing
-  # labels into every managed resource — keep aligned with the FCB common-
-  # metadata standard (name, instance, component, part-of, app-id).
+  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet, not the CR.
   injectLabels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/instance: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # Resources MUST live under spec.podTemplate.resources — top-level
-  # spec.resources is not in the KafkaRestProxy CRD and gets pruned at
-  # admission. See schemaregistry.yaml for the full rationale.
+  # Resources under spec.podTemplate.resources — top-level spec.resources is pruned at admission.
 
   dependencies:
     kafka:
@@ -95,9 +84,7 @@ spec:
             groupsClaimName: dahDev_groups
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
 
-  # CFK 3.1.1 requires OAuth config nested under authentication.oauth.{secretRef,configuration}
-  # — flat fields directly under authentication.* are rejected with
-  # "oauthForRest: missing authentication.oauth struct".
+  # OAuth on REST proxy. Flat fields under authentication.* are rejected with "oauthForRest: missing authentication.oauth struct".
   authentication:
     type: oauth
     oauth:
@@ -121,9 +108,7 @@ spec:
   license:
     secretRef: cfk-license
 
-  # FCB org-wide trust bundle — see kafka.yaml for the full rationale.
-  # REST Proxy makes outbound HTTPS to: Okta (OAuth/JWKS), Schema Registry,
-  # MDS on the broker. JVM default truststore = fcb-trust-bundle.
+  # FCB trust bundle for outbound HTTPS (Okta/SR/MDS).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -134,20 +119,13 @@ spec:
         mountPath: /mnt/sslcerts/fcb-trust-bundle
         readOnly: true
 
-  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
-  # maxUnavailable=0. CFK auto-creates a PDB per workload; for a single-
-  # replica REST proxy it defaults to maxUnavailable=0, which the policy
-  # reads as "blocks drains forever". maxUnavailable=1 makes the
-  # auto-generated PDB drainable. Brief REST outage during node drain is
-  # acceptable for dev; bump replicas first if HA is required.
+  # FCB Gatekeeper [pod-disruption-budget] rejects CFK's auto-generated PDB at maxUnavailable=0; setting 1 makes it drainable.
   pdb:
     enabled: true
     maxUnavailable: 1
 
   configOverrides:
-    # JVM-default truststore → fcb-trust-bundle (see kafka.yaml for rationale).
-    # Password is trust-manager's default ("changeit"); confirm with Container
-    # team if the FCB Bundle was rebuilt with a custom password.
+    # JVM default truststore -> fcb-trust-bundle (see kafka.yaml).
     jvm:
       - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
@@ -158,13 +136,7 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # Raised from prior TEMP (50m/192Mi req, 100m/384Mi lim). Same
-    # reasoning as schemaregistry.yaml — the CFK init-container floor
-    # dominates pod-level quota accounting, so the main-container bump
-    # is "free" against ResourceQuota and gives REST Proxy heap room
-    # for the HTTP -> Kafka client connection pool without OOMing on
-    # bursty REST traffic. Heap lands at ~256 MiB; non-heap headroom
-    # up to the 512 MiB main-container limit.
+    # ~256 MiB heap (CFK init-container floor already dominates pod quota; main-container bump is free).
     resources:
       requests:
         cpu: "100m"
@@ -183,14 +155,9 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
-    # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
-    # admission. See kafka.yaml for the full rationale.
+    # Disable operator-injected fsGroup/runAsUser=1001 so OpenShift restricted-v2 SCC picks the namespace UID range (see kafka.yaml).
     podSecurityContext: {}
-    # podTemplate.labels lands on the Pod template inside the StatefulSet.
-    # injectLabels above only labels the StatefulSet; FCB Gatekeeper's
-    # [required-workload-labels] policy also inspects the Pod at admission,
-    # so the FCB common-metadata labels must be repeated here.
+    # Repeated here because FCB Gatekeeper [required-workload-labels] inspects the Pod, not just the StatefulSet.
     labels:
       app.kubernetes.io/name: kafkarest
       app.kubernetes.io/instance: kafkarest

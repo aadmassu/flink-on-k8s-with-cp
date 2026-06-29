@@ -1,21 +1,13 @@
 ---
-# cert-manager Certificate for the CMF management UI Ingress — dev.
-#
-# Produces Secret `cmf-ingress-tls` (Keyfactor-signed via the `keyfactor`
-# ClusterIssuer). The companion Ingress at apps/confluent-cmf/dev/cmf-ingress.yaml
-# references this Secret via `spec.tls.secretName` — native K8s plumbing,
-# no extra controller needed.
-#
-# Distinct from `cmf-tls` (which already exists in this directory): cmf-tls is
-# the BACKEND cert that Spring Boot inside the CMF pod uses to serve HTTPS on
-# port 8080 inside the cluster. cmf-ingress-tls is the EDGE cert the HAProxy
-# router presents to browsers hitting the public hostname. Two distinct certs
-# because they cover different DNS names — backend covers the in-cluster svc
-# name, edge covers the public *.apps.dv-p.ocp.fcbint.net host.
-#
-# Host follows the Container Team OpenShift Ingress guidance (Option 1:
-# Internal Bank Network - OCP). DNS is automatic for dev (wildcard maintained
-# by Container Team) — no DNS Request needed.
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for the CMF management UI Ingress
+#              edge (Secret cmf-ingress-tls). Distinct from cmf-tls
+#              (backend cert Spring Boot uses for HTTPS on the CMF pod);
+#              this is the edge cert HAProxy presents to browsers.
+#              Reencrypt termination spans both legs.
+########################################################################
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
