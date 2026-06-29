@@ -2,23 +2,8 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-04-01 (created), 2026-06-29 (last-modified)
-# Description: CFK Kafka CR — Phase 1 baby-step baseline for dev. Goal:
-#              reach cluster-ready=True before layering Okta/MDS/RBAC
-#              and the mTLS certonly listener (Phase 2).
-#
-#              Listener shape — SASL_SSL/PLAIN on both internal AND
-#              external. External MUST be explicitly declared: if it's
-#              absent, CFK auto-creates an EXTERNAL:PLAINTEXT default,
-#              the FIPS-mode operator periodically re-inspects the live
-#              broker's listener.security.protocol.map, sees PLAINTEXT,
-#              and flips cluster-ready=False ApplyFailed (observed
-#              2026-06-29T20:34Z; runbook A17).
-#
-#              Phase 1 intentionally omits services.mds,
-#              ConfluentServerAuthorizer + CONFLUENT provider, OAuth on
-#              external, mTLS certonly, telemetry. Phase 2 layers those
-#              on top using the variable group (oauth-broker, oauth-
-#              schemaregistry, oauth-mds-rest, mds-token-keypair, etc).
+# Description: CFK Kafka CR — Phase 1 baseline (SASL_SSL/PLAIN on internal +
+#              external, FIPS attested). Phase 2 layers MDS/OAuth/mTLS/telemetry.
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -34,13 +19,7 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # FIPS attestation for the operator. CFK operator at FCB ships with
-  # fipsmode=true; without this block the operator refuses to build its
-  # outbound HTTP client and the CR sits at cluster-ready=False
-  # ApplyFailed "TLS not Enabled in Application when FIPS mode is true
-  # in Operator" -- even when every listener is TLS. Confirmed via
-  # `oc explain kafka.spec.fips` (enabled is a required boolean; mode
-  # is an optional string we leave unset to take the operator default).
+  # FIPS attestation for the operator — required at FCB (runbook A17).
   fips:
     enabled: true
 
@@ -73,10 +52,7 @@ spec:
         tls:
           enabled: true
 
-  # Both listeners SASL_SSL/PLAIN pointing at the same sasl-plain-internal
-  # Secret. External explicitly declared to prevent CFK's auto-PLAINTEXT
-  # default tripping the FIPS check. Inter-broker auto-routes onto CFK's
-  # generated `replication` listener (runbook A16).
+  # Internal + external SASL_SSL/PLAIN. External must be explicit or CFK auto-creates a PLAINTEXT default and trips FIPS (runbook A17).
   listeners:
     internal:
       authentication:

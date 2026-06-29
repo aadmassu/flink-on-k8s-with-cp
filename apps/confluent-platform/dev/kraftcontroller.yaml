@@ -2,10 +2,8 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: CFK KRaftController CR — dev (3-node KRaft quorum on
-#              CONTROLLER:9093 SASL_SSL/PLAIN). KRAFT_ACL-only authz
-#              (no MDS), telemetry + audit log disabled (chicken-and-egg
-#              with brokers; runbook A8/A9/A12).
+# Description: CFK KRaftController CR — dev (3-node KRaft quorum, SASL_SSL/PLAIN,
+#              KRAFT_ACL authz). Telemetry + audit disabled (runbook A8/A9/A12).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -66,8 +64,7 @@ spec:
   pdb:
     enabled: true
     maxUnavailable: 1
-  # Carried over from controller .properties so the cluster keeps the same
-  # internal-topic replication factors and authorizer config as the VM.
+  # Mirrors VM controller server.properties (replication factors + authorizer).
   configOverrides:
     # JVM default truststore -> fcb-trust-bundle (see kafka.yaml).
     jvm:
@@ -75,12 +72,7 @@ spec:
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
-      # Controllers intentionally keep ConfluentServerAuthorizer with
-      # KRAFT_ACL-only providers. Do NOT copy this combo to brokers when
-      # enabling MDS/RBAC in Phase 2 — brokers require the full
-      # CONFLUENT,KRAFT_ACL path AND a working MDS bootstrap (runbook A15).
-      # Controllers manage ACLs directly from the KRaft metadata log and
-      # never reach for MDS, so the class+providers asymmetry is safe here.
+      # KRAFT_ACL-only authz — safe for controllers, do NOT mirror on brokers in Phase 2 (runbook A15).
       - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
       - confluent.authorizer.access.rule.providers=KRAFT_ACL
       - super.users=User:admin

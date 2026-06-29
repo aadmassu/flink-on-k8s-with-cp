@@ -2,11 +2,8 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: CFK SchemaRegistry CR — Phase 1 baby-step baseline for
-#              dev. Goal: bring SR up after Kafka cluster-ready. HTTPS
-#              listener + SASL_SSL/PLAIN to Kafka INTERNAL:9071 +
-#              _schemas RF=3 + Schema Exporter extension. Phase 2 will
-#              add SR OAuth + JETTY_AUTH + RBAC + dependencies.mds.
+# Description: CFK SchemaRegistry CR — Phase 1 baseline (HTTPS + SASL_SSL/PLAIN
+#              to Kafka INTERNAL). Phase 2 layers OAuth/JETTY_AUTH/RBAC.
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
