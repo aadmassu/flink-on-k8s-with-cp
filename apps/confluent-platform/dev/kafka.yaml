@@ -2,12 +2,14 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-04-01 (created), 2026-06-29 (last-modified)
-# Description: CFK Kafka CR — dev (3-broker, KRaft). Interim spec: no
-#              authorizer, no MDS, no OAuth listener, no mTLS-certonly,
-#              no telemetry — services.mds / listeners.external.{auth,
-#              tls} / listeners.custom silent-stripped by CFK 3.2.0
-#              v1beta1. Re-added once schema-fix workstream lands.
-#              Runbook A15/A17 + memory project_cfk_v1beta1_silent_strips.
+# Description: CFK Kafka CR — dev (3-broker, KRaft). VM-aligned listener
+#              topology: internal :9071 SASL_SSL/PLAIN (=VM BROKER),
+#              external :9092 SASL_SSL/OAUTHBEARER via Okta (=VM
+#              INTERNAL), custom certonly :9094 SSL/mTLS (=VM CERTONLY).
+#              Still no authorizer / no services.mds — those are silent-
+#              stripped by CFK 3.2.0 v1beta1 (runbook A15) and require
+#              the schema-fix workstream before re-enable. Runbook A17
+#              for FIPS-mode operator behavior.
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -16,7 +18,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-29-fresh-wipe-rebuild"
+    platform.confluent.io/force-reconcile: "2026-06-29-vm-aligned-listeners"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -53,7 +55,15 @@ spec:
         tls:
           enabled: true
 
-  # Interim: only `internal` declared (PLAIN+TLS). CFK auto-creates a PLAINTEXT EXTERNAL on :9092. OAuth-on-external + mTLS certonly :9094 dropped pending schema-fix workstream.
+  # VM-aligned listener topology (see VM source per top-of-file note).
+  # CFK convention vs VM naming:
+  #   internal :9071  SASL_SSL/PLAIN  ↔ VM BROKER:9091  (inter-broker + Phase 2 components)
+  #   external :9092  SASL_SSL/OAUTH  ↔ VM INTERNAL:9092 (OAuth app clients via Okta)
+  #   custom certonly :9094  SSL/mTLS ↔ VM CERTONLY:9094 (cert-only clients)
+  # CFK auto-creates a `replication` listener on :9072 for inter-broker
+  # JAAS bidirectional wiring (see runbook A16).
+  # External PLAINTEXT default would trip FIPS-mode operator (runbook A17)
+  # — declaring TLS-enabled external explicitly avoids that.
   listeners:
     internal:
       authentication:
@@ -62,6 +72,26 @@ spec:
           secretRef: sasl-plain-internal
       tls:
         enabled: true
+    external:
+      authentication:
+        type: oauth
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(Dev)
+          subClaimName: sub
+          groupsClaimName: dahDev_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+    custom:
+      - name: certonly
+        port: 9094
+        authentication:
+          type: mtls
+        tls:
+          enabled: true
 
   tls:
     secretRef: kafka-tls
