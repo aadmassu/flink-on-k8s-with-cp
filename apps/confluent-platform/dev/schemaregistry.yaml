@@ -2,12 +2,11 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: CFK SchemaRegistry CR — dev (1 replica). Interim spec:
-#              SASL_SSL/PLAIN to broker INTERNAL:9071 (FIPS-mode operator
-#              rejects anonymous PLAINTEXT); no auth, no authz, no MDS
-#              dep; configOverrides drops JETTY_AUTH + SR security
-#              extension. All four kept as commented-out yaml for
-#              one-pass re-add. Runbook A15/A17.
+# Description: CFK SchemaRegistry CR — Phase 1 baby-step baseline for
+#              dev. Goal: bring SR up after Kafka cluster-ready. HTTPS
+#              listener + SASL_SSL/PLAIN to Kafka INTERNAL:9071 +
+#              _schemas RF=3 + Schema Exporter extension. Phase 2 will
+#              add SR OAuth + JETTY_AUTH + RBAC + dependencies.mds.
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -16,47 +15,27 @@ metadata:
   name: schemaregistry
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-27-sr-sasl-plain-tls"
+    platform.confluent.io/force-reconcile: "2026-06-29-phase1-baby-step"
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # TEMP — resources scaled down for the dah-flink-dev ResourceQuota.
-  # Revert sizing to 4/4 req+limit when Tom raises the namespace quota.
   replicas: 1
+
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
-  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet, not the CR — injectLabels pushes these onto every managed resource.
+
   injectLabels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/instance: schemaregistry
     app.kubernetes.io/component: schema-registry
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # Resources under spec.podTemplate.resources — top-level spec.resources is pruned at admission.
 
   dependencies:
-    # SASL_SSL/PLAIN to broker INTERNAL:9071 (CFK pre-wires the sasl-plain-internal Secret). Re-add OAUTHBEARER once OAuth+MDS are in correct v1beta1 shape:
-    #
-    # kafka:
-    #   bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
-    #   authentication:
-    #     type: oauthbearer
-    #     oauthbearer:
-    #       secretRef: oauth-schemaregistry
-    #     oauthSettings:
-    #       audience: "Confluent,account,api://default"
-    #       expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-    #       jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-    #       scope: 11547.DAH(Dev)
-    #       subClaimName: sub
-    #       groupsClaimName: dahDev_groups
-    #       tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-    #   tls:
-    #     enabled: true
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
       authentication:
@@ -66,53 +45,12 @@ spec:
       tls:
         enabled: true
 
-  # dependencies.mds REMOVED — MDS not provisioned. Re-add when MDS is wired:
-  #
-  # mds:
-  #   endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
-  #   tokenKeyPair:
-  #     secretRef: mds-token-keypair
-  #   authentication:
-  #     type: oauth
-  #     oauth:
-  #       secretRef: oauth-schemaregistry
-  #       configuration:
-  #         audience: "Confluent,account,api://default"
-  #         expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-  #         jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-  #         scope: 11547.DAH(Dev)
-  #         subClaimName: sub
-  #         groupsClaimName: dahDev_groups
-  #         tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-
-  # spec.authentication REMOVED — SR HTTP API has no client auth; NetworkPolicy + namespace scoping gate access. Re-add when OAuth is wired:
-  #
-  # authentication:
-  #   type: oauth
-  #   oauth:
-  #     secretRef: oauth-schemaregistry
-  #     configuration:
-  #       jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-  #       expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-  #       audience: "Confluent,account,api://default"
-  #       subClaimName: sub
-  #       groupsClaimName: dahDev_groups
-  #       tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-  #       scope: 11547.DAH(Dev)
-
-  # spec.authorization REMOVED — no RBAC without MDS. Re-add when MDS is wired:
-  #
-  # authorization:
-  #   type: rbac
-  #   superUsers:
-  #     - User:admin
-
   tls:
     secretRef: schemaregistry-tls
+
   license:
     secretRef: cfk-license
 
-  # FCB trust bundle for outbound HTTPS (see kafka.yaml).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -123,13 +61,11 @@ spec:
         mountPath: /mnt/sslcerts/fcb-trust-bundle
         readOnly: true
 
-  # FCB Gatekeeper [pod-disruption-budget] rejects CFK's auto-generated PDB at maxUnavailable=0; setting 1 makes it drainable.
   pdb:
     enabled: true
     maxUnavailable: 1
 
   configOverrides:
-    # JVM default truststore -> fcb-trust-bundle (see kafka.yaml).
     jvm:
       - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
@@ -139,16 +75,11 @@ spec:
       - kafkastore.topic=_schemas
       - kafkastore.topic.replication.factor=3
       - inter.instance.protocol=https
-      # Interim keeps only Schema Exporter extension. Re-add together when OAuth+RBAC are back:
-      #   - confluent.schema.registry.auth.mechanism=JETTY_AUTH
-      #   - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
-      #   - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
       - resource.extension.class=io.confluent.schema.exporter.SchemaExporterResourceExtension
       - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
 
   podTemplate:
     serviceAccountName: flink-operator
-    # ~512 MiB heap (CFK sizes -Xmx from memory.request); 1 GiB limit covers TLS buffers + Avro schema cache. CFK init-container floor (~500m/1Gi) already dominates pod-level quota accounting.
     resources:
       requests:
         cpu: "200m"
@@ -167,9 +98,7 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # Disable operator-injected fsGroup/runAsUser=1001 so OpenShift restricted-v2 SCC picks the namespace UID range (see kafka.yaml).
     podSecurityContext: {}
-    # Repeated here because FCB Gatekeeper [required-workload-labels] inspects the Pod, not just the StatefulSet.
     labels:
       app.kubernetes.io/name: schemaregistry
       app.kubernetes.io/instance: schemaregistry

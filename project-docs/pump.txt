@@ -1,184 +1,145 @@
-FOLLOW-UP — inter.broker.listener.name override pulled
-======================================================
-Even though the cluster came up green (sts/kafka 3/3, brokers 1/1
-Running), inspection of the rendered broker server.properties showed
-the INTERNAL listener's `listener.name.internal.plain.sasl.jaas.config`
-only had the server-side accept-side credentials (apikeys.json on
-disk), no client-side `username=${file:.../plain.txt:username}` /
-`password=${file:.../plain.txt:password}` references. So inbound
-inter-broker connections succeed (apikeys.json validates), but
-outbound broker-to-broker on :9071 has no client credentials to
-present and fails.
-CFK auto-renders BOTH sides of the JAAS handshake only for its
-auto-managed `replication` listener on :9072 — not for `internal`.
-Forcing `inter.broker.listener.name=internal` via configOverrides
-moves inter-broker traffic off the listener that has client creds
-onto one that doesn't.
-Fix: remove `inter.broker.listener.name=internal` from
-configOverrides.server in both kafka.yaml and kafka-bisect.yaml.
-CFK reverts to its default (inter-broker over the auto-generated
-`replication` listener) and both sides of the handshake are wired.
-force-reconcile annotation bumped to 2026-06-27-replication-interbroker.
-Run the wipe + install path to validate.
+PHASE 1 BABY-STEP BASELINE — landed 2026-06-29
+==============================================
 
-CLUSTER GREEN — 2026-06-27T17:59Z
-==================================
-First successful Kafka cluster on CFK 3.2.0 at FCB after the bisect +
-no-authz interim fix.
-  - Phase 1a: kraftcontroller cluster-ready=True after 40s
-  - Phase 1b: kafka cluster-ready=True after 60s
-  - sts/kafka 3/3, kafka-0/1/2 all 1/1 Running, restart count 0
-  - Post-admission spec.configOverrides.server starts with
-    `super.users=User:admin` — no ConfluentServerAuthorizer, no
-    `confluent.authorizer.access.rule.providers` line. The class-drop
-    fix landed correctly.
+Strategy adopted (Ayu's call): rebuild dev/ manifests as a clean
+Phase 1 baseline that's stable under FIPS, then layer Phase 2
+(Okta/MDS/RBAC/mTLS/telemetry) on top once Phase 1 is green.
 
-Note: this run used kafkaCRVariant=bisect (not production). The
-production kafka.yaml at commit 2fc1f7f is a stricter subset of
-bisect.yaml (telemetry lines commented out + listeners.custom,
-listeners.external, services.mds blocks removed). It will work too,
-but worth a confirmation run when convenient:
-  uninstall + wipePVCs=true
-  install-or-update kafkaCRVariant=production
-The force-reconcile annotation on the production yaml is
-`2026-06-27-interim-no-authz`; on the bisect yaml it's still
-`2026-06-27-bisect-D`. Confirm the production annotation lands in the
-next diagnostic after that run.
+Phase 1 manifests (apps/confluent-platform/dev/):
+  - kraftcontroller.yaml  — 3-node KRaft quorum, CONTROLLER:9093
+    SASL_SSL/PLAIN, KRAFT_ACL-only authz (controller-asymmetry
+    note inline: do not copy this combo to brokers).
+  - kafka.yaml           — 3 brokers; spec.listeners.{internal,
+    external} BOTH SASL_SSL/PLAIN against sasl-plain-internal.
+    External explicitly declared to prevent CFK's auto-PLAINTEXT
+    default tripping the FIPS check.
+  - schemaregistry.yaml  — 1 replica, SASL_SSL/PLAIN to broker
+    INTERNAL:9071, HTTPS REST, Schema Exporter extension.
 
-================================================================
-CFK 3.2.0 v1beta1 SCHEMA — from this run's oc explain output
-================================================================
-Captured 2026-06-27T17:59Z via the diagnostics.yaml oc explain
-queries that landed at commit e67188f and finally ran on the FCB
-side at this run.
+Phase 1 intentionally OMITS:
+  - services.mds + ConfluentServerAuthorizer + CONFLUENT provider
+  - OAuth on Kafka external listener (and on SR HTTP API)
+  - mTLS certonly listener (no client-CA Secret yet)
+  - Telemetry / audit reporters
+  - dependencies.mds on SR
+  - JETTY_AUTH / SchemaRegistrySecurityResourceExtension on SR
 
-kafka.spec.services
--------------------
-  - kafkaRest    <Object>           (CFK auto-managed; KafkaRestClass)
-  - mds          <Object>           [embedded MDS, see below]
-  - observer     <Object>           [new — we didn't know about this]
+Removed in the same commit:
+  - kafka-bisect.yaml + kafka-minimal.yaml (bisect concluded).
+  - `kafkaCRVariant` pipeline parameter + case-switch (only one
+    Kafka manifest now).
+  - Comment carve-outs in dev/{kafka,schemaregistry}.yaml that
+    documented the disproven "silent-strip everything" theory.
+  - VM-aligned listener attempt at commit 718a388 (rolled back as
+    part of this baseline rewrite).
 
-kafka.spec.services.mds
------------------------
-Required:
-  - provider     <Object>     -required-
-  - tokenKeyPair <Object>     -required-
-Optional:
-  - authentication, externalAccess, impersonation, listeners, tls
-Our prior block (kafka.yaml pre-fix) had provider + tokenKeyPair +
-tls + authentication. Both required fields ARE present in our prior
-block. So why was the whole block silently stripped in Round 2 of
-the bisect? Probably a nested validation under provider.oauth or
-provider.oauth.configurations — `oc explain kafka.spec.services.mds
-.provider` and `kafka.spec.services.mds.provider.oauth` (not run
-here yet) would tell us the exact mismatch.
+Runbook + memory updates landed in the same commit:
+  - runbook/LESSONS_LEARNED.md A15 — corrected the "silent-strip
+    everything" framing; documented the FIPS-on-auto-PLAINTEXT
+    failure mode; called out the operator-crash-loop confounder.
+  - memory project_cfk_v1beta1_silent_strips — narrower confirmed
+    strips list; decision tree for ruling out crash-loop vs schema.
 
-kafka.spec.listeners.external
------------------------------
-  - authentication, externalAccess, tls
-kafka.spec.listeners.external.authentication FIELDS:
-  - type                <string>    -required-
-  - jaasConfig          <Object>
-  - jaasConfigPassThrough <Object>
-  - mtls                <Object>
-  - oauthSettings       <Object>     [YES, exists]
-  - principalMappingRules <[]string>
-So `oauthSettings` IS a valid field. Our prior `oauthSettings`
-block was apparently schema-shaped (audience, expectedIssuer,
-jwksEndpointUri, scope, subClaimName, groupsClaimName,
-tokenEndpointUri). Silent-strip on this block in Round 3 must
-therefore be a nested validation INSIDE oauthSettings —
-most-likely-suspect-first:
-  1. scope: "11547.DAH(Dev)" has parens; CRD pattern may reject
-  2. expectedIssuer / jwksEndpointUri / tokenEndpointUri are URIs
-     (may need a format=uri match)
-  3. subClaimName / groupsClaimName values vs schema field names
-The next diagnostic should add
-  oc explain kafka.spec.listeners.external.authentication.oauthSettings
-to pinpoint which sub-field rejects.
 
-kafka.spec.listeners.custom[]
------------------------------
-  - name            <string>   -required-
-  - port            <integer>  -required-
-  - authentication  <Object>
-  - externalAccess  <Object>
-  - tls             <Object>
-Our certonly+mtls+9094 block matches this shape. Earlier
-analysis (Round 4) claimed custom was also stripped, but the
-2026-06-27T17:59Z run shows it DID survive admission this time
-(post-admission spec.listeners.custom array is present with
-`name: certonly, port: 9094, authentication.type: mtls,
-tls.enabled: true`). Rechecking: the Round 4 dump probably
-showed only the partial `listeners:` printout earlier in the
-diagnostic and I drew the wrong conclusion. listeners.custom
-appears to be valid as-is and is NOT a silent-strip target.
+PIPELINE RUNS TO BRING PHASE 1 GREEN
+====================================
 
-kafka.spec.authorization
-------------------------
-  - type        <string>    -required-
-  - superUsers  <[]string>
-BIG FINDING: authz at the CR level lives in this top-level
-`spec.authorization` block in CFK 3.2 v1beta1 — NOT in
-configOverrides.server. The production yaml was setting
-`authorizer.class.name=ConfluentServerAuthorizer` and
-`super.users=User:admin` as configOverrides.server lines, which
-is the wrong layer for CFK CRD-managed clusters. Correct shape:
-    spec:
-      authorization:
-        type: <simple|rbac|...>   # confirm valid values
-        superUsers:
-          - User:admin
-The `type` enum likely accepts simple (KRaft ACL only),
-rbac (with Confluent RBAC + MDS), and possibly others. `oc
-explain kafka.spec.authorization.type` should give us the enum
-list — add to diagnostics.yaml.
+Sync the three replaced manifests + .azure-pipelines/confluent-
+platform.yaml + README.md from origin/fcb-flink-cp to FCB ADO first.
 
-kafka.spec.identityProvider
----------------------------
-  - file <Object>      [and more — output got cut]
-This is where the OAuth-provider config (Okta wiring) likely
-belongs in CFK 3.2 — separate from per-listener
-`oauthSettings`. The OAuth issuer / JWKS endpoint / token URL
-go HERE once we know the full schema. Add to diagnostics.yaml:
-  oc explain kafka.spec.identityProvider
-  oc explain kafka.spec.identityProvider.file       (only entry shown)
-  oc explain kafka.spec.identityProvider.<other>    (need to discover)
+Run 1 — wipe (clears any stale Kafka CR carrying ApplyFailed):
+  Pipeline:  .azure-pipelines/confluent-platform.yaml
+    env       = dev
+    action    = uninstall
+    wipePVCs  = true
 
-================================================================
-SCHEMA-FIX WORKSTREAM — pending followups
-================================================================
-1. Extend diagnostics.yaml with deeper oc explain on:
-     kafka.spec.services.mds.provider
-     kafka.spec.services.mds.provider.oauth
-     kafka.spec.services.mds.provider.oauth.configurations
-     kafka.spec.services.mds.provider.oauth.clientCredentials
-     kafka.spec.listeners.external.authentication.oauthSettings
-     kafka.spec.authorization.type
-     kafka.spec.identityProvider (full, including all sub-fields)
-   Run diagnostics once. The output tells us exactly which sub-field
-   strips OAuth and where Okta-wiring belongs.
-2. Rewrite the production kafka.yaml additions:
-     spec.authorization:
-       type: <simple|rbac>
-       superUsers: [User:admin]
-     spec.identityProvider:
-       <oauth-issuer wiring per the new schema>
-     spec.services.mds:
-       provider:
-         <whatever shape the schema actually wants>
-       tokenKeyPair:
-         secretRef: mds-token-keypair
-     spec.listeners.external:
-       authentication:
-         type: oauth
-         oauthSettings:
-           <only the sub-fields the schema actually accepts>
-3. Re-add the 3 telemetry-reporter lines to configOverrides.server
-   (still commented out today) once FCB provisions telemetry API
-   creds. Track with infra team.
-4. action=uninstall wipePVCs=true + action=install-or-update
-   kafkaCRVariant=production. Verify post-admission CR has the
-   spec.authorization block + spec.identityProvider block +
-   spec.services.mds block + spec.listeners.external block all
-   actually present (no silent-strip). Verify brokers Ready.
+Run 2 — install Phase 1 components:
+  Pipeline:  .azure-pipelines/confluent-platform.yaml
+    env             = dev
+    action          = install-or-update
+    applyAll        = false
+    applyKRaft      = true
+    applyKafka      = true
+    applySR         = true
+    applyConnect    = false
+    applyKafkaRest  = false
+    applyControlCenter = false
+
+Run 3 — diagnostics:
+  Pipeline:  .azure-pipelines/diagnostics.yaml
+    env = dev
+
+Expected outcome:
+  Phase 1a  kraftcontroller cluster-ready=True ~40-50s
+  Phase 1b  kafka cluster-ready=True ~50-90s, sts/kafka 3/3,
+            kafka-0/1/2 1/1 Running with restartCount=0
+  Phase 2   schemaregistry cluster-ready=True ~1-2 min,
+            schemaregistry-0 1/1 Running
+  Broker rendered listener.security.protocol.map:
+    CONTROLLER:SASL_SSL, EXTERNAL:SASL_SSL, INTERNAL:SASL_SSL,
+    REPLICATION:SASL_SSL
+  No PLAINTEXT listener anywhere — FIPS oscillation gone.
+
+If FIPS still oscillates after Phase 1 lands:
+  - Check operator pod restartCount via Splunk operator-log query
+    (memory project_fcb_cfk_operator_crash_loop). If restartCount
+    is climbing, escalate to Container Platforms (Rick) before
+    making more spec changes.
+
+
+PHASE 2 PLAN — gated on Phase 1 stability
+=========================================
+
+Once Phase 1 has held cluster-ready=True for at least 1 hour
+without flipping, layer Phase 2 in this order:
+
+1. Add `spec.authorization` block to kafka.yaml:
+     authorization:
+       type: rbac     # confirm enum via oc explain
+       superUsers:
+         - User:admin
+   Replace the configOverrides.server `super.users` line.
+
+2. Add `spec.services.mds` to kafka.yaml with the full Okta-
+   backed OAuth provider config. Wire from sasl-plain-internal +
+   mds-token-keypair + oauth-mds-rest secrets. Verify post-
+   admission that the block survives.
+
+3. Add `ConfluentServerAuthorizer` + `providers=CONFLUENT,KRAFT_ACL`
+   back to broker configOverrides.server. Now MDS exists so the
+   RBAC provider initializes cleanly.
+
+4. Swap kafka.yaml `external` listener auth from `plain` to
+   `oauth` + `oauthSettings` (Okta values from variable group).
+
+5. Add `listeners.custom[name=certonly]` mTLS listener once a
+   client-CA Secret is provisioned by Container/Security teams.
+
+6. SR — add `spec.authentication` (OAuth), `spec.authorization`
+   (rbac), `dependencies.mds`. Re-add JETTY_AUTH + SR security
+   extension in configOverrides.
+
+7. Connect / REST Proxy / Control Center — bring online once
+   Phase 2 SR is green. Apply existing yamls (already have full
+   OAuth+MDS+RBAC); their dependencies.kafka should be updated to
+   use the new SASL/PLAIN-or-OAUTHBEARER target.
+
+8. Re-add the three telemetry-reporter lines once FCB provisions
+   the telemetry API creds (memory
+   project_fcb_telemetry_audit_reenable_later).
+
+Variable group → Phase 2 wiring map (already 1:1 with VM):
+  dev-confluent-license               → confluent-license / cfk-license
+  dev-mds-token-keypair-pem           → mds-token-keypair
+  dev-oauth-broker-client-{id,secret} → oauth-broker
+  dev-oauth-schemaregistry-...        → oauth-schemaregistry
+  dev-oauth-connect-...               → oauth-connect
+  dev-oauth-kafkarest-...             → oauth-kafkarest
+  dev-oauth-controlcenter-...         → oauth-controlcenter
+  dev-oauth-mds-rest-...              → oauth-mds-rest
+  dev-c3-prometheus-{username,...}    → c3-prometheus-basic-auth
+  dev-c3-alertmanager-{username,...}  → c3-alertmanager-basic-auth
+  SASL_{ADMIN,CLIENT,SR,CONNECT,REST,C3}
+                                      → sasl-plain-internal
+                                        (users.json + 4 client-plain.txt
+                                         + plain-interbroker.txt)

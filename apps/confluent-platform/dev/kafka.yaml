@@ -2,14 +2,23 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-04-01 (created), 2026-06-29 (last-modified)
-# Description: CFK Kafka CR — dev (3-broker, KRaft). VM-aligned listener
-#              topology: internal :9071 SASL_SSL/PLAIN (=VM BROKER),
-#              external :9092 SASL_SSL/OAUTHBEARER via Okta (=VM
-#              INTERNAL), custom certonly :9094 SSL/mTLS (=VM CERTONLY).
-#              Still no authorizer / no services.mds — those are silent-
-#              stripped by CFK 3.2.0 v1beta1 (runbook A15) and require
-#              the schema-fix workstream before re-enable. Runbook A17
-#              for FIPS-mode operator behavior.
+# Description: CFK Kafka CR — Phase 1 baby-step baseline for dev. Goal:
+#              reach cluster-ready=True before layering Okta/MDS/RBAC
+#              and the mTLS certonly listener (Phase 2).
+#
+#              Listener shape — SASL_SSL/PLAIN on both internal AND
+#              external. External MUST be explicitly declared: if it's
+#              absent, CFK auto-creates an EXTERNAL:PLAINTEXT default,
+#              the FIPS-mode operator periodically re-inspects the live
+#              broker's listener.security.protocol.map, sees PLAINTEXT,
+#              and flips cluster-ready=False ApplyFailed (observed
+#              2026-06-29T20:34Z; runbook A17).
+#
+#              Phase 1 intentionally omits services.mds,
+#              ConfluentServerAuthorizer + CONFLUENT provider, OAuth on
+#              external, mTLS certonly, telemetry. Phase 2 layers those
+#              on top using the variable group (oauth-broker, oauth-
+#              schemaregistry, oauth-mds-rest, mds-token-keypair, etc).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -18,31 +27,30 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-29-vm-aligned-listeners"
+    platform.confluent.io/force-reconcile: "2026-06-29-phase1-baby-step"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # 3-broker for RF=3 inter-broker replication. Storage tight under the dev 100 GiB quota (tracker 2.5) — bump after Container team grants raise toward the 1.272 TB workbook target.
   replicas: 3
+
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
-  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet, not the CR — injectLabels is CFK's mechanism to push these onto every managed resource.
+
   injectLabels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/instance: kafka
     app.kubernetes.io/component: kafka-broker
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # PVCs: data-kafka-{0,1,2} on Ceph RBD; deterministic PVC<->broker.id binding survives pod restarts. Dev sizing 10 Gi/broker; VM-equivalent target 1 TiB+ once storage quota raise lands. Resources go under spec.podTemplate.resources -- top-level spec.resources is pruned at admission.
+
   dataVolumeCapacity: 10Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd
 
-  # KRaft mode dial-up. v1beta1 only accepts clusterRef + controllerListener under dependencies.kRaftController; sibling authentication/tls get silent-stripped (commit adfc8d4 hit this). controllerListener must mirror kraftcontroller.yaml -> spec.listeners.controller exactly.
   dependencies:
     kRaftController:
       clusterRef:
@@ -55,15 +63,10 @@ spec:
         tls:
           enabled: true
 
-  # VM-aligned listener topology (see VM source per top-of-file note).
-  # CFK convention vs VM naming:
-  #   internal :9071  SASL_SSL/PLAIN  ↔ VM BROKER:9091  (inter-broker + Phase 2 components)
-  #   external :9092  SASL_SSL/OAUTH  ↔ VM INTERNAL:9092 (OAuth app clients via Okta)
-  #   custom certonly :9094  SSL/mTLS ↔ VM CERTONLY:9094 (cert-only clients)
-  # CFK auto-creates a `replication` listener on :9072 for inter-broker
-  # JAAS bidirectional wiring (see runbook A16).
-  # External PLAINTEXT default would trip FIPS-mode operator (runbook A17)
-  # — declaring TLS-enabled external explicitly avoids that.
+  # Both listeners SASL_SSL/PLAIN pointing at the same sasl-plain-internal
+  # Secret. External explicitly declared to prevent CFK's auto-PLAINTEXT
+  # default tripping the FIPS check. Inter-broker auto-routes onto CFK's
+  # generated `replication` listener (runbook A16).
   listeners:
     internal:
       authentication:
@@ -74,31 +77,18 @@ spec:
         enabled: true
     external:
       authentication:
-        type: oauth
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(Dev)
-          subClaimName: sub
-          groupsClaimName: dahDev_groups
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
       tls:
         enabled: true
-    custom:
-      - name: certonly
-        port: 9094
-        authentication:
-          type: mtls
-        tls:
-          enabled: true
 
   tls:
     secretRef: kafka-tls
+
   license:
     secretRef: cfk-license
 
-  # FCB trust bundle (public roots + FCB Root CA) for outbound HTTPS to Okta/MDS/etc; per-listener Kafka SSL still uses kafka-tls.
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -109,26 +99,17 @@ spec:
         mountPath: /mnt/sslcerts/fcb-trust-bundle
         readOnly: true
 
-  # FCB Gatekeeper [pod-disruption-budget] rejects CFK's auto-generated PDB at maxUnavailable=0; setting 1 makes it drainable.
   pdb:
     enabled: true
     maxUnavailable: 1
 
-  # services.mds REMOVED — silent-stripped by v1beta1 (see top-of-file). Re-add in correct shape once schema-fix workstream lands.
-
-  # Carry-over server config (keep aligned with VM broker.properties).
   configOverrides:
-    # JVM default truststore points at fcb-trust-bundle for outbound HTTPS handshakes that have no listener-level truststore. Password is trust-manager default ("changeit").
     jvm:
       - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
-      # ConfluentServerAuthorizer + access.rule.providers removed — class always inits RBAC regardless of providers list, broker fatals on missing confluent.metadata.bootstrap.servers (runbook A15). Re-add together once MDS is wired:
-      #   - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
-      #   - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
       - super.users=User:admin
-      # inter.broker.listener.name NOT set — CFK only wires client-side JAAS for the auto-managed `replication` listener (runbook A16).
       - log.retention.hours=168
       - log.segment.bytes=1073741824
       - log.retention.check.interval.ms=300000
@@ -149,15 +130,10 @@ spec:
       - confluent.balancer.enable=true
       - confluent.balancer.data.enabled=true
       - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
-      # Telemetry reporters dropped — FCB has no telemetry API creds (memory project_fcb_telemetry_audit_reenable_later). Re-add together:
-      #   - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
-      #   - confluent.telemetry.enabled=true
-      #   - confluent.reporters.telemetry.auto.enable=true
       - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
 
   podTemplate:
     serviceAccountName: flink-operator
-    # Sized to fit FCB 16 vCPU/32 GiB workers co-located with a KRaft controller per node. CFK 3.1.x derives -Xmx from memory.request -> ~2 GiB heap. Higher 2/4 req + 4/8 lim "real dev" target would push the 3-broker requests.cpu past namespace quota (=11) once controllers + SR + KRest + CMF + Flink jobs are counted.
     resources:
       requests:
         cpu: "1"
@@ -165,7 +141,6 @@ spec:
       limits:
         cpu: "2"
         memory: 4Gi
-    # Only liveness + readiness exposed by CRD; startupProbe not in schema (Gatekeeper [startup] stays at WARN level).
     probe:
       liveness:
         initialDelaySeconds: 90
@@ -177,9 +152,7 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # Disable operator-injected fsGroup/runAsUser=1001 so OpenShift restricted-v2 SCC picks the namespace UID range and GID 0 supplemental group — CP 8.1 images are UID-agnostic with GID-0 group-write on runtime paths.
     podSecurityContext: {}
-    # Repeated here because FCB Gatekeeper [required-workload-labels] inspects the Pod resource at admission, not just the StatefulSet. cfk-role used by the anti-affinity rule below.
     labels:
       app.kubernetes.io/name: kafka
       app.kubernetes.io/instance: kafka
@@ -187,7 +160,6 @@ spec:
       app.kubernetes.io/part-of: confluent-platform
       fcbint.net/app-id: "11547"
       cfk-role: kafka-broker
-    # Spread brokers across nodes via cfk-role anti-affinity. Brokers and controllers carry different cfk-role values, so one of each per node is allowed.
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:

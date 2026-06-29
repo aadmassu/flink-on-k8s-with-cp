@@ -554,78 +554,75 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 
 ---
 
-### A15. CFK 3.2.0 v1beta1 silent-strip pattern + Kafka CR silent-bail-on-state-corruption
+### A15. CFK 3.2.0 v1beta1 "silent-strip" — narrower than first concluded; the real failure mode is operator crash + FIPS-on-auto-PLAINTEXT-external
 
-* **Symptom (silent-bail)**: a fresh `apply` of the production
-  `apps/confluent-platform/dev/kafka.yaml` succeeds at the API server,
-  but the operator emits zero events, never updates the CR status, and
-  never creates `sts/kafka`. The CR sits there indefinitely.
-* **Symptom (silent-strip)**: sub-blocks declared in the Kafka CR
-  yaml are absent from the post-admission CR (`oc get kafka -o yaml`)
-  even though the original spec is preserved in the
-  `last-applied-configuration` annotation. The operator behaves
-  correctly with respect to what it actually sees, but the cluster
-  ends up missing OAuth / MDS / mTLS features the yaml declares.
-* **Root cause (silent-bail)**: operator-state corruption from prior
-  partial installs (orphaned PVCs, leftover finalizers, stale
-  informer cache) — NOT a spec-driven trigger. Verified by a 4-round
-  bisect (Try A=`configOverrides.server`, Try B=`services.mds`, Try
-  C=`listeners.external` OAuth, Try D=`listeners.custom` mTLS) on
-  2026-06-27. The operator reconciled cleanly in every round; the
-  original silent-bail did not reproduce after a clean
-  `uninstall + wipePVCs=true`.
-* **Root cause (silent-strip)**: CFK 3.2.0 v1beta1 prunes
-  schema-mismatched sub-blocks at admission with no warning and no
-  rejection. Confirmed-stripped sub-blocks at the time of bisect:
-  `dependencies.kRaftController.{authentication,tls}` as siblings of
-  `clusterRef` (must be nested under `controllerListener`),
-  `listeners.external.authentication.oauthSettings` (whole sub-block
-  silently dropped — CFK falls back to a PLAINTEXT external default),
-  `listeners.custom` (entire array dropped), and `services.mds`
-  (entire block dropped). The production yaml has carried these
-  blocks since initial commit and they have NEVER taken effect on
-  this cluster — OAuth, mTLS-certonly, and embedded MDS have never
-  actually been provisioned at FCB on CFK 3.2.0.
-* **Fix (silent-bail)**: the consolidated `action=uninstall` step in
-  `.azure-pipelines/confluent-platform.yaml` (commit 840e0e2) with
-  the `wipePVCs=true` checkbox tears down CRs, patches stuck
-  finalizers, and wipes orphaned PVCs in one run. Run that before
-  every `install-or-update` on a stuck cluster — that's the
-  streamlined recovery path now.
-* **Fix (silent-strip, interim)**: remove the stripped blocks from
-  `kafka.yaml` so the file reflects what's actually running on the
-  cluster, and drop the **entire `ConfluentServerAuthorizer` line**
-  alongside the `confluent.authorizer.access.rule.providers` line —
-  not just `CONFLUENT` from the providers list. An earlier attempt at
-  this fix kept `authorizer.class.name=ConfluentServerAuthorizer` and
-  set `providers=KRAFT_ACL` (no CONFLUENT) on the theory that listing
-  only KRAFT_ACL would skip RBAC initialization. That doesn't hold up:
-  ConfluentServerAuthorizer loads its RBAC provider on startup
-  regardless of the providers list (the list narrows *which rules are
-  evaluated*, not *whether RBAC plumbing is loaded*), so the broker
-  still fatals with "You must specify
-  `confluent.metadata.bootstrap.servers` to configure the RBAC
-  provider". Until MDS is correctly defined in CFK 3.2 v1beta1,
-  ConfluentServerAuthorizer cannot be loaded at all — brokers run
-  with no authorizer; client access is gated by the listener-level
-  auth (PLAIN+TLS on internal). `super.users=User:admin` is kept
-  (inert without an authorizer but harmless). Telemetry reporters
-  dropped at the same time (already disabled on KRaftController for
-  unprovisioned API creds — see memory
-  `project_fcb_telemetry_audit_reenable_later`).
-* **Fix (silent-strip, follow-up)**: the diagnostics.yaml `oc explain`
-  coverage was extended at commit e67188f to cover
-  `kafka.spec.services{,.mds,.kafkaRest}`,
-  `kafka.spec.authorization`, `kafka.spec.identityProvider`,
-  `kafka.spec.listeners.{external,custom}`. Once that runs against
-  the cluster, the v1beta1 schema for each path is known and the
-  OAuth / MDS / mTLS blocks can be re-added in the correct shape.
-* **Why it matters**: a yaml that looks like the VM config is not the
-  same as a cluster configured like the VM. Always verify
-  post-admission yaml with `oc get kafka -o yaml` before assuming a
-  feature is enabled. See memory `project_cfk_v1beta1_silent_strips`
-  for the recurring pattern and `project-docs/pump.txt` for the
-  schema-fix follow-up workstream.
+> **Correction landed 2026-06-29.** The original entry generalized
+> "CFK 3.2.0 v1beta1 silently strips every schema-mismatched block".
+> Subsequent diagnostics (2026-06-29T21:13Z apply with the VM-aligned
+> kafka.yaml) showed `listeners.external.authentication.oauthSettings`,
+> `listeners.custom[name=certonly]`, and the explicit `tls.enabled:
+> true` on each listener ALL SURVIVED admission. The earlier
+> "stripped at admission" observations were partially correct and
+> partially confounded by the operator's crash-loop window writing
+> stale conditions; the over-generalized "everything strips" mental
+> model led us to remove blocks that didn't need removing.
+
+* **What is genuinely silent-stripped** (still confirmed):
+  - `dependencies.kRaftController.{authentication,tls}` as siblings of
+    `clusterRef` (must be nested under `controllerListener`).
+  - Top-level `spec.tls.enabled: true` (v1beta1 schema accepts only
+    `secretRef` at that level; `enabled` is dropped).
+* **What is NOT silent-stripped** (despite earlier conclusions):
+  - `listeners.external` block including `authentication.oauthSettings`
+    with full Okta wiring — survives admission intact.
+  - `listeners.custom` array with mTLS certonly — survives admission.
+  - `listeners.{internal,external}.tls.enabled: true` — these
+    listener-level TLS flags do survive.
+  - `services.mds` — earlier dumps had this missing from post-admission
+    spec; need fresh confirmation as part of the Phase 2 schema-fix
+    workstream.
+* **The actual repeating failure**: FIPS-mode CFK operator (Container
+  team enables `fipsmode=true` at the operator helm release) inspects
+  the running broker's rendered `listener.security.protocol.map` on
+  every reconcile. If `spec.listeners.external` is absent from the CR,
+  CFK auto-creates an `EXTERNAL:PLAINTEXT` default. FIPS rejects that
+  and the CR oscillates `cluster-ready=True` ↔ `False ApplyFailed:
+  Cannot create http client: TLS not Enabled in Application when FIPS
+  mode is true in Operator` (observed at 19:41Z green → 20:34Z stuck
+  on 2026-06-29 with no spec change). **The fix is to declare an
+  explicit external listener with TLS enabled** — not to remove
+  blocks.
+* **Compounding factor — operator crash-loop**: when the operator pod
+  is restarting (restartCount=14 over 2026-06-26 → 2026-06-29 per
+  Rick's operator-pod yaml), partial reconciles leave the CR with
+  stale conditions and incomplete StatefulSet rollouts. This produces
+  the "I applied a new spec but the brokers still run the old config"
+  symptom — not a strip, but a half-finished reconcile that looks
+  like one. See memory `project_fcb_cfk_operator_crash_loop`.
+* **What we changed in response** (commit landing this correction):
+  - dev/kafka.yaml: Phase 1 baseline with `internal` AND `external`
+    listeners both SASL_SSL/PLAIN against `sasl-plain-internal`. No
+    OAuth, no mTLS, no MDS yet — those come in Phase 2.
+  - Removed kafka-bisect.yaml + kafka-minimal.yaml (bisect concluded).
+  - Removed `kafkaCRVariant` pipeline parameter (only one variant now).
+  - kraftcontroller.yaml keeps `ConfluentServerAuthorizer` +
+    `providers=KRAFT_ACL`: controllers manage ACLs from the KRaft
+    metadata log directly, never reach for MDS. **Do NOT copy this
+    combo to brokers** — broker RBAC plumbing demands an MDS bootstrap
+    and brokers fatal `confluent.metadata.bootstrap.servers missing`
+    without it.
+* **Phase 2 plan** (next): re-add `services.mds` + OAuth on external +
+  mTLS certonly + `spec.authorization` (now confirmed as a real
+  v1beta1 field) + ConfluentServerAuthorizer with `CONFLUENT,KRAFT_ACL`
+  on brokers. All credentials sourced from the existing variable
+  group (`oauth-broker/sr/connect/c3/kafkarest/mds-rest` client-id +
+  secret). Track in pump.txt.
+* **What to verify post-apply**: ALWAYS dump `oc get kafka -o yaml`
+  and check that the live spec matches what was applied. The
+  `kubectl.kubernetes.io/last-applied-configuration` annotation shows
+  what was sent; the live `spec:` shows what the operator sees. Diff
+  the two before concluding a field was stripped — and check operator
+  pod `restartCount` before blaming the schema.
 
 ---
 
