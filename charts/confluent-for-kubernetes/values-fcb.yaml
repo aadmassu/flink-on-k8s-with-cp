@@ -1,0 +1,75 @@
+# Confluent for Kubernetes — actual values applied by FCB Container Platforms
+# (Rick Mulder) to the confluent-operator namespace on the dev OpenShift cluster.
+#
+# REFERENCE ONLY. This repo does NOT deploy the CFK operator — Container
+# Platforms owns the operator install via a separate pipeline. This overlay
+# is the live snapshot of what's running so we can reason about operator
+# behavior (FIPS mode, watched namespaces, RBAC shape) without having to
+# pull it from the cluster every time. See memory
+# project_fcb_cfk_operator_ownership.
+#
+# Captured 2026-06-29 from Rick.
+#
+# To diff against upstream defaults: `diff values.yaml values-fcb.yaml`.
+
+# TODO Onboard secretStore in `shared` repo, update secret in secrets release
+licenseSecretRef: confluent-license-secret
+imagePullSecretRef: null
+
+image:
+  registry: artifactory.fcbint.net/cao-oci-prod
+  repository: confluentinc/confluent-operator
+
+replicas: 2
+namespaced: true
+namespaceList:
+  - dah-flink-dev
+  - dah-kafka-dev
+  - confluent-operator
+
+fipsmode: true
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/instance
+                operator: In
+                values:
+                  - confluent-operator
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - confluent-operator
+          topologyKey: "kubernetes.io/hostname"
+
+tolerations:
+  - key: node-role.kubernetes.io/xlworker
+    operator: Exists
+
+podSecurity:
+  enabled: false
+
+serviceAccount:
+  create: true
+  name: confluent
+
+rbac: false
+
+clusterRole:
+  openshift: true
+
+kRaftEnabled: true
+
+webhooks:
+  enabled: true
+  port: 8443
+  tls:
+    secretRef: confluent-operator-serving-cert
+
+pod:
+  annotations: null
+  labels: {}

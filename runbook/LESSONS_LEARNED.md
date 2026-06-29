@@ -488,20 +488,25 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   `dependencies.kRaftController.controllerListener.tls.enabled` and
   `listeners.internal.tls.enabled` both survive admission — only the
   *top-level* `spec.tls.enabled` is rejected.
-* **Real root cause** (pending confirmation): unrelated to spec
-  content. Same spec shape came up green at 2026-06-27T17:59Z and
-  failed at 19:15Z; the only variable between the two runs was the
-  CFK operator pod's internal FIPS-state decision (or a Container-team
-  config change between those timestamps). The `kafka.spec.fips`
+* **Real root cause**: the CFK operator pod itself is crash-looping.
+  The 2026-06-29 live operator pod yaml (`~/Downloads/operator.yaml`)
+  shows `restartCount: 14` against a pod started 2026-06-26T22:14:33Z
+  (3 days, ~5 crashes/day). The previous container died
+  2026-06-29T10:51:13Z with `exitCode: 2 reason: Error`, ~30s before
+  the current container started at 10:51:14Z. Every restart picks up
+  CRs with stale conditions and either fails to re-evaluate them or
+  dies again before it can — which is why the same spec shape came up
+  green at 2026-06-27T17:59Z (operator fresh) and stuck at 19:15Z
+  (operator restart cycle began). It's a Container-team-owned operator
+  stability issue, not a spec-side problem. The `kafka.spec.fips`
   top-level field exists in the v1beta1 schema (per `oc explain
-  kafka.spec`) but its sub-fields aren't captured yet — likely the
-  right knob for "tell the operator this CR is FIPS-aware". The next
-  diagnostics.yaml run captures `kafka.spec.tls` and `kafka.spec.fips`
-  deep schemas; the answer should fall out.
-* **Workaround until the schema is known**: ask Container team to
-  bounce the `confluent-operator` pod and re-run install. The 17:59Z
-  green run is proof the cluster's spec is compatible with the
-  operator when the operator is in a fresh state.
+  kafka.spec`) and may still be relevant for FIPS configuration of
+  the CR, but it cannot recover a CR stuck with stale conditions
+  written by a previously-crashed reconciliation.
+* **Workaround**: ask Container team to investigate operator pod
+  crashes (Splunk operator log for `Exit 2` panics) and bounce both
+  replicas after fixing. The 17:59Z green run is proof the cluster's
+  spec is compatible with the operator when the operator stays up.
 * **Why it matters**: this looked like an actionable spec fix and
   isn't. Don't burn cycles adding TLS flags to CRs in response to
   this condition — verify post-admission whether the field even
