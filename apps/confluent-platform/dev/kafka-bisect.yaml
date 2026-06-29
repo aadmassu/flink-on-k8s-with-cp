@@ -153,10 +153,7 @@ spec:
         tls:
           enabled: true
 
-  # FIPS-mode CFK operator requires `enabled: true` explicitly — see
-  # kafka.yaml + runbook A17.
   tls:
-    enabled: true
     secretRef: kafka-tls
   license:
     secretRef: cfk-license

@@ -94,7 +94,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-27-tls-enabled-flag"
+    platform.confluent.io/force-reconcile: "2026-06-29-revert-inert-tls-enabled"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -212,15 +212,7 @@ spec:
       tls:
         enabled: true
 
-  # FIPS-mode CFK operator requires `enabled: true` explicitly here even
-  # when `secretRef:` is set. Without it the operator reports
-  #   cluster-ready=False ApplyFailed
-  #   "Cannot create http client: TLS not Enabled in Application when
-  #    FIPS mode is true in Operator"
-  # (observed 2026-06-27T18:57Z on both kafka/kafka and schemaregistry/
-  # schemaregistry; runbook A17 for the full incident notes).
   tls:
-    enabled: true
     secretRef: kafka-tls
   license:
     secretRef: cfk-license

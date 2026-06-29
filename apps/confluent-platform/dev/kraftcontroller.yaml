@@ -97,10 +97,7 @@ spec:
         type: plain
         jaasConfig:
           secretRef: sasl-plain-internal
-  # FIPS-mode CFK operator requires `enabled: true` explicitly even when
-  # `secretRef:` is set — see kafka.yaml + runbook A17.
   tls:
-    enabled: true
     secretRef: kraftcontroller-tls
   license:
     secretRef: cfk-license

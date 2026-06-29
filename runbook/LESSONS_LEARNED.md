@@ -463,51 +463,52 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   the 15 min ceiling is generous for a working install and a
   conservative ceiling for a broken one.
 
-### A17. FIPS-mode CFK operator requires `tls.enabled: true` explicitly on `spec.tls` (not just `secretRef:`)
+### A17. FIPS-mode CFK operator "TLS not Enabled in Application" — what it *isn't* and what it *is*
 
-* **Symptom**: every CFK CR (Kafka, KRaftController, SchemaRegistry, …)
-  sits at `cluster-ready=False ApplyFailed` with
+* **Symptom**: a CFK CR (Kafka, SchemaRegistry, …) sits at
+  `cluster-ready=False ApplyFailed` with
   ```
   Cannot create http client: TLS not Enabled in Application when
   FIPS mode is true in Operator
   ```
-  Pods may even be `1/1 Running` on the underlying StatefulSet, but the
-  operator refuses to flip the CR ready and the install pipeline's
-  900s wait loop times out.
-* **Root cause**: the CFK operator at FCB ships with FIPS mode enabled
-  (Container team's build profile). In FIPS mode the operator's internal
-  HTTP client requires *every* CFK Application CR to declare TLS as
-  explicitly enabled — not just have a `secretRef:` for cert material.
-  `spec.tls.secretRef: <name>` alone is read as "TLS material present
-  but not in use"; the operator then refuses to instantiate its HTTP
-  client against the Application (it would have to fall back to plain
-  HTTP) and writes the ApplyFailed condition. This is asymmetric with
-  non-FIPS clusters where `secretRef:` alone is sufficient.
-* **Fix**: set `enabled: true` alongside `secretRef:` on `spec.tls` for
-  every CFK CR in this repo:
-  ```yaml
-  spec:
-    tls:
-      enabled: true
-      secretRef: <cr>-tls
-  ```
-  Same change in `apps/confluent-platform/dev/kafka.yaml`,
-  `kraftcontroller.yaml`, `schemaregistry.yaml`, and the diagnostic
-  `kafka-bisect.yaml` (commit `9bcc8c0`-ish + follow-up). The
-  `connect.yaml`, `kafkarest.yaml`, and `controlcenter.yaml` files will
-  need the same change before Phase 2 brings them online.
-* **Why it matters**: this is silent in a different way from the
-  v1beta1 schema strip pattern (A15) — the spec stays intact, the
-  operator just refuses to mark the CR ready. The CFK 3.2 documentation
-  presents `tls.secretRef:` and `tls.enabled: true` as separate optional
-  fields, not "secretRef implies enabled". Always set both explicitly
-  on FIPS-mode clusters. Discovered 2026-06-27T18:57Z during the SR
-  Phase-2 install attempt — the same FIPS check then surfaced on
-  Kafka after the wipe/install cycle. Worked previously (Kafka was
-  `cluster-ready=True` at 17:59Z) most likely because the operator's
-  FIPS evaluation kicks in on initial apply but isn't re-evaluated on
-  subsequent reconciles of an already-ready CR; on a fresh apply (post
-  wipePVCs) the check fires and trips without the `enabled: true` flag.
+  Pods may even be `1/1 Running`, but the CR never flips ready and the
+  install pipeline's wait loop times out.
+* **First-pass theory (wrong)**: add `tls.enabled: true` alongside
+  `secretRef:` on `spec.tls`. This was the working theory in commit
+  `94b3d0d` but the 2026-06-29 diagnostic disproved it. The post-
+  admission `kafka.yaml` dump (`oc get kafka kafka -o yaml`) shows
+  CFK 3.2.0 v1beta1 **silently strips** the top-level
+  `spec.tls.enabled` field — only `spec.tls.secretRef` survives.
+  Confirmed by the `kubectl.kubernetes.io/last-applied-configuration`
+  annotation: the applied yaml has `"tls":{"enabled":true,"secretRef":
+  "kafka-tls"}` but the live spec has only `secretRef:`. Same family
+  of silent-strip as `services.mds` and `listeners.external.oauthSettings`
+  (memory `project_cfk_v1beta1_silent_strips`). Adding the flag is
+  inert — the schema doesn't accept it. The nested
+  `dependencies.kRaftController.controllerListener.tls.enabled` and
+  `listeners.internal.tls.enabled` both survive admission — only the
+  *top-level* `spec.tls.enabled` is rejected.
+* **Real root cause** (pending confirmation): unrelated to spec
+  content. Same spec shape came up green at 2026-06-27T17:59Z and
+  failed at 19:15Z; the only variable between the two runs was the
+  CFK operator pod's internal FIPS-state decision (or a Container-team
+  config change between those timestamps). The `kafka.spec.fips`
+  top-level field exists in the v1beta1 schema (per `oc explain
+  kafka.spec`) but its sub-fields aren't captured yet — likely the
+  right knob for "tell the operator this CR is FIPS-aware". The next
+  diagnostics.yaml run captures `kafka.spec.tls` and `kafka.spec.fips`
+  deep schemas; the answer should fall out.
+* **Workaround until the schema is known**: ask Container team to
+  bounce the `confluent-operator` pod and re-run install. The 17:59Z
+  green run is proof the cluster's spec is compatible with the
+  operator when the operator is in a fresh state.
+* **Why it matters**: this looked like an actionable spec fix and
+  isn't. Don't burn cycles adding TLS flags to CRs in response to
+  this condition — verify post-admission whether the field even
+  survived. The condition's text ("TLS not Enabled in Application")
+  is misleading: the operator is reporting its own inability to
+  build an outbound HTTP client to the CR's services, not a spec
+  validation failure.
 
 ---
 
