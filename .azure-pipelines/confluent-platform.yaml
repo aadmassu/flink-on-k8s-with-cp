@@ -306,7 +306,10 @@ stages:
                   rm -f "$MDS_PRIV" "$MDS_PUB"
                   fi
 
-                  # SASL PLAIN — Secret needs both: kafka-server-listener-internal-plain-users.json (user→password JSON DB) and plain-interbroker.txt (single line "username:password" picking which user authenticates inter-broker/quorum-replication; `admin` per VM convention).
+                  # SASL PLAIN Secret keys:
+                  #   kafka-server-listener-internal-plain-users.json  - broker user→password DB
+                  #   plain-interbroker.txt                            - inter-broker JAAS (Java-properties; user must exist in users.json; `admin` per VM convention)
+                  #   <component>-client-plain.txt                     - per-component client-side JAAS for the components that authenticate to brokers via this secretRef. CFK 3.2 SchemaRegistry surfaces "required at least one of [schemaregistry-client-plain.txt plain.txt]" if absent (runbook needs an entry; observed 2026-06-29 SR ApplyFailed). Connect/REST/C3 follow the same `<lowercase-kind>-client-plain.txt` pattern when they come online.
                   if is_eso_managed sasl-plain-internal; then
                     echo ""
                     echo "=== sasl-plain-internal ==="
@@ -314,23 +317,34 @@ stages:
                   else
                   SASL_JSON_TMP=$(mktemp)
                   SASL_IB_TMP=$(mktemp)
+                  SASL_SR_TMP=$(mktemp)
+                  SASL_CONNECT_TMP=$(mktemp)
+                  SASL_REST_TMP=$(mktemp)
+                  SASL_C3_TMP=$(mktemp)
                   printf '{\n  "admin": "%s",\n  "client": "%s",\n  "schema_registry": "%s",\n  "kafka_connect": "%s",\n  "kafka_rest": "%s",\n  "control_center": "%s"\n}\n' \
                     "$SASL_ADMIN" "$SASL_CLIENT" "$SASL_SR" "$SASL_CONNECT" "$SASL_REST" "$SASL_C3" \
                     > "$SASL_JSON_TMP"
-                  # CFK rejected "admin:admin-secret" with "username and password
-                  # not formatted correctly". The accepted format is Java
-                  # properties: two lines, username= and password=. The user
-                  # named here must also be present in the users.json above.
-                  printf 'username=admin\npassword=%s\n' "$SASL_ADMIN" > "$SASL_IB_TMP"
+                  # Java-properties two-line format. The user in each file must
+                  # also be present in users.json above; mismatch is rejected
+                  # with "username and password not formatted correctly".
+                  printf 'username=admin\npassword=%s\n'           "$SASL_ADMIN"   > "$SASL_IB_TMP"
+                  printf 'username=schema_registry\npassword=%s\n' "$SASL_SR"      > "$SASL_SR_TMP"
+                  printf 'username=kafka_connect\npassword=%s\n'   "$SASL_CONNECT" > "$SASL_CONNECT_TMP"
+                  printf 'username=kafka_rest\npassword=%s\n'      "$SASL_REST"    > "$SASL_REST_TMP"
+                  printf 'username=control_center\npassword=%s\n'  "$SASL_C3"      > "$SASL_C3_TMP"
                   echo ""
                   echo "=== sasl-plain-internal ==="
                   oc create secret generic sasl-plain-internal \
                     -n "$OC_NS" --dry-run=client -o yaml \
                     --from-file=kafka-server-listener-internal-plain-users.json="$SASL_JSON_TMP" \
                     --from-file=plain-interbroker.txt="$SASL_IB_TMP" \
+                    --from-file=schemaregistry-client-plain.txt="$SASL_SR_TMP" \
+                    --from-file=kafkaconnect-client-plain.txt="$SASL_CONNECT_TMP" \
+                    --from-file=kafkarest-client-plain.txt="$SASL_REST_TMP" \
+                    --from-file=controlcenter-client-plain.txt="$SASL_C3_TMP" \
                     | label_secret sasl-plain-internal \
                     | oc apply -f -
-                  rm -f "$SASL_JSON_TMP" "$SASL_IB_TMP"
+                  rm -f "$SASL_JSON_TMP" "$SASL_IB_TMP" "$SASL_SR_TMP" "$SASL_CONNECT_TMP" "$SASL_REST_TMP" "$SASL_C3_TMP"
                   fi
 
                   # OAuth client credentials — one Secret per component, each
