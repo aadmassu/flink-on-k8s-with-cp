@@ -300,9 +300,9 @@ stages:
                   fi
 
                   # SASL PLAIN Secret keys:
-                  #   kafka-server-listener-internal-plain-users.json  - broker user→password DB
-                  #   plain-interbroker.txt                            - inter-broker JAAS (Java-properties; user must exist in users.json; `admin` per VM convention)
-                  #   <component>-client-plain.txt                     - per-component client-side JAAS for the components that authenticate to brokers via this secretRef. CFK 3.2 SchemaRegistry surfaces "required at least one of [schemaregistry-client-plain.txt plain.txt]" if absent (runbook needs an entry; observed 2026-06-29 SR ApplyFailed). Connect/REST/C3 follow the same `<lowercase-kind>-client-plain.txt` pattern when they come online.
+                  #   kafka-server-listener-<listener>-plain-users.json - broker user→password DB, one per declared SASL/PLAIN listener (CFK 3.2 looks for the listener-specific name first; observed 2026-06-29 with Phase 1 external listener: "required at least one of [kafka-server-listener-external-plain-users.json kafka-server-plain-users.json plain-users.json]"). Add the per-listener key for every listeners.* entry in kafka.yaml that uses authentication.type=plain — currently `internal` and `external`.
+                  #   plain-interbroker.txt                             - inter-broker JAAS (Java-properties; user must exist in users.json; `admin` per VM convention)
+                  #   <component>-client-plain.txt                      - per-component client-side JAAS for the components that authenticate to brokers via this secretRef. CFK 3.2 SchemaRegistry surfaces "required at least one of [schemaregistry-client-plain.txt plain.txt]" if absent (observed 2026-06-29 SR ApplyFailed). Connect/REST/C3 follow the same `<lowercase-kind>-client-plain.txt` pattern when they come online.
                   if is_eso_managed sasl-plain-internal; then
                     echo ""
                     echo "=== sasl-plain-internal ==="
@@ -330,6 +330,7 @@ stages:
                   oc create secret generic sasl-plain-internal \
                     -n "$OC_NS" --dry-run=client -o yaml \
                     --from-file=kafka-server-listener-internal-plain-users.json="$SASL_JSON_TMP" \
+                    --from-file=kafka-server-listener-external-plain-users.json="$SASL_JSON_TMP" \
                     --from-file=plain-interbroker.txt="$SASL_IB_TMP" \
                     --from-file=schemaregistry-client-plain.txt="$SASL_SR_TMP" \
                     --from-file=kafkaconnect-client-plain.txt="$SASL_CONNECT_TMP" \
