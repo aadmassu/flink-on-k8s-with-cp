@@ -1366,6 +1366,23 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   means the gap is on our side: we either provide BCFKS material
   or we relax the operator's fipsmode requirement for dev. There
   is no third path from CR-side `configOverrides` alone.
+* **Follow-up after the operator-side helm rollback** (Rick
+  disabled `fipsmode=true` for dev on 2026-06-30): the next
+  install-or-update run STILL hit the same validator error.
+  Root cause of the post-rollback failure: the Kafka CR still
+  carried `spec.tls.fips.enabled: true` (iteration 5b
+  manifest), and **that CR-level toggle alone re-triggers the
+  FIPS-strict validator on a per-CR basis** independent of the
+  operator's `fipsmode` flag. Per the docs, `spec.tls.fips.
+  enabled: true` opts THIS CR into FIPS-attested processing
+  even when the operator process itself is running with
+  `--fipsmode=false`. So both knobs have to be off for dev to
+  run with normal validation: (a) operator-level
+  `fipsmode=false` (Rick's helm change), and (b) CR-level
+  `spec.tls.fips.enabled` removed entirely (drop the field;
+  setting `false` may not be schema-valid). Net rule for Phase 1
+  dev: **neither toggle is set**. For stg/prd both come back
+  once the BCFKS conversion pipeline lands.
 
 ---
 

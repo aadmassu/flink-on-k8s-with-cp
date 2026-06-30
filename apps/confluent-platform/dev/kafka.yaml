@@ -12,14 +12,14 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-optionB-tls-fips-only"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase1-tls-fips-off-post-rick"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # FIPS attestation lives at spec.tls.fips.enabled (runbook A20). Top-level spec.fips removed for this iteration as a clean single-variable test of the CFK 3.2.0+ documented path.
+  # FIPS attestation removed (no top-level spec.fips, no spec.tls.fips). Rick disabled operator-side fipsmode=true for dev (helm upgrade 2026-06-30), but the post-rollout install showed spec.tls.fips.enabled on the CR ALONE re-triggers the FIPS-strict validator regardless of the operator-side flag (runbook A20). Phase 1 dev runs with neither toggle; stg/prd will turn both back on once the BCFKS conversion pipeline lands.
 
   replicas: 3
 
@@ -69,8 +69,6 @@ spec:
 
   tls:
     secretRef: kafka-tls
-    fips:
-      enabled: true
 
   license:
     secretRef: cfk-license
