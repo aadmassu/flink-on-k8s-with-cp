@@ -1,14 +1,155 @@
-If both yum and pip are available, I'd recommend installing Ansible with pip unless there's a requirement to use the OS-packaged version.
+==============================================================================
+RICK ESCALATION — dev CFK operator fipsmode=true + BCFKS gap
+==============================================================================
 
-# Verify Python and pip
-python3 --version
-pip3 --version
+Status: drafted 2026-06-30, ready to send. Iteration 5 (commit 0a730d8)
+running in parallel; if it clears the validator, skip this thread.
 
-# Upgrade pip (optional but recommended)
-python3 -m pip install --upgrade pip
+------------------------------------------------------------------------------
+Subject: dev CFK operator — fipsmode=true + BCFKS keystore gap
+To:      Rick Mulder
+------------------------------------------------------------------------------
 
-# Install Ansible
-python3 -m pip install ansible
+Rick,
 
-# Verify the installation
-ansible --version
+We've hit a wall on the dev Kafka CR install and Confluent's own docs explain
+why. Asking for your call on which of two fixes to apply at the operator
+level.
+
+Background
+----------
+- The dev CFK operator (confluent-operator namespace) was installed with
+  fipsmode=true (the FCB Container Platforms hardening default). Build is
+  0.1514.x = CFK 3.2.x.
+- The dev Kafka CR in dah-flink-dev sits at:
+    cluster-ready=False
+    reason=ApplyFailed
+    message=failed config validation: missing value for key
+            confluent.metrics.reporter.ssl.truststore.location
+  status.observedGeneration is unset -- the rejection is at admission, before
+  the operator's reconcile loop runs.
+- KRaftController is fine (cluster-ready=True, 3 pods 1/1 Running, 10h+).
+  The wall is the Kafka CR's FIPS-strict server-properties validator only.
+
+What we've tried (five iterations on the Kafka CR's spec.configOverrides.server)
+------------------------------------------------------------------------------
+1. metric.reporters= (empty) + disable audit log + disable lag emitter --
+   commit 3724127. Validator still asks for the same key.
+2. Pre-render confluent.metrics.reporter.ssl.truststore.{location,password,
+   type} pointed at /mnt/sslcerts/truststore.p12 (CFK init-container auto-
+   rendered path) -- commit 562d196, reverted at aafd80d because the path
+   isn't declared in spec.mountedVolumes (read as a phantom mount even though
+   the file exists at runtime).
+3. Same three keys but pointed at /mnt/sslcerts/fcb-trust-bundle/bundle.jks
+   (the fcb-trust-bundle ConfigMap, definitely mounted) -- commit 8ce409c.
+   Same error.
+4. Full six-key SSL block (truststore.{location,password,type} +
+   keystore.{location,password,type}) at /var/ssl/kafka/{truststore,
+   keystore}.jks via a cert-manager keystores.jks block on the kafka-tls
+   Certificate, plus the FCB-Flink-shape mount layout under /var/ssl/...
+   -- commit 502cea5. Same error.
+5. Same as (4) but also set metric.reporters to the cp-server default list
+   (TelemetryReporter + ConfluentMetricsReporter) and supply the full
+   SASL_SSL stack (bootstrap.servers, security.protocol, sasl.mechanism,
+   sasl.jaas.config, topic.replicas, support.metrics.enable=false), 1:1
+   with the VM brokers' apps/confluent-platform/cp-confluent/dev/
+   d11547varc-*-server.properties -- commits 0b36d61 and 0a730d8.
+   Result pending; expected to fail for the reason below.
+
+What the docs say (the discovery)
+---------------------------------
+https://docs.confluent.io/operator/current/co-security-compliance.html
+#deploy-cp-in-the-fips-mode
+
+Key claims, verbatim:
+
+  "Confluent Server (Confluent Kafka), KRaft, Schema Registry, Connect, and
+  ksqlDB require FIPS-compliant Java KeyStore type, Bouncy Castle"
+
+  "Bouncy Castle keystores (BCFKS) are required for FIPS-compliant TLS
+  connections"
+
+  The component Secret must contain:
+    keystore.bcfks
+    truststore.bcfks
+    keystore.jks
+    truststore.jks
+    jksPassword.txt
+
+  Documented CR field path:
+    spec:
+      tls:
+        fips:
+          enabled: true
+          mode: <fips-mode>   # Optional, CFK 3.2.0+
+        secretRef: <secret-name>
+
+The gap
+-------
+- The kafka-tls Secret currently contains: tls.crt, tls.key, ca.crt (from
+  Keyfactor via cert-manager); keystore.jks + truststore.jks (from the
+  keystores.jks Certificate block we added in commit 502cea5). It does NOT
+  contain BCFKS material.
+- cert-manager 1.x's keystores block only emits JKS and PKCS12 -- no
+  BCFKS support upstream. There is no in-cluster tool in our namespace that
+  produces BCFKS from PEM material.
+- Therefore: we cannot satisfy the operator's FIPS-strict validator from
+  the Kafka CR alone, regardless of how many keys we pre-render. The
+  "missing value" error message reads literally but more accurately means
+  "the truststore location must resolve to a BCFKS file at a path the
+  validator recognizes".
+
+Two options for the dev install
+-------------------------------
+(1) Provision a BCFKS conversion sidecar/Job in dah-flink-dev (or in
+    confluent-operator as a namespace-scoped utility). On each kafka-tls
+    Secret rotation the Job reads tls.crt/tls.key/ca.crt, converts to
+    BCFKS via the BouncyCastle CLI (bc-fips jar + keytool), patches the
+    Secret with keystore.bcfks + truststore.bcfks. Same for any other
+    component Secret that needs FIPS material (kraftcontroller-tls,
+    schemaregistry-tls, etc.). Right long-term shape for stg/prd too.
+    Effort: ~30-60 min infra work + base image with bc-fips and keytool.
+
+(2) Disable fipsmode=true on the dev CFK operator install:
+        helm upgrade --reuse-values --set fipsmode=false \
+          confluent-operator confluentinc/confluent-for-kubernetes \
+          --namespace confluent-operator
+    We keep spec.tls.fips.enabled=true on the Kafka CR (no-op when the
+    operator isn't running the strict validator, but keeps the dev
+    manifests aligned with what prod will look like once the BCFKS
+    pipeline lands). Removes the immediate blocker. Loses the
+    operator-attested FIPS validation path for dev only -- broker
+    runtime FIPS posture is governed by the JVM bootclasspath and the
+    cp-server image (artifactory.fcbint.net/.../cp-server:8.1.3), both
+    unchanged. The brokers can still run BCFKS-format keystores at
+    runtime if the image is configured that way; the operator just won't
+    enforce it pre-deploy.
+
+Ask
+---
+For dev only: which of (1) or (2) do you want us to go with? If (2), we
+can re-install the operator ourselves once you bless the change, or you
+can do it.
+
+For stg/prd: BCFKS production is the right path regardless. If we go with
+(2) for dev now, we'd still need to stand up the BCFKS conversion pipeline
+before stg's CFK install. Happy to scope that as a follow-up once dev is
+unblocked.
+
+-- Ayu
+
+==============================================================================
+Notes for me (Ayu) -- not part of the message above
+==============================================================================
+- Don't mention iterations 1-5 by commit hash to Rick unless he asks --
+  it's the wrong altitude. The summary "five iterations of CR-side
+  configOverrides, none cleared it" is enough.
+- If Rick prefers option 1 but doesn't want to own the conversion Job
+  himself, ask whether trust-manager can do BCFKS (vs JKS only) since
+  Container Platforms already deploys trust-manager for fcb-trust-bundle.
+- If Rick says "the operator should auto-generate BCFKS when fipsmode=true",
+  that's a third option worth investigating -- the docs don't say either
+  way. May need a follow-up to Confluent support.
+- Memory project_fcb_cfk_operator_ownership: operator is owned by FCB
+  Container Platforms; vendored chart in repo is reference-only. So Rick
+  is the right person here, not Tom or Tushar.
