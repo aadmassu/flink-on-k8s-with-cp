@@ -1509,6 +1509,24 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   oauth.configuration` and `spec.authentication.oauth.
   configuration` — use **`configuration` (singular)**. Don't
   copy-paste blindly between them.
+* **`spec.dependencies.kafkaRest.authentication` is also
+  required on the Kafka CR once `spec.services.mds` is set**.
+  Symptom on first apply: `cluster-ready=False ApplyFailed:
+  .spec.dependencies.kafkaRest.authentication must be
+  configured` — broker pods come up fine (`statefulset-
+  available=True`, `resources-ready=True`) but the operator
+  refuses to mark the CR ready because the RBAC-management path
+  needs to talk to the broker's embedded kafkaRest endpoint at
+  `:8090` for ConfluentRolebinding reconciliation. Fix: add a
+  `dependencies.kafkaRest` block alongside `dependencies.
+  kRaftController`. For OAuth use `authentication.type:
+  oauthbearer` with `oauthbearer.secretRef: oauth-broker` plus
+  `oauthSettings` (FLAT fields — *not* nested under
+  `configuration` / `configurations`; the dependency-side oauth
+  shape uses flat-field-`oauthSettings` while the provider-side
+  uses nested-`configurations` plural). `endpoint:
+  https://kafka.dah-flink-dev.svc.cluster.local:8090` and
+  `tls.enabled: true`.
 * **Why it matters**: Phase 1.5 (broadened super.users) is a
   hack that works for dev smoke-tests but explicitly violates
   least-privilege for stg/prd. Phase 2 establishes the proper

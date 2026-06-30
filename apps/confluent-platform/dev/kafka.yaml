@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta-configurations-plural"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta-deps-kafkarest"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -49,6 +49,23 @@ spec:
             secretRef: sasl-plain-internal
         tls:
           enabled: true
+    # When spec.services.mds is set the operator demands spec.dependencies.kafkaRest.authentication be configured -- it uses the broker's embedded kafkaRest endpoint at :8090 for RBAC operations (creating ConfluentRolebindings, etc.). oauthSettings here uses FLAT fields (the dependency-side shape); spec.services.mds.provider.oauth.configurations uses the nested shape (runbook A22).
+    kafkaRest:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      authentication:
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-broker
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(Dev)
+          subClaimName: sub
+          groupsClaimName: dahDev_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
 
   # Internal + external SASL_SSL/PLAIN. External must be explicit or CFK auto-creates a PLAINTEXT default and trips FIPS (runbook A17).
   listeners:

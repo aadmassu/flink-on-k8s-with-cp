@@ -242,6 +242,19 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       oauth.configuration` and `spec.authentication.oauth.
       configuration`) use `configuration` (singular). Wrong
       number fails admission with a real error path.
+- [ ] **`spec.dependencies.kafkaRest` is required on the Kafka
+      CR once `spec.services.mds` is set**. The operator uses
+      the broker's embedded kafkaRest endpoint at `:8090` for
+      RBAC reconciliation. Block must include `endpoint:
+      https://kafka.dah-flink-dev.svc.cluster.local:8090`,
+      `tls.enabled: true`, and `authentication` with `type:
+      oauthbearer` + `oauthbearer.secretRef: oauth-broker` +
+      `oauthSettings` (FLAT fields — dependency-side uses
+      `oauthSettings`, NOT nested `configuration` /
+      `configurations`). Missing this block returns
+      `cluster-ready=False ApplyFailed:
+      .spec.dependencies.kafkaRest.authentication must be
+      configured` while broker pods stay up.
 - [ ] **After applying the Kafka CR, verify `spec.services.mds`
       survived admission** — silent-strip caveat. Run via the
       Diagnostics pipeline:
