@@ -1,11 +1,10 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: CFK KafkaRestProxy CR — dev (1 replica). Production-target
-#              spec with OAuth+MDS+RBAC; needs v1beta1-shape rework before
-#              bring-online against the current FIPS-mode operator.
-#              Runbook A15/A17.
+# Date:        2026-05-11 (created), 2026-06-30 (last-modified)
+# Description: CFK KafkaRestProxy CR — Phase 1 baseline (PLAIN/SASL_SSL to
+#              Kafka INTERNAL on :9071, HTTPS to Schema Registry, no MDS/
+#              RBAC/OAuth). 1 replica. Phase 2 layers OAuth/MDS/RBAC.
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -13,14 +12,15 @@ kind: KafkaRestProxy
 metadata:
   name: kafkarest
   namespace: dah-flink-dev
+  annotations:
+    platform.confluent.io/force-reconcile: "2026-06-30-phase1-aligned-with-kafka"
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # TEMP — resources scaled down for the dah-flink-dev ResourceQuota.
-  # Revert to 4/4 req+limit when Tom raises the namespace quota.
+  # TEMP — resources scaled down for the dah-flink-dev ResourceQuota. Revert to 4/4 req+limit when Tom raises the namespace quota.
   replicas: 1
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.3
@@ -32,91 +32,38 @@ spec:
     app.kubernetes.io/component: kafka-rest-proxy
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # Resources under spec.podTemplate.resources — top-level spec.resources is pruned at admission.
 
   dependencies:
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
       authentication:
-        type: oauthbearer
-        oauthbearer:
-          secretRef: oauth-kafkarest
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(Dev)
-          subClaimName: sub
-          groupsClaimName: dahDev_groups
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        type: plain
+        jaasConfig:
+          secretRef: sasl-plain-internal
       tls:
         enabled: true
     schemaRegistry:
       url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
       tls:
         enabled: true
-      authentication:
-        type: oauth
-        oauth:
-          secretRef: oauth-kafkarest
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(Dev)
-            subClaimName: sub
-            groupsClaimName: dahDev_groups
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-    mds:
-      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
-      tokenKeyPair:
-        secretRef: mds-token-keypair
-      authentication:
-        type: oauth
-        oauth:
-          secretRef: oauth-kafkarest
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(Dev)
-            subClaimName: sub
-            groupsClaimName: dahDev_groups
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-
-  # OAuth on REST proxy. Flat fields under authentication.* are rejected with "oauthForRest: missing authentication.oauth struct".
-  authentication:
-    type: oauth
-    oauth:
-      secretRef: oauth-kafkarest
-      configuration:
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        audience: "Confluent,account,api://default"
-        subClaimName: sub
-        groupsClaimName: dahDev_groups
-        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-        scope: 11547.DAH(Dev)
-
-  authorization:
-    type: rbac
-    superUsers:
-      - User:admin
 
   tls:
     secretRef: kafkarest-tls
   license:
     secretRef: cfk-license
 
-  # FCB trust bundle for outbound HTTPS (Okta/SR/MDS).
+  # fcb-trust-bundle at /var/ssl/truststore — same shape as kafka.yaml (runbook A21). KafkaRest's own keystore comes from spec.tls.secretRef via the CFK init container.
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
         configMap:
           name: fcb-trust-bundle
+          items:
+            - key: bundle.jks
+              path: bundle.jks
     volumeMounts:
       - name: fcb-trust-bundle
-        mountPath: /mnt/sslcerts/fcb-trust-bundle
+        mountPath: /var/ssl/truststore
         readOnly: true
 
   # FCB Gatekeeper [pod-disruption-budget] rejects CFK's auto-generated PDB at maxUnavailable=0; setting 1 makes it drainable.
@@ -125,14 +72,11 @@ spec:
     maxUnavailable: 1
 
   configOverrides:
-    # JVM default truststore -> fcb-trust-bundle (see kafka.yaml).
     jvm:
-      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
-    server:
-      - kafka.rest.resource.extension.class=io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension
-      - confluent.monitoring.interceptor.topic=_confluent-monitoring
+    server: []
 
   podTemplate:
     serviceAccountName: flink-operator
