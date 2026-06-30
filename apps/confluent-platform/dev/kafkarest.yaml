@@ -2,9 +2,9 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-05-11 (created), 2026-06-30 (last-modified)
-# Description: CFK KafkaRestProxy CR — Phase 1 baseline (PLAIN/SASL_SSL to
-#              Kafka INTERNAL on :9071, HTTPS to Schema Registry, no MDS/
-#              RBAC/OAuth). 1 replica. Phase 2 layers OAuth/MDS/RBAC.
+# Description: CFK KafkaRestProxy CR — Phase 2 (PLAIN/SASL_SSL to Kafka
+#              INTERNAL :9071, MDS dependency on broker :8090, OAuth on REST,
+#              RBAC via ConfluentRolebinding CRs). 1 replica.
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -13,7 +13,7 @@ metadata:
   name: kafkarest
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-aligned-with-kafka"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta"
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
@@ -46,6 +46,54 @@ spec:
       url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
       tls:
         enabled: true
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    # MDS dependency — KafkaRest authenticates to MDS via Okta OAuth client_credentials (runbook A22).
+    mds:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  # Okta JWT auth on KafkaRest REST API.
+  authentication:
+    type: oauth
+    oauth:
+      secretRef: oauth-kafkarest
+      configuration:
+        audience: "Confluent,account,api://default"
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        scope: 11547.DAH(Dev)
+        subClaimName: sub
+        groupsClaimName: dahDev_groups
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
 
   tls:
     secretRef: kafkarest-tls

@@ -225,6 +225,55 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       isn't mTLS). Match the value shape with the VM brokers'
       `apps/confluent-platform/cp-confluent/dev/d11547varc-*-
       server.properties`.
+
+### 1i. Phase 2 — Okta MDS + RBAC (`LESSONS_LEARNED.md` A22)
+- [ ] **Kafka CR**: `spec.services.mds` block present with
+      `tokenKeyPair.secretRef: mds-token-keypair` and
+      `provider.oauth` pointed at the Okta tenant
+      (`myapps.firstcitizens.com`). `spec.authorization.type: rbac`
+      with `superUsers: [User:admin]` ONLY — component users
+      (`schemaregistry`, `kafkaconnect`, `kafkarest`,
+      `controlcenter`) go through rolebindings, not super.users.
+- [ ] **After applying the Kafka CR, verify `spec.services.mds`
+      survived admission** — silent-strip caveat. Run via the
+      Diagnostics pipeline:
+      `oc get kafka kafka -n dah-flink-dev -o jsonpath='{.spec.services.mds}{"\n"}'`.
+      If absent, MDS isn't actually wired and we fall back to
+      Phase 1.5 (broaden super.users) until silent-strip is
+      resolved with Confluent / Rick.
+- [ ] **SR / Connect / KafkaRest CRs**: each has
+      `spec.dependencies.mds` (endpoint
+      `https://kafka.dah-flink-dev.svc.cluster.local:8090`,
+      `tokenKeyPair.secretRef: mds-token-keypair`,
+      `authentication.type: oauth` using `oauth-<component>`
+      Secret), `spec.authentication.type: oauth` (Okta JWT on
+      the component's REST API), and `spec.authorization.type:
+      rbac` with `superUsers: [User:admin]`. Kafka listener auth
+      stays PLAIN — Phase 2 adds authz, not authn.
+- [ ] **`rolebindings.yaml`** present with `ConfluentRolebinding`
+      CRs for each component:
+      - SR: `ResourceOwner` on Topic `_schemas` (LITERAL) +
+        Group `schema-registry` (LITERAL)
+      - Connect: `ResourceOwner` on the three
+        `connect-cluster-{configs,offsets,status}` Topics
+        (LITERAL) + Group `connect-cluster` (LITERAL)
+      - KafkaRest: `SystemAdmin` (cluster scope — tighten in
+        follow-up once REST clients' topic patterns are known)
+      Each uses `kafkaRestClassRef.name: default` to resolve the
+      MDS endpoint through the KafkaRestClass chain.
+- [ ] **Pipeline order**: `rolebindings.yaml` applied AFTER Kafka
+      `cluster-ready` and BEFORE SR / Connect / KafkaRest CR
+      applies, so each component's user has access at first
+      boot. Apply step lives in
+      `.azure-pipelines/confluent-platform.yaml` between the
+      `wait_for_cr_ready kafka kafka 300` call and the Phase 2
+      component apply block.
+- [ ] **Prereq Secrets**: `oauth-mds-rest` (MDS service's own
+      Okta client credentials), `oauth-schemaregistry`,
+      `oauth-connect`, `oauth-kafkarest` all present. Pipeline
+      creates them via `apply_oauth_secret` from
+      `<env>-oauth-<component>-client-{id,secret}` variable
+      group entries.
 - [ ] `confluent.balancer.enable=false` in `configOverrides.server`
       for Phase 1 — Self-Balancer is a SASL_SSL client too and is
       the validator's next target after the metrics reporter is

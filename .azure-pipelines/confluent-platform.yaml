@@ -691,6 +691,16 @@ stages:
                   fi
 
                   echo ""
+                  echo "=== Phase 2 (pre-component): RBAC rolebindings ==="
+                  # Applied AFTER Kafka readiness so the operator can resolve them through KafkaRestClass -> Kafka MDS at :8090. Idempotent: re-applying merges existing rolebindings rather than recreating them. Operator retries internally if MDS isn't ready yet, so applying here is safe even if Kafka wasn't part of this run (rolebindings need an existing MDS, not necessarily one created this run).
+                  if [ -f "$ENV_DIR/rolebindings.yaml" ]; then
+                    echo "+ oc apply -f $ENV_DIR/rolebindings.yaml"
+                    oc apply -f "$ENV_DIR/rolebindings.yaml"
+                  else
+                    echo "(rolebindings.yaml not found — skipped)"
+                  fi
+
+                  echo ""
                   echo "=== Phase 2: Schema Registry, Connect, REST Proxy, Control Center ==="
                   if is_true "$APPLY_SR"; then
                     echo ""

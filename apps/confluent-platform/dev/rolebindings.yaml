@@ -1,0 +1,146 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-30 (created)
+# Description: Phase 2 RBAC grants for the CFK components in dah-flink-dev.
+#              Applied AFTER Kafka cluster-ready (MDS must be serving)
+#              and BEFORE SR/Connect/KafkaRest pods start so each
+#              component's user has the access it needs at first boot
+#              (runbook A22). kafkaRestClassRef.name=default routes the
+#              rolebinding through the KafkaRestClass to MDS at
+#              kafka.dah-flink-dev.svc.cluster.local:8090.
+#
+#              Principals match the per-component PLAIN-auth usernames
+#              wired into sasl-plain-internal:
+#                schemaregistry, kafkaconnect, kafkarest, controlcenter.
+########################################################################
+
+# -- Schema Registry --------------------------------------------------------
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: schemaregistry-resourceowner-schemas
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: schemaregistry
+  role: ResourceOwner
+  resourcePatterns:
+    - resourceType: Topic
+      name: _schemas
+      patternType: LITERAL
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-dev
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: schemaregistry-resourceowner-group
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: schemaregistry
+  role: ResourceOwner
+  resourcePatterns:
+    # SR's consumer group id is `schema-registry` per schemaregistry.yaml configOverrides.server.
+    - resourceType: Group
+      name: schema-registry
+      patternType: LITERAL
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-dev
+---
+
+# -- Kafka Connect ----------------------------------------------------------
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: connect-resourceowner-config-topic
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/component: kafka-connect
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: kafkaconnect
+  role: ResourceOwner
+  resourcePatterns:
+    - resourceType: Topic
+      name: connect-cluster-configs
+      patternType: LITERAL
+    - resourceType: Topic
+      name: connect-cluster-offsets
+      patternType: LITERAL
+    - resourceType: Topic
+      name: connect-cluster-status
+      patternType: LITERAL
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-dev
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: connect-resourceowner-group
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/component: kafka-connect
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: kafkaconnect
+  role: ResourceOwner
+  resourcePatterns:
+    # Connect's group id is `connect-cluster` per connect.yaml configOverrides.server.
+    - resourceType: Group
+      name: connect-cluster
+      patternType: LITERAL
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-dev
+---
+
+# -- Kafka REST Proxy -------------------------------------------------------
+# SystemAdmin at cluster scope for Phase 2 first pass — KafkaRest acts as a
+# generic proxy and granting narrowly per-topic gets unwieldy. Tighten in a
+# follow-up once we know which topics consumers actually exercise via REST.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: kafkarest-systemadmin
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/component: kafka-rest-proxy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: kafkarest
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-dev

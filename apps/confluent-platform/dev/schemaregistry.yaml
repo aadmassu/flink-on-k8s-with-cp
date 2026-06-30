@@ -2,8 +2,9 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-05-11 (created), 2026-06-30 (last-modified)
-# Description: CFK SchemaRegistry CR — Phase 1 baseline (HTTPS + SASL_SSL/PLAIN
-#              to Kafka INTERNAL on :9071). Phase 2 layers OAuth/JETTY_AUTH/RBAC.
+# Description: CFK SchemaRegistry CR — Phase 2 (HTTPS + SASL_SSL/PLAIN to
+#              Kafka INTERNAL :9071, MDS dependency on broker :8090, OAuth on
+#              SR REST API, RBAC via ConfluentRolebinding CRs).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -12,7 +13,7 @@ metadata:
   name: schemaregistry
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-aligned-with-kafka"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta"
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -41,6 +42,42 @@ spec:
           secretRef: sasl-plain-internal
       tls:
         enabled: true
+    # OAuth client_credentials to MDS (runs on the broker at :8090). SR presents an Okta-issued bearer token; MDS validates and returns the SR-scoped RBAC token used for authz against Kafka resources (runbook A22).
+    mds:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-schemaregistry
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  # Okta JWT auth on SR REST API — clients (Flink jobs, CMF, etc.) must present a valid token issued by myapps.firstcitizens.com.
+  authentication:
+    type: oauth
+    oauth:
+      secretRef: oauth-schemaregistry
+      configuration:
+        audience: "Confluent,account,api://default"
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        scope: 11547.DAH(Dev)
+        subClaimName: sub
+        groupsClaimName: dahDev_groups
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
 
   tls:
     secretRef: schemaregistry-tls

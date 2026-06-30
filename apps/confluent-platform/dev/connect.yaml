@@ -2,10 +2,10 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-04-01 (created), 2026-06-30 (last-modified)
-# Description: CFK Connect CR — Phase 1 baseline (PLAIN/SASL_SSL to Kafka
-#              INTERNAL on :9071, HTTPS to Schema Registry, no MDS/RBAC/
-#              OAuth). Suspended at replicas: 0 until dev quota is raised
-#              (runbook F1). Phase 2 layers OAuth/MDS/RBAC + interceptors.
+# Description: CFK Connect CR — Phase 2 (PLAIN/SASL_SSL to Kafka INTERNAL
+#              :9071, MDS dependency on broker :8090, OAuth on Connect REST,
+#              RBAC via ConfluentRolebinding CRs). Suspended at replicas: 0
+#              until dev quota is raised (runbook F1).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -14,7 +14,7 @@ metadata:
   name: connect
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-aligned-with-kafka"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta"
   labels:
     app.kubernetes.io/name: connect
     app.kubernetes.io/component: kafka-connect
@@ -47,9 +47,57 @@ spec:
       url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
       tls:
         enabled: true
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-connect
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+    # MDS dependency — Connect authenticates to MDS via Okta OAuth client_credentials and uses the RBAC token for authz against Kafka resources (runbook A22).
+    mds:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-connect
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            scope: 11547.DAH(Dev)
+            subClaimName: sub
+            groupsClaimName: dahDev_groups
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
     kafkaRestClassRef:
       name: default
       namespace: dah-flink-dev
+
+  # Okta JWT auth on Connect REST API.
+  authentication:
+    type: oauth
+    oauth:
+      secretRef: oauth-connect
+      configuration:
+        audience: "Confluent,account,api://default"
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        scope: 11547.DAH(Dev)
+        subClaimName: sub
+        groupsClaimName: dahDev_groups
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin
 
   tls:
     secretRef: connect-tls

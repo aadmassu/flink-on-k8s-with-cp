@@ -1436,6 +1436,77 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   produces; let the CFK init container generate any JKS / PKCS12
   material itself.**
 
+### A22. Phase 2 layering — Okta-backed MDS + RBAC on top of the Phase 1 PLAIN/SASL_SSL baseline
+
+* **Symptom (the trigger that moves us past Phase 1)**: SR pod
+  successfully completes the SASL/PLAIN handshake against the
+  broker on `:9071` but dies during init with
+  `TopicAuthorizationException: Authorization failed` when it
+  tries to create `_schemas`. cp-server's
+  `ConfluentServerAuthorizer` is active by default in KRaft mode;
+  with only `User:admin` in `super.users`, every other
+  authenticated identity (`schemaregistry`, `kafkaconnect`,
+  `kafkarest`, `controlcenter`) hits deny.
+* **Two paths to clear it**:
+  1. **Phase 1.5** — broaden `super.users` to include each
+     component user. Single-line change in `kafka.yaml`. Doesn't
+     introduce MDS; loses the per-component privilege separation.
+     Acceptable for dev smoke-tests, not for the long-term shape.
+  2. **Phase 2** — wire Okta-backed MDS on the broker + RBAC
+     rolebindings per component. The proper FCB-grade end state.
+* **Phase 2 shape**:
+  * **Kafka CR**: `spec.services.mds` with `tokenKeyPair:
+    mds-token-keypair` and `provider.type: oauth` pointing at
+    Okta (issuer/jwks/token URIs + audience + groupsClaim from
+    `myapps.firstcitizens.com`), using `oauth-mds-rest` Secret
+    for the MDS service's own OIDC client credentials. Plus
+    `spec.authorization.type: rbac` with `superUsers: [User:admin]`
+    only — the other component users do NOT go in super.users in
+    Phase 2; their access comes from rolebindings.
+  * **SR / Connect / KafkaRest CRs**: `spec.dependencies.mds`
+    with `endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090`
+    and `authentication.type: oauth` using the per-component
+    `oauth-<name>` Secret (populated by the pipeline from
+    `<env>-oauth-<name>-client-id` / `client-secret` variables).
+    Plus `spec.authentication.type: oauth` (Okta JWT auth on the
+    component's REST API) and `spec.authorization.type: rbac`
+    with `superUsers: [User:admin]`. The Kafka listener auth
+    STAYS PLAIN — we're adding authz, not changing authn.
+  * **`rolebindings.yaml`**: `ConfluentRolebinding` CRs per
+    component, each with `kafkaRestClassRef.name: default`
+    (transitively resolves cluster scope through KafkaRestClass
+    → Kafka CR → MDS). SR gets `ResourceOwner` on Topic `_schemas`
+    (literal) + Group `schema-registry` (literal). Connect gets
+    `ResourceOwner` on its three internal topics
+    (`connect-cluster-{configs,offsets,status}` literal) + Group
+    `connect-cluster` (literal). KafkaRest gets `SystemAdmin` at
+    cluster scope (acts as generic proxy; tighten in a follow-up
+    once we know which topics REST clients actually exercise).
+  * **Pipeline**: rolebindings.yaml applied AFTER Kafka cluster-ready
+    and BEFORE the SR / Connect / KafkaRest CRs apply, so each
+    component's user has the access it needs at first boot. The
+    apply is idempotent (re-running merges into existing
+    rolebindings); operator retries internally if MDS isn't yet
+    serving.
+* **Silent-strip caveat**: memory
+  `project_cfk_v1beta1_silent_strips` flagged
+  `spec.services.mds:` as previously silent-stripped at admission
+  on this CFK version. After applying the Phase 2 manifests,
+  verify the live Kafka CR retains `spec.services.mds` —
+  `oc get kafka kafka -o jsonpath='{.spec.services.mds}{"\n"}'`
+  via the Diagnostics pipeline. If the field is absent post-apply,
+  MDS isn't actually provisioned and we fall back to Phase 1.5
+  (broaden super.users) until the silent-strip is resolved with
+  Confluent / Rick.
+* **Why it matters**: Phase 1.5 (broadened super.users) is a
+  hack that works for dev smoke-tests but explicitly violates
+  least-privilege for stg/prd. Phase 2 establishes the proper
+  shape — Okta is the identity source, MDS is the
+  authorization-decision-point, ConfluentRolebinding CRs are the
+  declarative grants. The whole layout is GitOps-driven and
+  reproducible across envs as the BCFKS / FIPS gear comes back
+  online.
+
 ---
 
 ## How to add an entry here
