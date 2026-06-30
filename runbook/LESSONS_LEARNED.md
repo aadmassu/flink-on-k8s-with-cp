@@ -1384,6 +1384,58 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   dev: **neither toggle is set**. For stg/prd both come back
   once the BCFKS conversion pipeline lands.
 
+### A21. Do NOT add a `keystores.jks` block to a cert-manager Certificate whose Secret feeds `spec.tls.secretRef` — it breaks the CFK init container's password render
+
+* **Symptom**: Kafka CR cluster-ready clears (validator passes,
+  reconcile starts, broker pod scheduled and `Running`), but the
+  broker process exits during startup with `Fatal error during
+  broker startup. Prepare to shutdown`. The stack trace shows
+  `KafkaRaftManager.buildNetworkClient → SaslChannelBuilder.
+  configure → DefaultSslEngineFactory.createKeystore` failing on:
+  ```
+  Failed to load SSL keystore /mnt/sslcerts/keystore.jks of type JKS
+  Caused by: java.io.IOException: Keystore was tampered with,
+    or password was incorrect
+  Caused by: java.security.UnrecoverableKeyException:
+    Password verification failed
+  ```
+* **Root cause**: A19's "add a `keystores.jks` block to the
+  kafka-tls Certificate so cert-manager writes
+  `keystore.jks` + `truststore.jks` directly into the Secret"
+  trick was scaffolding for the FIPS-strict validator. It breaks
+  the CFK init container's normal contract — *the init container
+  is responsible for rendering JKS+PKCS12 from PEM at startup,
+  and writing a matching `/mnt/sslcerts/jksPassword.txt`*. When
+  it sees `keystore.jks` already present in the kafka-tls Secret
+  (because cert-manager wrote one with the password from
+  `kafka-keystore-pw`), the init container's render disagrees with
+  the file: `/mnt/sslcerts/keystore.jks` ends up encrypted with
+  one password (ours: `changeit`) while
+  `/mnt/sslcerts/jksPassword.txt` carries the init container's
+  separate auto-generated password. The broker reads the password
+  from `jksPassword.txt` and applies it to the keystore, the two
+  don't match, broker fails fatally during startup.
+* **Fix**: revert the `keystores.jks` overlay entirely. Certificate
+  emits PEM only (`tls.crt` / `tls.key` / `ca.crt`); init container
+  produces the JKS material at `/mnt/sslcerts/` with consistent
+  passwords. Also drop any `spec.mountedVolumes` that mount
+  `keystore.jks` / `truststore.jks` from the kafka-tls Secret
+  (those keys won't exist anymore). Internal clients that need
+  SSL config (e.g. the metrics reporter) inherit the JVM-wide
+  trustStore set in `configOverrides.jvm` — for SASL_SSL listeners
+  the client also doesn't need a keystore.
+* **Why it matters**: the FIPS-validator workaround chain in
+  A19/A20 layered TLS material into the Secret in a way that
+  conflicts with CFK's normal lifecycle. Once `fipsmode=true` is
+  off at the operator and `spec.tls.fips.enabled` is removed from
+  the CR, REVERT the cert-manager `keystores.jks` block in the
+  same pass — otherwise the broker passes admission and then
+  dies at startup on its own pre-baked keystore. Rule of thumb:
+  **if `spec.tls.secretRef` points at a cert-manager Secret, that
+  Secret must contain ONLY the PEM keys cert-manager normally
+  produces; let the CFK init container generate any JKS / PKCS12
+  material itself.**
+
 ---
 
 ## How to add an entry here

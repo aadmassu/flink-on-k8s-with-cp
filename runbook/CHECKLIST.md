@@ -192,38 +192,39 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       `fipsmode=true` is disabled for the env. Without one of those
       the FIPS validator cannot be satisfied from CR-side
       configOverrides alone.
-- [ ] The Kafka broker's cert-manager `Certificate` has a
-      `keystores.jks` block emitting `keystore.jks` +
-      `truststore.jks` into the kafka-tls Secret, with the password
-      sourced from an inline `kafka-keystore-pw` Secret
-      (`stringData.password: changeit`) colocated in the Certificate
-      manifest (`LESSONS_LEARNED.md` A19, matches the FCB Flink
-      ui-tls pattern).
-- [ ] `spec.mountedVolumes` declares TWO volumes: fcb-trust-bundle
+- [ ] The Kafka broker's cert-manager `Certificate` does NOT have a
+      `keystores.jks` (or `keystores.pkcs12`) block. The CFK init
+      container is responsible for rendering JKS / PKCS12 from PEM
+      at startup; overlaying our own keystore.jks into the Secret
+      makes the init container's password write disagree with the
+      file and the broker fails fatally at startup
+      (`LESSONS_LEARNED.md` A21). For dev with `fipsmode=false`
+      this is the only correct shape. For stg / prd with
+      `fipsmode=true`, BCFKS material must be provisioned by a
+      separate Job patching the Secret, NOT by cert-manager
+      `keystores` — same anti-pattern.
+- [ ] `spec.mountedVolumes` declares ONE volume: fcb-trust-bundle
       (via `configMap.items` for a deterministic single-file mount)
-      at `/var/ssl/truststore`, and kafka-tls JKS material
-      (`keystore.jks` + `truststore.jks` via `secret.items`) at
-      `/var/ssl/kafka`. Don't mount fcb-trust-bundle under
-      `/mnt/sslcerts/...` — the FIPS-strict validator may have a
-      hardcoded fallback path under `/var/ssl/...` (A19).
+      at `/var/ssl/truststore`. Do NOT add a kafka-tls JKS mount —
+      those keys aren't in the Secret without the (forbidden)
+      cert-manager `keystores.jks` block (A21).
 - [ ] JVM args point the JVM-wide truststore at
       `/var/ssl/truststore/bundle.jks` (`-Djavax.net.ssl.trustStore`,
       `…Password`, `…Type=JKS`).
-- [ ] For every internal client the FIPS-strict validator demands —
-      at minimum `confluent.metrics.reporter` — BOTH the truststore
-      AND keystore triples are pre-rendered in
-      `configOverrides.server` against `/var/ssl/kafka/{truststore,
-      keystore}.jks` + `changeit` + `JKS`, AND the full SASL_SSL
-      stack is present (`bootstrap.servers`, `security.protocol`,
-      `sasl.mechanism`, `sasl.jaas.config`, `topic.replicas`,
-      `support.metrics.enable=false`), AND `metric.reporters` is set
-      to the cp-server default list
+- [ ] `confluent.metrics.reporter` is wired with the full SASL stack
+      (`bootstrap.servers` at the broker's own headless DNS:9071,
+      `security.protocol=SASL_SSL`, `sasl.mechanism=PLAIN`,
+      `sasl.jaas.config` with the internal-plain user, `topic.
+      replicas=3`, `support.metrics.enable=false`) plus
+      `metric.reporters` set to the cp-server default list
       (`io.confluent.telemetry.reporter.TelemetryReporter,
       io.confluent.metrics.reporter.ConfluentMetricsReporter`).
-      Match the values 1:1 with the VM brokers'
+      SSL truststore/keystore keys are NOT pre-rendered — the
+      reporter inherits the JVM-wide trustStore (set in `jvm:`) and
+      doesn't need a keystore for SASL_SSL listeners (the listener
+      isn't mTLS). Match the value shape with the VM brokers'
       `apps/confluent-platform/cp-confluent/dev/d11547varc-*-
-      server.properties` (A19). `metric.reporters=` empty does NOT
-      satisfy the validator.
+      server.properties`.
 - [ ] `confluent.balancer.enable=false` in `configOverrides.server`
       for Phase 1 — Self-Balancer is a SASL_SSL client too and is
       the validator's next target after the metrics reporter is
