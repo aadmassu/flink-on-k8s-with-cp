@@ -169,6 +169,28 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
 - [ ] Pipeline waits on `Ready=True` (not just secret existence)
       before proceeding
 
+### 1h. FIPS-validator gates (Kafka CR only — leave OFF KRaftController / SR)
+- [ ] `spec.fips.enabled: true` on the **Kafka** CR (required by the
+      FIPS-mode operator — `LESSONS_LEARNED.md` A17). Leave it OFF
+      KRaftController (A18) and SR (no `spec.fips` field exists).
+- [ ] For every internal client we're not running in Phase 1 — at
+      minimum `confluent.metrics.reporter` — the three SSL truststore
+      keys are pre-rendered in `configOverrides.server` pointed at a
+      path that's actually mounted on the broker pod. Phase 1 default
+      is `/mnt/sslcerts/fcb-trust-bundle/bundle.jks` + `JKS` +
+      `changeit` since that bundle is already in `spec.mountedVolumes`
+      and is the JVM-wide truststore (`LESSONS_LEARNED.md` A19).
+      Setting `metric.reporters=` (empty) alone does NOT clear the
+      validator.
+- [ ] `confluent.balancer.enable=false` in `configOverrides.server`
+      for Phase 1 — Self-Balancer is a SASL_SSL client too and is
+      the validator's next target after the metrics reporter is
+      satisfied (A19).
+- [ ] If Phase 2 turns any of these clients back on, the
+      truststore-only block is swapped for the full SASL_SSL +
+      bootstrap + jaas + ssl.truststore set, the same way the VM
+      brokers configure these clients today.
+
 ## 2. Apply order (don't skip steps; CFK dependencies are real)
 
 CFK does its own dependency wiring through the operator, but applying

@@ -1,7 +1,7 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
+# Date:        2026-04-01 (created), 2026-06-30 (last-modified)
 # Description: CFK Kafka CR — Phase 1 baseline (SASL_SSL/PLAIN on internal +
 #              external, FIPS attested). Phase 2 layers MDS/OAuth/mTLS/telemetry.
 ########################################################################
@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-strip-metrics-reporter-ssl"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase1-optionB-real-truststore"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -110,13 +110,16 @@ spec:
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
       - confluent.cluster.link.metadata.topic.replication.factor=3
-      # Telemetry clients off for Phase 1 — Phase 2 will re-enable each with a properly mounted truststore/password Secret.
+      # Telemetry clients off for Phase 1 — Phase 2 re-enables each with the real SASL_SSL config (runbook A19).
       - metric.reporters=
       - confluent.security.event.logger.enable=false
       - confluent.consumer.lag.emitter.enabled=false
-      - confluent.balancer.enable=true
-      - confluent.balancer.data.enabled=true
-      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+      # FIPS validator demands these keys be SET even with metric.reporters= empty. Point at the JVM-wide fcb-trust-bundle (already in spec.mountedVolumes, password=changeit).
+      - confluent.metrics.reporter.ssl.truststore.location=/mnt/sslcerts/fcb-trust-bundle/bundle.jks
+      - confluent.metrics.reporter.ssl.truststore.password=changeit
+      - confluent.metrics.reporter.ssl.truststore.type=JKS
+      # Self-Balancer off for Phase 1 — preempts the validator's next SSL-config complaint and avoids dialing an internal listener Phase 1 hasn't fully wired.
+      - confluent.balancer.enable=false
       - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
 
   podTemplate:

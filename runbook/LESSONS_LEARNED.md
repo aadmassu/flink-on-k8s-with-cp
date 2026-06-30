@@ -1216,6 +1216,55 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   jksPassword.txt:jksPassword}` — same shape the VM controller's
   `server.properties` uses today.
 
+### A19. FIPS-strict validator extends to every internal client, not just listeners — `metric.reporters=` empty is NOT enough
+
+* **Symptom**: with A18 cleared (controller is `cluster-ready=True`) and
+  `spec.fips.enabled: true` on the Kafka CR (required to clear the
+  operator's "TLS not Enabled in Application when FIPS mode is true in
+  Operator" message — A17), the Kafka CR moves from one rejection to
+  the next: `cluster-ready=False ApplyFailed: failed config validation:
+  missing value for key confluent.metrics.reporter.ssl.truststore.
+  location`. Set `metric.reporters=` (empty) in `configOverrides.server`
+  to disable ConfluentMetricsReporter at runtime — the validator still
+  complains about the same key. The CR's `status.observedGeneration`
+  stays unset because the rejection is at admission, before the
+  operator writes a normal status.
+* **Root cause**: the same FIPS-attested validation pipeline behind A18
+  applies on the broker path too, and it doesn't just enforce listener
+  SSL — it enforces SSL config for *every* known internal client
+  (`confluent.metrics.reporter`, presumably also Self-Balancer, the
+  security event logger, the consumer-lag emitter, …). It gates on the
+  keys being *set*, not on whether the client is enabled. Turning the
+  client off via its `*.enable=false` flag does not satisfy the
+  validator — the validator runs BEFORE the operator decides whether
+  to wire the client in.
+* **Fix (Phase 1)**: pre-render the three SSL truststore keys for each
+  internal client the validator complains about, pointed at a path
+  that's actually mounted. Two choices:
+  * **(a) operator auto-rendered truststore** — `/mnt/sslcerts/
+    truststore.p12` + `${file:/mnt/sslcerts/jksPassword.txt:
+    jksPassword}` + `type=PKCS12`. The init container produces these
+    from `spec.tls.secretRef` so they exist at runtime. Closer to what
+    the VM brokers do and to what CFK auto-renders for declared
+    listeners.
+  * **(b) the JVM-wide FCB trust bundle** — `/mnt/sslcerts/
+    fcb-trust-bundle/bundle.jks` + `password=changeit` + `type=JKS`.
+    Definitely real (declared in `spec.mountedVolumes`), already the
+    `javax.net.ssl.trustStore` JVM default, and already trusts the
+    broker CA. This is the Phase 1 baseline because it has zero
+    dependency on the operator init container's render side-effects.
+  Either way, also disable Self-Balancer for Phase 1
+  (`confluent.balancer.enable=false`); the balancer is a SASL_SSL
+  client too, so it's the validator's next target after the metrics
+  reporter is satisfied.
+* **Why it matters**: this turns "telemetry off for Phase 1" from a
+  one-line toggle into a multi-key pre-render exercise per client.
+  The "disable the client" shortcut works against the runtime, not the
+  validator. Re-enabling each client in Phase 2 then becomes a matter
+  of swapping the truststore-only block for the full SASL_SSL +
+  bootstrap + jaas + ssl.truststore block, the same way the VM
+  brokers do today.
+
 ---
 
 ## How to add an entry here
