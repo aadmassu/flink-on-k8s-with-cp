@@ -12,16 +12,14 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-optionB-tls-fips-nested-path"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase1-optionB-tls-fips-only"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # FIPS attestation (runbook A17). Both paths set as belt-and-suspenders: top-level spec.fips is what cleared the original A17 error and is what the live CR currently has; spec.tls.fips.enabled is the path the CFK 3.2.0+ docs document (https://docs.confluent.io/operator/current/co-security-compliance.html#deploy-cp-in-the-fips-mode). If one is silent-stripped at admission the other still attests.
-  fips:
-    enabled: true
+  # FIPS attestation lives at spec.tls.fips.enabled (runbook A20). Top-level spec.fips removed for this iteration as a clean single-variable test of the CFK 3.2.0+ documented path.
 
   replicas: 3
 
