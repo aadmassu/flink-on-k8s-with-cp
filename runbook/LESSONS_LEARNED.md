@@ -1310,6 +1310,63 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   Phase 2 re-enables each client at runtime, the SSL block stays in
   place and only the SASL/bootstrap/jaas configs get added on top.
 
+### A20. CFK 3.2.0 FIPS-mode docs: BCFKS is required, not JKS — and the CR field path is `spec.tls.fips.enabled`
+
+* **Symptom**: after iterations 1–4 of pre-rendering
+  `confluent.metrics.reporter.ssl.*` keys against JKS material at
+  `/var/ssl/kafka/` and `/mnt/sslcerts/fcb-trust-bundle/` (A19), the
+  validator continues to reject with `missing value for key
+  confluent.metrics.reporter.ssl.truststore.location` even though
+  the key is present in `spec.configOverrides.server` on the live CR.
+* **Root cause** (per
+  https://docs.confluent.io/operator/current/co-security-compliance.html#deploy-cp-in-the-fips-mode):
+  Two doc-level facts our iterations didn't account for.
+  1. **FIPS requires BCFKS keystores, not JKS.** The docs are
+     explicit: *"Confluent Server (Confluent Kafka), KRaft, Schema
+     Registry, Connect, and ksqlDB require FIPS-compliant Java
+     KeyStore type, Bouncy Castle"*. The component Secret must
+     contain `keystore.bcfks`, `truststore.bcfks`,
+     `keystore.jks`, `truststore.jks`, `jksPassword.txt`. JKS is
+     only the legacy fallback for the Kafka↔ZooKeeper leg (we're on
+     KRaft so don't need it).
+  2. **The CR field is `spec.tls.fips.enabled`, not
+     `spec.fips.enabled`.** The top-level path we'd been using
+     since A17 may have been silent-stripped per the v1beta1
+     pattern (project memory `project_cfk_v1beta1_silent_strips`);
+     the documented path is nested under `spec.tls`.
+* **Fix**:
+  1. Set BOTH `spec.fips.enabled: true` (top-level, our pre-docs
+     placement) AND `spec.tls.fips.enabled: true` (nested under
+     tls, the documented path) — belt-and-suspenders so whichever
+     the operator reads, the attestation is present. Once we
+     confirm which one is canonical we can drop the other.
+  2. The kafka-tls Secret must contain BCFKS material in addition
+     to whatever cert-manager produces. cert-manager 1.x has no
+     native BCFKS support — `spec.keystores` only emits `jks` and
+     `pkcs12`. Two paths to BCFKS:
+     * In-cluster conversion Job: read tls.crt/tls.key/ca.crt from
+       the cert-manager-issued Secret, run the BouncyCastle CLI
+       (`bc-fips` jar + keytool) to emit `keystore.bcfks` +
+       `truststore.bcfks`, patch the Secret. Runs once per cert
+       rotation. Right shape for stg/prd.
+     * Disable operator-level `fipsmode=true` for dev only (Helm
+       chart value); keep `spec.tls.fips.enabled: true` on the CR
+       so manifests stay consistent across envs. Loses the
+       operator-attested FIPS validation path for dev; broker
+       runtime FIPS posture is governed by the JVM bootclasspath
+       and the cp-server image, both unchanged.
+* **Why it matters**: A19's "JKS at /var/ssl/kafka/ is enough"
+  assumption was wrong — the FIPS validator's truststore
+  type/location keys are expected to point at BCFKS files, not
+  JKS files. The "missing value for key …truststore.location"
+  message reads as "missing the value" but more accurately
+  means "missing a value that resolves to a BCFKS truststore at
+  a path the validator recognizes". The validator's behavior is
+  documented as supported in CFK 3.2.0+ (not preview), which
+  means the gap is on our side: we either provide BCFKS material
+  or we relax the operator's fipsmode requirement for dev. There
+  is no third path from CR-side `configOverrides` alone.
+
 ---
 
 ## How to add an entry here

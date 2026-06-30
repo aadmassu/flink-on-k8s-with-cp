@@ -170,9 +170,22 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       before proceeding
 
 ### 1h. FIPS-validator gates (Kafka CR only — leave OFF KRaftController / SR)
-- [ ] `spec.fips.enabled: true` on the **Kafka** CR (required by the
-      FIPS-mode operator — `LESSONS_LEARNED.md` A17). Leave it OFF
-      KRaftController (A18) and SR (no `spec.fips` field exists).
+- [ ] BOTH `spec.fips.enabled: true` (top-level) AND
+      `spec.tls.fips.enabled: true` (nested under tls — the CFK
+      3.2.0+ documented path per
+      https://docs.confluent.io/operator/current/co-security-compliance.html)
+      on the **Kafka** CR (`LESSONS_LEARNED.md` A17 / A20). Belt-and-
+      suspenders until we confirm which is canonical. Leave both OFF
+      on KRaftController (A18) and SR (no `spec.fips` field exists).
+- [ ] The kafka-tls Secret contains BCFKS material —
+      `keystore.bcfks` + `truststore.bcfks` (in addition to
+      `keystore.jks` + `truststore.jks` from cert-manager's
+      `keystores.jks` block) (`LESSONS_LEARNED.md` A20). cert-manager
+      1.x does NOT emit BCFKS natively; either a conversion Job in
+      the namespace patches the Secret, or the operator-level
+      `fipsmode=true` is disabled for the env. Without one of those
+      the FIPS validator cannot be satisfied from CR-side
+      configOverrides alone.
 - [ ] The Kafka broker's cert-manager `Certificate` has a
       `keystores.jks` block emitting `keystore.jks` +
       `truststore.jks` into the kafka-tls Secret, with the password
