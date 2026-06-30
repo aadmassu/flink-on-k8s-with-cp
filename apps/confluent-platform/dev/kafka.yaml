@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-prerender-metrics-reporter-ssl"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase1-strip-metrics-reporter-ssl"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -110,13 +110,10 @@ spec:
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
       - confluent.cluster.link.metadata.topic.replication.factor=3
-      # Telemetry clients off at runtime + their SSL truststore pre-rendered to satisfy the FIPS-strict validator (runbook A18; validator demands the keys regardless of whether the client is enabled).
+      # Telemetry clients off for Phase 1 — Phase 2 will re-enable each with a properly mounted truststore/password Secret.
       - metric.reporters=
       - confluent.security.event.logger.enable=false
       - confluent.consumer.lag.emitter.enabled=false
-      - confluent.metrics.reporter.ssl.truststore.location=/mnt/sslcerts/truststore.p12
-      - confluent.metrics.reporter.ssl.truststore.password=${file:/mnt/sslcerts/jksPassword.txt:jksPassword}
-      - confluent.metrics.reporter.ssl.truststore.type=PKCS12
       - confluent.balancer.enable=true
       - confluent.balancer.data.enabled=true
       - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
