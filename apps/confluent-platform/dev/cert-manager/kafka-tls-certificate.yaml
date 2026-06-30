@@ -1,11 +1,31 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-10 (last-modified)
+# Date:        2026-05-11 (created), 2026-06-30 (last-modified)
 # Description: Keyfactor Certificate for the Kafka brokers (Secret
 #              kafka-tls; consumed by the Kafka CR via tls.secretRef).
 #              SANs cover headless per-pod DNS + round-robin Service DNS.
+#              Also emits keystore.jks + truststore.jks (runbook A19, FCB-
+#              standard FIPS shape — same as the Flink ui-tls cert).
 ########################################################################
+# Inline password Secret consumed by cert-manager when writing keystore.jks /
+# truststore.jks into the kafka-tls Secret. `changeit` is the FCB JKS default
+# (matches the Flink keystore-pw Secret pattern). Doc-1 in this file so it
+# lands before the Certificate doc-2 in the pipeline's `oc apply -f` pass.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kafka-keystore-pw
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-tls
+    app.kubernetes.io/component: kafka-broker
+    fcbint.net/app-id: "11547"
+type: Opaque
+stringData:
+  password: changeit
+---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -61,3 +81,10 @@ spec:
       app.kubernetes.io/instance: kafka-tls
       app.kubernetes.io/component: kafka-broker
       fcbint.net/app-id: "11547"
+  # Emit keystore.jks + truststore.jks alongside tls.crt / tls.key / ca.crt so the broker can mount them directly at /var/ssl/kafka — same FCB shape the Flink ui-tls cert uses (runbook A19).
+  keystores:
+    jks:
+      create: true
+      passwordSecretRef:
+        name: kafka-keystore-pw
+        key: password

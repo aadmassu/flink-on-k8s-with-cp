@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-optionB-real-truststore"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase1-optionB-fcb-paths-jks"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -75,14 +75,29 @@ spec:
   license:
     secretRef: cfk-license
 
+  # Two mounts matching the FCB-standard Flink ui-tls shape (runbook A19): fcb-trust-bundle for JVM-wide outbound trust, kafka-tls JKS material for the broker's own SSL identity (cert-manager-emitted via keystores.jks block on the Certificate).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
         configMap:
           name: fcb-trust-bundle
+          items:
+            - key: bundle.jks
+              path: bundle.jks
+      - name: kafka-tls-jks
+        secret:
+          secretName: kafka-tls
+          items:
+            - key: keystore.jks
+              path: keystore.jks
+            - key: truststore.jks
+              path: truststore.jks
     volumeMounts:
       - name: fcb-trust-bundle
-        mountPath: /mnt/sslcerts/fcb-trust-bundle
+        mountPath: /var/ssl/truststore
+        readOnly: true
+      - name: kafka-tls-jks
+        mountPath: /var/ssl/kafka
         readOnly: true
 
   pdb:
@@ -91,7 +106,7 @@ spec:
 
   configOverrides:
     jvm:
-      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
@@ -114,10 +129,13 @@ spec:
       - metric.reporters=
       - confluent.security.event.logger.enable=false
       - confluent.consumer.lag.emitter.enabled=false
-      # FIPS validator demands these keys be SET even with metric.reporters= empty. Point at the JVM-wide fcb-trust-bundle (already in spec.mountedVolumes, password=changeit).
-      - confluent.metrics.reporter.ssl.truststore.location=/mnt/sslcerts/fcb-trust-bundle/bundle.jks
+      # FIPS validator demands these keys be SET even with metric.reporters= empty. Point at the kafka-tls JKS material (cert-manager keystores.jks block; runbook A19).
+      - confluent.metrics.reporter.ssl.truststore.location=/var/ssl/kafka/truststore.jks
       - confluent.metrics.reporter.ssl.truststore.password=changeit
       - confluent.metrics.reporter.ssl.truststore.type=JKS
+      - confluent.metrics.reporter.ssl.keystore.location=/var/ssl/kafka/keystore.jks
+      - confluent.metrics.reporter.ssl.keystore.password=changeit
+      - confluent.metrics.reporter.ssl.keystore.type=JKS
       # Self-Balancer off for Phase 1 — preempts the validator's next SSL-config complaint and avoids dialing an internal listener Phase 1 hasn't fully wired.
       - confluent.balancer.enable=false
       - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT

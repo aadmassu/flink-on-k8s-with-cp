@@ -1238,32 +1238,64 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   client off via its `*.enable=false` flag does not satisfy the
   validator — the validator runs BEFORE the operator decides whether
   to wire the client in.
-* **Fix (Phase 1)**: pre-render the three SSL truststore keys for each
-  internal client the validator complains about, pointed at a path
-  that's actually mounted. Two choices:
-  * **(a) operator auto-rendered truststore** — `/mnt/sslcerts/
-    truststore.p12` + `${file:/mnt/sslcerts/jksPassword.txt:
-    jksPassword}` + `type=PKCS12`. The init container produces these
-    from `spec.tls.secretRef` so they exist at runtime. Closer to what
-    the VM brokers do and to what CFK auto-renders for declared
-    listeners.
-  * **(b) the JVM-wide FCB trust bundle** — `/mnt/sslcerts/
-    fcb-trust-bundle/bundle.jks` + `password=changeit` + `type=JKS`.
-    Definitely real (declared in `spec.mountedVolumes`), already the
-    `javax.net.ssl.trustStore` JVM default, and already trusts the
-    broker CA. This is the Phase 1 baseline because it has zero
-    dependency on the operator init container's render side-effects.
-  Either way, also disable Self-Balancer for Phase 1
-  (`confluent.balancer.enable=false`); the balancer is a SASL_SSL
-  client too, so it's the validator's next target after the metrics
-  reporter is satisfied.
+* **Fix (Phase 1)**: pre-render the SSL truststore *and* keystore
+  keys for each internal client the validator complains about, mount
+  the material at FCB-standard `/var/ssl/...` paths, and emit JKS via
+  cert-manager rather than relying on the CFK init container's
+  PKCS12 render. The shape that ended up working (matches the FCB
+  Flink ui-tls pattern):
+  1. Add a `keystores.jks` block to the Kafka broker's cert-manager
+     `Certificate` so cert-manager writes `keystore.jks` +
+     `truststore.jks` into the `kafka-tls` Secret alongside
+     `tls.crt` / `tls.key` / `ca.crt`. Encrypt with `changeit` via a
+     small `kafka-keystore-pw` `Secret` colocated in the same
+     manifest.
+  2. In the Kafka CR's `spec.mountedVolumes`, mount two volumes —
+     `fcb-trust-bundle` (the trust-manager ConfigMap, via
+     `configMap.items` for a deterministic single-file mount) at
+     `/var/ssl/truststore`, and the `kafka-tls` Secret's
+     `keystore.jks` + `truststore.jks` at `/var/ssl/kafka`.
+  3. Point the JVM-wide truststore JVM args at
+     `/var/ssl/truststore/bundle.jks` (broad outbound trust — same
+     bundle Flink uses for the S3 SDK and other JVM-default-truststore
+     consumers).
+  4. Pre-render the *full* six-key SSL block for every internal
+     client the validator complains about (truststore *and*
+     keystore — not just truststore; the FIPS-strict validator gates
+     on both):
+     `confluent.metrics.reporter.ssl.truststore.{location,password,
+     type}=/var/ssl/kafka/truststore.jks,changeit,JKS` and the
+     matching `.keystore.*` triple at `/var/ssl/kafka/keystore.jks`.
+  5. Disable Self-Balancer for Phase 1
+     (`confluent.balancer.enable=false`); the balancer is a SASL_SSL
+     client too and is the validator's next target after the metrics
+     reporter is satisfied.
+  Earlier iterations that **did not** clear the validator and are
+  preserved here as negative results:
+  * `metric.reporters=` empty alone (commit `3724127`) — A19 root
+    cause: validator gates on key existence, not runtime wiring.
+  * Pre-rendering the truststore keys against
+    `/mnt/sslcerts/truststore.p12` (commit `562d196`, reverted at
+    `aafd80d`) — path is real at runtime once the init container has
+    run, but is NOT declared in `spec.mountedVolumes` and reads as a
+    "phantom mount" to anyone reviewing the manifest, which is the
+    reason the revert call landed.
+  * Pre-rendering ONLY the truststore triple against
+    `/mnt/sslcerts/fcb-trust-bundle/bundle.jks` (commit `8ce409c`) —
+    proved the validator doesn't consult `configOverrides.server` for
+    these keys at all when only the truststore is set; or it has a
+    hardcoded fallback path under `/var/ssl/...` for the JKS files
+    (which the FCB-Flink shape adopted in step (5) above happens to
+    satisfy).
 * **Why it matters**: this turns "telemetry off for Phase 1" from a
-  one-line toggle into a multi-key pre-render exercise per client.
-  The "disable the client" shortcut works against the runtime, not the
-  validator. Re-enabling each client in Phase 2 then becomes a matter
-  of swapping the truststore-only block for the full SASL_SSL +
-  bootstrap + jaas + ssl.truststore block, the same way the VM
-  brokers do today.
+  one-line toggle into a full TLS-material-provisioning exercise.
+  The pattern that works is the same one the FCB Flink ui-tls cert
+  established — cert-manager-emitted JKS material at
+  `/var/ssl/<component>/` plus the trust bundle at
+  `/var/ssl/truststore/`, with full keystore+truststore SSL configs
+  for every internal client the FIPS-strict validator demands. When
+  Phase 2 re-enables each client at runtime, the SSL block stays in
+  place and only the SASL/bootstrap/jaas configs get added on top.
 
 ---
 
