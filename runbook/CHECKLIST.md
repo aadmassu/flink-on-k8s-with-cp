@@ -247,18 +247,24 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       the broker's embedded kafkaRest endpoint at `:8090` for
       RBAC reconciliation. Block must include `endpoint:
       https://kafka.dah-flink-dev.svc.cluster.local:8090`,
-      `tls.enabled: true` PLUS `tls.secretRef: kafka-tls` (or
-      `tls.directoryPathInContainer`) — `enabled: true` alone
-      returns `ApplyFailed: tls client secretRef or
-      directoryPathInContainer must be set in kafka spec`.
-      `authentication` with `type: oauthbearer` +
+      `tls.enabled: true` PLUS `tls.secretRef: kafka-tls`,
+      and `authentication` with `type: oauthbearer` +
       `oauthbearer.secretRef: oauth-broker` + `oauthSettings`
       (FLAT fields — dependency-side uses `oauthSettings`, NOT
       nested `configuration` / `configurations`). Missing the
       `authentication` block returns `ApplyFailed:
       .spec.dependencies.kafkaRest.authentication must be
-      configured`. Broker pods stay up in both cases — failure
-      is at the operator's reconcile, not the broker's runtime.
+      configured`.
+- [ ] **`spec.services.mds.tls` also needs `secretRef:
+      kafka-tls`** (or `directoryPathInContainer`) — not just
+      `enabled: true`. Both `services.mds.tls` and
+      `dependencies.kafkaRest.tls` exercise the operator's TLS
+      client and both surface the same generic message:
+      `ApplyFailed: tls client secretRef or
+      directoryPathInContainer must be set in kafka spec`. The
+      message doesn't tell you which block — attribute by
+      elimination. Broker pods stay up either way; failure is
+      at the operator's reconcile, not the broker's runtime.
 - [ ] **After applying the Kafka CR, verify `spec.services.mds`
       survived admission** — silent-strip caveat. Run via the
       Diagnostics pipeline:

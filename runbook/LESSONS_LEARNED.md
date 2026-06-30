@@ -1509,14 +1509,21 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   oauth.configuration` and `spec.authentication.oauth.
   configuration` — use **`configuration` (singular)**. Don't
   copy-paste blindly between them.
-* **`spec.dependencies.kafkaRest.tls` needs a `secretRef` OR
-  `directoryPathInContainer` when `authentication.type` is
-  `oauthbearer`** — `enabled: true` alone isn't sufficient.
-  Symptom: `ApplyFailed: tls client secretRef or
+* **Every TLS block the operator's reconcile exercises needs an
+  explicit `secretRef` or `directoryPathInContainer`** —
+  `enabled: true` alone isn't sufficient anywhere the operator
+  acts as a TLS *client*. Symptom is identical across all of
+  them: `ApplyFailed: tls client secretRef or
   directoryPathInContainer must be set in kafka spec` while
-  broker pods stay up. Fix: `secretRef: kafka-tls` (the
-  kafkaRest endpoint is served by the broker itself, so the
-  cert chain is the same as `spec.tls.secretRef`).
+  broker pods stay up (`statefulset-available=True`). The error
+  message is generic (just says "in kafka spec") so attribute
+  by elimination. Known blocks that need this for our Phase 2
+  shape:
+  * `spec.services.mds.tls` → `secretRef: kafka-tls`
+  * `spec.dependencies.kafkaRest.tls` → `secretRef: kafka-tls`
+  Both reuse `kafka-tls` because the MDS endpoint and the
+  embedded kafkaRest endpoint are both served by the broker
+  itself, so the cert chain is the same as `spec.tls.secretRef`.
 * **`spec.dependencies.kafkaRest.authentication` is also
   required on the Kafka CR once `spec.services.mds` is set**.
   Symptom on first apply: `cluster-ready=False ApplyFailed:
