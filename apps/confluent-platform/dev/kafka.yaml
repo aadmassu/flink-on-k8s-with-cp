@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta-deps-kafkarest"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta-deps-kafkarest-tls-secretref"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -64,8 +64,10 @@ spec:
           subClaimName: sub
           groupsClaimName: dahDev_groups
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      # Operator requires an explicit truststore source (secretRef OR directoryPathInContainer) here when the dependency is OAuth -- enabled:true alone isn't sufficient. Reusing kafka-tls since the kafkaRest endpoint is served by the broker itself (same cert chain).
       tls:
         enabled: true
+        secretRef: kafka-tls
 
   # Internal + external SASL_SSL/PLAIN. External must be explicit or CFK auto-creates a PLAINTEXT default and trips FIPS (runbook A17).
   listeners:

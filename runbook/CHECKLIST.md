@@ -247,14 +247,18 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       the broker's embedded kafkaRest endpoint at `:8090` for
       RBAC reconciliation. Block must include `endpoint:
       https://kafka.dah-flink-dev.svc.cluster.local:8090`,
-      `tls.enabled: true`, and `authentication` with `type:
-      oauthbearer` + `oauthbearer.secretRef: oauth-broker` +
-      `oauthSettings` (FLAT fields — dependency-side uses
-      `oauthSettings`, NOT nested `configuration` /
-      `configurations`). Missing this block returns
-      `cluster-ready=False ApplyFailed:
+      `tls.enabled: true` PLUS `tls.secretRef: kafka-tls` (or
+      `tls.directoryPathInContainer`) — `enabled: true` alone
+      returns `ApplyFailed: tls client secretRef or
+      directoryPathInContainer must be set in kafka spec`.
+      `authentication` with `type: oauthbearer` +
+      `oauthbearer.secretRef: oauth-broker` + `oauthSettings`
+      (FLAT fields — dependency-side uses `oauthSettings`, NOT
+      nested `configuration` / `configurations`). Missing the
+      `authentication` block returns `ApplyFailed:
       .spec.dependencies.kafkaRest.authentication must be
-      configured` while broker pods stay up.
+      configured`. Broker pods stay up in both cases — failure
+      is at the operator's reconcile, not the broker's runtime.
 - [ ] **After applying the Kafka CR, verify `spec.services.mds`
       survived admission** — silent-strip caveat. Run via the
       Diagnostics pipeline:

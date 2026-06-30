@@ -1509,6 +1509,14 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   oauth.configuration` and `spec.authentication.oauth.
   configuration` — use **`configuration` (singular)**. Don't
   copy-paste blindly between them.
+* **`spec.dependencies.kafkaRest.tls` needs a `secretRef` OR
+  `directoryPathInContainer` when `authentication.type` is
+  `oauthbearer`** — `enabled: true` alone isn't sufficient.
+  Symptom: `ApplyFailed: tls client secretRef or
+  directoryPathInContainer must be set in kafka spec` while
+  broker pods stay up. Fix: `secretRef: kafka-tls` (the
+  kafkaRest endpoint is served by the broker itself, so the
+  cert chain is the same as `spec.tls.secretRef`).
 * **`spec.dependencies.kafkaRest.authentication` is also
   required on the Kafka CR once `spec.services.mds` is set**.
   Symptom on first apply: `cluster-ready=False ApplyFailed:
