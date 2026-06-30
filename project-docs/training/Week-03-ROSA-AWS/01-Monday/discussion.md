@@ -1,7 +1,9 @@
 # Monday — ROSA Architecture
 
 **Time**: ~90 min
-**Diagram**: [`30-rosa-architecture.drawio`](30-rosa-architecture.drawio) — `AWS → VPC → ROSA → OpenShift → CFK`, walked through using the `cfk-dev` cluster as the concrete example
+**Diagram (source)**: [`30-rosa-architecture.drawio`](30-rosa-architecture.drawio) — `AWS → VPC → ROSA → OpenShift → CFK`, walked through using the `cfk-dev` cluster as the concrete example
+
+![ROSA Architecture — AWS → VPC → ROSA → OpenShift → CFK, anchored to the cfk-dev dev cluster](images/ROSA-Architecture-cfk-dev.png)
 
 ## Learning objective
 
