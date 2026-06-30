@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta-configurations-plural"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -79,8 +79,9 @@ spec:
         secretRef: mds-token-keypair
       provider:
         type: oauth
+        # spec.services.mds.provider.oauth uses `configurations` (plural) per the Kafka CRD; SR/Connect/KafkaRest client-side oauth blocks use `configuration` (singular). The plural lives on the provider side, the singular on the consumer side.
         oauth:
-          configuration:
+          configurations:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys

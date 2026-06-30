@@ -229,11 +229,19 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
 ### 1i. Phase 2 — Okta MDS + RBAC (`LESSONS_LEARNED.md` A22)
 - [ ] **Kafka CR**: `spec.services.mds` block present with
       `tokenKeyPair.secretRef: mds-token-keypair` and
-      `provider.oauth` pointed at the Okta tenant
-      (`myapps.firstcitizens.com`). `spec.authorization.type: rbac`
-      with `superUsers: [User:admin]` ONLY — component users
-      (`schemaregistry`, `kafkaconnect`, `kafkarest`,
-      `controlcenter`) go through rolebindings, not super.users.
+      `provider.oauth.configurations` (**plural**) pointed at the
+      Okta tenant (`myapps.firstcitizens.com`).
+      `spec.authorization.type: rbac` with `superUsers:
+      [User:admin]` ONLY — component users (`schemaregistry`,
+      `kafkaconnect`, `kafkarest`, `controlcenter`) go through
+      rolebindings, not super.users.
+- [ ] **Field-name watch**: Kafka CRD's MDS provider-side oauth
+      block uses `configurations` (plural); SR / Connect /
+      KafkaRest consumer-side oauth blocks (both
+      `spec.dependencies.{mds,schemaRegistry}.authentication.
+      oauth.configuration` and `spec.authentication.oauth.
+      configuration`) use `configuration` (singular). Wrong
+      number fails admission with a real error path.
 - [ ] **After applying the Kafka CR, verify `spec.services.mds`
       survived admission** — silent-strip caveat. Run via the
       Diagnostics pipeline:

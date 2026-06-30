@@ -1488,16 +1488,27 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
     apply is idempotent (re-running merges into existing
     rolebindings); operator retries internally if MDS isn't yet
     serving.
-* **Silent-strip caveat**: memory
-  `project_cfk_v1beta1_silent_strips` flagged
-  `spec.services.mds:` as previously silent-stripped at admission
-  on this CFK version. After applying the Phase 2 manifests,
-  verify the live Kafka CR retains `spec.services.mds` —
+* **Silent-strip caveat (resolved by CRD validation)**: memory
+  `project_cfk_v1beta1_silent_strips` historically flagged
+  `spec.services.mds:` as silent-stripped at admission. On the
+  current operator build the CRD explicitly validates and
+  REJECTS bad shapes with a real error (e.g., applying with
+  `provider.oauth.configuration:` singular returned
+  `spec.services.mds.provider.oauth.configurations: Required
+  value`). Better than silent-strip — we get a clean failure
+  with a path. After Phase 2 admission succeeds, still worth
+  one verification pass with
   `oc get kafka kafka -o jsonpath='{.spec.services.mds}{"\n"}'`
-  via the Diagnostics pipeline. If the field is absent post-apply,
-  MDS isn't actually provisioned and we fall back to Phase 1.5
-  (broaden super.users) until the silent-strip is resolved with
-  Confluent / Rick.
+  to confirm the block round-tripped.
+* **Provider-vs-consumer field-name gotcha**: the Kafka CRD's
+  **provider-side** oauth block uses **`configurations`
+  (plural)** under `spec.services.mds.provider.oauth.
+  configurations`. The **consumer-side** oauth blocks on SR /
+  Connect / KafkaRest / KSqlDB / ControlCenter — under
+  `spec.dependencies.{mds,schemaRegistry,kafka}.authentication.
+  oauth.configuration` and `spec.authentication.oauth.
+  configuration` — use **`configuration` (singular)**. Don't
+  copy-paste blindly between them.
 * **Why it matters**: Phase 1.5 (broadened super.users) is a
   hack that works for dev smoke-tests but explicitly violates
   least-privilege for stg/prd. Phase 2 establishes the proper
