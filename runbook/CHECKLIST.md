@@ -194,9 +194,17 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       at minimum `confluent.metrics.reporter` — BOTH the truststore
       AND keystore triples are pre-rendered in
       `configOverrides.server` against `/var/ssl/kafka/{truststore,
-      keystore}.jks` + `changeit` + `JKS`. Setting `metric.reporters=`
-      (empty) alone does NOT clear the validator; setting only the
-      truststore triple does NOT clear it either (A19).
+      keystore}.jks` + `changeit` + `JKS`, AND the full SASL_SSL
+      stack is present (`bootstrap.servers`, `security.protocol`,
+      `sasl.mechanism`, `sasl.jaas.config`, `topic.replicas`,
+      `support.metrics.enable=false`), AND `metric.reporters` is set
+      to the cp-server default list
+      (`io.confluent.telemetry.reporter.TelemetryReporter,
+      io.confluent.metrics.reporter.ConfluentMetricsReporter`).
+      Match the values 1:1 with the VM brokers'
+      `apps/confluent-platform/cp-confluent/dev/d11547varc-*-
+      server.properties` (A19). `metric.reporters=` empty does NOT
+      satisfy the validator.
 - [ ] `confluent.balancer.enable=false` in `configOverrides.server`
       for Phase 1 — Self-Balancer is a SASL_SSL client too and is
       the validator's next target after the metrics reporter is

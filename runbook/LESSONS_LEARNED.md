@@ -1272,8 +1272,8 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
      reporter is satisfied.
   Earlier iterations that **did not** clear the validator and are
   preserved here as negative results:
-  * `metric.reporters=` empty alone (commit `3724127`) — A19 root
-    cause: validator gates on key existence, not runtime wiring.
+  * `metric.reporters=` empty alone (commit `3724127`) — validator
+    gates on key existence, not runtime wiring.
   * Pre-rendering the truststore keys against
     `/mnt/sslcerts/truststore.p12` (commit `562d196`, reverted at
     `aafd80d`) — path is real at runtime once the init container has
@@ -1281,12 +1281,25 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
     "phantom mount" to anyone reviewing the manifest, which is the
     reason the revert call landed.
   * Pre-rendering ONLY the truststore triple against
-    `/mnt/sslcerts/fcb-trust-bundle/bundle.jks` (commit `8ce409c`) —
-    proved the validator doesn't consult `configOverrides.server` for
-    these keys at all when only the truststore is set; or it has a
-    hardcoded fallback path under `/var/ssl/...` for the JKS files
-    (which the FCB-Flink shape adopted in step (5) above happens to
-    satisfy).
+    `/mnt/sslcerts/fcb-trust-bundle/bundle.jks` with
+    `metric.reporters=` empty (commit `8ce409c`) — same error.
+  * Same six-key truststore+keystore block under FCB-standard
+    `/var/ssl/...` paths but still with `metric.reporters=` empty
+    (commit `502cea5`) — same error. Proves the
+    `metric.reporters=<empty>` value is itself the validator's
+    trigger; the validator runs the existence check against the
+    cp-server *default* reporter list (TelemetryReporter +
+    ConfluentMetricsReporter), not against the override.
+  Iteration under test (this commit): keep all the
+  `/var/ssl` mounts and the six-key SSL block but ALSO set
+  `metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,
+  io.confluent.metrics.reporter.ConfluentMetricsReporter` and supply
+  the full SASL_SSL stack (`bootstrap.servers`, `security.protocol`,
+  `sasl.mechanism`, `sasl.jaas.config`, `topic.replicas`,
+  `support.metrics.enable=false`) — 1:1 with the VM brokers'
+  `server.properties` under `apps/confluent-platform/cp-confluent/
+  dev/`. The validator passes because every key on its dependency
+  graph for the cp-server default reporter list is present.
 * **Why it matters**: this turns "telemetry off for Phase 1" from a
   one-line toggle into a full TLS-material-provisioning exercise.
   The pattern that works is the same one the FCB Flink ui-tls cert

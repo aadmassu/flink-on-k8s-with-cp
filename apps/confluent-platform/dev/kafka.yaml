@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase1-optionB-fcb-paths-jks"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase1-optionB-vm-aligned-metric-reporters"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -125,18 +125,25 @@ spec:
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
       - confluent.cluster.link.metadata.topic.replication.factor=3
-      # Telemetry clients off for Phase 1 — Phase 2 re-enables each with the real SASL_SSL config (runbook A19).
-      - metric.reporters=
-      - confluent.security.event.logger.enable=false
-      - confluent.consumer.lag.emitter.enabled=false
-      # FIPS validator demands these keys be SET even with metric.reporters= empty. Point at the kafka-tls JKS material (cert-manager keystores.jks block; runbook A19).
+      # ConfluentMetricsReporter wired up 1:1 with the VM brokers (apps/confluent-platform/cp-confluent/dev/d11547varc-*-server.properties), pointed at our headless CFK internal listener on 9071. Empty metric.reporters= still failed the FIPS validator after three iterations (commits 3724127, 8ce409c, 502cea5) so we wire the reporter properly rather than try to disable it.
+      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
+      - confluent.metrics.reporter.bootstrap.servers=kafka-0.kafka.dah-flink-dev.svc.cluster.local:9071,kafka-1.kafka.dah-flink-dev.svc.cluster.local:9071,kafka-2.kafka.dah-flink-dev.svc.cluster.local:9071
+      - confluent.metrics.reporter.security.protocol=SASL_SSL
+      - confluent.metrics.reporter.sasl.mechanism=PLAIN
+      - confluent.metrics.reporter.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="admin-secret";
       - confluent.metrics.reporter.ssl.truststore.location=/var/ssl/kafka/truststore.jks
       - confluent.metrics.reporter.ssl.truststore.password=changeit
       - confluent.metrics.reporter.ssl.truststore.type=JKS
       - confluent.metrics.reporter.ssl.keystore.location=/var/ssl/kafka/keystore.jks
       - confluent.metrics.reporter.ssl.keystore.password=changeit
       - confluent.metrics.reporter.ssl.keystore.type=JKS
-      # Self-Balancer off for Phase 1 — preempts the validator's next SSL-config complaint and avoids dialing an internal listener Phase 1 hasn't fully wired.
+      # ssl.key.password = password for the private key INSIDE the keystore (distinct from the keystore password). cert-manager's keystores.jks emits them under the same password by default. Confluent's recommended listing names this key alongside the keystore triple.
+      - confluent.metrics.reporter.ssl.key.password=changeit
+      - confluent.metrics.reporter.topic.replicas=3
+      - confluent.support.metrics.enable=false
+      # Other telemetry-shaped clients still off for Phase 1 (security event logger, consumer lag emitter, Self-Balancer); if the validator gates on any of their *.ssl.* keys we extend the same six-key block per offending client (runbook A19).
+      - confluent.security.event.logger.enable=false
+      - confluent.consumer.lag.emitter.enabled=false
       - confluent.balancer.enable=false
       - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
 
