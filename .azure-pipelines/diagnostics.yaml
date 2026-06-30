@@ -535,6 +535,40 @@ stages:
                   fi
                 done
 
+                # Generation drift — `metadata.generation` vs `status.observedGeneration`. If they differ, the operator hasn't yet reconciled the latest spec, so any condition messages on the CR are stale (runbook A18).
+                echo ""
+                echo "=== CR generation drift (spec vs observed) ==="
+                printf "%-24s %-12s %-12s %s\n" "KIND/NAME" "GENERATION" "OBSERVED" "VERDICT"
+                for kind_name in \
+                    "kraftcontroller kraftcontroller" \
+                    "kafka kafka" \
+                    "schemaregistry schemaregistry" \
+                    "connect connect" \
+                    "kafkarestproxy kafkarest" \
+                    "controlcenter controlcenter"; do
+                  kind=${kind_name% *}; name=${kind_name#* }
+                  if oc -n "$OC_NS" get "$kind" "$name" >/dev/null 2>&1; then
+                    GEN=$(oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{.metadata.generation}' 2>/dev/null || echo "?")
+                    OBS=$(oc -n "$OC_NS" get "$kind" "$name" -o jsonpath='{.status.observedGeneration}' 2>/dev/null || echo "?")
+                    [ -z "$GEN" ] && GEN="?"
+                    [ -z "$OBS" ] && OBS="?"
+                    if [ "$GEN" = "$OBS" ]; then verdict="reconciled"; else verdict="STALE — conditions reflect older spec"; fi
+                    printf "%-24s %-12s %-12s %s\n" "$kind/$name" "$GEN" "$OBS" "$verdict"
+                  fi
+                done
+
+                # Recent Events in the operator namespace — sorted by lastTimestamp. Surfaces what the operator pod itself is emitting (BackOff, FailedMount, OOMKilled, etc) that explains a stuck reconcile loop.
+                OPNS_LOCAL=confluent-operator
+                echo ""
+                echo "=== Recent Events in $OPNS_LOCAL (last 30, sorted by lastTimestamp) ==="
+                oc -n "$OPNS_LOCAL" get events --sort-by=.lastTimestamp 2>&1 | tail -31 || echo "(forbidden or namespace missing)"
+
+                # Operator pod restart history — `lastState.terminated` shows why the pod restarted (OOMKilled / Error / Completed). High restartCount + recent terminated state = operator-crash-loop pattern (memory: project_fcb_cfk_operator_crash_loop).
+                echo ""
+                echo "=== Operator pod restart history ($OPNS_LOCAL) ==="
+                oc -n "$OPNS_LOCAL" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\n  restartCount="}{.status.containerStatuses[0].restartCount}{"\n  startedAt="}{.status.containerStatuses[0].state.running.startedAt}{"\n  lastTerminatedReason="}{.status.containerStatuses[0].lastState.terminated.reason}{"\n  lastTerminatedAt="}{.status.containerStatuses[0].lastState.terminated.finishedAt}{"\n  lastExitCode="}{.status.containerStatuses[0].lastState.terminated.exitCode}{"\n\n"}{end}' 2>&1 \
+                  || echo "(forbidden)"
+
                 # `oc explain` returns the CRD SCHEMA as the API server
                 # sees it on THIS cluster — independent of any applied
                 # CR. Use it as ground truth for whether a field exists
