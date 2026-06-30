@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-29-phase1-fips-attestation-r2"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase1-disable-telemetry-clients"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -110,9 +110,10 @@ spec:
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
       - confluent.cluster.link.metadata.topic.replication.factor=3
-      - confluent.metrics.reporter.topic.replicas=3
-      - confluent.security.event.logger.exporter.kafka.topic.replicas=3
-      - confluent.consumer.lag.emitter.enabled=true
+      # Telemetry-shaped internal clients disabled for Phase 1 — FIPS-strict validator otherwise demands explicit ssl.* per client (runbook A18). Re-enable in Phase 2 with full SSL config.
+      - metric.reporters=
+      - confluent.security.event.logger.enable=false
+      - confluent.consumer.lag.emitter.enabled=false
       - confluent.balancer.enable=true
       - confluent.balancer.data.enabled=true
       - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
