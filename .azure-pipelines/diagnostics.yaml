@@ -1260,6 +1260,81 @@ stages:
                   | tail -20 \
                   || echo "  (no CMF-tagged events)"
 
+                # TLS.1 — fcb-trust-bundle contents (list aliases in bundle.jks).
+                # Runs keytool inside a running Kafka broker pod (kafka-0 by
+                # convention) to dump the aliases in /var/ssl/truststore/bundle.jks
+                # so we can verify whether the CA that signed myapps.firstcitizens.com
+                # is actually present. If C3 or any other Java-standard HTTPS client
+                # is throwing PKIX path building failed on Okta calls, the answer
+                # is almost always: the corresponding CA is missing from this
+                # ConfigMap. Runbook A27/A28.
+                echo ""
+                echo "=== TLS.1  fcb-trust-bundle contents (keytool -list on kafka-0) ==="
+                TB_POD=$(oc -n "$OC_NS" get pods -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+                if [ -n "$TB_POD" ]; then
+                  echo "Pod:  $TB_POD"
+                  echo "Path: /var/ssl/truststore/bundle.jks"
+                  echo ""
+                  echo "--- All aliases ---"
+                  oc -n "$OC_NS" exec "$TB_POD" -- \
+                    keytool -list -keystore /var/ssl/truststore/bundle.jks -storepass changeit 2>&1 \
+                    | grep -E '^[a-zA-Z0-9].*,.*trustedCertEntry' \
+                    | sort \
+                    || echo "  (keytool -list failed — bundle path or password may be wrong)"
+                  echo ""
+                  echo "--- Alias count ---"
+                  oc -n "$OC_NS" exec "$TB_POD" -- \
+                    keytool -list -keystore /var/ssl/truststore/bundle.jks -storepass changeit 2>&1 \
+                    | grep -cE '^[a-zA-Z0-9].*,.*trustedCertEntry' \
+                    || echo "0"
+                  echo ""
+                  echo "--- Aliases matching FCB / Okta / Entrust / DigiCert ---"
+                  oc -n "$OC_NS" exec "$TB_POD" -- \
+                    keytool -list -keystore /var/ssl/truststore/bundle.jks -storepass changeit 2>&1 \
+                    | grep -iE 'firstcitizens|myapps|okta|entrust|digicert|globalsign|sectigo|fcb' \
+                    | sort \
+                    || echo "  (no matching aliases — bundle may not contain the Okta chain root)"
+                else
+                  echo "  (no kafka pod found — cannot inspect bundle.jks)"
+                fi
+
+                # TLS.2 — schemaregistry-0 log tail filtered for TLS / OAuth /
+                # PKIX errors. If SR shows the same "PKIX path building failed"
+                # class of error as C3, the truststore issue is universal and
+                # the fcb-trust-bundle ConfigMap needs a refresh from the
+                # Container Platforms team. If SR is clean, C3 has a code path
+                # (probably OIDC SSO refresh via javax.net.ssl.HttpsURLConnection)
+                # that others don't exercise.
+                echo ""
+                echo "=== TLS.2  schemaregistry-0 log tail (TLS / OAuth / PKIX filter, last 60 matched lines) ==="
+                SR_POD=$(oc -n "$OC_NS" get pods -l app.kubernetes.io/name=schemaregistry -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+                if [ -n "$SR_POD" ]; then
+                  echo "Pod: $SR_POD"
+                  oc -n "$OC_NS" logs "$SR_POD" --tail=2000 2>&1 \
+                    | grep -iE 'PKIX|SSLHandshake|certificate_unknown|trustAnchor|unable to find valid certification|SunCertPathBuilder|X509TrustManager|oauth.*bearer|jwt|token.endpoint|OAuthBearer|RefreshingAccessToken' \
+                    | tail -60 \
+                    || echo "  (no matching log lines — SR is not hitting TLS/OAuth errors)"
+                else
+                  echo "  (no schemaregistry pod found — SR CR may not be applied)"
+                fi
+
+                # TLS.3 — controlcenter-0 log tail same filter (parity with SR).
+                # If both SR and C3 show PKIX failures, cross-verifies TLS.1's
+                # bundle-inspection finding: the bundle is universally missing
+                # the Okta chain.
+                echo ""
+                echo "=== TLS.3  controlcenter-0 log tail (TLS / OAuth / PKIX filter, last 60 matched lines) ==="
+                C3_POD=$(oc -n "$OC_NS" get pods -l app.kubernetes.io/name=controlcenter -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+                if [ -n "$C3_POD" ]; then
+                  echo "Pod: $C3_POD"
+                  oc -n "$OC_NS" logs "$C3_POD" --tail=2000 2>&1 \
+                    | grep -iE 'PKIX|SSLHandshake|certificate_unknown|trustAnchor|unable to find valid certification|SunCertPathBuilder|X509TrustManager|oauth.*bearer|jwt|token.endpoint|OAuthBearer|RefreshingAccessToken' \
+                    | tail -60 \
+                    || echo "  (no matching log lines — C3 is not hitting TLS/OAuth errors)"
+                else
+                  echo "  (no controlcenter pod found — C3 CR may not be applied or replicas=0)"
+                fi
+
                 echo ""
                 echo "=== End of diagnostics ==="
                 # Always succeed.
