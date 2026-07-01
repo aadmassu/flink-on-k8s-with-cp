@@ -35,37 +35,48 @@ so no direct oc access to confluent-operator namespace anyway).
 Run all three from your Splunk console. If any comes back with thousands of
 hits, tighten earliest to -30m and re-run.
 
+# Query pattern rules (memory reference-fcb-splunk-dynatrace-searches):
+#  * index=openshift_* (wildcard) + sourcetype/source filter — required at FCB.
+#  * Namespace is a free-text keyword (e.g. "dah-flink-dev"), NOT openshift_namespace=<name>.
+#  * Pod is a structured field openshift_pod_name="<prefix>-*".
+#  * No middle-of-word wildcards ("http.*8090" is rejected); use quoted literals like ":8090".
+
 # QUERY 1 — operator-side errors around the rolebinding + kafkaRest calls
-index=openshift openshift_namespace=confluent-operator
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="confluent-operator-*"
+    earliest=-3h latest=now
+    "dah-flink-dev"
     ("kafka rest API" OR "Not Found" OR "rolebinding" OR "rolebindings"
      OR "confluentrolebinding" OR "MDS" OR "mds/" OR "jwks"
      OR "OAUTHBEARER" OR "0oa1owiage2MyoHdt358"
-     OR "OAuthBearer" OR "http.*8090" OR ":9073"
+     OR "OAuthBearer" OR ":8090" OR ":9073"
      OR "SASL authentication failed" OR "unable to")
-    earliest=-3h latest=now
 | sort - _time
 | head 100
 | table _time, level, msg, error, url, openshift_pod_name
 
 
 # QUERY 2 — narrower, specifically operator log lines about our rolebinding names
-index=openshift openshift_namespace=confluent-operator
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="confluent-operator-*"
+    earliest=-3h latest=now
     ("schemaregistry-resourceowner-schemas" OR "schemaregistry-resourceowner-group"
      OR "connect-resourceowner-config-topic" OR "connect-resourceowner-group"
      OR "kafkarest-systemadmin"
      OR "internal-schemaregistry" OR "internal-controlcenter")
-    earliest=-3h latest=now
 | sort - _time
 | head 50
 | table _time, level, msg, error, openshift_pod_name
 
 
 # QUERY 3 — broker-side Okta / JWKS egress errors (most likely smoking gun)
-index=openshift openshift_namespace=dah-flink-dev openshift_pod_name=kafka-*
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="kafka-*"
+    earliest=-3h latest=now
+    "dah-flink-dev"
     ("myapps.firstcitizens.com" OR "jwks" OR "OAuthBearer" OR "OAuthBearerValidatorCallback"
      OR "SocketTimeoutException" OR "UnknownHostException" OR "ConnectException"
      OR "SASLServerCallbackHandler" OR "ValidatorCallback")
-    earliest=-3h latest=now
 | sort - _time
 | head 50
 | table _time, level, msg, error, openshift_pod_name
