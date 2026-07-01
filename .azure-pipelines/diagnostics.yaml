@@ -360,6 +360,24 @@ stages:
                   || echo "(no Warning events or oc error)"
 
                 echo ""
+                echo "=== Kafka broker Services (headless + LB + any auto-created TOKEN/MDS Service) ==="
+                # When Phase 2 MDS/RBAC is enabled, CFK auto-rewires SR/Connect/KafkaRest to reach the broker via a TOKEN/OAUTHBEARER listener (typically :9073). If that listener isn't declared in spec.listeners on the Kafka CR, no corresponding Service exists here and clients time out fetching cluster metadata (runbook A22).
+                oc -n "$OC_NS" get svc -l app.kubernetes.io/name=kafka -o wide 2>&1 || echo "(no kafka Services or oc error)"
+                echo ""
+                oc -n "$OC_NS" get svc -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,PORTS:.spec.ports[*].port 2>&1 | grep -iE '^(NAME|kafka)' || echo "(no kafka-named Services)"
+
+                echo ""
+                echo "=== Rendered listener config inside kafka-0 (server.properties) ==="
+                # Proves whether ports like 9073 are actually open on the running broker vs only referenced in the operator's derived client config. Grep for the listener declaration lines; falls back to /etc/kafka if /mnt/config isn't the render path.
+                if oc -n "$OC_NS" get pod kafka-0 >/dev/null 2>&1; then
+                  oc -n "$OC_NS" exec kafka-0 -- sh -c \
+                    'grep -E "^listeners|^advertised\.listeners|^listener\.security\.protocol\.map|9073|OAUTHBEARER|TOKEN" /mnt/config/server.properties 2>/dev/null || grep -rE "^listeners|^advertised\.listeners|^listener\.security\.protocol\.map|9073|OAUTHBEARER|TOKEN" /etc/kafka/ 2>/dev/null || echo "  (server.properties not found at /mnt/config or /etc/kafka)"' \
+                    2>&1 || echo "  (oc exec into kafka-0 failed)"
+                else
+                  echo "(kafka-0 pod not found — brokers may not be scheduled yet)"
+                fi
+
+                echo ""
                 echo "=== CFK CR status conditions ==="
                 for kind in kafka kraftcontroller schemaregistry connect kafkarestproxy controlcenter kafkarestclass; do
                   echo ""
