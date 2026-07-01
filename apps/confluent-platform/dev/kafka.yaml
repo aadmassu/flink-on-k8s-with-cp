@@ -13,7 +13,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-brokers-pvc-15gi"
+    platform.confluent.io/force-reconcile: "2026-07-01-brokers-metrics-reporter-oauth"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -264,6 +264,14 @@ spec:
       - confluent.kafkarest.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.kafkarest.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
       - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(Dev)
+
+      # ConfluentMetricsReporter client (spec.metricReporter block doesn't propagate all sub-keys into this prefix; runbook A26).
+      - confluent.metrics.reporter.security.protocol=SASL_SSL
+      - confluent.metrics.reporter.sasl.mechanism=OAUTHBEARER
+      - confluent.metrics.reporter.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - confluent.metrics.reporter.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - confluent.metrics.reporter.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - confluent.metrics.reporter.sasl.oauthbearer.scope=11547.DAH(Dev)
 
       # Broker defaults.
       - log.retention.hours=168
