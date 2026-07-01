@@ -230,6 +230,82 @@ MDS cluster-registry / rolebinding-apply behavior).
 
 
 ------------------------------------------------------------------------------
+ROUND 4 — Ayu's partial-reconcile hypothesis + Q5 to settle it (2026-06-30 20:15 EST)
+------------------------------------------------------------------------------
+
+Ayu proposed a sharper hypothesis after re-reading the broker's
+AdminClientConfig log dump from Q3b: broker never actually opened the
+:9073 TOKEN listener despite the CR status.listeners.token claiming it
+did, meaning the operator's Phase-2 render is only partially applied to
+the running broker JVM.
+
+CAVEAT on the specific evidence used: the AdminClientConfig log line at
+17:14:16 was the ConfluentMetricsReporter's client config, not a broker
+listener config. That client uses PLAIN because kafka.yaml explicitly
+set confluent.metrics.reporter.security.protocol=SASL_SSL +
+sasl.mechanism=PLAIN in configOverrides.server. So "sasl.oauthbearer.*
+= null" on that client is expected, not evidence of a listener render
+gap.
+
+BUT the underlying theory is still worth testing, because:
+   * status.listeners.token is what the operator REPORTS on the CR --
+     it's not observation of what the broker actually bound to.
+   * The Round-1 diagnostics probe I wrote at commit f97c144 checked
+     /etc/kafka/*.properties which turned out to be STOCK cp-server
+     defaults (listeners=PLAINTEXT://:9092,CONTROLLER://:9093), not the
+     operator-rendered config. So we have NO ground truth on what the
+     broker actually bound to at startup.
+   * If the broker did open :9073 as OAUTHBEARER, we should see it in
+     the broker's startup "KafkaConfig values:" log line.
+
+# QUERY 5 -- broker's actual startup listener config (settles the question)
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="kafka-*"
+    earliest=-6h latest=now
+    "dah-flink-dev"
+    "KafkaConfig values"
+| sort - _time
+| head 5
+| table _time, openshift_pod_name, _raw
+
+Look inside each _raw for:
+   * `listeners = ...` -- does it contain TOKEN://:9073 (or whatever CFK
+     names the listener)?
+   * `advertised.listeners = ...` -- same check.
+   * `listener.security.protocol.map = ...` -- should say TOKEN:SASL_SSL
+     if the token listener was rendered.
+   * `listener.name.token.sasl.enabled.mechanisms = ...` -- should say
+     OAUTHBEARER if OAuth is wired.
+
+Three possible outcomes:
+
+(a) `listeners = ...TOKEN://:9073` + TOKEN:SASL_SSL + OAUTHBEARER mechanism
+    -> broker DID render Phase 2 fully. Partial-reconcile theory wrong.
+    Operator's 404 is genuinely a semantic-404-from-MDS issue (Round 3
+    hypothesis on cluster-registry). Move to Q3c + Q4 next.
+
+(b) `listeners = ...` without TOKEN://:9073 (only EXTERNAL/INTERNAL/REPLICATION)
+    -> partial-reconcile theory confirmed. Broker never opened :9073.
+    CFK rendered status.listeners.token as aspirational only. Escalation
+    goes to Confluent: "CFK 3.2 operator reports a token listener the
+    broker didn't actually open, MDS+RBAC configured but broker still
+    Phase-1-only." Also worth checking OperatorPod restartCount + last
+    reconcile time in case the operator crashed mid-render.
+
+(c) In-between: listener defined but wrong mechanism (e.g., no OAUTHBEARER
+    on the map) -> also broken render, similar escalation.
+
+Confidence estimate before Q5 result:
+   * Partial-reconcile / broker never opened :9073 -- 35% (settled by Q5)
+   * Semantic 404 from MDS (cluster registry / role scoping) -- 35%
+     (complementary to Q5 outcome; may need Q3c+Q4 next)
+   * CFK operator bug in rolebinding-apply path -- 15%
+   * Other -- 15%
+
+Q5 is cheap and definitive. Run it, share _raw output of the top 3-5
+KafkaConfig-values events, and I'll finalize the escalation destination.
+
+------------------------------------------------------------------------------
 INTERPRETATION — three theories, one query each
 ------------------------------------------------------------------------------
 
