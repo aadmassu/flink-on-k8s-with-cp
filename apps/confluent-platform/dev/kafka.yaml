@@ -16,7 +16,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-phase2-impersonation-add-c3"
+    platform.confluent.io/force-reconcile: "2026-07-01-brokers-pvc-15gi"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -37,7 +37,7 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  dataVolumeCapacity: 10Gi
+  dataVolumeCapacity: 15Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd
 

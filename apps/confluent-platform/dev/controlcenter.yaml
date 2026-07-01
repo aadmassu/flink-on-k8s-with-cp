@@ -17,7 +17,7 @@ metadata:
   name: controlcenter
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-phase2-controlcenter-online"
+    platform.confluent.io/force-reconcile: "2026-07-01-c3-pvc-15gi"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
@@ -39,8 +39,8 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  # RocksDB state on Ceph RBD. Bump to 300 Gi (VM target) after quota raise.
-  dataVolumeCapacity: 1Gi
+  # RocksDB state on Ceph RBD. 15 Gi for dev smoke-testing; VM target is 300 Gi.
+  dataVolumeCapacity: 15Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd
 
