@@ -148,6 +148,88 @@ the actual URL the operator is hitting and the actual broker log content.
 
 
 ------------------------------------------------------------------------------
+ROUND 3 — CSV analysis of Q1b / Q1c / Q3b (2026-06-30 20:03 EST)
+------------------------------------------------------------------------------
+
+Q1b (20 hits) revealed the operator's structured error line but NOT the URL --
+the CFK operator's log format simply doesn't emit URL as a field:
+   {"level":"ERROR","name":"confluentrolebinding","msg":"apply failed",
+    "name":"<rolebinding-name>","namespace":"dah-flink-dev",
+    "error":"kafka rest API request failed: Not Found (0)"}
+Retries hit each rolebinding on a ~10s loop.
+
+Q1c (20 hits) revealed the operator IS successfully authenticating to MDS:
+   {"level":"INFO","name":"kafka","msg":"mds authentication","type":"bearer"}
+The operator has a bearer token AND is presenting it to MDS. No token
+acquisition error, no OAuth-flow failure. Auth path is working. Whatever
+"Not Found (0)" means, it's NOT an auth failure.
+
+Q3b (50 rows, ONE actual event) collapsed into a single 2026-06-30 17:14:16
+event which was ConfluentMetricsReporter's startup AdminClientConfig dump --
+not actual OAuth traffic. ZERO SocketTimeoutException / UnknownHostException
+/ ConnectException / JWKS-fetch errors on the broker. Nothing about incoming
+MDS API calls from the operator either.
+
+REVISED THEORY: this is a semantic 404 from MDS, not a transport failure.
+   * If it were transport (TCP or TLS), the operator's Go http client would
+     log a distinct dial/TLS error, not "Not Found".
+   * MDS having no OAuth log activity means the request is landing on MDS's
+     RBAC handler (not the OAuth listener). MDS then returns 404 for some
+     resource-lookup reason.
+   * The "(0)" is likely a CFK-internal error code enum, not "HTTP status 0".
+
+Most likely root cause: MDS's cluster-registry topic (`_confluent-metadata`)
+doesn't have an entry mapping our Kafka cluster to a resolvable ID/name.
+Rolebindings use `kafkaRestClassRef.name: default` and rely on MDS to walk
+KafkaRestClass -> Kafka CR -> cluster_id via that registry. If the registry
+entry never got written, MDS can't resolve the target cluster and returns
+Not Found for every rolebinding apply. Reasons the registry entry might be
+missing:
+   * MDS bootstrap didn't complete after Rick's fipsmode=false rollout
+     (helm upgrade may have wiped in-memory MDS state on the operator side)
+   * `_confluent-metadata` topic was never created because the broker's
+     auto-topic-create failed (RBAC deny? replication factor mismatch?)
+   * Cluster-registration step ran but errored silently
+
+Also possible: MDS is initialized but the CFK operator's kafkaRestClassRef
+resolution is doing something we don't expect (e.g., looking up the class
+by a different name, or needing an additional field we haven't set).
+
+Downgrade previous escalation ordering: ESCALATION 1 (broker egress to
+Okta) is now LEAST likely -- broker isn't logging any Okta traffic at all.
+Most likely escalation now is ESCALATION 3 (Confluent support ticket on
+MDS cluster-registry / rolebinding-apply behavior).
+
+# QUERY 3c -- MDS-side incoming API activity on the broker
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="kafka-*"
+    earliest=-1h latest=now
+    "dah-flink-dev"
+    ("MetadataServiceApp" OR "KafkaHttpServer" OR "MetadataService"
+     OR "rbac" OR "roleBinding" OR "clusterRegistry" OR "ClusterRegistry"
+     OR "principal" OR "RestApi" OR "authenticated as user"
+     OR "InvalidBearerToken" OR "AuthorizationException"
+     OR "_confluent-metadata")
+| sort - _time
+| head 30
+| table _time, openshift_pod_name, _raw
+
+
+# QUERY 4 -- cluster-registry / metadata-topic creation on the broker
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="kafka-*"
+    earliest=-3h latest=now
+    "dah-flink-dev"
+    ("_confluent-metadata" OR "_confluent-command" OR "cluster registry"
+     OR "cluster registered" OR "KafkaClusterAuthStore" OR "AuthStore"
+     OR "MetadataServiceStartup" OR "ClusterRegistryTopic"
+     OR "Cluster registered successfully")
+| sort - _time
+| head 20
+| table _time, openshift_pod_name, _raw
+
+
+------------------------------------------------------------------------------
 INTERPRETATION — three theories, one query each
 ------------------------------------------------------------------------------
 
