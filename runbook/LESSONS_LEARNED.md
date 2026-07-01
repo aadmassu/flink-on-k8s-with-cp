@@ -1519,11 +1519,31 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   message is generic (just says "in kafka spec") so attribute
   by elimination. Known blocks that need this for our Phase 2
   shape:
-  * `spec.services.mds.tls` → `secretRef: kafka-tls`
-  * `spec.dependencies.kafkaRest.tls` → `secretRef: kafka-tls`
-  Both reuse `kafka-tls` because the MDS endpoint and the
-  embedded kafkaRest endpoint are both served by the broker
-  itself, so the cert chain is the same as `spec.tls.secretRef`.
+  * `spec.services.mds.tls` (Kafka CR) → `secretRef: kafka-tls`
+  * `spec.dependencies.kafkaRest.tls` (Kafka CR) →
+    `secretRef: kafka-tls`
+  * `spec.dependencies.kafka.tls` (SR / Connect / KafkaRest CRs)
+    → `secretRef: kafka-tls`
+  All reuse `kafka-tls` because the MDS / kafkaRest / Kafka
+  listener endpoints are all served by the broker pods, sharing
+  the same cert chain.
+* **Phase 2 side-effect: CFK auto-rewires consumer-side
+  `authentication.type: plain` to `oauthbearer` when MDS is
+  enabled**. Observed in SR's pod log
+  (`schemaregistry-0-schemaregistry.log` 2026-06-30T23:30):
+  even though `dependencies.kafka.authentication.type: plain`
+  was on the CR, SR's effective config used SASL/OAUTHBEARER
+  (login-thread name carried the Okta client id) and the
+  AdminClient dialed `:9073` instead of the configured `:9071`.
+  Consequence: SR times out — `Failed to get Kafka cluster ID
+  Caused by: TimeoutException` — because our
+  `spec.listeners` on the Kafka CR only declares
+  `internal:9071` + `external:9092` and there's no `:9073`
+  listener actually open on the brokers. Fix on our side:
+  add a TOKEN listener (`type: oauthbearer` + Okta
+  `oauthSettings`) at `:9073` under a custom listener on
+  the Kafka CR. Until that lands, MDS-tokenized clients can't
+  reach the broker.
 * **`spec.dependencies.kafkaRest.authentication` is also
   required on the Kafka CR once `spec.services.mds` is set**.
   Symptom on first apply: `cluster-ready=False ApplyFailed:

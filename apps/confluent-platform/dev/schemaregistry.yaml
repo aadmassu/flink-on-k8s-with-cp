@@ -13,7 +13,7 @@ metadata:
   name: schemaregistry
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-deps-kafka-tls-secretref"
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -42,6 +42,7 @@ spec:
           secretRef: sasl-plain-internal
       tls:
         enabled: true
+        secretRef: kafka-tls
     # OAuth client_credentials to MDS (runs on the broker at :8090). SR presents an Okta-issued bearer token; MDS validates and returns the SR-scoped RBAC token used for authz against Kafka resources (runbook A22).
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090

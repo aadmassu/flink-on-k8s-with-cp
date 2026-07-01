@@ -13,7 +13,7 @@ metadata:
   name: kafkarest
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-deps-kafka-tls-secretref"
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
@@ -42,6 +42,7 @@ spec:
           secretRef: sasl-plain-internal
       tls:
         enabled: true
+        secretRef: kafka-tls
     schemaRegistry:
       url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
       tls:
