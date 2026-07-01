@@ -306,6 +306,140 @@ Q5 is cheap and definitive. Run it, share _raw output of the top 3-5
 KafkaConfig-values events, and I'll finalize the escalation destination.
 
 ------------------------------------------------------------------------------
+ROUND 5 — Q4/Q5 CSVs settle it (2026-06-30 20:14 EST). Partial reconcile CONFIRMED.
+------------------------------------------------------------------------------
+
+Q5 (KafkaConfig values dump from broker startup, all 3 pods, identical output):
+   listeners = EXTERNAL://:9092,INTERNAL://:9071,REPLICATION://:9072
+   advertised.listeners = EXTERNAL://kafka-N...:9092,INTERNAL://:9071,REPLICATION://:9072
+   listener.security.protocol.map = CONTROLLER:SASL_SSL,EXTERNAL:SASL_SSL,INTERNAL:SASL_SSL,REPLICATION:SASL_SSL
+
+   ABSENT: TOKEN://:9073, TOKEN:SASL_SSL in the protocol.map,
+   listener.name.token.sasl.enabled.mechanisms, OAUTHBEARER anywhere,
+   sasl.oauthbearer.* config values.
+
+   Ayu's ROUND 4 hypothesis is confirmed: the broker JVM NEVER opened :9073
+   and NEVER enabled OAUTHBEARER on any listener. status.listeners.token on
+   the CR is aspirational (operator reports what it intended, not what the
+   broker actually bound).
+
+Q4 (cluster-registry / metadata-topic events, 3h window):
+   All hits are about _confluent-command (license storage) at 17:13-17:14
+   during broker startup -- ZERO events about _confluent-metadata,
+   ZERO "cluster registered" / "MetadataServiceStartup" / "KafkaClusterAuthStore"
+   messages. MDS's persistence bootstrap never ran either.
+
+Q3c returned zero rows -- no MDS-side incoming request activity on the
+broker in the last hour. Consistent with everything above: MDS is stubbed
+at the CR-status level but not actually serving.
+
+THE MECHANISM GAP: spec.services.mds and a TOKEN listener at :9073 are
+SEPARATE things.
+   * spec.services.mds runs the MDS REST service at :8090 alongside the
+     broker JVM. This is what CFK status reports as services.mds. Deployed.
+   * TOKEN listener at :9073 is a Kafka SASL/OAUTHBEARER listener that
+     clients (SR, Connect, C3) use when authenticating with MDS-issued
+     bearer tokens. Never rendered into the broker's listeners=. Never
+     opened.
+
+The Kafka Service in ClusterIP does expose port 9073 (per diagnostics), so
+Kubernetes will accept a connection on that port -- but the broker pod
+isn't listening behind it, so the connection either times out or gets
+Connection Refused depending on kube-proxy mode. That's why SR times out
+on fetchMetadata against :9073 -- the port is advertised in DNS/Service
+but not backed by a pod-level listener.
+
+Why the render gap: candidate hypotheses (in decreasing order):
+   1. spec.services.mds.authentication is a required field we didn't set.
+      The CRD (checked at NR>=5666 in
+      charts/confluent-for-kubernetes/crds/platform.confluent.io_kafkas.yaml)
+      has spec.services.mds.authentication with enum type=[bearer] and
+      required=[type]. Our current kafka.yaml is missing this field entirely.
+      The operator's render logic for the TOKEN listener may key off it.
+   2. spec.listeners.internal.authentication.type: plain (our current
+      config) doesn't trigger the operator's auto-inject of a TOKEN
+      listener sibling. If the operator only auto-adds :9073 when internal
+      is already oauth-or-bearer-typed, we'd need to change internal to
+      oauth (which would break the SR/Connect/KafkaRest PLAIN paths).
+   3. CFK 3.2 render bug -- the operator STATUS-reports the TOKEN listener
+      but never writes it into the broker config. Would need Confluent
+      support to confirm and patch.
+
+NEXT MOVE -- try (1) first, cheapest:
+
+   spec:
+     services:
+       mds:
+         tls: { enabled: true, secretRef: kafka-tls }
+         tokenKeyPair: { secretRef: mds-token-keypair }
+         authentication:                # <-- ADD THIS
+           type: bearer
+         provider:
+           type: oauth
+           oauth: { configurations: {...}, secretRef: oauth-mds-rest }
+
+If iteration N+1 with this added to kafka.yaml re-runs install-or-update
+and the broker's KafkaConfig values dump NOW shows TOKEN://:9073 +
+TOKEN:SASL_SSL in the protocol.map + OAUTHBEARER mechanism, we've found
+the trigger and this is a documentation-gap issue (not a bug). Move to
+Q3c/Q4 for the rolebinding investigation.
+
+If the token listener is STILL absent after adding services.mds.authentication,
+the "cannot from CR alone" conclusion is airtight and the Confluent ticket
+is definitive.
+
+
+------------------------------------------------------------------------------
+CONFLUENT SUPPORT TICKET DRAFT (send if the services.mds.authentication
+experiment above doesn't move the render)
+------------------------------------------------------------------------------
+
+Subject: CFK 3.2.x (operator v0.1514.40) — spec.services.mds accepted but broker never renders TOKEN listener at :9073
+
+Environment:
+  * Operator: v0.1514.40 (CFK 3.2.x), installed with fipsmode=false
+  * cp-server: 8.1.3 (artifactory.fcbint.net/.../cp-server:8.1.3)
+  * confluent-init-container: 3.2.0
+  * KRaft mode (no ZK)
+  * Kafka CR generation: 5, phase: RUNNING, readyReplicas: 3
+
+Symptom:
+  * spec.services.mds is set (with provider.type=oauth pointed at Okta,
+    tokenKeyPair: mds-token-keypair, tls.secretRef: kafka-tls)
+  * spec.dependencies.kafkaRest is set with authentication.type=oauthbearer +
+    oauth-broker Secret + full oauthSettings block + tls.secretRef=kafka-tls
+  * Kafka CR STATUS reports listeners.token with authenticationType=oauthbearer
+    at :9073 (see attached CR yaml dump)
+  * Broker's actual KafkaConfig values dump at startup (attached broker log)
+    contains ONLY listeners = EXTERNAL://:9092,INTERNAL://:9071,REPLICATION://:9072
+    -- no TOKEN listener, no OAUTHBEARER anywhere in the protocol.map
+  * All ConfluentRolebinding CRs fail with "kafka rest API request failed:
+    Not Found (0)" -- consistent with MDS never bootstrapping (no
+    _confluent-metadata topic events either -- see attached Splunk export)
+  * SchemaRegistry crash-loops on SASL/OAUTHBEARER handshake against :9073
+    (attached SR pod log) because the port is exposed in the Service but
+    the broker pod isn't actually listening on it
+
+Question:
+  * Is the TOKEN listener at :9073 supposed to be auto-injected when
+    spec.services.mds is set? Or does it require an additional field
+    (e.g., spec.services.mds.authentication.type=bearer, which is required
+    inside the block per the CRD but missing from our spec)?
+  * What is the correct minimal Kafka CR shape in CFK 3.2 to get:
+      (a) MDS REST at :8090
+      (b) TOKEN Kafka listener at :9073 with OAUTHBEARER mechanism
+      (c) RBAC rolebindings that apply successfully via the MDS API
+    ...all three, given a broker with plain internal + external listeners
+    that SR/Connect/KafkaRest use with SASL/PLAIN.
+
+Attachments:
+  * kafka-cr-dump.yaml (spec + status)
+  * kafka-0-KafkaConfig-values.txt (from broker startup log)
+  * schemaregistry-0.log (crash-loop with 9073 timeout)
+  * splunk-Q4-Q5-Q1b-Q1c-Q3b-Q3c.zip (evidence trail)
+
+
+------------------------------------------------------------------------------
 INTERPRETATION — three theories, one query each
 ------------------------------------------------------------------------------
 
