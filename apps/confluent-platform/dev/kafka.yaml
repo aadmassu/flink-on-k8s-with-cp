@@ -16,7 +16,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-add-deps-kafkarest-back"
+    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-deps-kafkarest-oauth-shape"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -166,21 +166,20 @@ spec:
         tls:
           enabled: true
           secretRef: kafka-tls
-    # spec.dependencies.kafkaRest tells the operator how to authenticate when it hits the broker's embedded kafkaRest endpoint at :8090 for RBAC/rolebinding reconciliation. The FCB operator (CFK 3.2.x) requires this when spec.services.mds is set -- Psyncopate's reference omits it (their operator version may not enforce). Dependency-side oauth shape uses FLAT `oauthSettings` (NOT nested `configuration`), and `type: oauthbearer` (NOT `oauth`) -- see runbook A22 (field-name asymmetry between provider/consumer/dependency sides).
+    # spec.dependencies.kafkaRest tells the operator how to authenticate when it hits the broker's embedded kafkaRest at :8090 for RBAC/rolebinding reconciliation. FCB operator (CFK 3.2.x) demands this block when spec.services.mds is set; Psyncopate's older-CRD reference omits it. Auth shape here is the CONSUMER-side nested form (type=oauth + oauth.{secretRef,configuration}) NOT the flat oauthbearer+oauthSettings that appears elsewhere -- CFK 3.2 uses the nested shape for MDS-facing client auth (Confluent docs: co-authenticate-kafka.html). The stale vendored 3.1.x CRD in this repo doesn't expose an `oauth:` sub-field here but the live 3.2.x operator does accept it (runbook A22).
     kafkaRest:
-      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
       authentication:
-        type: oauthbearer
-        oauthbearer:
+        type: oauth
+        oauth:
           secretRef: oauth-broker
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(Dev)
-          subClaimName: sub
-          groupsClaimName: dahDev_groups
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahDev_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(Dev)
       tls:
         enabled: true
         secretRef: kafka-tls
