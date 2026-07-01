@@ -16,7 +16,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-listeners-full-rewrite"
+    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-add-deps-kafkarest-back"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -166,6 +166,24 @@ spec:
         tls:
           enabled: true
           secretRef: kafka-tls
+    # spec.dependencies.kafkaRest tells the operator how to authenticate when it hits the broker's embedded kafkaRest endpoint at :8090 for RBAC/rolebinding reconciliation. The FCB operator (CFK 3.2.x) requires this when spec.services.mds is set -- Psyncopate's reference omits it (their operator version may not enforce). Dependency-side oauth shape uses FLAT `oauthSettings` (NOT nested `configuration`), and `type: oauthbearer` (NOT `oauth`) -- see runbook A22 (field-name asymmetry between provider/consumer/dependency sides).
+    kafkaRest:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      authentication:
+        type: oauthbearer
+        oauthbearer:
+          secretRef: oauth-broker
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          scope: 11547.DAH(Dev)
+          subClaimName: sub
+          groupsClaimName: dahDev_groups
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+      tls:
+        enabled: true
+        secretRef: kafka-tls
 
   # First-class metricReporter (matches the Psyncopate pattern, NOT a manual
   # configOverrides block). The broker's ConfluentMetricsReporter dials the
