@@ -215,7 +215,7 @@ stages:
                       | oc apply -f -
                   }
 
-                  # OAuth Secret with the same credential material under three keys CFK consumes from different paths: clientId/clientSecret literals (auth.oauth), bearer.txt as `username=...\npassword=...` (deps.mds.auth), oauth.txt as `clientId=...\nclientSecret=...` (REST auth under JETTY_AUTH).
+                  # OAuth Secret with the same credential material under FOUR keys CFK consumes from different paths: clientId/clientSecret literals (auth.oauth), bearer.txt as `username=...\npassword=...` (deps.mds.auth), oauth.txt as `clientId=...\nclientSecret=...` (REST auth under JETTY_AUTH), and oidcClientSecret.txt as `clientId=...\nclientSecret=...` (spec.services.mds.provider.sso.clientCredentials — CFK 3.2 expects this exact key on OIDC-SSO Secrets, matches the Psyncopate `oauth-jass-oidc` shape). oidcClientSecret.txt on the non-SSO Secrets is unused/inert.
                   apply_oauth_secret() {
                     local name=$1
                     local client_id=$2
@@ -239,6 +239,7 @@ stages:
                       --from-literal=clientSecret="$client_secret" \
                       --from-file=bearer.txt="$bearer_tmp" \
                       --from-file=oauth.txt="$oauth_tmp" \
+                      --from-file=oidcClientSecret.txt="$oauth_tmp" \
                       | label_secret "$name" \
                       | oc apply -f -
                     rm -f "$bearer_tmp" "$oauth_tmp"
