@@ -1,10 +1,11 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-30 (last-modified)
-# Description: CFK SchemaRegistry CR — Phase 2 (HTTPS + SASL_SSL/PLAIN to
-#              Kafka INTERNAL :9071, MDS dependency on broker :8090, OAuth on
-#              SR REST API, RBAC via ConfluentRolebinding CRs).
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: CFK SchemaRegistry CR — Phase 2. Dials Kafka INTERNAL
+#              listener :9071 via OAUTHBEARER (Okta), talks to MDS at
+#              :8090 via OAUTH, RBAC via ConfluentRolebinding CRs
+#              (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -13,7 +14,7 @@ metadata:
   name: schemaregistry
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase2-deps-kafka-tls-secretref"
+    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-listeners-full-rewrite"
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -26,6 +27,7 @@ spec:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
 
+  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/instance: schemaregistry
@@ -33,60 +35,13 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  dependencies:
-    kafka:
-      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
-      authentication:
-        type: plain
-        jaasConfig:
-          secretRef: sasl-plain-internal
-      tls:
-        enabled: true
-        secretRef: kafka-tls
-    # OAuth client_credentials to MDS (runs on the broker at :8090). SR presents an Okta-issued bearer token; MDS validates and returns the SR-scoped RBAC token used for authz against Kafka resources (runbook A22).
-    mds:
-      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
-      tokenKeyPair:
-        secretRef: mds-token-keypair
-      authentication:
-        type: oauth
-        oauth:
-          secretRef: oauth-schemaregistry
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(Dev)
-            subClaimName: sub
-            groupsClaimName: dahDev_groups
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-
-  # Okta JWT auth on SR REST API — clients (Flink jobs, CMF, etc.) must present a valid token issued by myapps.firstcitizens.com.
-  authentication:
-    type: oauth
-    oauth:
-      secretRef: oauth-schemaregistry
-      configuration:
-        audience: "Confluent,account,api://default"
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        scope: 11547.DAH(Dev)
-        subClaimName: sub
-        groupsClaimName: dahDev_groups
-        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-
-  authorization:
-    type: rbac
-    superUsers:
-      - User:admin
+  license:
+    secretRef: cfk-license
 
   tls:
     secretRef: schemaregistry-tls
 
-  license:
-    secretRef: cfk-license
-
-  # fcb-trust-bundle at /var/ssl/truststore — same shape as kafka.yaml (runbook A21). Broker keystore+truststore come from spec.tls.secretRef via the CFK init container at /mnt/sslcerts/; don't overlay our own JKS into the Secret.
+  # Broker's kafka-tls is signed by FCB CA which is in fcb-trust-bundle -- the JVM's default trustStore points at bundle.jks below so both broker TLS and Okta HTTPS work through the same truststore (runbook A21).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -100,9 +55,53 @@ spec:
         mountPath: /var/ssl/truststore
         readOnly: true
 
+  # RBAC enforcement on the SR REST API. superUsers omitted so ALL access flows through ConfluentRolebindings — SR's own principal (its Okta client) needs ResourceOwner on _schemas + Group schema-registry via rolebindings.yaml.
+  authorization:
+    type: rbac
+
   pdb:
     enabled: true
     maxUnavailable: 1
+
+  # dependencies.kafka.authentication.type=oauth -- SR's kafkastore AdminClient hits kafka INTERNAL :9071 with SASL/OAUTHBEARER using the oauth-schemaregistry Secret (client_id 0oa1owiage2MyoHdt358 per VM). tls.secretRef is required (runbook A20).
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-schemaregistry
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahDev_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+    # MDS-side auth uses the same Okta client (SR presents its Okta token to MDS's OAuth-validating endpoint at :8090). Consumer-side oauth block uses configuration (singular) NOT configurations (plural) -- Kafka provider-side uses plural (runbook A22).
+    mds:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-schemaregistry
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahDev_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(Dev)
 
   configOverrides:
     jvm:
@@ -114,7 +113,7 @@ spec:
       - kafkastore.topic=_schemas
       - kafkastore.topic.replication.factor=3
       - inter.instance.protocol=https
-      - resource.extension.class=io.confluent.schema.exporter.SchemaExporterResourceExtension
+      - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
       - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
 
   podTemplate:
@@ -137,6 +136,7 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
+    # OpenShift restricted-v2 SCC assigns the UID range.
     podSecurityContext: {}
     labels:
       app.kubernetes.io/name: schemaregistry

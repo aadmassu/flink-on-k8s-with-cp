@@ -1,12 +1,14 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-05-11 (last-modified)
-# Description: KafkaRestClass connection profile (no pods). Anchors to
-#              the Kafka CR; the operator derives MDS endpoint + OAuth/TLS.
-#              Referenced from C3/Connect via
-#              dependencies.kafkaRestClassRef: {name: default, namespace: dah-flink-dev}.
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: KafkaRestClass connection profile (no pods). Anchors
+#              rolebindings and other CRs to the Kafka CR's MDS; kafkaRest
+#              block tells the operator how to authenticate to the
+#              embedded kafkaRest at :8090 when applying rolebindings
+#              (runbook A22).
 ########################################################################
+
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestClass
 metadata:
@@ -22,3 +24,16 @@ spec:
   kafkaClusterRef:
     name: kafka
     namespace: dah-flink-dev
+  kafkaRest:
+    authentication:
+      type: oauth
+      oauth:
+        secretRef: oauth-broker
+        configuration:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahDev_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)

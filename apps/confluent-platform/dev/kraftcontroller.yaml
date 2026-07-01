@@ -1,9 +1,11 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: CFK KRaftController CR — dev (3-node KRaft quorum, SASL_SSL/PLAIN,
-#              KRAFT_ACL authz). Telemetry + audit disabled (runbook A8/A9/A12).
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: CFK KRaftController CR — Phase 2 (3-node quorum,
+#              OAUTHBEARER controller listener against Okta, RBAC).
+#              Pattern from Psyncopate-Technologies/openshift-cfk-gitops
+#              adapted to FCB Okta (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -17,75 +19,96 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # No spec.fips.enabled — flips the operator to a stricter validator that demands explicit listener.name.controller.ssl.* in configOverrides.server (runbook A18). Kafka CR keeps it.
-  # 3-controller quorum (HA-safe, tolerates one loss). Don't drop to 1 — loses quorum on first restart.
+  # 3-controller quorum (HA-safe, tolerates one loss). Don't drop to 1.
   replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
-  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet, not the CR.
+  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: kraftcontroller
     app.kubernetes.io/instance: kraftcontroller
     app.kubernetes.io/component: kraft-controller
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # PVCs: data-kraftcontroller-{0,1,2} on Ceph RBD — KRaft metadata log survives pod/node failures. 1 Gi/controller; VM target was 64 Gi (over-provisioned). DO NOT add spec.volumeClaimTemplates — silently pruned by CRD admission.
+  # PVCs: data-kraftcontroller-{0,1,2} on Ceph RBD.
   dataVolumeCapacity: 1Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd
 
-  # CONTROLLER listener on 9093, SASL_SSL with PLAIN (matches VM).
+  # Controller listener now OAUTHBEARER — matches Kafka's spec.dependencies.kRaftController.controllerListener block. Okta config identical across all listeners in the cluster.
   listeners:
     controller:
       tls:
         enabled: true
       authentication:
-        type: plain
+        type: oauth
         jaasConfig:
-          secretRef: sasl-plain-internal
+          secretRef: oauth-broker
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahDev_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)
+
+  # Controller-side RBAC. superUser is the broker's own OAuth client (which is what the KRaft controllers see as the peer during inter-node communication).
+  authorization:
+    type: rbac
+    superUsers:
+      - User:0oa1owhtq2olDZWwf358
+
   tls:
     secretRef: kraftcontroller-tls
   license:
     secretRef: cfk-license
 
-  # FCB trust bundle for outbound HTTPS (see kafka.yaml).
+  # fcb-trust-bundle — JVM default outbound truststore (Okta / everything).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
         configMap:
           name: fcb-trust-bundle
+          items:
+            - key: bundle.jks
+              path: bundle.jks
     volumeMounts:
       - name: fcb-trust-bundle
-        mountPath: /mnt/sslcerts/fcb-trust-bundle
+        mountPath: /var/ssl/truststore
         readOnly: true
 
   # FCB Gatekeeper [pod-disruption-budget] rejects CFK's auto-generated PDB at maxUnavailable=0; setting 1 makes it drainable.
   pdb:
     enabled: true
     maxUnavailable: 1
-  # Mirrors VM controller server.properties (replication factors + authorizer).
+
   configOverrides:
-    # JVM default truststore -> fcb-trust-bundle (see kafka.yaml).
     jvm:
-      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
-      # KRAFT_ACL-only authz — safe for controllers, do NOT mirror on brokers in Phase 2 (runbook A15).
-      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
-      - confluent.authorizer.access.rule.providers=KRAFT_ACL
-      - super.users=User:admin
+      # Broker-as-CLIENT OAUTHBEARER defaults for the controller JVM's own clients.
+      - security.protocol=SASL_SSL
+      - sasl.mechanism=OAUTHBEARER
+      - sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - sasl.oauthbearer.scope=11547.DAH(Dev)
+      # Quorum tuning + replication factors.
+      - controller.quorum.election.timeout.ms=5000
+      - controller.quorum.fetch.timeout.ms=5000
+      - default.replication.factor=3
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
       - confluent.license.topic.replication.factor=3
-      - confluent.balancer.enable=true
-      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
-      # ConfluentMetricsReporter + TelemetryReporter + audit log all stripped from controllers — chicken-and-egg with brokers (runbook A9/A12), and FCB has no telemetry API creds yet (memory project_fcb_telemetry_audit_reenable_later). Brokers keep them.
       - confluent.security.event.logger.enable=false
+
   podTemplate:
     serviceAccountName: flink-operator
-    # ~2 GiB heap (CFK sizes -Xmx from memory.request). Prior 384 Mi was OOM-killing during metadata snapshot replay. memory.request == memory.limit -> Guaranteed QoS. Quota fits 3 controllers + 3 brokers + SR + kafkarest + CMF + 2 Flink jobs at ~6.7/11 CPU req.
+    # ~2 GiB heap. memory.request == memory.limit -> Guaranteed QoS.
     resources:
       requests:
         cpu: "1"
@@ -104,9 +127,9 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # Disable operator-injected fsGroup/runAsUser=1001 so OpenShift restricted-v2 SCC picks the namespace UID range (see kafka.yaml).
+    # OpenShift restricted-v2 SCC assigns the UID range — don't fight it (runbook E1).
     podSecurityContext: {}
-    # Repeated here because FCB Gatekeeper [required-workload-labels] inspects the Pod resource at admission, not just the StatefulSet. cfk-role used by the anti-affinity rule below.
+    # Repeated because FCB Gatekeeper [required-workload-labels] inspects the Pod at admission, not just the StatefulSet.
     labels:
       app.kubernetes.io/name: kraftcontroller
       app.kubernetes.io/instance: kraftcontroller
@@ -114,7 +137,6 @@ spec:
       app.kubernetes.io/part-of: confluent-platform
       fcbint.net/app-id: "11547"
       cfk-role: kraft-controller
-    # Spread controllers across nodes via cfk-role anti-affinity. Brokers carry a different cfk-role so a node may host one of each.
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:

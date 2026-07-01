@@ -337,6 +337,8 @@ stages:
                   apply_oauth_secret oauth-kafkarest      "$OAUTH_REST_ID"      "$OAUTH_REST_SECRET"
                   apply_oauth_secret oauth-controlcenter  "$OAUTH_C3_ID"        "$OAUTH_C3_SECRET"
                   apply_oauth_secret oauth-mds-rest       "$OAUTH_MDS_REST_ID"  "$OAUTH_MDS_REST_SECRET"
+                  # oauth-mds-sso — separate Okta OIDC client used by MDS for browser-based SSO (C3 web UI login). Distinct from oauth-mds-rest which is MDS's own service-side OAuth client. Referenced from kafka.yaml spec.services.mds.provider.sso.clientCredentials.secretRef (runbook A22).
+                  apply_oauth_secret oauth-mds-sso        "$OAUTH_MDS_SSO_ID"   "$OAUTH_MDS_SSO_SECRET"
 
                   # C3 Prometheus / AlertManager basic auth.
                   apply_secret_from_literals c3-prometheus-basic-auth \
@@ -354,7 +356,7 @@ stages:
                       mds-token-keypair \
                       sasl-plain-internal \
                       oauth-broker oauth-schemaregistry oauth-connect \
-                      oauth-kafkarest oauth-controlcenter oauth-mds-rest \
+                      oauth-kafkarest oauth-controlcenter oauth-mds-rest oauth-mds-sso \
                       c3-prometheus-basic-auth c3-alertmanager-basic-auth; do
                     echo ""
                     echo "--- $s ---"
@@ -368,7 +370,7 @@ stages:
                       mds-token-keypair \
                       sasl-plain-internal \
                       oauth-broker oauth-schemaregistry oauth-connect \
-                      oauth-kafkarest oauth-controlcenter oauth-mds-rest \
+                      oauth-kafkarest oauth-controlcenter oauth-mds-rest oauth-mds-sso \
                       c3-prometheus-basic-auth c3-alertmanager-basic-auth
               env:
                 OC_NS: $(openshift-namespace)
@@ -393,6 +395,8 @@ stages:
                 OAUTH_C3_SECRET: $(${{ parameters.environment }}-oauth-controlcenter-client-secret)
                 OAUTH_MDS_REST_ID: $(${{ parameters.environment }}-oauth-mds-rest-client-id)
                 OAUTH_MDS_REST_SECRET: $(${{ parameters.environment }}-oauth-mds-rest-client-secret)
+                OAUTH_MDS_SSO_ID: $(${{ parameters.environment }}-oauth-mds-sso-client-id)
+                OAUTH_MDS_SSO_SECRET: $(${{ parameters.environment }}-oauth-mds-sso-client-secret)
                 C3_PROM_USER: $(${{ parameters.environment }}-c3-prometheus-username)
                 C3_PROM_PWD: $(${{ parameters.environment }}-c3-prometheus-password)
                 C3_ALERT_USER: $(${{ parameters.environment }}-c3-alertmanager-username)
@@ -466,6 +470,7 @@ stages:
                     oauth-kafkarest
                     oauth-controlcenter
                     oauth-mds-rest
+                    oauth-mds-sso
                     c3-prometheus-basic-auth
                     c3-alertmanager-basic-auth
                   )

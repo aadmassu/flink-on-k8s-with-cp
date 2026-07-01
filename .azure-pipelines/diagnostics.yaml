@@ -239,7 +239,7 @@ stages:
                   controlcenter-ingress-tls
                 print_secret_status "OAuth Secrets (Okta client credentials)" \
                   oauth-broker oauth-schemaregistry oauth-connect \
-                  oauth-kafkarest oauth-controlcenter oauth-mds-rest
+                  oauth-kafkarest oauth-controlcenter oauth-mds-rest oauth-mds-sso
 
                 # cert-manager Certificate objects — Ready condition tells us
                 # whether Keyfactor has issued the cert. A Secret that is

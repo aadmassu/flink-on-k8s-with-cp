@@ -1,10 +1,9 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-30 (last-modified)
-# Description: CFK KafkaRestProxy CR — Phase 2 (PLAIN/SASL_SSL to Kafka
-#              INTERNAL :9071, MDS dependency on broker :8090, OAuth on REST,
-#              RBAC via ConfluentRolebinding CRs). 1 replica.
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: CFK KafkaRestProxy CR — Phase 2. OAUTHBEARER end-to-end
+#              (Okta), RBAC via ConfluentRolebinding CRs (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -13,19 +12,20 @@ metadata:
   name: kafkarest
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase2-deps-kafka-tls-secretref"
+    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-listeners-full-rewrite"
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # TEMP — resources scaled down for the dah-flink-dev ResourceQuota. Revert to 4/4 req+limit when Tom raises the namespace quota.
   replicas: 1
+
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
-  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet, not the CR.
+
+  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/instance: kafkarest
@@ -33,75 +33,12 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  dependencies:
-    kafka:
-      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
-      authentication:
-        type: plain
-        jaasConfig:
-          secretRef: sasl-plain-internal
-      tls:
-        enabled: true
-        secretRef: kafka-tls
-    schemaRegistry:
-      url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
-      tls:
-        enabled: true
-      authentication:
-        type: oauth
-        oauth:
-          secretRef: oauth-kafkarest
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(Dev)
-            subClaimName: sub
-            groupsClaimName: dahDev_groups
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-    # MDS dependency — KafkaRest authenticates to MDS via Okta OAuth client_credentials (runbook A22).
-    mds:
-      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
-      tokenKeyPair:
-        secretRef: mds-token-keypair
-      authentication:
-        type: oauth
-        oauth:
-          secretRef: oauth-kafkarest
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(Dev)
-            subClaimName: sub
-            groupsClaimName: dahDev_groups
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-
-  # Okta JWT auth on KafkaRest REST API.
-  authentication:
-    type: oauth
-    oauth:
-      secretRef: oauth-kafkarest
-      configuration:
-        audience: "Confluent,account,api://default"
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        scope: 11547.DAH(Dev)
-        subClaimName: sub
-        groupsClaimName: dahDev_groups
-        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-
-  authorization:
-    type: rbac
-    superUsers:
-      - User:admin
-
-  tls:
-    secretRef: kafkarest-tls
   license:
     secretRef: cfk-license
 
-  # fcb-trust-bundle at /var/ssl/truststore — same shape as kafka.yaml (runbook A21). KafkaRest's own keystore comes from spec.tls.secretRef via the CFK init container.
+  tls:
+    secretRef: kafkarest-tls
+
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -115,10 +52,56 @@ spec:
         mountPath: /var/ssl/truststore
         readOnly: true
 
-  # FCB Gatekeeper [pod-disruption-budget] rejects CFK's auto-generated PDB at maxUnavailable=0; setting 1 makes it drainable.
+  authorization:
+    type: rbac
+
   pdb:
     enabled: true
     maxUnavailable: 1
+
+  # dependencies: OAUTHBEARER using oauth-kafkarest (client_id 0oa1owi3wkxJS3b3b358 per VM).
+  dependencies:
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-kafkarest
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahDev_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
+      tls:
+        enabled: true
+        secretRef: schemaregistry-tls
+    mds:
+      endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-kafkarest
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahDev_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(Dev)
 
   configOverrides:
     jvm:
@@ -129,7 +112,6 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # ~256 MiB heap (CFK init-container floor already dominates pod quota; main-container bump is free).
     resources:
       requests:
         cpu: "100m"
@@ -148,9 +130,8 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # Disable operator-injected fsGroup/runAsUser=1001 so OpenShift restricted-v2 SCC picks the namespace UID range (see kafka.yaml).
+    # OpenShift restricted-v2 SCC assigns the UID range.
     podSecurityContext: {}
-    # Repeated here because FCB Gatekeeper [required-workload-labels] inspects the Pod, not just the StatefulSet.
     labels:
       app.kubernetes.io/name: kafkarest
       app.kubernetes.io/instance: kafkarest
