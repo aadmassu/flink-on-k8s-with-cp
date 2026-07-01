@@ -141,6 +141,29 @@ spec:
     namespace: dah-flink-dev
 ---
 
+# -- Control Center (0oa1ov6h5mwmQTCKI358) ---------------------------------
+# SystemAdmin cluster-scope for Phase 2 — C3's own producers (heartbeat, metrics, monitoring interceptor, streams) need IdempotentWrite + Write on _confluent-controlcenter*/monitoring*/metrics*. Tighten later.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: controlcenter-systemadmin
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "0oa1ov6h5mwmQTCKI358"
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-dev
+---
+
 # -- Human super-admins (MDS SSO uses email as sub claim) ------------------
 
 apiVersion: platform.confluent.io/v1beta1
