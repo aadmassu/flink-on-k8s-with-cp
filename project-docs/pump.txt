@@ -83,6 +83,71 @@ hits, tighten earliest to -30m and re-run.
 
 
 ------------------------------------------------------------------------------
+ROUND 2 — CSV analysis (Q1/Q2/Q3 CSVs from 2026-06-30 19:55 EST)
+------------------------------------------------------------------------------
+
+Q1 (100 hits) and Q2 (50 hits): every operator ERROR shares the same signature
+   msg="apply failed" error="kafka rest API request failed: Not Found (0)"
+   pod=confluent-operator-cd4c475b4-9lw6k
+   100 hits packed into 2 min (19:51-19:53) -- tight retry loop.
+   Two other msg values also appear in Q1: "discovered secrets for tracking"
+   and "mds authentication" -- the latter is worth pulling on its own.
+   BUT: the `url` column is EMPTY on every row -- Splunk's operator log
+   extractors don't produce a `url` field. Need _raw to see what URL the
+   operator is hitting for "Not Found (0)".
+
+Q3 (50 hits): kafka-{0,1,2} broker logs matched OAuth-related terms but
+   level/msg/error/url ALL empty -- Splunk doesn't extract structured fields
+   from broker logs. Timestamps concentrated in a narrow 17:13-17:14 window
+   (1 min of activity), then silent for the next 2.5 hours.
+
+Time-gap observation:
+   * Broker OAuth activity: 17:13-17:14 (Q3 hits)
+   * Operator "Not Found (0)" errors: 17:13 continuous through 19:53 (Q1)
+   * Between 17:15 and 19:53 the broker isn't logging anything OAuth-related
+     while the operator is still retrying. Two theories:
+       (a) operator calls aren't reaching the broker at all after 17:14
+           (network / TLS / DNS issue between operator pod and broker pod)
+       (b) broker silently discards requests without an OAuth log line
+     (a) is more consistent with the "Not Found (0)" signature -- (0) is
+     the "no HTTP response" case in the CFK operator's error-formatting.
+
+Three follow-up queries added below with _raw in the table so we can see
+the actual URL the operator is hitting and the actual broker log content.
+
+# QUERY 1b -- exact URL the operator hits before "Not Found (0)"
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="confluent-operator-*"
+    earliest=-3h latest=now
+    "kafka rest API request failed"
+| sort - _time
+| head 20
+| table _time, openshift_pod_name, _raw
+
+
+# QUERY 1c -- the "mds authentication" msg lines (context around the failure)
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="confluent-operator-*"
+    earliest=-3h latest=now
+    "mds authentication"
+| sort - _time
+| head 20
+| table _time, openshift_pod_name, _raw
+
+
+# QUERY 3b -- broker OAuth activity, _raw to see actual content of the 17:13-17:14 burst
+((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
+    openshift_pod_name="kafka-*"
+    earliest=-3h latest=now
+    "dah-flink-dev"
+    ("myapps.firstcitizens.com" OR "jwks" OR "OAuthBearer"
+     OR "SocketTimeoutException" OR "UnknownHostException" OR "ConnectException")
+| sort - _time
+| head 30
+| table _time, openshift_pod_name, _raw
+
+
+------------------------------------------------------------------------------
 INTERPRETATION — three theories, one query each
 ------------------------------------------------------------------------------
 
