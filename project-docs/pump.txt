@@ -1,155 +1,193 @@
 ==============================================================================
-RICK ESCALATION — dev CFK operator fipsmode=true + BCFKS gap
+PHASE 2 MDS/OAUTH DEBUGGING — Splunk queries + root-cause hypotheses
 ==============================================================================
 
-Status: drafted 2026-06-30, ready to send. Iteration 5 (commit 0a730d8)
-running in parallel; if it clears the validator, skip this thread.
+Status: as of 2026-07-01 ~00:20 EST. Kafka brokers are RUNNING with all Phase-2
+listeners including auto-created token:9073 (oauthbearer) + mds:8090 (bearer).
+Three downstream failures observed in the diagnostics dump at that time:
+
+  (A) All 8 ConfluentRolebindings fail with
+      `kafka rest API request failed: Not Found (0)` — the operator's REST
+      call to broker's kafkaRest/MDS at :8090 returns "Not Found (0)" (the
+      "(0)" typically means "no HTTP response" — network / TLS / OAuth
+      handshake abort, not a real 404).
+  (B) SR pod crash-loops with `Failed to get Kafka cluster ID` → TimeoutException.
+      SR successfully obtained an Okta token (its login thread was running with
+      client_id 0oa1owiage2MyoHdt358) then dialed broker:9073 over
+      SASL/OAUTHBEARER and timed out on fetchMetadata.
+  (C) Connect + KafkaRest failed admission on Secret-key naming mismatch.
+      FIXED at commit a35470e (renamed kafkaconnect-client-plain.txt ->
+      connect-client-plain.txt and kafkarest-client-plain.txt ->
+      kafkarestproxy-client-plain.txt in the sasl-plain-internal Secret
+      construction in .azure-pipelines/confluent-platform.yaml). Needs a
+      install-or-update run against a35470e to take effect on the cluster.
+
+(A) and (B) likely share a root cause — the broker's OAuth-token validator
+can't complete the token-verification loop, either because it can't reach
+Okta's JWKS URL to verify signatures, or because there's a TLS trust gap
+between the operator/SR clients and the broker's TLS certs.
 
 ------------------------------------------------------------------------------
-Subject: dev CFK operator — fipsmode=true + BCFKS keystore gap
-To:      Rick Mulder
+NEXT STEP — pull operator + broker logs from Splunk (Zscaler-blocked laptop
+so no direct oc access to confluent-operator namespace anyway).
 ------------------------------------------------------------------------------
+
+Run all three from your Splunk console. If any comes back with thousands of
+hits, tighten earliest to -30m and re-run.
+
+# QUERY 1 — operator-side errors around the rolebinding + kafkaRest calls
+index=openshift openshift_namespace=confluent-operator
+    ("kafka rest API" OR "Not Found" OR "rolebinding" OR "rolebindings"
+     OR "confluentrolebinding" OR "MDS" OR "mds/" OR "jwks"
+     OR "OAUTHBEARER" OR "0oa1owiage2MyoHdt358"
+     OR "OAuthBearer" OR "http.*8090" OR ":9073"
+     OR "SASL authentication failed" OR "unable to")
+    earliest=-3h latest=now
+| sort - _time
+| head 100
+| table _time, level, msg, error, url, openshift_pod_name
+
+
+# QUERY 2 — narrower, specifically operator log lines about our rolebinding names
+index=openshift openshift_namespace=confluent-operator
+    ("schemaregistry-resourceowner-schemas" OR "schemaregistry-resourceowner-group"
+     OR "connect-resourceowner-config-topic" OR "connect-resourceowner-group"
+     OR "kafkarest-systemadmin"
+     OR "internal-schemaregistry" OR "internal-controlcenter")
+    earliest=-3h latest=now
+| sort - _time
+| head 50
+| table _time, level, msg, error, openshift_pod_name
+
+
+# QUERY 3 — broker-side Okta / JWKS egress errors (most likely smoking gun)
+index=openshift openshift_namespace=dah-flink-dev openshift_pod_name=kafka-*
+    ("myapps.firstcitizens.com" OR "jwks" OR "OAuthBearer" OR "OAuthBearerValidatorCallback"
+     OR "SocketTimeoutException" OR "UnknownHostException" OR "ConnectException"
+     OR "SASLServerCallbackHandler" OR "ValidatorCallback")
+    earliest=-3h latest=now
+| sort - _time
+| head 50
+| table _time, level, msg, error, openshift_pod_name
+
+
+------------------------------------------------------------------------------
+INTERPRETATION — three theories, one query each
+------------------------------------------------------------------------------
+
+Q1 tells us what URL/response the operator got when trying to create rolebindings.
+Look for:
+  - HTTP status codes in the log message body (0 = no response, 401 = auth failed,
+    404 = wrong path, 5xx = broker-side issue)
+  - TLS errors mentioning "unable to find valid certification path" or
+    "SSLHandshakeException" — would indicate operator's truststore doesn't
+    trust broker's kafka-tls (though Rick installed operator with fcb-trust-bundle,
+    so this should not fire; if it does, we need Rick to verify)
+  - "failed to acquire access token from IdP" or similar — operator's own
+    Okta client_credentials (oauth-broker or oauth-mds-rest Secret) are rejected
+
+Q2 zooms in on our 5 explicit rolebindings + the 3 CFK-auto-generated ones.
+The operator should log one line per rolebinding it tries to create, with the
+request URL. Confirms the exact endpoint the "Not Found (0)" is coming from.
+
+Q3 is THE smoking gun for the most likely root cause. If we see
+UnknownHostException/SocketTimeoutException/ConnectException with
+myapps.firstcitizens.com in the message text, the broker pods cannot reach
+Okta from inside dah-flink-dev. The token-verification loop then times out
+(broker doesn't respond to the client's SASL OAUTHBEARER handshake in time),
+explaining BOTH (A) — operator's token can't be validated by MDS — AND (B) —
+SR's token can't be validated by broker at :9073.
+
+
+------------------------------------------------------------------------------
+ESCALATION DRAFTS (send AFTER Splunk queries confirm the theory)
+------------------------------------------------------------------------------
+
+--- ESCALATION 1: Broker egress to Okta blocked (most likely) ---
+To: Rick Mulder
+Subject: dah-flink-dev egress to myapps.firstcitizens.com — Kafka broker needs to reach Okta JWKS for MDS/RBAC
 
 Rick,
 
-We've hit a wall on the dev Kafka CR install and Confluent's own docs explain
-why. Asking for your call on which of two fixes to apply at the operator
-level.
+Following the fipsmode=false change, we've moved to Phase 2 MDS+RBAC on the
+Kafka CR. Brokers are up (all Phase-2 listeners including auto-created
+token:9073 oauthbearer). But:
+  - All 8 ConfluentRolebindings fail with "kafka rest API request failed:
+    Not Found (0)"
+  - Schema Registry crash-loops on SASL/OAUTHBEARER handshake to broker :9073
 
-Background
-----------
-- The dev CFK operator (confluent-operator namespace) was installed with
-  fipsmode=true (the FCB Container Platforms hardening default). Build is
-  0.1514.x = CFK 3.2.x.
-- The dev Kafka CR in dah-flink-dev sits at:
-    cluster-ready=False
-    reason=ApplyFailed
-    message=failed config validation: missing value for key
-            confluent.metrics.reporter.ssl.truststore.location
-  status.observedGeneration is unset -- the rejection is at admission, before
-  the operator's reconcile loop runs.
-- KRaftController is fine (cluster-ready=True, 3 pods 1/1 Running, 10h+).
-  The wall is the Kafka CR's FIPS-strict server-properties validator only.
+Splunk shows the broker pods failing to reach https://myapps.firstcitizens.com/
+oauth2/default/v1/keys with <ERROR TYPE FROM Q3 HERE — likely
+UnknownHostException or SocketTimeoutException>. The broker's OAuth validator
+can't fetch Okta's JWKS to verify JWTs presented by MDS clients, so the SASL
+handshake times out.
 
-What we've tried (five iterations on the Kafka CR's spec.configOverrides.server)
+Ask: open egress from dah-flink-dev pods to myapps.firstcitizens.com:443. If
+this needs Zscaler + OpenShift NetworkPolicy egress rules both, please advise
+which side we own vs Container Platforms. Attached: relevant Splunk snippets
+from index=openshift openshift_namespace=dah-flink-dev openshift_pod_name=kafka-*
+around 2026-07-01T00:14-00:20 EST.
+
+— Ayu
+
+
+--- ESCALATION 2: Operator client credentials rejected by Okta ---
+To: Rick Mulder
+Subject: oauth-broker / oauth-mds-rest Secret credentials not authorized in Okta
+
+Rick,
+
+Splunk shows the CFK operator (in confluent-operator ns) failing to acquire
+an Okta access token when trying to call the broker's MDS API. Error snippet:
+<PASTE FROM Q1 HERE — "failed to acquire access token" or "invalid_client">.
+
+The dev Secret oauth-broker (client_id=<from Splunk>) or oauth-mds-rest
+appears not to be authorized for the scope 11547.DAH(Dev) on the Okta app
+registration.
+
+Ask: verify the Okta app registrations for the CFK Confluent Platform dev
+have scope 11547.DAH(Dev) enabled and the correct client_credentials grant
+type. The pipeline populated these Secrets from
+<env>-oauth-broker-client-{id,secret} and
+<env>-oauth-mds-rest-client-{id,secret} variables in the FCB variable group.
+
+— Ayu
+
+
+--- ESCALATION 3 (least likely): CFK operator bug on MDS API path ---
+To: Confluent Support (ticket)
+Subject: CFK 3.2.x operator calling MDS API returns "Not Found (0)" on ConfluentRolebinding creation
+
+If Q1 shows the operator making calls to a specific URL like /kafka/v3/...
+or /security/1.0/... and the broker's MDS returns 404 for that exact path,
+this is a CFK version mismatch or operator bug. Open a Confluent support
+ticket with:
+  - Operator version: v0.1514.40 (CFK 3.2.x)
+  - Broker cp-server: 8.1.3
+  - Init container: 3.2.0
+  - The exact URL from Q1
+  - The full ConfluentRolebinding YAML that fails
+
 ------------------------------------------------------------------------------
-1. metric.reporters= (empty) + disable audit log + disable lag emitter --
-   commit 3724127. Validator still asks for the same key.
-2. Pre-render confluent.metrics.reporter.ssl.truststore.{location,password,
-   type} pointed at /mnt/sslcerts/truststore.p12 (CFK init-container auto-
-   rendered path) -- commit 562d196, reverted at aafd80d because the path
-   isn't declared in spec.mountedVolumes (read as a phantom mount even though
-   the file exists at runtime).
-3. Same three keys but pointed at /mnt/sslcerts/fcb-trust-bundle/bundle.jks
-   (the fcb-trust-bundle ConfigMap, definitely mounted) -- commit 8ce409c.
-   Same error.
-4. Full six-key SSL block (truststore.{location,password,type} +
-   keystore.{location,password,type}) at /var/ssl/kafka/{truststore,
-   keystore}.jks via a cert-manager keystores.jks block on the kafka-tls
-   Certificate, plus the FCB-Flink-shape mount layout under /var/ssl/...
-   -- commit 502cea5. Same error.
-5. Same as (4) but also set metric.reporters to the cp-server default list
-   (TelemetryReporter + ConfluentMetricsReporter) and supply the full
-   SASL_SSL stack (bootstrap.servers, security.protocol, sasl.mechanism,
-   sasl.jaas.config, topic.replicas, support.metrics.enable=false), 1:1
-   with the VM brokers' apps/confluent-platform/cp-confluent/dev/
-   d11547varc-*-server.properties -- commits 0b36d61 and 0a730d8.
-   Result pending; expected to fail for the reason below.
-
-What the docs say (the discovery)
----------------------------------
-https://docs.confluent.io/operator/current/co-security-compliance.html
-#deploy-cp-in-the-fips-mode
-
-Key claims, verbatim:
-
-  "Confluent Server (Confluent Kafka), KRaft, Schema Registry, Connect, and
-  ksqlDB require FIPS-compliant Java KeyStore type, Bouncy Castle"
-
-  "Bouncy Castle keystores (BCFKS) are required for FIPS-compliant TLS
-  connections"
-
-  The component Secret must contain:
-    keystore.bcfks
-    truststore.bcfks
-    keystore.jks
-    truststore.jks
-    jksPassword.txt
-
-  Documented CR field path:
-    spec:
-      tls:
-        fips:
-          enabled: true
-          mode: <fips-mode>   # Optional, CFK 3.2.0+
-        secretRef: <secret-name>
-
-The gap
--------
-- The kafka-tls Secret currently contains: tls.crt, tls.key, ca.crt (from
-  Keyfactor via cert-manager); keystore.jks + truststore.jks (from the
-  keystores.jks Certificate block we added in commit 502cea5). It does NOT
-  contain BCFKS material.
-- cert-manager 1.x's keystores block only emits JKS and PKCS12 -- no
-  BCFKS support upstream. There is no in-cluster tool in our namespace that
-  produces BCFKS from PEM material.
-- Therefore: we cannot satisfy the operator's FIPS-strict validator from
-  the Kafka CR alone, regardless of how many keys we pre-render. The
-  "missing value" error message reads literally but more accurately means
-  "the truststore location must resolve to a BCFKS file at a path the
-  validator recognizes".
-
-Two options for the dev install
--------------------------------
-(1) Provision a BCFKS conversion sidecar/Job in dah-flink-dev (or in
-    confluent-operator as a namespace-scoped utility). On each kafka-tls
-    Secret rotation the Job reads tls.crt/tls.key/ca.crt, converts to
-    BCFKS via the BouncyCastle CLI (bc-fips jar + keytool), patches the
-    Secret with keystore.bcfks + truststore.bcfks. Same for any other
-    component Secret that needs FIPS material (kraftcontroller-tls,
-    schemaregistry-tls, etc.). Right long-term shape for stg/prd too.
-    Effort: ~30-60 min infra work + base image with bc-fips and keytool.
-
-(2) Disable fipsmode=true on the dev CFK operator install:
-        helm upgrade --reuse-values --set fipsmode=false \
-          confluent-operator confluentinc/confluent-for-kubernetes \
-          --namespace confluent-operator
-    We keep spec.tls.fips.enabled=true on the Kafka CR (no-op when the
-    operator isn't running the strict validator, but keeps the dev
-    manifests aligned with what prod will look like once the BCFKS
-    pipeline lands). Removes the immediate blocker. Loses the
-    operator-attested FIPS validation path for dev only -- broker
-    runtime FIPS posture is governed by the JVM bootclasspath and the
-    cp-server image (artifactory.fcbint.net/.../cp-server:8.1.3), both
-    unchanged. The brokers can still run BCFKS-format keystores at
-    runtime if the image is configured that way; the operator just won't
-    enforce it pre-deploy.
-
-Ask
----
-For dev only: which of (1) or (2) do you want us to go with? If (2), we
-can re-install the operator ourselves once you bless the change, or you
-can do it.
-
-For stg/prd: BCFKS production is the right path regardless. If we go with
-(2) for dev now, we'd still need to stand up the BCFKS conversion pipeline
-before stg's CFK install. Happy to scope that as a follow-up once dev is
-unblocked.
-
--- Ayu
-
-==============================================================================
-Notes for me (Ayu) -- not part of the message above
-==============================================================================
-- Don't mention iterations 1-5 by commit hash to Rick unless he asks --
-  it's the wrong altitude. The summary "five iterations of CR-side
-  configOverrides, none cleared it" is enough.
-- If Rick prefers option 1 but doesn't want to own the conversion Job
-  himself, ask whether trust-manager can do BCFKS (vs JKS only) since
-  Container Platforms already deploys trust-manager for fcb-trust-bundle.
-- If Rick says "the operator should auto-generate BCFKS when fipsmode=true",
-  that's a third option worth investigating -- the docs don't say either
-  way. May need a follow-up to Confluent support.
-- Memory project_fcb_cfk_operator_ownership: operator is owned by FCB
-  Container Platforms; vendored chart in repo is reference-only. So Rick
-  is the right person here, not Tom or Tushar.
+Notes for me (Ayu) — not part of any escalation
+------------------------------------------------------------------------------
+- Commit a35470e (in) fixes (C) — Connect/KafkaRest admission Secret-key
+  mismatch. Rerun install-or-update to apply.
+- Commits so far this session on the Phase 2 thread:
+  de1d489, 1a0e180, ce56a22, 1ffa05c, f4fff83, 2bd8c2a, f97c144, a35470e
+- Runbook A22 already documents:
+    * Phase 2 shape (services.mds + authorization=rbac + rolebindings.yaml)
+    * The provider/consumer/dependency-side OAuth field-name asymmetry
+      (configurations plural / configuration singular / oauthSettings flat)
+    * spec.dependencies.kafkaRest.tls.secretRef requirement
+    * spec.services.mds.tls.secretRef requirement
+    * spec.dependencies.kafka.tls.secretRef requirement on SR/Connect/KafkaRest
+    * The 9073 TOKEN listener auto-provisioning + why we can't declare it via
+      spec.listeners.custom (schema minimum 9093)
+    * The lowercase-CRD-KIND rule for sasl-plain-internal per-client keys
+- Ports still unknown / questions if Splunk doesn't answer:
+    * Does the broker actually TRY to reach Okta jwks at startup, or lazily
+      on first token validation?
+    * If Rick can't open egress to Okta, does CFK support offline JWKS
+      (i.e., pre-configured public keys in the broker config)? Would be
+      worth asking Confluent.
