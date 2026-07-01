@@ -13,7 +13,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-brokers-c3-superusers-workaround"
+    platform.confluent.io/force-reconcile: "2026-07-01-brokers-all-components-superusers-workaround"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -62,12 +62,15 @@ spec:
     enabled: true
     maxUnavailable: 1
 
-  # superUsers is the broker's own Okta client (oauth-broker Secret). C3 client is here as a workaround while :8090/kafka/v3 discovery is broken and rolebinding push fails (runbook A27); revert once discovery is fixed and controlcenter-systemadmin rolebinding propagates.
+  # superUsers: broker's own Okta client + all four component principals (SR, Connect, KafkaRest, C3) as a WORKAROUND while :8090/kafka/v3 discovery is broken and new rolebinding push fails (runbook A27). Revert to just the broker once discovery is fixed and rolebindings propagate reliably.
   authorization:
     type: rbac
     superUsers:
-      - User:0oa1owhtq2olDZWwf358
-      - User:0oa1ov6h5mwmQTCKI358
+      - User:0oa1owhtq2olDZWwf358   # broker (oauth-broker)
+      - User:0oa1owiage2MyoHdt358   # Schema Registry
+      - User:0oa1owi0yntGMBvPS358   # Connect
+      - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
+      - User:0oa1ov6h5mwmQTCKI358   # Control Center
 
   listeners:
     internal:
