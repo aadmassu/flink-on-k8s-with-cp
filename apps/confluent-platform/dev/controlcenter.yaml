@@ -8,9 +8,7 @@
 #              configuration. Top-level UI auth stays mtls+requested
 #              because the ControlCenter CRD's top-level authentication
 #              enum is [basic|ldap|mtls] -- OIDC redirect is delivered
-#              through dependencies.mds.ssoProtocol=oidc. replicas stays
-#              at 0 until dev quota is confirmed to fit the extra pod
-#              (runbook A22/A23).
+#              through dependencies.mds.ssoProtocol=oidc (runbook A24).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -19,15 +17,15 @@ metadata:
   name: controlcenter
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-phase2-controlcenter-rewrite"
+    platform.confluent.io/force-reconcile: "2026-07-01-phase2-controlcenter-online"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # SUSPENDED until dev quota is confirmed to fit the extra pod. Flip to 1 to bring online.
-  replicas: 0
+  # Bringing online at dev-smoke sizing (1/2 CPU, 2/4 GiB) -- quota headroom confirmed after Phase 2 landed.
+  replicas: 1
 
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:2.5.0
