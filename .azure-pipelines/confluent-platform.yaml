@@ -292,7 +292,7 @@ stages:
                   rm -f "$MDS_PRIV" "$MDS_PUB"
                   fi
 
-                  # sasl-plain-internal keys: kafka-server-listener-<name>-plain-users.json per SASL/PLAIN listener + plain-interbroker.txt + <component>-client-plain.txt (runbook A15).
+                  # sasl-plain-internal keys: kafka-server-listener-<name>-plain-users.json per SASL/PLAIN listener + plain-interbroker.txt + <lowercase-CRD-kind>-client-plain.txt per component (runbook A15). Naming MUST match the operator's key-derivation from the CR's KIND (not the CR's name or a friendly component name) -- SchemaRegistry -> schemaregistry, Connect -> connect, KafkaRestProxy -> kafkarestproxy, ControlCenter -> controlcenter. Older versions of this pipeline used "kafkaconnect" and "kafkarest" which the operator rejects at admission with `required at least one of the keys [<kind>-client-plain.txt plain.txt] in secretRef [sasl-plain-internal] for auth type [plain]`.
                   if is_eso_managed sasl-plain-internal; then
                     echo ""
                     echo "=== sasl-plain-internal ==="
@@ -321,8 +321,8 @@ stages:
                     --from-file=kafka-server-listener-external-plain-users.json="$SASL_JSON_TMP" \
                     --from-file=plain-interbroker.txt="$SASL_IB_TMP" \
                     --from-file=schemaregistry-client-plain.txt="$SASL_SR_TMP" \
-                    --from-file=kafkaconnect-client-plain.txt="$SASL_CONNECT_TMP" \
-                    --from-file=kafkarest-client-plain.txt="$SASL_REST_TMP" \
+                    --from-file=connect-client-plain.txt="$SASL_CONNECT_TMP" \
+                    --from-file=kafkarestproxy-client-plain.txt="$SASL_REST_TMP" \
                     --from-file=controlcenter-client-plain.txt="$SASL_C3_TMP" \
                     | label_secret sasl-plain-internal \
                     | oc apply -f -

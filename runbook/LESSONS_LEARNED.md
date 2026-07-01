@@ -1527,6 +1527,24 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   All reuse `kafka-tls` because the MDS / kafkaRest / Kafka
   listener endpoints are all served by the broker pods, sharing
   the same cert chain.
+* **`sasl-plain-internal` per-client-key naming is derived
+  from the CRD KIND, not the CR name or a friendly component
+  name**. The operator's admission validator demands
+  `<lowercase-kind>-client-plain.txt` in the Secret when a
+  component's `dependencies.kafka.authentication.type: plain`
+  points at `sasl-plain-internal`. Concrete mapping:
+  * `SchemaRegistry` → `schemaregistry-client-plain.txt`
+  * `Connect` → `connect-client-plain.txt` (**not**
+    `kafkaconnect-client-plain.txt`)
+  * `KafkaRestProxy` → `kafkarestproxy-client-plain.txt`
+    (**not** `kafkarest-client-plain.txt`)
+  * `ControlCenter` → `controlcenter-client-plain.txt`
+  Failing this returns admission `ApplyFailed: required at
+  least one of the keys [<kind>-client-plain.txt plain.txt] in
+  secretRef [sasl-plain-internal] for auth type [plain]` on
+  Connect / KafkaRest / etc. The Secret is constructed by the
+  `install-or-update` pipeline's Secret step in
+  `.azure-pipelines/confluent-platform.yaml`.
 * **Phase 2 side-effect: CFK auto-rewires consumer-side
   `authentication.type: plain` to `oauthbearer` when MDS is
   enabled**. Observed in SR's pod log
