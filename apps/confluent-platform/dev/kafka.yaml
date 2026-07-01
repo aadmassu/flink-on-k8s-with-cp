@@ -12,7 +12,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-06-30-phase2-mds-rbac-okta-mds-tls-secretref"
+    platform.confluent.io/force-reconcile: "2026-06-30-phase2-services-mds-authentication-bearer"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -98,6 +98,9 @@ spec:
         secretRef: kafka-tls
       tokenKeyPair:
         secretRef: mds-token-keypair
+      # Missing this block was the theory from ROUND 5 in pump.txt: with only tokenKeyPair + tls + provider set, the operator rendered MDS at :8090 but NOT the TOKEN Kafka listener at :9073. The CRD requires authentication.type=bearer inside this authentication block. Adding it now to test whether the operator's TOKEN-listener render logic keys off this field being present (runbook A22).
+      authentication:
+        type: bearer
       provider:
         type: oauth
         # spec.services.mds.provider.oauth uses `configurations` (plural) per the Kafka CRD; SR/Connect/KafkaRest client-side oauth blocks use `configuration` (singular). The plural lives on the provider side, the singular on the consumer side.
