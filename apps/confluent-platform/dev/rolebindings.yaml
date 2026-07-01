@@ -2,20 +2,16 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-06-30 (created), 2026-07-01 (last-modified)
-# Description: Phase 2 RBAC grants — one ConfluentRolebinding per
-#              (component, resource) pair. Principals are Okta OAuth
-#              CLIENT IDs (sub claim), not friendly names. Client IDs
-#              sourced from the VM-side property files at
-#              apps/confluent-platform/cp-confluent/dev/*.properties.
-#              Applied AFTER Kafka cluster-ready in the pipeline
-#              (runbook A22).
+# Description: Phase 2 RBAC grants. Principals are Okta CLIENT IDs
+#              (subClaimName=sub) sourced from VM property files.
+#              Applied after Kafka cluster-ready (runbook A22).
 #
-# Client ID map (matches oauth-<component> Secrets the pipeline creates):
-#   Kafka broker  (oauth-broker):         0oa1owhtq2olDZWwf358  (super-user, no rolebinding needed)
-#   Schema Registry (oauth-schemaregistry): 0oa1owiage2MyoHdt358
-#   Connect       (oauth-connect):        0oa1owi0yntGMBvPS358
-#   Kafka REST    (oauth-kafkarest):      0oa1owi3wkxJS3b3b358
-#   Control Center (oauth-controlcenter):  <TBD — populate when C3 comes online>
+# Client ID map:
+#   Kafka broker    0oa1owhtq2olDZWwf358  (super-user)
+#   Schema Registry 0oa1owiage2MyoHdt358
+#   Connect         0oa1owi0yntGMBvPS358
+#   Kafka REST      0oa1owi3wkxJS3b3b358
+#   Control Center  0oa1ov6h5mwmQTCKI358
 ########################################################################
 
 # -- Schema Registry (0oa1owiage2MyoHdt358) --------------------------------
@@ -59,7 +55,6 @@ spec:
     name: "0oa1owiage2MyoHdt358"
   role: ResourceOwner
   resourcePatterns:
-    # schema.registry.group.id = schema-registry (per schemaregistry.yaml configOverrides.server).
     - resourceType: Group
       name: schema-registry
       patternType: LITERAL
@@ -115,7 +110,6 @@ spec:
     name: "0oa1owi0yntGMBvPS358"
   role: ResourceOwner
   resourcePatterns:
-    # Connect's group.id = connect-cluster (per connect.yaml configOverrides.server).
     - resourceType: Group
       name: connect-cluster
       patternType: LITERAL
@@ -125,9 +119,7 @@ spec:
 ---
 
 # -- Kafka REST Proxy (0oa1owi3wkxJS3b3b358) -------------------------------
-# SystemAdmin at cluster scope for Phase 2 first pass — KafkaRest acts as a
-# generic proxy; per-topic tightening after we know which topics REST clients
-# actually exercise.
+# SystemAdmin cluster-scope for Phase 2; tighten per-topic once we know which topics REST clients exercise.
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
@@ -149,10 +141,7 @@ spec:
     namespace: dah-flink-dev
 ---
 
-# -- Human super-admin via Okta SSO (email principal) ----------------------
-# MDS SSO uses email as the sub claim (see spec.services.mds.provider.sso in
-# kafka.yaml). Add per-user SystemAdmin grants for the humans who need to
-# manage RBAC in C3 / kafka-rest CLI. Add more entries as team members onboard.
+# -- Human super-admins (MDS SSO uses email as sub claim) ------------------
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding

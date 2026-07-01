@@ -2,13 +2,9 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-05-11 (created), 2026-07-01 (last-modified)
-# Description: CFK ControlCenter CR -- Phase 2 shape. Dep-side Kafka
-#              auth uses the live-CRD flat form (type: oauth + jaasConfig
-#              + oauthSettings); MDS/SR/Connect deps use nested oauth+
-#              configuration. Top-level UI auth stays mtls+requested
-#              because the ControlCenter CRD's top-level authentication
-#              enum is [basic|ldap|mtls] -- OIDC redirect is delivered
-#              through dependencies.mds.ssoProtocol=oidc (runbook A24).
+# Description: CFK ControlCenter CR — Phase 2. OIDC user auth via
+#              dependencies.mds.ssoProtocol=oidc; top-level auth is
+#              mtls+requested per CRD enum (runbook A24).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -24,14 +20,13 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # Bringing online at dev-smoke sizing (1/2 CPU, 2/4 GiB) -- quota headroom confirmed after Phase 2 landed.
   replicas: 1
 
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:2.5.0
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
 
-  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet, not the CR.
+  # Gatekeeper [required-workload-labels] inspects the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/instance: controlcenter
@@ -39,7 +34,7 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  # RocksDB state on Ceph RBD. 15 Gi for dev smoke-testing; VM target is 300 Gi.
+  # 15 Gi dev; VM target 300 Gi.
   dataVolumeCapacity: 15Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd
@@ -50,7 +45,7 @@ spec:
   tls:
     secretRef: controlcenter-tls
 
-  # FCB trust bundle for outbound HTTPS (brokers/SR/Connect/MDS/Okta-OIDC).
+  # JVM outbound trust store (runbook A21).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -64,16 +59,13 @@ spec:
         mountPath: /var/ssl/truststore
         readOnly: true
 
-  # Top-level UI auth: ControlCenter CRD enum is [basic|ldap|mtls] (no oauth).
-  # mtls+requested is the documented workaround for OIDC -- actual user auth
-  # flows through dependencies.mds.ssoProtocol=oidc below.
+  # CRD enum is [basic|ldap|mtls]; mtls+requested is the documented OIDC workaround (runbook A24).
   authentication:
     type: mtls
     mtls:
       sslClientAuthentication: requested
 
-  # RBAC enforcement on the C3 REST API. superUsers omitted so all access
-  # flows through ConfluentRolebindings (matches SR/Connect/KafkaRest).
+  # No superUsers — all access via ConfluentRolebindings.
   authorization:
     type: rbac
 
@@ -82,9 +74,7 @@ spec:
     maxUnavailable: 1
 
   dependencies:
-    # C3's own Kafka clients (streams, monitoring interceptor) hit the INTERNAL
-    # listener via OAUTHBEARER using oauth-controlcenter (client_id
-    # 0oa1ov6h5mwmQTCKI358 per VM). Flat shape per live-CRD (runbook A22).
+    # Dep-to-Kafka: flat oauth+jaasConfig (runbook A22).
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
       authentication:
@@ -107,7 +97,7 @@ spec:
         enabled: true
         secretRef: kafka-tls
 
-    # SR REST API dep. Nested oauth+configuration shape for HTTP deps (runbook A22).
+    # Dep-to-SR (HTTP API): nested oauth+configuration.
     schemaRegistry:
       url: https://schemaregistry.dah-flink-dev.svc.cluster.local:8081
       tls:
@@ -153,9 +143,7 @@ spec:
               loginRetryBackoffMaxMs: 5000
               loginRetryBackoffMs: 60000
 
-    # OIDC SSO for the C3 UI is delivered through MDS -- users hit C3, get
-    # redirected to MDS (which fronts Okta), authenticate, come back with an
-    # MDS-issued bearer. CFK equivalent of VM's confluent.controlcenter.auth.sso.mode=oidc.
+    # OIDC SSO for the C3 UI is delivered through MDS.
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
       ssoProtocol: oidc
@@ -185,22 +173,15 @@ spec:
       name: default
       namespace: dah-flink-dev
 
-  # Next-gen Prometheus + AlertManager bundle deferred -- needs spec.services.{prometheus,alertmanager} blocks. c3-prometheus-basic-auth + c3-alertmanager-basic-auth Secrets exist so re-enable is CR-only.
+  # Prometheus + AlertManager bundle deferred; c3-*-basic-auth Secrets already exist.
 
   configOverrides:
-    # JVM default truststore -> fcb-trust-bundle.
     jvm:
       - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
-      # C3-native settings. data.dir intentionally omitted -- CFK's default is
-      # /mnt/data/data0 where the dataVolumeCapacity PVC is mounted and the
-      # init container chown's it writable. VM CP used /var/lib/confluent/
-      # control-center (that's the VM's mount point) -- do NOT copy that path
-      # over on CFK, the /var/lib/... directory is baked into the image as
-      # root:root 755 and the OpenShift UID-range user can't write to it.
-      # Runbook A25.
+      # Do NOT set confluent.controlcenter.data.dir here — CFK mounts the PVC at /mnt/data/data0 (runbook A25).
       - confluent.controlcenter.streams.num.stream.threads=12
       - confluent.controlcenter.command.topic.replication=3
       - confluent.controlcenter.internal.topics.replication=3
@@ -208,11 +189,7 @@ spec:
       - confluent.controlcenter.monitoring.interceptor.topic.replication=3
       - confluent.controlcenter.cmf.healthcheck.interval.sec=600000
 
-      # C3 streams client -- VM property file lines 34-41. CFK does not
-      # auto-derive these from dependencies.kafka.authentication for the
-      # confluent.controlcenter.streams.* prefix (same pattern as broker's
-      # confluent.license.* / confluent.kafkarest.* overrides). jaas.config
-      # itself is omitted so operator can inject from oauth-controlcenter.
+      # C3 streams client (CFK doesn't auto-derive per-prefix, same pattern as broker's confluent.license.* / confluent.kafkarest.*).
       - confluent.controlcenter.streams.security.protocol=SASL_SSL
       - confluent.controlcenter.streams.sasl.mechanism=OAUTHBEARER
       - confluent.controlcenter.streams.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -220,7 +197,7 @@ spec:
       - confluent.controlcenter.streams.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
       - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(Dev)
 
-      # Monitoring interceptor client -- VM property file lines 51-58.
+      # Monitoring interceptor client.
       - confluent.monitoring.interceptor.security.protocol=SASL_SSL
       - confluent.monitoring.interceptor.sasl.mechanism=OAUTHBEARER
       - confluent.monitoring.interceptor.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -230,7 +207,7 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # Dev-smoke sizing (runbook F2). VM/UAT target is 12/16 when quota permits.
+    # Dev-smoke sizing (runbook F2). VM/UAT target 12/16.
     resources:
       requests:
         cpu: "1"
@@ -238,7 +215,7 @@ spec:
       limits:
         cpu: "2"
         memory: 4Gi
-    # OpenShift restricted-v2 SCC assigns the UID range.
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
     labels:
       app.kubernetes.io/name: controlcenter

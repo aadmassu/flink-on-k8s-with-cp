@@ -2,10 +2,9 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-05-11 (created), 2026-07-01 (last-modified)
-# Description: CFK SchemaRegistry CR — Phase 2. Dials Kafka INTERNAL
-#              listener :9071 via OAUTHBEARER (Okta), talks to MDS at
-#              :8090 via OAUTH, RBAC via ConfluentRolebinding CRs
-#              (runbook A22).
+# Description: CFK SchemaRegistry CR — Phase 2. OAUTHBEARER to Kafka
+#              INTERNAL :9071, OAUTH to MDS :8090, RBAC via
+#              ConfluentRolebindings (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -27,7 +26,7 @@ spec:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-schema-registry:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
 
-  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet.
+  # Gatekeeper [required-workload-labels] inspects the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/instance: schemaregistry
@@ -41,7 +40,7 @@ spec:
   tls:
     secretRef: schemaregistry-tls
 
-  # Broker's kafka-tls is signed by FCB CA which is in fcb-trust-bundle -- the JVM's default trustStore points at bundle.jks below so both broker TLS and Okta HTTPS work through the same truststore (runbook A21).
+  # JVM outbound trust store (kafka-tls signed by FCB CA in this bundle; runbook A21).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -55,7 +54,7 @@ spec:
         mountPath: /var/ssl/truststore
         readOnly: true
 
-  # RBAC enforcement on the SR REST API. superUsers omitted so ALL access flows through ConfluentRolebindings — SR's own principal (its Okta client) needs ResourceOwner on _schemas + Group schema-registry via rolebindings.yaml.
+  # RBAC on SR REST API. No superUsers — SR's own Okta client gets ResourceOwner on _schemas + Group via rolebindings.yaml.
   authorization:
     type: rbac
 
@@ -63,8 +62,8 @@ spec:
     enabled: true
     maxUnavailable: 1
 
-  # dependencies.kafka.authentication.type=oauth -- SR's kafkastore AdminClient hits kafka INTERNAL :9071 with SASL/OAUTHBEARER using the oauth-schemaregistry Secret (client_id 0oa1owiage2MyoHdt358 per VM). tls.secretRef is required (runbook A20).
   dependencies:
+    # Dep-to-Kafka: flat oauth+jaasConfig+oauthSettings (runbook A22).
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
       authentication:
@@ -82,7 +81,7 @@ spec:
       tls:
         enabled: true
         secretRef: kafka-tls
-    # MDS-side auth uses the same Okta client (SR presents its Okta token to MDS's OAuth-validating endpoint at :8090). Consumer-side oauth block uses configuration (singular) NOT configurations (plural) -- Kafka provider-side uses plural (runbook A22).
+    # Dep-to-MDS (HTTP API): nested oauth+configuration (runbook A22).
     mds:
       endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
       tls:
@@ -136,7 +135,7 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # OpenShift restricted-v2 SCC assigns the UID range.
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
     labels:
       app.kubernetes.io/name: schemaregistry

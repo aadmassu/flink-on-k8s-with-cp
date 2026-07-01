@@ -2,10 +2,8 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-05-11 (created), 2026-07-01 (last-modified)
-# Description: CFK KRaftController CR — Phase 2 (3-node quorum,
-#              OAUTHBEARER controller listener against Okta, RBAC).
-#              Pattern from Psyncopate-Technologies/openshift-cfk-gitops
-#              adapted to FCB Okta (runbook A22).
+# Description: CFK KRaftController CR — Phase 2. 3-node quorum,
+#              OAUTHBEARER controller listener, RBAC (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -19,24 +17,22 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # 3-controller quorum (HA-safe, tolerates one loss). Don't drop to 1.
+  # 3-controller quorum — do NOT drop to 1.
   replicas: 3
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
-  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet.
+  # Gatekeeper [required-workload-labels] inspects the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: kraftcontroller
     app.kubernetes.io/instance: kraftcontroller
     app.kubernetes.io/component: kraft-controller
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # PVCs: data-kraftcontroller-{0,1,2} on Ceph RBD.
   dataVolumeCapacity: 1Gi
   storageClass:
     name: ocs-storagecluster-ceph-rbd
 
-  # Controller listener now OAUTHBEARER — matches Kafka's spec.dependencies.kRaftController.controllerListener block. Okta config identical across all listeners in the cluster.
   listeners:
     controller:
       tls:
@@ -54,7 +50,7 @@ spec:
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
           scope: 11547.DAH(Dev)
 
-  # Controller-side RBAC. superUser is the broker's own OAuth client (which is what the KRaft controllers see as the peer during inter-node communication).
+  # superUser is the broker's own Okta client (peer principal during controller comms).
   authorization:
     type: rbac
     superUsers:
@@ -65,7 +61,7 @@ spec:
   license:
     secretRef: cfk-license
 
-  # fcb-trust-bundle — JVM default outbound truststore (Okta / everything).
+  # JVM outbound trust store (runbook A21).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
@@ -79,7 +75,7 @@ spec:
         mountPath: /var/ssl/truststore
         readOnly: true
 
-  # FCB Gatekeeper [pod-disruption-budget] rejects CFK's auto-generated PDB at maxUnavailable=0; setting 1 makes it drainable.
+  # Gatekeeper [pod-disruption-budget] rejects maxUnavailable=0.
   pdb:
     enabled: true
     maxUnavailable: 1
@@ -90,14 +86,13 @@ spec:
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
-      # Broker-as-CLIENT OAUTHBEARER defaults for the controller JVM's own clients.
+      # Controller-as-CLIENT OAUTHBEARER defaults.
       - security.protocol=SASL_SSL
       - sasl.mechanism=OAUTHBEARER
       - sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
       - sasl.oauthbearer.scope=11547.DAH(Dev)
-      # Quorum tuning + replication factors.
       - controller.quorum.election.timeout.ms=5000
       - controller.quorum.fetch.timeout.ms=5000
       - default.replication.factor=3
@@ -108,7 +103,7 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # ~2 GiB heap. memory.request == memory.limit -> Guaranteed QoS.
+    # request == limit → Guaranteed QoS.
     resources:
       requests:
         cpu: "1"
@@ -127,9 +122,9 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # OpenShift restricted-v2 SCC assigns the UID range — don't fight it (runbook E1).
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
-    # Repeated because FCB Gatekeeper [required-workload-labels] inspects the Pod at admission, not just the StatefulSet.
+    # Gatekeeper [required-workload-labels] inspects the Pod.
     labels:
       app.kubernetes.io/name: kraftcontroller
       app.kubernetes.io/instance: kraftcontroller

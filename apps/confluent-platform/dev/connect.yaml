@@ -2,9 +2,8 @@
 ########################################################################
 # Author:      Ayu Admassu
 # Date:        2026-04-01 (created), 2026-07-01 (last-modified)
-# Description: CFK Connect CR — Phase 2. OAUTHBEARER end-to-end (Okta),
-#              RBAC via ConfluentRolebinding CRs. Suspended at replicas: 0
-#              until dev quota is raised (runbook F1 / A22).
+# Description: CFK Connect CR — Phase 2. OAUTHBEARER end-to-end, RBAC.
+#              Suspended (replicas: 0) until dev quota is raised (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -20,14 +19,14 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # SUSPENDED — revert to replicas: 2 once dev quota is raised.
+  # SUSPENDED — bump to 2 after quota raise.
   replicas: 0
 
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server-connect:8.1.3
     init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
 
-  # FCB Gatekeeper [required-workload-labels] checks the StatefulSet.
+  # Gatekeeper [required-workload-labels] inspects the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: connect
     app.kubernetes.io/instance: connect
@@ -61,7 +60,7 @@ spec:
     enabled: true
     maxUnavailable: 1
 
-  # dependencies.kafka: OAUTHBEARER against Kafka INTERNAL :9071 using oauth-connect (client_id 0oa1owi0yntGMBvPS358 per VM). dependencies.schemaRegistry: HTTPS + OAUTH to SR's REST API on :8081. dependencies.mds: OAUTH to broker's MDS at :8090.
+  # Dep-to-Kafka: flat oauth+jaasConfig. Dep-to-SR/MDS: nested oauth+configuration (runbook A22).
   dependencies:
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
@@ -153,7 +152,7 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # OpenShift restricted-v2 SCC assigns the UID range.
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
     labels:
       app.kubernetes.io/name: connect
