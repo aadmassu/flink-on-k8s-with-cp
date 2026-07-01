@@ -13,7 +13,7 @@ metadata:
   name: controlcenter
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-c3-fix-data-dir"
+    platform.confluent.io/force-reconcile: "2026-07-01-c3-metadata-truststore"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
@@ -196,6 +196,14 @@ spec:
       - confluent.controlcenter.streams.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.controlcenter.streams.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
       - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(Dev)
+
+      # Explicit trustStore for C3's Armeria/Netty HTTP client to Okta -- JVM -Djavax.net.ssl.trustStore doesn't propagate to Netty SSL contexts (runbook A28).
+      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
+      - confluent.metadata.ssl.truststore.password=changeit
+      - confluent.metadata.ssl.truststore.type=JKS
+      - confluent.controlcenter.streams.ssl.truststore.location=/var/ssl/truststore/bundle.jks
+      - confluent.controlcenter.streams.ssl.truststore.password=changeit
+      - confluent.controlcenter.streams.ssl.truststore.type=JKS
 
       # Monitoring interceptor client.
       - confluent.monitoring.interceptor.security.protocol=SASL_SSL
