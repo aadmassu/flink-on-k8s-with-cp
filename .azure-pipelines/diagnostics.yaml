@@ -367,12 +367,46 @@ stages:
                 oc -n "$OC_NS" get svc -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,PORTS:.spec.ports[*].port 2>&1 | grep -iE '^(NAME|kafka)' || echo "(no kafka-named Services)"
 
                 echo ""
-                echo "=== Rendered listener config inside kafka-0 (server.properties) ==="
-                # Proves whether ports like 9073 are actually open on the running broker vs only referenced in the operator's derived client config. Grep for the listener declaration lines; falls back to /etc/kafka if /mnt/config isn't the render path.
+                echo "=== Rendered listener config inside kafka-0 (operator-generated, not stock defaults) ==="
+                # Prior version of this probe grepped /mnt/config/server.properties + /etc/kafka/*.properties -- both turned out to be STOCK cp-server defaults (listeners=PLAINTEXT://:9092,CONTROLLER://:9093), not what the running broker JVM actually bound to. Correct approach: (1) read /proc/1/cmdline to find the config path the JVM was launched with, (2) grep the listener/token/oauthbearer lines from THAT file, (3) show TCP listen sockets from /proc/net/tcp (no binary dependency) to independently confirm which ports the JVM has actually bound. Runbook A22 documents the 9073 TOKEN-listener partial-reconcile hypothesis this probe is meant to settle.
                 if oc -n "$OC_NS" get pod kafka-0 >/dev/null 2>&1; then
-                  oc -n "$OC_NS" exec kafka-0 -- sh -c \
-                    'grep -E "^listeners|^advertised\.listeners|^listener\.security\.protocol\.map|9073|OAUTHBEARER|TOKEN" /mnt/config/server.properties 2>/dev/null || grep -rE "^listeners|^advertised\.listeners|^listener\.security\.protocol\.map|9073|OAUTHBEARER|TOKEN" /etc/kafka/ 2>/dev/null || echo "  (server.properties not found at /mnt/config or /etc/kafka)"' \
-                    2>&1 || echo "  (oc exec into kafka-0 failed)"
+                  oc -n "$OC_NS" exec kafka-0 -- sh -c '
+                    echo "--- broker JVM command-line (reveals actual config path used at boot) ---"
+                    tr "\0" " " < /proc/1/cmdline; echo ""
+                    echo ""
+                    echo "--- candidate rendered-config files that exist on the broker pod ---"
+                    for f in /mnt/config/*.properties /opt/confluentinc/etc/kafka/*.properties /etc/kafka/*.properties; do
+                      [ -f "$f" ] || continue
+                      SIZE=$(wc -c < "$f" 2>/dev/null)
+                      FIRST=$(head -1 "$f" 2>/dev/null | cut -c1-100)
+                      echo "  [$SIZE bytes] $f    (first line: $FIRST)"
+                    done
+                    echo ""
+                    echo "--- listener-related lines from EACH properties file that exists ---"
+                    for f in /mnt/config/*.properties /opt/confluentinc/etc/kafka/*.properties /etc/kafka/*.properties; do
+                      [ -f "$f" ] || continue
+                      echo ""
+                      echo "### $f"
+                      grep -E "^listeners|^advertised\.listeners|^listener\.security\.protocol\.map|^listener\.name\.[a-z0-9_-]+\.sasl\.enabled\.mechanisms|^listener\.name\.[a-z0-9_-]+\.oauthbearer|9073|OAUTHBEARER|TOKEN" "$f" 2>/dev/null || echo "  (no listener-related lines matched)"
+                    done
+                    echo ""
+                    echo "--- TCP listen sockets inside the broker pod (ground truth for what the JVM actually bound) ---"
+                    if command -v ss >/dev/null 2>&1; then
+                      ss -ltn 2>&1 | sort -u
+                    elif command -v netstat >/dev/null 2>&1; then
+                      netstat -ltn 2>&1 | sort -u
+                    else
+                      echo "  (neither ss nor netstat present; decoding /proc/net/tcp manually)"
+                      # Pure shell — no awk needed. Column 2 = local_addr:port_hex; column 4 = state (0A = LISTEN).
+                      while IFS= read -r line; do
+                        set -- $line
+                        [ "$4" = "0A" ] || continue
+                        addr=$2
+                        port_hex=${addr##*:}
+                        printf "  LISTEN 0.0.0.0:%d\n" "0x$port_hex" 2>/dev/null
+                      done < /proc/net/tcp | sort -u
+                    fi
+                  ' 2>&1 || echo "  (oc exec into kafka-0 failed)"
                 else
                   echo "(kafka-0 pod not found — brokers may not be scheduled yet)"
                 fi
