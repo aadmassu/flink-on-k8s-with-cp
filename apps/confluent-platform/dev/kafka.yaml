@@ -166,20 +166,20 @@ spec:
         tls:
           enabled: true
           secretRef: kafka-tls
-    # spec.dependencies.kafkaRest tells the operator how to authenticate when it hits the broker's embedded kafkaRest at :8090 for RBAC/rolebinding reconciliation. FCB operator (CFK 3.2.x) demands this block when spec.services.mds is set; Psyncopate's older-CRD reference omits it. Auth shape here is the CONSUMER-side nested form (type=oauth + oauth.{secretRef,configuration}) NOT the flat oauthbearer+oauthSettings that appears elsewhere -- CFK 3.2 uses the nested shape for MDS-facing client auth (Confluent docs: co-authenticate-kafka.html). The stale vendored 3.1.x CRD in this repo doesn't expose an `oauth:` sub-field here but the live 3.2.x operator does accept it (runbook A22).
+    # spec.dependencies.kafkaRest tells the operator how to authenticate when it hits the broker's embedded kafkaRest at :8090 for RBAC/rolebinding reconciliation. FCB operator (CFK 3.2.x) demands this block when spec.services.mds is set. Auth shape here uses the SAME flat form as spec.listeners.*.authentication above (type=oauth + jaasConfig.secretRef + oauthSettings) per Ayu's correction against the live CRD — the vendored 3.1.x CRD in this repo suggested a nested oauth+oauth.{secretRef,configuration} form which is NOT what the deployed 3.2.x operator accepts here (runbook A22).
     kafkaRest:
       authentication:
         type: oauth
-        oauth:
+        jaasConfig:
           secretRef: oauth-broker
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
-            subClaimName: sub
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahDev_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)
       tls:
         enabled: true
         secretRef: kafka-tls
