@@ -18,15 +18,16 @@ Thanks Rick — really helpful. Just to confirm the plan we'll execute:
 - Destination: per-FQDN (no wildcards)
 - Port: 443
 
-For dev we'll submit the following five FQDNs — all openshift-core-zone Ingresses in dah-flink-dev, reencrypt termination:
+For dev we'll submit the following six FQDNs — all openshift-core-zone Ingresses in dah-flink-dev, reencrypt termination, edge :443 → backend port shown:
 
-- controlcenter.apps.dv-p.ocp.fcbint.net — CFK Control Center UI
-- schemaregistry.apps.dv-p.ocp.fcbint.net — Schema Registry REST
-- kafka-mds.apps.dv-p.ocp.fcbint.net — MDS + embedded kafka-rest
-- kafkarest.apps.dv-p.ocp.fcbint.net — Kafka REST Proxy (standalone)
-- connect.apps.dv-p.ocp.fcbint.net — Kafka Connect
+- controlcenter.apps.dv-p.ocp.fcbint.net → :9021 — CFK Control Center UI
+- schemaregistry.apps.dv-p.ocp.fcbint.net → :8081 — Schema Registry REST
+- kafka-mds.apps.dv-p.ocp.fcbint.net → :8090 — MDS + embedded kafka-rest
+- kafkarest.apps.dv-p.ocp.fcbint.net → :8082 — Kafka REST Proxy (standalone)
+- connect.apps.dv-p.ocp.fcbint.net → :8083 — Kafka Connect REST
+- kafka.apps.dv-p.ocp.fcbint.net → :9092 — Kafka broker external OAUTHBEARER listener
 
-One quick clarification before we submit — do these all go on one SNOW ticket (five rows), or is it one ticket per FQDN?
+One quick clarification before we submit — do these all go on one SNOW ticket (six rows), or is it one ticket per FQDN?
 
 We'll follow the same pattern for QA / UAT / Prod as we roll each env forward.
 
@@ -41,3 +42,4 @@ Follow-up expectations:
 - If Rick says "one per FQDN" → submit five separate SNOW requests (identical body, different destination).
 - Once dev is approved and Zscaler is confirmed via browser, repeat the same submission per env (qa-p, ut-p, ut-s, pd-p, pd-s) — same 5 CFK components x 6 env-clusters = 30 hostnames across the lifecycle, though only ~5 need to be live at any one time.
 - Cluster-link TCP/9094 is a separate ask (still pending) — that's not Proxy Access / not User Zone, so it'll need a different SNOW path.
+- NEXT WEEK: Ayu is planning to request a Custom Domain for the 9094 mTLS-only broker listener — this is option (2) in OpenShift Ingress.pdf (Internal Bank Network - Custom, openshift-core-zone with a custom fcbint.net FQDN via A-record DNS request pointing to the LB IP 10.7.72.209 for dev). That path avoids Zscaler Proxy Access entirely because DNS resolves straight to the LB — the right shape for Kafka wire protocol which can't survive HTTPS proxy inspection. Ayu will bring it up next week — walk through naming, envs, and how it slots against the existing 9092 OAUTHBEARER external listener at that point.
