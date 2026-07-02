@@ -9,11 +9,16 @@ Scope for this reply: confirm the plan, list the five dev FQDNs we need whitelis
 
 ------------ COPY BELOW INTO TEAMS ------------
 
-Thanks Rick — really helpful. Just to confirm the plan I'll execute:
+Thanks Rick — really helpful. Just to confirm the plan we'll execute:
 
-Form: SNOW standard firewall form → Proxy Access, source type = Zone, source = User Zone, destination = per-FQDN (no wildcards), port = 443.
+- Form: SNOW standard firewall form
+- Selection: Proxy Access
+- Source type: Zone
+- Source: User Zone
+- Destination: per-FQDN (no wildcards)
+- Port: 443
 
-For dev I'll submit the following five FQDNs — all openshift-core-zone Ingresses in dah-flink-dev, reencrypt termination:
+For dev we'll submit the following five FQDNs — all openshift-core-zone Ingresses in dah-flink-dev, reencrypt termination:
 
 - controlcenter.apps.dv-p.ocp.fcbint.net — CFK Control Center UI
 - schemaregistry.apps.dv-p.ocp.fcbint.net — Schema Registry REST
@@ -21,9 +26,9 @@ For dev I'll submit the following five FQDNs — all openshift-core-zone Ingress
 - kafkarest.apps.dv-p.ocp.fcbint.net — Kafka REST Proxy (standalone)
 - connect.apps.dv-p.ocp.fcbint.net — Kafka Connect
 
-One quick clarification before I submit — do these all go on one SNOW ticket (five rows), or is it one ticket per FQDN?
+One quick clarification before we submit — do these all go on one SNOW ticket (five rows), or is it one ticket per FQDN?
 
-Will follow the same pattern for QA / UAT / Prod as we roll each env forward.
+We'll follow the same pattern for QA / UAT / Prod as we roll each env forward.
 
 Thanks!
 
