@@ -1,561 +1,67 @@
-==============================================================================
-PHASE 2 MDS/OAUTH DEBUGGING — Splunk queries + root-cause hypotheses
-==============================================================================
-
-Status: as of 2026-07-01 ~00:20 EST. Kafka brokers are RUNNING with all Phase-2
-listeners including auto-created token:9073 (oauthbearer) + mds:8090 (bearer).
-Three downstream failures observed in the diagnostics dump at that time:
-
-  (A) All 8 ConfluentRolebindings fail with
-      `kafka rest API request failed: Not Found (0)` — the operator's REST
-      call to broker's kafkaRest/MDS at :8090 returns "Not Found (0)" (the
-      "(0)" typically means "no HTTP response" — network / TLS / OAuth
-      handshake abort, not a real 404).
-  (B) SR pod crash-loops with `Failed to get Kafka cluster ID` → TimeoutException.
-      SR successfully obtained an Okta token (its login thread was running with
-      client_id 0oa1owiage2MyoHdt358) then dialed broker:9073 over
-      SASL/OAUTHBEARER and timed out on fetchMetadata.
-  (C) Connect + KafkaRest failed admission on Secret-key naming mismatch.
-      FIXED at commit a35470e (renamed kafkaconnect-client-plain.txt ->
-      connect-client-plain.txt and kafkarest-client-plain.txt ->
-      kafkarestproxy-client-plain.txt in the sasl-plain-internal Secret
-      construction in .azure-pipelines/confluent-platform.yaml). Needs a
-      install-or-update run against a35470e to take effect on the cluster.
-
-(A) and (B) likely share a root cause — the broker's OAuth-token validator
-can't complete the token-verification loop, either because it can't reach
-Okta's JWKS URL to verify signatures, or because there's a TLS trust gap
-between the operator/SR clients and the broker's TLS certs.
-
-------------------------------------------------------------------------------
-NEXT STEP — pull operator + broker logs from Splunk (Zscaler-blocked laptop
-so no direct oc access to confluent-operator namespace anyway).
-------------------------------------------------------------------------------
-
-Run all three from your Splunk console. If any comes back with thousands of
-hits, tighten earliest to -30m and re-run.
-
-# Query pattern rules (memory reference-fcb-splunk-dynatrace-searches):
-#  * index=openshift_* (wildcard) + sourcetype/source filter — required at FCB.
-#  * Namespace is a free-text keyword (e.g. "dah-flink-dev"), NOT openshift_namespace=<name>.
-#  * Pod is a structured field openshift_pod_name="<prefix>-*".
-#  * No middle-of-word wildcards ("http.*8090" is rejected); use quoted literals like ":8090".
-
-# QUERY 1 — operator-side errors around the rolebinding + kafkaRest calls
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="confluent-operator-*"
-    earliest=-3h latest=now
-    "dah-flink-dev"
-    ("kafka rest API" OR "Not Found" OR "rolebinding" OR "rolebindings"
-     OR "confluentrolebinding" OR "MDS" OR "mds/" OR "jwks"
-     OR "OAUTHBEARER" OR "0oa1owiage2MyoHdt358"
-     OR "OAuthBearer" OR ":8090" OR ":9073"
-     OR "SASL authentication failed" OR "unable to")
-| sort - _time
-| head 100
-| table _time, level, msg, error, url, openshift_pod_name
-
-
-# QUERY 2 — narrower, specifically operator log lines about our rolebinding names
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="confluent-operator-*"
-    earliest=-3h latest=now
-    ("schemaregistry-resourceowner-schemas" OR "schemaregistry-resourceowner-group"
-     OR "connect-resourceowner-config-topic" OR "connect-resourceowner-group"
-     OR "kafkarest-systemadmin"
-     OR "internal-schemaregistry" OR "internal-controlcenter")
-| sort - _time
-| head 50
-| table _time, level, msg, error, openshift_pod_name
-
-
-# QUERY 3 — broker-side Okta / JWKS egress errors (most likely smoking gun)
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="kafka-*"
-    earliest=-3h latest=now
-    "dah-flink-dev"
-    ("myapps.firstcitizens.com" OR "jwks" OR "OAuthBearer" OR "OAuthBearerValidatorCallback"
-     OR "SocketTimeoutException" OR "UnknownHostException" OR "ConnectException"
-     OR "SASLServerCallbackHandler" OR "ValidatorCallback")
-| sort - _time
-| head 50
-| table _time, level, msg, error, openshift_pod_name
-
-
-------------------------------------------------------------------------------
-ROUND 2 — CSV analysis (Q1/Q2/Q3 CSVs from 2026-06-30 19:55 EST)
-------------------------------------------------------------------------------
-
-Q1 (100 hits) and Q2 (50 hits): every operator ERROR shares the same signature
-   msg="apply failed" error="kafka rest API request failed: Not Found (0)"
-   pod=confluent-operator-cd4c475b4-9lw6k
-   100 hits packed into 2 min (19:51-19:53) -- tight retry loop.
-   Two other msg values also appear in Q1: "discovered secrets for tracking"
-   and "mds authentication" -- the latter is worth pulling on its own.
-   BUT: the `url` column is EMPTY on every row -- Splunk's operator log
-   extractors don't produce a `url` field. Need _raw to see what URL the
-   operator is hitting for "Not Found (0)".
-
-Q3 (50 hits): kafka-{0,1,2} broker logs matched OAuth-related terms but
-   level/msg/error/url ALL empty -- Splunk doesn't extract structured fields
-   from broker logs. Timestamps concentrated in a narrow 17:13-17:14 window
-   (1 min of activity), then silent for the next 2.5 hours.
-
-Time-gap observation:
-   * Broker OAuth activity: 17:13-17:14 (Q3 hits)
-   * Operator "Not Found (0)" errors: 17:13 continuous through 19:53 (Q1)
-   * Between 17:15 and 19:53 the broker isn't logging anything OAuth-related
-     while the operator is still retrying. Two theories:
-       (a) operator calls aren't reaching the broker at all after 17:14
-           (network / TLS / DNS issue between operator pod and broker pod)
-       (b) broker silently discards requests without an OAuth log line
-     (a) is more consistent with the "Not Found (0)" signature -- (0) is
-     the "no HTTP response" case in the CFK operator's error-formatting.
-
-Three follow-up queries added below with _raw in the table so we can see
-the actual URL the operator is hitting and the actual broker log content.
-
-# QUERY 1b -- exact URL the operator hits before "Not Found (0)"
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="confluent-operator-*"
-    earliest=-3h latest=now
-    "kafka rest API request failed"
-| sort - _time
-| head 20
-| table _time, openshift_pod_name, _raw
-
-
-# QUERY 1c -- the "mds authentication" msg lines (context around the failure)
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="confluent-operator-*"
-    earliest=-3h latest=now
-    "mds authentication"
-| sort - _time
-| head 20
-| table _time, openshift_pod_name, _raw
-
-
-# QUERY 3b -- broker OAuth activity, _raw to see actual content of the 17:13-17:14 burst
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="kafka-*"
-    earliest=-3h latest=now
-    "dah-flink-dev"
-    ("myapps.firstcitizens.com" OR "jwks" OR "OAuthBearer"
-     OR "SocketTimeoutException" OR "UnknownHostException" OR "ConnectException")
-| sort - _time
-| head 30
-| table _time, openshift_pod_name, _raw
-
-
-------------------------------------------------------------------------------
-ROUND 3 — CSV analysis of Q1b / Q1c / Q3b (2026-06-30 20:03 EST)
-------------------------------------------------------------------------------
-
-Q1b (20 hits) revealed the operator's structured error line but NOT the URL --
-the CFK operator's log format simply doesn't emit URL as a field:
-   {"level":"ERROR","name":"confluentrolebinding","msg":"apply failed",
-    "name":"<rolebinding-name>","namespace":"dah-flink-dev",
-    "error":"kafka rest API request failed: Not Found (0)"}
-Retries hit each rolebinding on a ~10s loop.
-
-Q1c (20 hits) revealed the operator IS successfully authenticating to MDS:
-   {"level":"INFO","name":"kafka","msg":"mds authentication","type":"bearer"}
-The operator has a bearer token AND is presenting it to MDS. No token
-acquisition error, no OAuth-flow failure. Auth path is working. Whatever
-"Not Found (0)" means, it's NOT an auth failure.
-
-Q3b (50 rows, ONE actual event) collapsed into a single 2026-06-30 17:14:16
-event which was ConfluentMetricsReporter's startup AdminClientConfig dump --
-not actual OAuth traffic. ZERO SocketTimeoutException / UnknownHostException
-/ ConnectException / JWKS-fetch errors on the broker. Nothing about incoming
-MDS API calls from the operator either.
-
-REVISED THEORY: this is a semantic 404 from MDS, not a transport failure.
-   * If it were transport (TCP or TLS), the operator's Go http client would
-     log a distinct dial/TLS error, not "Not Found".
-   * MDS having no OAuth log activity means the request is landing on MDS's
-     RBAC handler (not the OAuth listener). MDS then returns 404 for some
-     resource-lookup reason.
-   * The "(0)" is likely a CFK-internal error code enum, not "HTTP status 0".
-
-Most likely root cause: MDS's cluster-registry topic (`_confluent-metadata`)
-doesn't have an entry mapping our Kafka cluster to a resolvable ID/name.
-Rolebindings use `kafkaRestClassRef.name: default` and rely on MDS to walk
-KafkaRestClass -> Kafka CR -> cluster_id via that registry. If the registry
-entry never got written, MDS can't resolve the target cluster and returns
-Not Found for every rolebinding apply. Reasons the registry entry might be
-missing:
-   * MDS bootstrap didn't complete after Rick's fipsmode=false rollout
-     (helm upgrade may have wiped in-memory MDS state on the operator side)
-   * `_confluent-metadata` topic was never created because the broker's
-     auto-topic-create failed (RBAC deny? replication factor mismatch?)
-   * Cluster-registration step ran but errored silently
-
-Also possible: MDS is initialized but the CFK operator's kafkaRestClassRef
-resolution is doing something we don't expect (e.g., looking up the class
-by a different name, or needing an additional field we haven't set).
-
-Downgrade previous escalation ordering: ESCALATION 1 (broker egress to
-Okta) is now LEAST likely -- broker isn't logging any Okta traffic at all.
-Most likely escalation now is ESCALATION 3 (Confluent support ticket on
-MDS cluster-registry / rolebinding-apply behavior).
-
-# QUERY 3c -- MDS-side incoming API activity on the broker
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="kafka-*"
-    earliest=-1h latest=now
-    "dah-flink-dev"
-    ("MetadataServiceApp" OR "KafkaHttpServer" OR "MetadataService"
-     OR "rbac" OR "roleBinding" OR "clusterRegistry" OR "ClusterRegistry"
-     OR "principal" OR "RestApi" OR "authenticated as user"
-     OR "InvalidBearerToken" OR "AuthorizationException"
-     OR "_confluent-metadata")
-| sort - _time
-| head 30
-| table _time, openshift_pod_name, _raw
-
-
-# QUERY 4 -- cluster-registry / metadata-topic creation on the broker
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="kafka-*"
-    earliest=-3h latest=now
-    "dah-flink-dev"
-    ("_confluent-metadata" OR "_confluent-command" OR "cluster registry"
-     OR "cluster registered" OR "KafkaClusterAuthStore" OR "AuthStore"
-     OR "MetadataServiceStartup" OR "ClusterRegistryTopic"
-     OR "Cluster registered successfully")
-| sort - _time
-| head 20
-| table _time, openshift_pod_name, _raw
-
-
-------------------------------------------------------------------------------
-ROUND 4 — Ayu's partial-reconcile hypothesis + Q5 to settle it (2026-06-30 20:15 EST)
-------------------------------------------------------------------------------
-
-Ayu proposed a sharper hypothesis after re-reading the broker's
-AdminClientConfig log dump from Q3b: broker never actually opened the
-:9073 TOKEN listener despite the CR status.listeners.token claiming it
-did, meaning the operator's Phase-2 render is only partially applied to
-the running broker JVM.
-
-CAVEAT on the specific evidence used: the AdminClientConfig log line at
-17:14:16 was the ConfluentMetricsReporter's client config, not a broker
-listener config. That client uses PLAIN because kafka.yaml explicitly
-set confluent.metrics.reporter.security.protocol=SASL_SSL +
-sasl.mechanism=PLAIN in configOverrides.server. So "sasl.oauthbearer.*
-= null" on that client is expected, not evidence of a listener render
-gap.
-
-BUT the underlying theory is still worth testing, because:
-   * status.listeners.token is what the operator REPORTS on the CR --
-     it's not observation of what the broker actually bound to.
-   * The Round-1 diagnostics probe I wrote at commit f97c144 checked
-     /etc/kafka/*.properties which turned out to be STOCK cp-server
-     defaults (listeners=PLAINTEXT://:9092,CONTROLLER://:9093), not the
-     operator-rendered config. So we have NO ground truth on what the
-     broker actually bound to at startup.
-   * If the broker did open :9073 as OAUTHBEARER, we should see it in
-     the broker's startup "KafkaConfig values:" log line.
-
-# QUERY 5 -- broker's actual startup listener config (settles the question)
-((index=openshift_*) (sourcetype=openshift_logs OR source=/openshift/logs/*))
-    openshift_pod_name="kafka-*"
-    earliest=-6h latest=now
-    "dah-flink-dev"
-    "KafkaConfig values"
-| sort - _time
-| head 5
-| table _time, openshift_pod_name, _raw
-
-Look inside each _raw for:
-   * `listeners = ...` -- does it contain TOKEN://:9073 (or whatever CFK
-     names the listener)?
-   * `advertised.listeners = ...` -- same check.
-   * `listener.security.protocol.map = ...` -- should say TOKEN:SASL_SSL
-     if the token listener was rendered.
-   * `listener.name.token.sasl.enabled.mechanisms = ...` -- should say
-     OAUTHBEARER if OAuth is wired.
-
-Three possible outcomes:
-
-(a) `listeners = ...TOKEN://:9073` + TOKEN:SASL_SSL + OAUTHBEARER mechanism
-    -> broker DID render Phase 2 fully. Partial-reconcile theory wrong.
-    Operator's 404 is genuinely a semantic-404-from-MDS issue (Round 3
-    hypothesis on cluster-registry). Move to Q3c + Q4 next.
-
-(b) `listeners = ...` without TOKEN://:9073 (only EXTERNAL/INTERNAL/REPLICATION)
-    -> partial-reconcile theory confirmed. Broker never opened :9073.
-    CFK rendered status.listeners.token as aspirational only. Escalation
-    goes to Confluent: "CFK 3.2 operator reports a token listener the
-    broker didn't actually open, MDS+RBAC configured but broker still
-    Phase-1-only." Also worth checking OperatorPod restartCount + last
-    reconcile time in case the operator crashed mid-render.
-
-(c) In-between: listener defined but wrong mechanism (e.g., no OAUTHBEARER
-    on the map) -> also broken render, similar escalation.
-
-Confidence estimate before Q5 result:
-   * Partial-reconcile / broker never opened :9073 -- 35% (settled by Q5)
-   * Semantic 404 from MDS (cluster registry / role scoping) -- 35%
-     (complementary to Q5 outcome; may need Q3c+Q4 next)
-   * CFK operator bug in rolebinding-apply path -- 15%
-   * Other -- 15%
-
-Q5 is cheap and definitive. Run it, share _raw output of the top 3-5
-KafkaConfig-values events, and I'll finalize the escalation destination.
-
-------------------------------------------------------------------------------
-ROUND 5 — Q4/Q5 CSVs settle it (2026-06-30 20:14 EST). Partial reconcile CONFIRMED.
-------------------------------------------------------------------------------
-
-Q5 (KafkaConfig values dump from broker startup, all 3 pods, identical output):
-   listeners = EXTERNAL://:9092,INTERNAL://:9071,REPLICATION://:9072
-   advertised.listeners = EXTERNAL://kafka-N...:9092,INTERNAL://:9071,REPLICATION://:9072
-   listener.security.protocol.map = CONTROLLER:SASL_SSL,EXTERNAL:SASL_SSL,INTERNAL:SASL_SSL,REPLICATION:SASL_SSL
-
-   ABSENT: TOKEN://:9073, TOKEN:SASL_SSL in the protocol.map,
-   listener.name.token.sasl.enabled.mechanisms, OAUTHBEARER anywhere,
-   sasl.oauthbearer.* config values.
-
-   Ayu's ROUND 4 hypothesis is confirmed: the broker JVM NEVER opened :9073
-   and NEVER enabled OAUTHBEARER on any listener. status.listeners.token on
-   the CR is aspirational (operator reports what it intended, not what the
-   broker actually bound).
-
-Q4 (cluster-registry / metadata-topic events, 3h window):
-   All hits are about _confluent-command (license storage) at 17:13-17:14
-   during broker startup -- ZERO events about _confluent-metadata,
-   ZERO "cluster registered" / "MetadataServiceStartup" / "KafkaClusterAuthStore"
-   messages. MDS's persistence bootstrap never ran either.
-
-Q3c returned zero rows -- no MDS-side incoming request activity on the
-broker in the last hour. Consistent with everything above: MDS is stubbed
-at the CR-status level but not actually serving.
-
-THE MECHANISM GAP: spec.services.mds and a TOKEN listener at :9073 are
-SEPARATE things.
-   * spec.services.mds runs the MDS REST service at :8090 alongside the
-     broker JVM. This is what CFK status reports as services.mds. Deployed.
-   * TOKEN listener at :9073 is a Kafka SASL/OAUTHBEARER listener that
-     clients (SR, Connect, C3) use when authenticating with MDS-issued
-     bearer tokens. Never rendered into the broker's listeners=. Never
-     opened.
-
-The Kafka Service in ClusterIP does expose port 9073 (per diagnostics), so
-Kubernetes will accept a connection on that port -- but the broker pod
-isn't listening behind it, so the connection either times out or gets
-Connection Refused depending on kube-proxy mode. That's why SR times out
-on fetchMetadata against :9073 -- the port is advertised in DNS/Service
-but not backed by a pod-level listener.
-
-Why the render gap: candidate hypotheses (in decreasing order):
-   1. spec.services.mds.authentication is a required field we didn't set.
-      The CRD (checked at NR>=5666 in
-      charts/confluent-for-kubernetes/crds/platform.confluent.io_kafkas.yaml)
-      has spec.services.mds.authentication with enum type=[bearer] and
-      required=[type]. Our current kafka.yaml is missing this field entirely.
-      The operator's render logic for the TOKEN listener may key off it.
-   2. spec.listeners.internal.authentication.type: plain (our current
-      config) doesn't trigger the operator's auto-inject of a TOKEN
-      listener sibling. If the operator only auto-adds :9073 when internal
-      is already oauth-or-bearer-typed, we'd need to change internal to
-      oauth (which would break the SR/Connect/KafkaRest PLAIN paths).
-   3. CFK 3.2 render bug -- the operator STATUS-reports the TOKEN listener
-      but never writes it into the broker config. Would need Confluent
-      support to confirm and patch.
-
-NEXT MOVE -- try (1) first, cheapest:
-
-   spec:
-     services:
-       mds:
-         tls: { enabled: true, secretRef: kafka-tls }
-         tokenKeyPair: { secretRef: mds-token-keypair }
-         authentication:                # <-- ADD THIS
-           type: bearer
-         provider:
-           type: oauth
-           oauth: { configurations: {...}, secretRef: oauth-mds-rest }
-
-If iteration N+1 with this added to kafka.yaml re-runs install-or-update
-and the broker's KafkaConfig values dump NOW shows TOKEN://:9073 +
-TOKEN:SASL_SSL in the protocol.map + OAUTHBEARER mechanism, we've found
-the trigger and this is a documentation-gap issue (not a bug). Move to
-Q3c/Q4 for the rolebinding investigation.
-
-If the token listener is STILL absent after adding services.mds.authentication,
-the "cannot from CR alone" conclusion is airtight and the Confluent ticket
-is definitive.
-
-
-------------------------------------------------------------------------------
-CONFLUENT SUPPORT TICKET DRAFT (send if the services.mds.authentication
-experiment above doesn't move the render)
-------------------------------------------------------------------------------
-
-Subject: CFK 3.2.x (operator v0.1514.40) — spec.services.mds accepted but broker never renders TOKEN listener at :9073
-
-Environment:
-  * Operator: v0.1514.40 (CFK 3.2.x), installed with fipsmode=false
-  * cp-server: 8.1.3 (artifactory.fcbint.net/.../cp-server:8.1.3)
-  * confluent-init-container: 3.2.0
-  * KRaft mode (no ZK)
-  * Kafka CR generation: 5, phase: RUNNING, readyReplicas: 3
-
-Symptom:
-  * spec.services.mds is set (with provider.type=oauth pointed at Okta,
-    tokenKeyPair: mds-token-keypair, tls.secretRef: kafka-tls)
-  * spec.dependencies.kafkaRest is set with authentication.type=oauthbearer +
-    oauth-broker Secret + full oauthSettings block + tls.secretRef=kafka-tls
-  * Kafka CR STATUS reports listeners.token with authenticationType=oauthbearer
-    at :9073 (see attached CR yaml dump)
-  * Broker's actual KafkaConfig values dump at startup (attached broker log)
-    contains ONLY listeners = EXTERNAL://:9092,INTERNAL://:9071,REPLICATION://:9072
-    -- no TOKEN listener, no OAUTHBEARER anywhere in the protocol.map
-  * All ConfluentRolebinding CRs fail with "kafka rest API request failed:
-    Not Found (0)" -- consistent with MDS never bootstrapping (no
-    _confluent-metadata topic events either -- see attached Splunk export)
-  * SchemaRegistry crash-loops on SASL/OAUTHBEARER handshake against :9073
-    (attached SR pod log) because the port is exposed in the Service but
-    the broker pod isn't actually listening on it
-
-Question:
-  * Is the TOKEN listener at :9073 supposed to be auto-injected when
-    spec.services.mds is set? Or does it require an additional field
-    (e.g., spec.services.mds.authentication.type=bearer, which is required
-    inside the block per the CRD but missing from our spec)?
-  * What is the correct minimal Kafka CR shape in CFK 3.2 to get:
-      (a) MDS REST at :8090
-      (b) TOKEN Kafka listener at :9073 with OAUTHBEARER mechanism
-      (c) RBAC rolebindings that apply successfully via the MDS API
-    ...all three, given a broker with plain internal + external listeners
-    that SR/Connect/KafkaRest use with SASL/PLAIN.
-
-Attachments:
-  * kafka-cr-dump.yaml (spec + status)
-  * kafka-0-KafkaConfig-values.txt (from broker startup log)
-  * schemaregistry-0.log (crash-loop with 9073 timeout)
-  * splunk-Q4-Q5-Q1b-Q1c-Q3b-Q3c.zip (evidence trail)
-
-
-------------------------------------------------------------------------------
-INTERPRETATION — three theories, one query each
-------------------------------------------------------------------------------
-
-Q1 tells us what URL/response the operator got when trying to create rolebindings.
-Look for:
-  - HTTP status codes in the log message body (0 = no response, 401 = auth failed,
-    404 = wrong path, 5xx = broker-side issue)
-  - TLS errors mentioning "unable to find valid certification path" or
-    "SSLHandshakeException" — would indicate operator's truststore doesn't
-    trust broker's kafka-tls (though Rick installed operator with fcb-trust-bundle,
-    so this should not fire; if it does, we need Rick to verify)
-  - "failed to acquire access token from IdP" or similar — operator's own
-    Okta client_credentials (oauth-broker or oauth-mds-rest Secret) are rejected
-
-Q2 zooms in on our 5 explicit rolebindings + the 3 CFK-auto-generated ones.
-The operator should log one line per rolebinding it tries to create, with the
-request URL. Confirms the exact endpoint the "Not Found (0)" is coming from.
-
-Q3 is THE smoking gun for the most likely root cause. If we see
-UnknownHostException/SocketTimeoutException/ConnectException with
-myapps.firstcitizens.com in the message text, the broker pods cannot reach
-Okta from inside dah-flink-dev. The token-verification loop then times out
-(broker doesn't respond to the client's SASL OAUTHBEARER handshake in time),
-explaining BOTH (A) — operator's token can't be validated by MDS — AND (B) —
-SR's token can't be validated by broker at :9073.
-
-
-------------------------------------------------------------------------------
-ESCALATION DRAFTS (send AFTER Splunk queries confirm the theory)
-------------------------------------------------------------------------------
-
---- ESCALATION 1: Broker egress to Okta blocked (most likely) ---
-To: Rick Mulder
-Subject: dah-flink-dev egress to myapps.firstcitizens.com — Kafka broker needs to reach Okta JWKS for MDS/RBAC
-
-Rick,
-
-Following the fipsmode=false change, we've moved to Phase 2 MDS+RBAC on the
-Kafka CR. Brokers are up (all Phase-2 listeners including auto-created
-token:9073 oauthbearer). But:
-  - All 8 ConfluentRolebindings fail with "kafka rest API request failed:
-    Not Found (0)"
-  - Schema Registry crash-loops on SASL/OAUTHBEARER handshake to broker :9073
-
-Splunk shows the broker pods failing to reach https://myapps.firstcitizens.com/
-oauth2/default/v1/keys with <ERROR TYPE FROM Q3 HERE — likely
-UnknownHostException or SocketTimeoutException>. The broker's OAuth validator
-can't fetch Okta's JWKS to verify JWTs presented by MDS clients, so the SASL
-handshake times out.
-
-Ask: open egress from dah-flink-dev pods to myapps.firstcitizens.com:443. If
-this needs Zscaler + OpenShift NetworkPolicy egress rules both, please advise
-which side we own vs Container Platforms. Attached: relevant Splunk snippets
-from index=openshift openshift_namespace=dah-flink-dev openshift_pod_name=kafka-*
-around 2026-07-01T00:14-00:20 EST.
-
-— Ayu
-
-
---- ESCALATION 2: Operator client credentials rejected by Okta ---
-To: Rick Mulder
-Subject: oauth-broker / oauth-mds-rest Secret credentials not authorized in Okta
-
-Rick,
-
-Splunk shows the CFK operator (in confluent-operator ns) failing to acquire
-an Okta access token when trying to call the broker's MDS API. Error snippet:
-<PASTE FROM Q1 HERE — "failed to acquire access token" or "invalid_client">.
-
-The dev Secret oauth-broker (client_id=<from Splunk>) or oauth-mds-rest
-appears not to be authorized for the scope 11547.DAH(Dev) on the Okta app
-registration.
-
-Ask: verify the Okta app registrations for the CFK Confluent Platform dev
-have scope 11547.DAH(Dev) enabled and the correct client_credentials grant
-type. The pipeline populated these Secrets from
-<env>-oauth-broker-client-{id,secret} and
-<env>-oauth-mds-rest-client-{id,secret} variables in the FCB variable group.
-
-— Ayu
-
-
---- ESCALATION 3 (least likely): CFK operator bug on MDS API path ---
-To: Confluent Support (ticket)
-Subject: CFK 3.2.x operator calling MDS API returns "Not Found (0)" on ConfluentRolebinding creation
-
-If Q1 shows the operator making calls to a specific URL like /kafka/v3/...
-or /security/1.0/... and the broker's MDS returns 404 for that exact path,
-this is a CFK version mismatch or operator bug. Open a Confluent support
-ticket with:
-  - Operator version: v0.1514.40 (CFK 3.2.x)
-  - Broker cp-server: 8.1.3
-  - Init container: 3.2.0
-  - The exact URL from Q1
-  - The full ConfluentRolebinding YAML that fails
-
-------------------------------------------------------------------------------
-Notes for me (Ayu) — not part of any escalation
-------------------------------------------------------------------------------
-- Commit a35470e (in) fixes (C) — Connect/KafkaRest admission Secret-key
-  mismatch. Rerun install-or-update to apply.
-- Commits so far this session on the Phase 2 thread:
-  de1d489, 1a0e180, ce56a22, 1ffa05c, f4fff83, 2bd8c2a, f97c144, a35470e
-- Runbook A22 already documents:
-    * Phase 2 shape (services.mds + authorization=rbac + rolebindings.yaml)
-    * The provider/consumer/dependency-side OAuth field-name asymmetry
-      (configurations plural / configuration singular / oauthSettings flat)
-    * spec.dependencies.kafkaRest.tls.secretRef requirement
-    * spec.services.mds.tls.secretRef requirement
-    * spec.dependencies.kafka.tls.secretRef requirement on SR/Connect/KafkaRest
-    * The 9073 TOKEN listener auto-provisioning + why we can't declare it via
-      spec.listeners.custom (schema minimum 9093)
-    * The lowercase-CRD-KIND rule for sasl-plain-internal per-client keys
-- Ports still unknown / questions if Splunk doesn't answer:
-    * Does the broker actually TRY to reach Okta jwks at startup, or lazily
-      on first token validation?
-    * If Rick can't open egress to Okta, does CFK support offline JWKS
-      (i.e., pre-configured public keys in the broker config)? Would be
-      worth asking Confluent.
+CFK dev ingress URLs — browser reachability smoke test
+=======================================================
+
+Purpose: after 5a89d17 (C3 basic-auth + Armeria trustStore fix), C3 UI returns
+ERR_CONNECTION_CLOSED in Chrome. Need to determine whether this is a
+C3-specific issue OR a whole-namespace reencrypt/router/trust-bundle issue.
+
+If ALL of these return ERR_CONNECTION_CLOSED → escalate to Rick / Container
+Platforms (router doesn't trust FCB internal CA that signs the Keyfactor
+component certs; no reencrypt ingress in dah-flink-dev can work).
+
+If C3 is the ONLY one that fails → C3-specific, dig into the pod.
+
+If mixed → send Claude the map (which succeed, which fail).
+
+Any HTTP response counts as "success" (200, 401, 404, 500 — all fine).
+Only ERR_CONNECTION_CLOSED / ERR_SSL_PROTOCOL_ERROR / timeout counts as fail.
+
+=======================================================
+
+C3 Control Center UI (currently broken)
+  https://controlcenter.apps.dv-p.ocp.fcbint.net
+  https://controlcenter.apps.dv-p.ocp.fcbint.net/
+  https://controlcenter.apps.dv-p.ocp.fcbint.net/index.html
+
+Schema Registry REST API
+  https://schemaregistry.apps.dv-p.ocp.fcbint.net
+  https://schemaregistry.apps.dv-p.ocp.fcbint.net/subjects
+  https://schemaregistry.apps.dv-p.ocp.fcbint.net/schemas/types
+
+Kafka MDS + embedded kafka-rest
+  https://kafka-mds.apps.dv-p.ocp.fcbint.net
+  https://kafka-mds.apps.dv-p.ocp.fcbint.net/kafka/v3/clusters
+  https://kafka-mds.apps.dv-p.ocp.fcbint.net/security/1.0/features
+
+Kafka REST Proxy (standalone)
+  https://kafkarest.apps.dv-p.ocp.fcbint.net
+  https://kafkarest.apps.dv-p.ocp.fcbint.net/v3/clusters
+  https://kafkarest.apps.dv-p.ocp.fcbint.net/topics
+
+Kafka Connect (currently replicas: 0, may return 503 or similar)
+  https://connect.apps.dv-p.ocp.fcbint.net
+  https://connect.apps.dv-p.ocp.fcbint.net/connectors
+
+=======================================================
+
+Environment reminders:
+- These are OpenShift core-zone internal URLs (apps.dv-p.ocp.fcbint.net wildcard → 10.7.72.209).
+- Only reachable from FCB corporate network / VPN.
+- If Zscaler is dropping them, they'd typically show as timeout or ERR_TIMED_OUT, not ERR_CONNECTION_CLOSED. But worth checking network posture.
+- All five ingresses use route.openshift.io/termination: reencrypt.
+- All backend TLS certs are Keyfactor-issued via cert-manager (kafka-tls, controlcenter-tls, etc.), signed by FCB internal CA.
+
+Steps to run in Chrome:
+1. Open each URL. Note down the exact error or the HTTP response.
+2. Copy the map back to Claude via chat.
+
+If curl is available on your laptop, this one-liner covers everything:
+  for u in \
+    https://controlcenter.apps.dv-p.ocp.fcbint.net/ \
+    https://schemaregistry.apps.dv-p.ocp.fcbint.net/subjects \
+    https://kafka-mds.apps.dv-p.ocp.fcbint.net/kafka/v3/clusters \
+    https://kafkarest.apps.dv-p.ocp.fcbint.net/v3/clusters \
+    https://connect.apps.dv-p.ocp.fcbint.net/connectors; do
+    echo "--- $u ---"
+    curl -sk --max-time 8 -o /dev/null -w "HTTP %{http_code} (%{size_download}B in %{time_total}s)\n" "$u"
+  done
