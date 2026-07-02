@@ -2,7 +2,7 @@ Teams message — post in Container Platforms channel
 
 Ask: guidance / example of the Firewall Request referenced in the OpenShift Ingress guideline. The guideline (project-docs/fcb-openshift-guideline/OpenShift Ingress.pdf) mentions "Submit a Firewall Request for your application if you need access from User Zone" three times (once per ingress option: Internal OCP, Internal Custom, External) but never shows what fields to fill in, and the linked form URL is only visible on the FCB intranet.
 
-Our specific case has a twist: standard HTTPS/443 UI routes + a non-HTTPS TCP/9094 cluster-link inbound from on-prem VM CP brokers. The doc's examples all assume HTTPS, so an example that includes a non-HTTPS TCP port would be more useful than the generic template.
+Scope for this ask: just the standard HTTPS/443 case (openshift-core-zone Route → CFK Control Center UI). Cluster-link TCP/9094 will be a separate ask later.
 
 ------------ COPY BELOW INTO TEAMS ------------
 
@@ -10,14 +10,46 @@ Hi Container Platforms team —
 
 Following the OpenShift Ingress guideline's step "Submit a Firewall Request for your application if you need access from User Zone." Could someone share the current Firewall Request form link, or point me at an example of one already submitted for a similar workload?
 
-Quick context — we're bringing up CFK (Confluent for Kubernetes) in dah-flink-<env>. Two ingress shapes in play:
+Quick context — we're bringing up CFK (Confluent for Kubernetes) in dah-flink-dev. First up is browser access from the User Zone to the Control Center UI over HTTPS/443, via a standard openshift-core-zone Ingress. Manifest below for reference:
 
-1. HTTPS 443 to openshift-core-zone Routes for Control Center / Kafka REST / Schema Registry / Connect / MDS — the standard case the doc describes.
-2. TCP/9094 inbound from on-prem VM CP brokers for cluster-link (source-initiated, part of the VM->OCP migration path) — non-HTTPS, and the source is a data-center subnet rather than User Zone. Not sure whether that goes on the same firewall request or needs a separate one.
+```yaml
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: controlcenter
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    route.openshift.io/termination: reencrypt
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+    - host: controlcenter.apps.dv-p.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: controlcenter
+                port:
+                  number: 9021
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - controlcenter.apps.dv-p.ocp.fcbint.net
+      secretName: controlcenter-ingress-tls
+```
 
 Ideally I'd like:
 - A link to the current Firewall Request form.
-- An example of a completed request that includes a non-HTTPS TCP port, so I can see how (2) is typically framed (source CIDR, destination LB/VIP, port, protocol).
+- An example of a completed request for a similar HTTPS/443 workload so I can see how the source (User Zone), destination (LB VIP 10.7.72.209), and application ID fields are typically filled in.
 
 Happy to hop on a quick call if easier — thanks!
 
@@ -27,5 +59,5 @@ Happy to hop on a quick call if easier — thanks!
 
 Follow-up expectations:
 - If the team replies with a SNOW catalog link only, ask for a completed example. The whole point of this ask is the example, not the form.
-- If they say "same request, add multiple rows for different ports", note the row format so cluster-link TCP/9094 goes in as a second row on the same submission.
-- If they route to Network/Security team instead, ask them to intro us in the same thread so we're not starting cold.
+- If they need the app-id, it's already in the manifest (11547).
+- Cluster-link TCP/9094 ingress is a separate ask — hold that until dev HTTPS is working end-to-end so we don't muddle two conversations.
