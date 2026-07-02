@@ -13,7 +13,7 @@ metadata:
   name: controlcenter
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-c3-metadata-truststore"
+    platform.confluent.io/force-reconcile: "2026-07-01-c3-basic-auth"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
@@ -59,11 +59,15 @@ spec:
         mountPath: /var/ssl/truststore
         readOnly: true
 
-  # CRD enum is [basic|ldap|mtls]; mtls+requested is the documented OIDC workaround (runbook A24).
+  # Basic auth smoke-test pattern: username=C3 Okta client ID, password=client secret (runbook A29). Backend calls run as C3 service principal (in super.users), so post-login every action succeeds.
   authentication:
-    type: mtls
-    mtls:
-      sslClientAuthentication: requested
+    type: basic
+    basic:
+      secretRef: controlcenter-basic-auth
+      roles:
+        - Administrators
+      restrictedRoles:
+        - Restricted
 
   # No superUsers — all access via ConfluentRolebindings.
   authorization:
