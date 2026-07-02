@@ -1,35 +1,37 @@
-Teams reply to Rick (Container Platforms) — firewall/Zscaler request
+Teams reply to Rick (Container Platforms) — round 2
 
-Rick's guidance:
-- Zscaler = per-hostname whitelist, no wildcards, every FQDN must be listed
-- SNOW form: standard firewall form → select "Proxy Access", source type "Zone", source "User Zone"
-- Destination = the FQDN; port is always 443 on OpenShift Ingress
+Rick's round-2 guidance:
+- ONE SNOW ticket per group of FQDNs (bundle them, don't split)
+- Zscaler cares ONLY about the FQDN + port 443. Do NOT mention backend ports. It only confuses the Zscaler operator.
+- Suggested we consider the "Floating DNS" pattern from OpenShift Ingress.pdf — <thing>.apps.dv.ocp.fcbint.net (no -p / -s), needs an extra DNS record but gives us identical FQDN shape across dev/qa/uat/prod and one-DNS-flip failover in UAT/Prod. Doc calls this "Optional, but recommended."
+- "Do both, if you want" — i.e. whitelist both -p direct + floating. We decided NOT to do both (doubles whitelist / DNS / cert-SAN surface for zero gain in dev).
 
-Scope for this reply: confirm the plan, list the five dev FQDNs we need whitelisted, ask the one clarification Rick's message left open (one ticket for all five, or one per FQDN).
+Decision landed on:
+- Adopt floating for the five REST/UI components (controlcenter, schemaregistry, kafka-mds, kafkarest, connect) — stateless HTTP, no advertised-hostname baking, cheap to rename, wins consistency across all six envs.
+- Keep the kafka broker on the direct name (kafka.apps.dv-p.ocp.fcbint.net) for now. Broker has an advertised-listener FQDN baked into the CFK Kafka CR spec.listeners.external; if bootstrap FQDN != advertised FQDN, clients get redirected to the -p name and if that's not also whitelisted the connection breaks. Also brokers don't fail over via DNS-flip so floating's benefit is smaller for the broker. Flagged this to Rick so he can weigh in.
+- Ask Rick about the DNS-request path for the floating names in the same round-trip (SNOW DNS Request vs. lighter path since they share the same core-zone LB IP 10.7.72.209).
 
 ------------ COPY BELOW INTO TEAMS ------------
 
-Thanks Rick — really helpful. Just to confirm the plan we'll execute:
+Thanks Rick — both really helpful, especially the floating tip.
 
-- Form: SNOW standard firewall form
-- Selection: Proxy Access
-- Source type: Zone
-- Source: User Zone
-- Destination: per-FQDN (no wildcards)
-- Port: 443
+Dropping the backend-port annotations — you're right, that would only confuse the Zscaler side. Clean list, all edge :443, one ticket for all six:
 
-For dev we'll submit the following six FQDNs — all openshift-core-zone Ingresses in dah-flink-dev, reencrypt termination, edge :443 → backend port shown:
+REST / UI components (moving to floating per your suggestion):
+- controlcenter.apps.dv.ocp.fcbint.net
+- schemaregistry.apps.dv.ocp.fcbint.net
+- kafka-mds.apps.dv.ocp.fcbint.net
+- kafkarest.apps.dv.ocp.fcbint.net
+- connect.apps.dv.ocp.fcbint.net
 
-- controlcenter.apps.dv-p.ocp.fcbint.net → :9021 — CFK Control Center UI
-- schemaregistry.apps.dv-p.ocp.fcbint.net → :8081 — Schema Registry REST
-- kafka-mds.apps.dv-p.ocp.fcbint.net → :8090 — MDS + embedded kafka-rest
-- kafkarest.apps.dv-p.ocp.fcbint.net → :8082 — Kafka REST Proxy (standalone)
-- connect.apps.dv-p.ocp.fcbint.net → :8083 — Kafka Connect REST
-- kafka.apps.dv-p.ocp.fcbint.net → :9092 — Kafka broker external OAUTHBEARER listener
+Kafka broker external listener (keeping on the direct name for now — see caveat):
+- kafka.apps.dv-p.ocp.fcbint.net
 
-One quick clarification before we submit — do these all go on one SNOW ticket (six rows), or is it one ticket per FQDN?
+Broker caveat: Kafka clients bootstrap to one FQDN, then the broker advertises a hostname back and the client reconnects to that. The advertised hostname is baked into the CFK Kafka CR's external listener config, and it doesn't hot-fail-over via DNS (broker failover is a whole-cluster event, not a hostname flip). Happy to move the broker to floating if you don't see an issue — just flagging the advertised-listener wrinkle before we commit.
 
-We'll follow the same pattern for QA / UAT / Prod as we roll each env forward.
+DNS records for the floating names: is the ask the standard SNOW DNS Request (CNAME / A → LB IP 10.7.72.209 for dev), or is there a lighter path since they'd share the same core-zone LB?
+
+Will pattern-repeat for QA / UAT / Prod once dev is proven.
 
 Thanks!
 
@@ -37,9 +39,9 @@ Thanks!
 
 ------------ END COPY ------------
 
-Follow-up expectations:
-- If Rick says "one ticket, five rows" → submit a single SNOW request with the five FQDNs stacked.
-- If Rick says "one per FQDN" → submit five separate SNOW requests (identical body, different destination).
-- Once dev is approved and Zscaler is confirmed via browser, repeat the same submission per env (qa-p, ut-p, ut-s, pd-p, pd-s) — same 5 CFK components x 6 env-clusters = 30 hostnames across the lifecycle, though only ~5 need to be live at any one time.
-- Cluster-link TCP/9094 is a separate ask (still pending) — that's not Proxy Access / not User Zone, so it'll need a different SNOW path.
-- NEXT WEEK: Ayu is planning to request a Custom Domain for the 9094 mTLS-only broker listener — this is option (2) in OpenShift Ingress.pdf (Internal Bank Network - Custom, openshift-core-zone with a custom fcbint.net FQDN via A-record DNS request pointing to the LB IP 10.7.72.209 for dev). That path avoids Zscaler Proxy Access entirely because DNS resolves straight to the LB — the right shape for Kafka wire protocol which can't survive HTTPS proxy inspection. Ayu will bring it up next week — walk through naming, envs, and how it slots against the existing 9092 OAUTHBEARER external listener at that point.
+Follow-up expectations / work triggered when Rick replies:
+- If Rick agrees on floating for the five REST/UI: rename host: field in each of apps/confluent-platform/dev/ingress/*.yaml from <thing>.apps.dv-p... to <thing>.apps.dv..., regenerate the corresponding Keyfactor Certificate CRs in apps/confluent-platform/dev/cert-manager/ so the SAN includes the floating name (may need to keep the -p SAN too until DNS lands, then trim), and only then submit the Zscaler whitelist. Ordering matters: DNS record has to exist before Zscaler resolves the name.
+- If Rick says "just move the broker too" on the caveat: reconfigure spec.listeners.external in apps/confluent-platform/dev/kafka.yaml so the advertised-listener FQDN also uses the floating name. NOT a hot change -- brokers roll on external-listener changes. Coordinate with Preeti/Tushar before scheduling.
+- If Rick says "keep the broker on -p, floating is optional there": no CR change needed, just add kafka.apps.dv-p.ocp.fcbint.net to the Zscaler whitelist as drafted.
+- On DNS request path: if it's a full SNOW DNS Request per FQDN, that's 5 tickets for dev alone (30 across all envs). Ask if there's a batched form.
+- NEXT WEEK: Ayu's Custom Domain ask for the 9094 mTLS-only broker listener (option 2 in OpenShift Ingress.pdf) still parked -- walk through naming + envs when he brings it up.
