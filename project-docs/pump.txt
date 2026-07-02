@@ -1,63 +1,38 @@
-Teams message — post in Container Platforms channel
+Teams reply to Rick (Container Platforms) — firewall/Zscaler request
 
-Ask: guidance / example of the Firewall Request referenced in the OpenShift Ingress guideline. The guideline (project-docs/fcb-openshift-guideline/OpenShift Ingress.pdf) mentions "Submit a Firewall Request for your application if you need access from User Zone" three times (once per ingress option: Internal OCP, Internal Custom, External) but never shows what fields to fill in, and the linked form URL is only visible on the FCB intranet.
+Rick's guidance:
+- Zscaler = per-hostname whitelist, no wildcards, every FQDN must be listed
+- SNOW form: standard firewall form → select "Proxy Access", source type "Zone", source "User Zone"
+- Destination = the FQDN; port is always 443 on OpenShift Ingress
 
-Scope for this ask: just the standard HTTPS/443 case (openshift-core-zone Route → CFK Control Center UI). Cluster-link TCP/9094 will be a separate ask later.
+Scope for this reply: confirm the plan, list the five dev FQDNs we need whitelisted, ask the one clarification Rick's message left open (one ticket for all five, or one per FQDN).
 
 ------------ COPY BELOW INTO TEAMS ------------
 
-Hi Container Platforms team —
+Thanks Rick — really helpful. Just to confirm the plan I'll execute:
 
-Following the OpenShift Ingress guideline's step "Submit a Firewall Request for your application if you need access from User Zone." Could someone share the current Firewall Request form link, or point me at an example of one already submitted for a similar workload?
+Form: SNOW standard firewall form → Proxy Access, source type = Zone, source = User Zone, destination = per-FQDN (no wildcards), port = 443.
 
-Quick context — we're bringing up CFK (Confluent for Kubernetes) in dah-flink-dev. First up is browser access from the User Zone to the Control Center UI over HTTPS/443, via a standard openshift-core-zone Ingress. Manifest below for reference:
+For dev I'll submit the following five FQDNs — all openshift-core-zone Ingresses in dah-flink-dev, reencrypt termination:
 
-```yaml
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: controlcenter
-  namespace: dah-flink-dev
-  labels:
-    app.kubernetes.io/name: controlcenter
-    app.kubernetes.io/instance: controlcenter
-    app.kubernetes.io/component: ingress
-    app.kubernetes.io/part-of: confluent-platform
-    fcbint.net/app-id: "11547"
-  annotations:
-    route.openshift.io/termination: reencrypt
-    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
-spec:
-  ingressClassName: openshift-core-zone
-  rules:
-    - host: controlcenter.apps.dv-p.ocp.fcbint.net
-      http:
-        paths:
-          - backend:
-              service:
-                name: controlcenter
-                port:
-                  number: 9021
-            path: /
-            pathType: Prefix
-  tls:
-    - hosts:
-        - controlcenter.apps.dv-p.ocp.fcbint.net
-      secretName: controlcenter-ingress-tls
-```
+- controlcenter.apps.dv-p.ocp.fcbint.net — CFK Control Center UI
+- schemaregistry.apps.dv-p.ocp.fcbint.net — Schema Registry REST
+- kafka-mds.apps.dv-p.ocp.fcbint.net — MDS + embedded kafka-rest
+- kafkarest.apps.dv-p.ocp.fcbint.net — Kafka REST Proxy (standalone)
+- connect.apps.dv-p.ocp.fcbint.net — Kafka Connect
 
-Ideally I'd like:
-- A link to the current Firewall Request form.
-- An example of a completed request for a similar HTTPS/443 workload so I can see how the source (User Zone), destination (LB VIP 10.7.72.209), and application ID fields are typically filled in.
+One quick clarification before I submit — do these all go on one SNOW ticket (five rows), or is it one ticket per FQDN?
 
-Happy to hop on a quick call if easier — thanks!
+Will follow the same pattern for QA / UAT / Prod as we roll each env forward.
+
+Thanks!
 
 — Ayu
 
 ------------ END COPY ------------
 
 Follow-up expectations:
-- If the team replies with a SNOW catalog link only, ask for a completed example. The whole point of this ask is the example, not the form.
-- If they need the app-id, it's already in the manifest (11547).
-- Cluster-link TCP/9094 ingress is a separate ask — hold that until dev HTTPS is working end-to-end so we don't muddle two conversations.
+- If Rick says "one ticket, five rows" → submit a single SNOW request with the five FQDNs stacked.
+- If Rick says "one per FQDN" → submit five separate SNOW requests (identical body, different destination).
+- Once dev is approved and Zscaler is confirmed via browser, repeat the same submission per env (qa-p, ut-p, ut-s, pd-p, pd-s) — same 5 CFK components x 6 env-clusters = 30 hostnames across the lifecycle, though only ~5 need to be live at any one time.
+- Cluster-link TCP/9094 is a separate ask (still pending) — that's not Proxy Access / not User Zone, so it'll need a different SNOW path.
