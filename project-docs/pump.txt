@@ -1,67 +1,31 @@
-CFK dev ingress URLs — browser reachability smoke test
-=======================================================
+Teams message — post in Container Platforms channel
 
-Purpose: after 5a89d17 (C3 basic-auth + Armeria trustStore fix), C3 UI returns
-ERR_CONNECTION_CLOSED in Chrome. Need to determine whether this is a
-C3-specific issue OR a whole-namespace reencrypt/router/trust-bundle issue.
+Ask: guidance / example of the Firewall Request referenced in the OpenShift Ingress guideline. The guideline (project-docs/fcb-openshift-guideline/OpenShift Ingress.pdf) mentions "Submit a Firewall Request for your application if you need access from User Zone" three times (once per ingress option: Internal OCP, Internal Custom, External) but never shows what fields to fill in, and the linked form URL is only visible on the FCB intranet.
 
-If ALL of these return ERR_CONNECTION_CLOSED → escalate to Rick / Container
-Platforms (router doesn't trust FCB internal CA that signs the Keyfactor
-component certs; no reencrypt ingress in dah-flink-dev can work).
+Our specific case has a twist: standard HTTPS/443 UI routes + a non-HTTPS TCP/9094 cluster-link inbound from on-prem VM CP brokers. The doc's examples all assume HTTPS, so an example that includes a non-HTTPS TCP port would be more useful than the generic template.
 
-If C3 is the ONLY one that fails → C3-specific, dig into the pod.
+------------ COPY BELOW INTO TEAMS ------------
 
-If mixed → send Claude the map (which succeed, which fail).
+Hi Container Platforms team —
 
-Any HTTP response counts as "success" (200, 401, 404, 500 — all fine).
-Only ERR_CONNECTION_CLOSED / ERR_SSL_PROTOCOL_ERROR / timeout counts as fail.
+Following the OpenShift Ingress guideline's step "Submit a Firewall Request for your application if you need access from User Zone." Could someone share the current Firewall Request form link, or point me at an example of one already submitted for a similar workload?
 
-=======================================================
+Quick context — we're bringing up CFK (Confluent for Kubernetes) in dah-flink-<env>. Two ingress shapes in play:
 
-C3 Control Center UI (currently broken)
-  https://controlcenter.apps.dv-p.ocp.fcbint.net
-  https://controlcenter.apps.dv-p.ocp.fcbint.net/
-  https://controlcenter.apps.dv-p.ocp.fcbint.net/index.html
+1. HTTPS 443 to openshift-core-zone Routes for Control Center / Kafka REST / Schema Registry / Connect / MDS — the standard case the doc describes.
+2. TCP/9094 inbound from on-prem VM CP brokers for cluster-link (source-initiated, part of the VM->OCP migration path) — non-HTTPS, and the source is a data-center subnet rather than User Zone. Not sure whether that goes on the same firewall request or needs a separate one.
 
-Schema Registry REST API
-  https://schemaregistry.apps.dv-p.ocp.fcbint.net
-  https://schemaregistry.apps.dv-p.ocp.fcbint.net/subjects
-  https://schemaregistry.apps.dv-p.ocp.fcbint.net/schemas/types
+Ideally I'd like:
+- A link to the current Firewall Request form.
+- An example of a completed request that includes a non-HTTPS TCP port, so I can see how (2) is typically framed (source CIDR, destination LB/VIP, port, protocol).
 
-Kafka MDS + embedded kafka-rest
-  https://kafka-mds.apps.dv-p.ocp.fcbint.net
-  https://kafka-mds.apps.dv-p.ocp.fcbint.net/kafka/v3/clusters
-  https://kafka-mds.apps.dv-p.ocp.fcbint.net/security/1.0/features
+Happy to hop on a quick call if easier — thanks!
 
-Kafka REST Proxy (standalone)
-  https://kafkarest.apps.dv-p.ocp.fcbint.net
-  https://kafkarest.apps.dv-p.ocp.fcbint.net/v3/clusters
-  https://kafkarest.apps.dv-p.ocp.fcbint.net/topics
+— Ayu
 
-Kafka Connect (currently replicas: 0, may return 503 or similar)
-  https://connect.apps.dv-p.ocp.fcbint.net
-  https://connect.apps.dv-p.ocp.fcbint.net/connectors
+------------ END COPY ------------
 
-=======================================================
-
-Environment reminders:
-- These are OpenShift core-zone internal URLs (apps.dv-p.ocp.fcbint.net wildcard → 10.7.72.209).
-- Only reachable from FCB corporate network / VPN.
-- If Zscaler is dropping them, they'd typically show as timeout or ERR_TIMED_OUT, not ERR_CONNECTION_CLOSED. But worth checking network posture.
-- All five ingresses use route.openshift.io/termination: reencrypt.
-- All backend TLS certs are Keyfactor-issued via cert-manager (kafka-tls, controlcenter-tls, etc.), signed by FCB internal CA.
-
-Steps to run in Chrome:
-1. Open each URL. Note down the exact error or the HTTP response.
-2. Copy the map back to Claude via chat.
-
-If curl is available on your laptop, this one-liner covers everything:
-  for u in \
-    https://controlcenter.apps.dv-p.ocp.fcbint.net/ \
-    https://schemaregistry.apps.dv-p.ocp.fcbint.net/subjects \
-    https://kafka-mds.apps.dv-p.ocp.fcbint.net/kafka/v3/clusters \
-    https://kafkarest.apps.dv-p.ocp.fcbint.net/v3/clusters \
-    https://connect.apps.dv-p.ocp.fcbint.net/connectors; do
-    echo "--- $u ---"
-    curl -sk --max-time 8 -o /dev/null -w "HTTP %{http_code} (%{size_download}B in %{time_total}s)\n" "$u"
-  done
+Follow-up expectations:
+- If the team replies with a SNOW catalog link only, ask for a completed example. The whole point of this ask is the example, not the form.
+- If they say "same request, add multiple rows for different ports", note the row format so cluster-link TCP/9094 goes in as a second row on the same submission.
+- If they route to Network/Security team instead, ask them to intro us in the same thread so we're not starting cold.
