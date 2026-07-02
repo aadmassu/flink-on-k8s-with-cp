@@ -1,13 +1,11 @@
 # Pipeline:  5-cmf
-# Purpose:   Install Confluent Manager for Apache Flink (CMF) via Helm
+# Purpose:   Install/uninstall Confluent Manager for Apache Flink (CMF) via Helm.
 # Author:    Ayu Admassu
 # Created:   2026-04-09
 #
-# Variable Group: kafka-openshift-credentials-<env>
-#   openshift-service-account-name  — service account username
-#   openshift-service-account-pwd   — service account password (secret)
-#   openshift-namespace         — target namespace
-#   openshift-api               — OpenShift API server URL
+# Secrets (license, cmf-db-credentials, cmf-encryption-key) come from CyberArk via ESO
+# ExternalSecrets under apps/confluent-cmf/<env>/externalsecrets/. DB URL + user stay in
+# variable group kafka-openshift-credentials-<env>.
 
 trigger: none
 
@@ -100,35 +98,16 @@ stages:
                   fi
 
                   echo ""
-                  echo "=== Creating CMF secrets ==="
-                  # FCB Common Metadata standard requires these labels on every object
-                  # (https://confluence.fcpd.fcbint.net/display/CONV/OpenShift+Resource+Common+Metadata)
-                  create_labeled_secret() {
-                    local name=$1
-                    local key=$2
-                    local value=$3
-                    oc create secret generic "$name" \
-                      --from-literal="$key=$value" \
-                      -n "$OC_NS" --dry-run=client -o yaml \
-                      | oc label --local -f - --dry-run=client -o yaml \
-                          app.kubernetes.io/name=confluent-manager-for-apache-flink \
-                          app.kubernetes.io/instance="$name" \
-                          app.kubernetes.io/component=cmf \
-                          fcbint.net/app-id=11547 \
-                      | oc apply -f -
-                  }
-
-                  # Helper: apply an ESO ExternalSecret, force an immediate re-sync
-                  # (so stale Secret content from a prior variable-group run doesn't
-                  # pass the check), and wait for Ready=True. Used in dev for the
-                  # three CyberArk-backed CMF Secrets (license, DB password,
-                  # encryption key). On timeout, prints the live status block and
-                  # exits 1.
+                  echo "=== Provisioning CMF Secrets via ESO (CyberArk-backed) ==="
+                  # Delete any pre-existing Secret (variable-group-era or otherwise) so ESO can
+                  # create it fresh with creationPolicy=Owner, then apply the ExternalSecret,
+                  # force-sync, and wait for Ready=True.
                   apply_externalsecret_and_wait() {
                     local name=$1
                     local file=$2
                     echo ""
                     echo "--- ExternalSecret/$name  (from $file) ---"
+                    oc -n "$OC_NS" delete secret "$name" --ignore-not-found
                     oc apply -n "$OC_NS" -f "$file"
                     oc -n "$OC_NS" annotate externalsecret "$name" \
                       force-sync="$(date +%s)" --overwrite
@@ -140,10 +119,7 @@ stages:
                       echo "Current status:"
                       oc -n "$OC_NS" get externalsecret "$name" -o yaml | sed -n '/^status:/,$p' | head -30
                       echo ""
-                      echo "Diagnose with:"
-                      echo "  oc -n $OC_NS describe externalsecret $name"
-                      echo "Common causes: wrong CyberArk Address (property), wrong UserName (key),"
-                      echo "or the SecretStore 11547-d-key-fp is in a non-Ready state."
+                      echo "Diagnose: oc -n $OC_NS describe externalsecret $name"
                       exit 1
                     fi
                     echo "  ExternalSecret/$name is Ready=True."
@@ -151,78 +127,14 @@ stages:
                     oc -n "$OC_NS" get externalsecret "$name" -o jsonpath='    ES refreshTime={.status.refreshTime}{"\n    ES syncedResourceVersion="}{.status.syncedResourceVersion}{"\n"}'
                   }
 
-                  # In dev, all three sensitive CMF Secrets (license, DB password,
-                  # encryption key) come from CyberArk via ESO. In other envs they
-                  # still come from the kafka-openshift-credentials-<env> variable group
-                  # until those accounts are onboarded into CyberArk + per-env
-                  # ExternalSecrets are added under apps/confluent-cmf/<env>/.
-                  if [ "$TARGET_ENV" = "dev" ]; then
-                    echo ""
-                    echo "=== dev — applying ESO ExternalSecrets (CyberArk-backed) ==="
-                    apply_externalsecret_and_wait confluent-license  apps/confluent-cmf/dev/externalsecrets/externalsecret-confluent-license.yaml
-                    apply_externalsecret_and_wait cmf-db-credentials apps/confluent-cmf/dev/externalsecrets/externalsecret-cmf-db-password.yaml
-                    apply_externalsecret_and_wait cmf-encryption-key apps/confluent-cmf/dev/externalsecrets/externalsecret-cmf-encryption-key.yaml
-                  else
-                    create_labeled_secret confluent-license  license.txt "$CMF_LICENSE"
-                    create_labeled_secret cmf-db-credentials password    "$CMF_DB_PWD"
-
-                    # cmf-encryption-key is NOT a UTF-8 string; it is 16 or 32 RAW
-                    # BYTES that CMF reads from data.key. The variable group value
-                    # *-cmf-encryption-key is the base64 encoding of those raw bytes
-                    # (the format `openssl rand -base64 32` emits, and the same format
-                    # CyberArk will store once this Secret is onboarded into ESO). We
-                    # write that base64 verbatim into Secret.data.key — because data.*
-                    # IS the base64 field in a Kubernetes Secret, no additional
-                    # encoding step is required.
-                    #
-                    # Do NOT go through `oc create secret --from-literal=key=$VALUE`
-                    # for this key: --from-literal treats $VALUE as a UTF-8 string and
-                    # base64-encodes it for transport into data.key, which double-
-                    # encodes our already-base64 input. At read time CMF then receives
-                    # the un-decoded base64 string as raw bytes (44 bytes = 352 bits)
-                    # and fails encryptionConfigInitializer with "key is of 352 bits".
-                    # See runbook/LESSONS_LEARNED.md for the incident write-up.
-                    if [ -z "$CMF_ENC_KEY" ]; then
-                      echo "ERROR: CMF_ENC_KEY is empty — variable '${TARGET_ENV}-cmf-encryption-key' is unset or blank."
-                      exit 1
-                    fi
-                    if ! printf '%s' "$CMF_ENC_KEY" | base64 -d >/dev/null 2>&1; then
-                      echo "ERROR: CMF_ENC_KEY is not valid base64."
-                      echo "       Expected: base64 encoding of 16 or 32 random bytes,"
-                      echo "       e.g. the output of \`openssl rand -base64 32\`."
-                      exit 1
-                    fi
-                    DECODED_BYTES=$(printf '%s' "$CMF_ENC_KEY" | base64 -d | wc -c | tr -d ' ')
-                    if [ "$DECODED_BYTES" != "16" ] && [ "$DECODED_BYTES" != "32" ]; then
-                      echo "ERROR: CMF_ENC_KEY decodes to $DECODED_BYTES bytes; must be 16 (AES-128) or 32 (AES-256)."
-                      exit 1
-                    fi
-                    echo "  cmf-encryption-key: validated — base64 of $DECODED_BYTES raw bytes ($((DECODED_BYTES * 8))-bit AES)."
-                    # The heredoc body + EOF terminator below sit at the script:|
-                    # block-scalar base column. After YAML strips the common indent,
-                    # bash sees the YAML at column 0 (so `EOF` terminates and `oc
-                    # apply` receives top-level keys at column 0).
-                    cat <<EOF | oc apply -n "$OC_NS" -f -
-                  apiVersion: v1
-                  kind: Secret
-                  metadata:
-                    name: cmf-encryption-key
-                    labels:
-                      app.kubernetes.io/name: confluent-manager-for-apache-flink
-                      app.kubernetes.io/instance: cmf-encryption-key
-                      app.kubernetes.io/component: cmf
-                      fcbint.net/app-id: "11547"
-                  type: Opaque
-                  data:
-                    key: ${CMF_ENC_KEY}
-                  EOF
-                  fi
+                  ES_DIR="apps/confluent-cmf/$TARGET_ENV/externalsecrets"
+                  apply_externalsecret_and_wait confluent-license   "$ES_DIR/externalsecret-confluent-license.yaml"
+                  apply_externalsecret_and_wait cmf-db-credentials  "$ES_DIR/externalsecret-cmf-db-password.yaml"
+                  apply_externalsecret_and_wait cmf-encryption-key  "$ES_DIR/externalsecret-cmf-encryption-key.yaml"
 
                   echo ""
                   echo "=== Verifying cmf-tls Secret exists ==="
-                  # CMF reads the TLS cert/key from this Secret on startup. If it's
-                  # missing, the pod will crashloop with an opaque Spring error —
-                  # fail fast here instead.
+                  # Owned by cert-manager via the cmf-tls pipeline; fail fast if missing.
                   if ! oc get secret cmf-tls -n "$OC_NS" >/dev/null 2>&1; then
                     echo "ERROR: secret/cmf-tls not found in $OC_NS."
                     echo "Run the cmf-tls pipeline first to provision the cert-manager Certificate."
@@ -248,9 +160,6 @@ stages:
                 TARGET_ENV: ${{ parameters.environment }}
                 CMF_DB_URL: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
                 CMF_DB_USER: $(${{ parameters.environment }}-cmf-sql-server-user)
-                CMF_DB_PWD: $(${{ parameters.environment }}-cmf-sql-server-user-password)
-                CMF_ENC_KEY: $(${{ parameters.environment }}-cmf-encryption-key)
-                CMF_LICENSE: $(${{ parameters.environment }}-confluent-license)
 
             - task: Bash@3
               displayName: "Apply CMF UI Ingress (Certificate + Ingress)"
@@ -261,19 +170,8 @@ stages:
 
                   ENV_DIR="apps/confluent-cmf/$TARGET_ENV"
 
-                  # Two files, applied in order: Certificate first (Keyfactor
-                  # signs over ~minutes), then Ingress (consumes the Secret).
-                  # HAProxy router serves 503 for the host until the cert
-                  # Secret materializes — that's fine; the Ingress can land
-                  # immediately and the route flips Ready when cert-manager
-                  # finishes. We don't block the pipeline waiting for the
-                  # cert here because the manifests exist whether or not the
-                  # cert is signed yet; a follow-up run will materialize it.
-                  #
-                  # Both files only get applied if they exist in the env
-                  # directory (dev has them as of today; qa/uat/prd/dr will
-                  # be added per-env when those envs are ready to expose
-                  # CMF). See https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress for the FCB pattern.
+                  # Certificate first (Keyfactor signs over ~minutes), then Ingress. Skips
+                  # files not present in the env dir — added per-env when ready to expose CMF.
                   for f in cmf-ingress-tls-certificate.yaml cmf-ingress.yaml; do
                     if [ -f "$ENV_DIR/$f" ]; then
                       echo ""
@@ -306,22 +204,14 @@ stages:
                   echo "=== Uninstalling Helm release ==="
                   helm uninstall confluent-cmf -n "$OC_NS" --wait --timeout 5m || true
 
-                  # In dev all three Secrets (license, db, encryption-key) are
-                  # ESO-managed. Their ExternalSecrets carry deletionPolicy=Retain
-                  # so deleting the ExternalSecret does NOT cascade to the
-                  # underlying Secret — we delete both explicitly. cmf-tls is
-                  # preserved either way (owned by cert-manager via the
-                  # cmf-tls pipeline). SQL Server data persists.
-                  if [ "$TARGET_ENV" = "dev" ]; then
-                    echo ""
-                    echo "=== Deleting ExternalSecrets (dev — ESO-managed) ==="
-                    oc -n "$OC_NS" delete externalsecret \
-                      confluent-license cmf-db-credentials cmf-encryption-key \
-                      --ignore-not-found
-                  fi
-
+                  # ExternalSecrets use deletionPolicy=Retain so deleting the ES does not cascade
+                  # to the underlying Secret — delete both explicitly. cmf-tls is owned by
+                  # cert-manager and preserved. SQL Server data persists.
                   echo ""
-                  echo "=== Deleting CMF Secrets ==="
+                  echo "=== Deleting ExternalSecrets and their Secrets ==="
+                  oc -n "$OC_NS" delete externalsecret \
+                    confluent-license cmf-db-credentials cmf-encryption-key \
+                    --ignore-not-found
                   oc -n "$OC_NS" delete secret \
                     confluent-license cmf-db-credentials cmf-encryption-key \
                     --ignore-not-found
@@ -332,3 +222,4 @@ stages:
                     -l app.kubernetes.io/name=confluent-manager-for-apache-flink || true
               env:
                 OC_NS: dah-flink-${{ parameters.environment }}
+                TARGET_ENV: ${{ parameters.environment }}
