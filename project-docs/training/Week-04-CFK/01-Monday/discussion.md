@@ -12,7 +12,7 @@
 
 ## Architecture Discussion (~45 min)
 
-CFK = Confluent for Kubernetes. It's an Operator (Week 2 Tuesday pattern) that takes Custom Resources for each Confluent Platform component and reconciles them into StatefulSets / Deployments / Services / Ingresses. Engineers must know four layers: the components, the Kafka listener ports, the CP service ports, and the outbound-egress boundary.
+CFK = Confluent for Kubernetes. It's an Operator (Week 2 Tuesday pattern) that takes Custom Resources for each Confluent Platform component and reconciles them into StatefulSets / Services / Storage. Engineers must know four layers: the components, the Kafka listener ports, the CP service ports, and the outbound-egress boundary.
 
 ### Layer 1 — The Confluent components
 
@@ -65,7 +65,7 @@ Everything else — every one of the 8 rows in the ports table above — stays *
 
 ### What CFK adds on top of these ports
 
-For each component the operator emits: a **StatefulSet** (Kafka + KRaftController) or **Deployment** (SR / Connect / REST Proxy / C3), a **Service** (ClusterIP) on the port from Layer 1, a **ConfigMap** with the component config, **Secrets** for TLS + OAuth, and **PVCs** where stateful. You don't apply any of that directly — you apply a `Kafka` CR + a `SchemaRegistry` CR + a `Connect` CR + a `KafkaRestProxy` CR + a `ControlCenter` CR, and the operator does the rest. Week 2 Tuesday pattern in action.
+For each component the operator emits: a **StatefulSet** (every CP component in CFK 3.x — Kafka, KRaftController, SR, Connect, REST Proxy, C3 — all StatefulSet, no Deployments; SR/Connect/REST/C3 look stateless but the operator uses StatefulSet for stable per-pod identity + per-pod PVC), a **ClusterIP Service** on the port from Layer 1 plus a **headless Service** for per-pod DNS, a **ConfigMap** with the component config, **Secrets** for TLS + OAuth, and **PVCs** via `volumeClaimTemplates`. You don't apply any of that directly — you apply a `Kafka` CR + a `SchemaRegistry` CR + a `Connect` CR + a `KafkaRestProxy` CR + a `ControlCenter` CR, and the operator does the rest. Week 2 Tuesday pattern in action. (The only Deployment in a CFK install is the operator Pod itself.)
 
 ### CFK on production OpenShift — the specific constraints
 
