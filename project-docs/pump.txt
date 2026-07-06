@@ -1,47 +1,45 @@
-Teams reply to Rick (Container Platforms) — round 2
 
-Rick's round-2 guidance:
-- ONE SNOW ticket per group of FQDNs (bundle them, don't split)
-- Zscaler cares ONLY about the FQDN + port 443. Do NOT mention backend ports. It only confuses the Zscaler operator.
-- Suggested we consider the "Floating DNS" pattern from OpenShift Ingress.pdf — <thing>.apps.dv.ocp.fcbint.net (no -p / -s), needs an extra DNS record but gives us identical FQDN shape across dev/qa/uat/prod and one-DNS-flip failover in UAT/Prod. Doc calls this "Optional, but recommended."
-- "Do both, if you want" — i.e. whitelist both -p direct + floating. We decided NOT to do both (doubles whitelist / DNS / cert-SAN surface for zero gain in dev).
-
-Decision landed on:
-- Adopt floating for the five REST/UI components (controlcenter, schemaregistry, kafka-mds, kafkarest, connect) — stateless HTTP, no advertised-hostname baking, cheap to rename, wins consistency across all six envs.
-- Keep the kafka broker on the direct name (kafka.apps.dv-p.ocp.fcbint.net) for now. Broker has an advertised-listener FQDN baked into the CFK Kafka CR spec.listeners.external; if bootstrap FQDN != advertised FQDN, clients get redirected to the -p name and if that's not also whitelisted the connection breaks. Also brokers don't fail over via DNS-flip so floating's benefit is smaller for the broker. Flagged this to Rick so he can weigh in.
-- Ask Rick about the DNS-request path for the floating names in the same round-trip (SNOW DNS Request vs. lighter path since they share the same core-zone LB IP 10.7.72.209).
-
------------- COPY BELOW INTO TEAMS ------------
-
-Thanks Rick — both really helpful, especially the floating tip.
-
-Dropping the backend-port annotations — you're right, that would only confuse the Zscaler side. Clean list, all edge :443, one ticket for all six:
-
-REST / UI components (moving to floating per your suggestion):
-- controlcenter.apps.dv.ocp.fcbint.net
-- schemaregistry.apps.dv.ocp.fcbint.net
-- kafka-mds.apps.dv.ocp.fcbint.net
-- kafkarest.apps.dv.ocp.fcbint.net
-- connect.apps.dv.ocp.fcbint.net
-
-Kafka broker external listener (keeping on the direct name for now — see caveat):
-- kafka.apps.dv-p.ocp.fcbint.net
-
-Broker caveat: Kafka clients bootstrap to one FQDN, then the broker advertises a hostname back and the client reconnects to that. The advertised hostname is baked into the CFK Kafka CR's external listener config, and it doesn't hot-fail-over via DNS (broker failover is a whole-cluster event, not a hostname flip). Happy to move the broker to floating if you don't see an issue — just flagging the advertised-listener wrinkle before we commit.
-
-DNS records for the floating names: is the ask the standard SNOW DNS Request (CNAME / A → LB IP 10.7.72.209 for dev), or is there a lighter path since they'd share the same core-zone LB?
-
-Will pattern-repeat for QA / UAT / Prod once dev is proven.
-
-Thanks!
-
-— Ayu
-
------------- END COPY ------------
-
-Follow-up expectations / work triggered when Rick replies:
-- If Rick agrees on floating for the five REST/UI: rename host: field in each of apps/confluent-platform/dev/ingress/*.yaml from <thing>.apps.dv-p... to <thing>.apps.dv..., regenerate the corresponding Keyfactor Certificate CRs in apps/confluent-platform/dev/cert-manager/ so the SAN includes the floating name (may need to keep the -p SAN too until DNS lands, then trim), and only then submit the Zscaler whitelist. Ordering matters: DNS record has to exist before Zscaler resolves the name.
-- If Rick says "just move the broker too" on the caveat: reconfigure spec.listeners.external in apps/confluent-platform/dev/kafka.yaml so the advertised-listener FQDN also uses the floating name. NOT a hot change -- brokers roll on external-listener changes. Coordinate with Preeti/Tushar before scheduling.
-- If Rick says "keep the broker on -p, floating is optional there": no CR change needed, just add kafka.apps.dv-p.ocp.fcbint.net to the Zscaler whitelist as drafted.
-- On DNS request path: if it's a full SNOW DNS Request per FQDN, that's 5 tickets for dev alone (30 across all envs). Ask if there's a batched form.
-- NEXT WEEK: Ayu's Custom Domain ask for the 9094 mTLS-only broker listener (option 2 in OpenShift Ingress.pdf) still parked -- walk through naming + envs when he brings it up.
+artifactory-svc-user						pd_dah_kafka-svc
+artifactory-svc-user-password				********
+qa-c3-alertmanager-password				bFGeIT2K
+qa-c3-alertmanager-username				confluent
+qa-c3-prometheus-password					bFGeIT2K
+qa-c3-prometheus-username					confluent
+qa-cmf-encryption-key						
+qa-cmf-sql-server-jdbc-url					db-dahbronze-q.fcpd.fcbint.net
+qa-cmf-sql-server-user						qa_db_DAH_kafka-svc
+qa-cmf-sql-server-user-password			********
+qa-confluent-license						********
+qa-kafka-broker-hosts						d11547varc-pgm8.fcpd.fcbint.net:9094,d11547varc-g719.fcpd.fcbint.net:9094,d11547varc-81mb.fcpd.fcbint.net:9094
+qa-kafka-rest-proxy-hosts					d11547varc-hsu5.fcpd.fcbint.net
+qa-mds-token-keypair-pem
+qa-net-app-s3-url							s3a://velocity-flink-app-dev
+qa-oauth-broker-client-id					0oa1owiage2MyoHdt358
+qa-oauth-broker-client-secret					r4xpfcAyxhI6xng4DeWgSQ9sPodj99O-17xZ5hIZ-BSD1B8ai41_B2T8rSffdXJs
+qa-oauth-connect-client-id					0oa1owi0yntGMBvPS358
+qa-oauth-connect-client-secret				TGbBqg4XCIN6ktGkLmMQjZVeqc6ynXUBb-Pnv_8lScIQdKJZut40DPNAx2YNSgb6
+qa-oauth-controlcenter-client-id			0oa1ov6h5mwmQTCKI358
+qa-oauth-controlcenter-client-secret		Hsf0LrSnbs3rQMR_46bFXSIgwDRBZ_rj0c1ZO1VSAYsn9DuegbN3midCQBo36VRS
+qa-oauth-kafkarest-client-id				0oa1owi3wkxJS3b3b358
+qa-oauth-kafkarest-client-secret			WL8iLzfjwROtpGgKAgpmiiRY9jWREQEDLdW8AGeDiD6mieJoOly0_V0ZrfmJuSDh
+qa-oauth-mds-rest-client-id				0oa1owhtq2olDZWwf358
+qa-oauth-mds-rest-client-secret			nZRMA8zFHIjlqbsnCLZyJWI5mzyMOU2gLGJ_FSiHFH9kmSf8stpBDcbXe0o2AwZb
+qa-oauth-mds-sso-client-id					0oa1ov6h5mwmQTCKI358
+qa-oauth-mds-sso-client-secret				Hsf0LrSnbs3rQMR_46bFXSIgwDRBZ_rj0c1ZO1VSAYsn9DuegbN3midCQBo36VRS
+qa-oauth-schemaregistry-client-id			0oa1owiage2MyoHdt358
+qa-oauth-schemaregistry-client-secret	r4xpfcAyxhI6xng4DeWgSQ9sPodj99O-17xZ5hIZ-BSD1B8ai41_B2T8rSffdXJs
+qa-s3-access-key							SCQ5Q5141UXC0DUYVQSC
+qa-s3-endpoint								https://naralbkup03.fcpd.fcbint.net
+qa-s3-secret-key							_RSjFC534sf_jB5c4Gn_nd6DBqqyB6uQJnr_J_p_
+qa-sasl-plain-admin-pwd						admin-secret
+qa-sasl-plain-client-pwd						client-secret
+qa-sasl-plain-control-center-pwd				control_center-secret
+qa-sasl-plain-kafka-connect-pwd				kafka_connect-secret
+qa-sasl-plain-kafka-rest-pwd					kafka_rest-secret
+qa-sasl-plain-schema-registry-pwd			schema_registry-secret
+qa-schema-registry-hosts					d11547varc-4559.fcpd.fcbint.net
+kafka-oauthbearer-token-endpoint-url		https://myapps.firstcitizens.com/oauth2/default/v1/token
+openshift-api								https://api.qa.ocp.fcbint.net:6443
+openshift-namespace							dah-flink-qa
+openshift-service-account-name				qa_db_dah_AZDO-svc
+openshift-service-account-pwd				********
