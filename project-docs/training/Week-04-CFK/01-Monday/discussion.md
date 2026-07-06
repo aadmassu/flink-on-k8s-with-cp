@@ -20,9 +20,9 @@ Walk the diagram top-to-bottom. Each component is a K8s Service inside the names
 
 | Component | K8s Service | Port | Protocol | Purpose |
 |---|---|---|---|---|
-| Kafka Brokers — client | `kafka` | **9092** | TLS | Producer / Consumer / Connect / SR / REST Proxy / C3 traffic |
-| Kafka Brokers — inter-broker | `kafka` | **9093** | TLS | Replication, ISR, partition data plane |
-| Kafka Brokers — controller | `kafka` | **9094** | TLS | KRaft quorum (replaces ZooKeeper) |
+| Kafka Brokers — client | `kafka` | **9092** | TCP | Producer / Consumer / Connect / SR / REST Proxy / C3 traffic |
+| Kafka Brokers — inter-broker | `kafka` | **9093** | TCP | Replication, ISR, partition data plane |
+| Kafka Brokers — controller | `kafka` | **9094** | TCP | KRaft quorum (replaces ZooKeeper) |
 | Schema Registry | `schemaregistry` | **8081** | HTTPS | Avro / Protobuf / JSON-Schema registration + compatibility |
 | Kafka REST Proxy | `kafkarestproxy` | **8082** | HTTPS | HTTP produce / consume for non-Kafka-protocol clients |
 | Kafka Connect | `connect` | **8083** | HTTPS | Connectors REST API (manage sources / sinks, configs, status) |
