@@ -24,9 +24,9 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: controlcenter.apps.dv-p.ocp.fcbint.net
+  commonName: controlcenter.apps.dv.ocp.fcbint.net
   dnsNames:
-    - controlcenter.apps.dv-p.ocp.fcbint.net
+    - controlcenter.apps.dv.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:

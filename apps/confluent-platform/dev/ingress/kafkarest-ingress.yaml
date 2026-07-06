@@ -22,7 +22,7 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: kafkarest.apps.dv-p.ocp.fcbint.net
+    - host: kafkarest.apps.dv.ocp.fcbint.net
       http:
         paths:
           - backend:
@@ -34,5 +34,5 @@ spec:
             pathType: Prefix
   tls:
     - hosts:
-        - kafkarest.apps.dv-p.ocp.fcbint.net
+        - kafkarest.apps.dv.ocp.fcbint.net
       secretName: kafkarest-ingress-tls

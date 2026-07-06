@@ -23,7 +23,7 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: schemaregistry.apps.dv-p.ocp.fcbint.net
+    - host: schemaregistry.apps.dv.ocp.fcbint.net
       http:
         paths:
           - backend:
@@ -35,5 +35,5 @@ spec:
             pathType: Prefix
   tls:
     - hosts:
-        - schemaregistry.apps.dv-p.ocp.fcbint.net
+        - schemaregistry.apps.dv.ocp.fcbint.net
       secretName: schemaregistry-ingress-tls

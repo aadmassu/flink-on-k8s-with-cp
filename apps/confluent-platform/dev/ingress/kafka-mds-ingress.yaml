@@ -24,7 +24,7 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: kafka-mds.apps.dv-p.ocp.fcbint.net
+    - host: kafka-mds.apps.dv.ocp.fcbint.net
       http:
         paths:
           - backend:
@@ -36,5 +36,5 @@ spec:
             pathType: Prefix
   tls:
     - hosts:
-        - kafka-mds.apps.dv-p.ocp.fcbint.net
+        - kafka-mds.apps.dv.ocp.fcbint.net
       secretName: kafka-mds-ingress-tls

@@ -23,7 +23,7 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: connect.apps.dv-p.ocp.fcbint.net
+    - host: connect.apps.dv.ocp.fcbint.net
       http:
         paths:
           - backend:
@@ -35,5 +35,5 @@ spec:
             pathType: Prefix
   tls:
     - hosts:
-        - connect.apps.dv-p.ocp.fcbint.net
+        - connect.apps.dv.ocp.fcbint.net
       secretName: connect-ingress-tls
