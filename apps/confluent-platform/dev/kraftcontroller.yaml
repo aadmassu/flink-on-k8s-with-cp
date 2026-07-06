@@ -31,7 +31,7 @@ spec:
     fcbint.net/app-id: "11547"
   dataVolumeCapacity: 1Gi
   storageClass:
-    name: ocs-storagecluster-ceph-rbd
+    name: kafka
 
   listeners:
     controller:

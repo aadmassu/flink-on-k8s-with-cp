@@ -36,7 +36,7 @@ spec:
 
   dataVolumeCapacity: 15Gi
   storageClass:
-    name: ocs-storagecluster-ceph-rbd
+    name: kafka
 
   license:
     secretRef: cfk-license

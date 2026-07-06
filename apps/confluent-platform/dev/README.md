@@ -126,7 +126,7 @@ If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, rai
 
 **Storage** (resolved from [`docs/OpenShift Persistent Storage.pdf`](../../../docs/OpenShift%20Persistent%20Storage.pdf)):
 
-FCB OpenShift uses **OpenShift Data Foundation (ODF / Ceph)** with two storage classes. We use **`ocs-storagecluster-ceph-rbd`** (raw block device) for every PV in this stack — Kafka log dirs, KRaft quorum log, and Control Center RocksDB state. The alternative (`ocs-storagecluster-ceph-filesystem`) is CephFS RWX and would add an FS layer overhead that's not needed for these single-writer workloads.
+FCB provisioned a dedicated **`kafka`** StorageClass on vSphere CSI (`csi.vsphere.vmware.com`) for this workload, with `reclaimPolicy: Retain` (PVs are preserved if a PVC gets deleted — data-safety for the log dirs / quorum log / RocksDB state) and `allowVolumeExpansion: true`. Owned by Container Platforms (`ContainerPlatforms@firstcitizens.com`), backed by a dedicated vSphere datastore. We use it for every PV in this stack — Kafka log dirs, KRaft quorum log, and Control Center RocksDB state. CFK workloads are single-writer per PV, so block-mode is the right shape (no need for RWX / filesystem SCs on the cluster). Previously used `ocs-storagecluster-ceph-rbd`; switched on 2026-07-06 to the dedicated `kafka` SC.
 
 **PV determinism — broker/controller/C3 always rebind to their own PV.** CFK turns `spec.dataVolumeCapacity` + `spec.storageClass.name` into a StatefulSet `volumeClaimTemplate`. Each pod gets a deterministically-named PVC tied to its ordinal:
 

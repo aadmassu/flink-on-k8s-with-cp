@@ -37,7 +37,7 @@ spec:
   # 15 Gi dev; VM target 300 Gi.
   dataVolumeCapacity: 15Gi
   storageClass:
-    name: ocs-storagecluster-ceph-rbd
+    name: kafka
 
   license:
     secretRef: cfk-license
