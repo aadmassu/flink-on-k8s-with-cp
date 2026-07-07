@@ -1,11 +1,11 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: Keyfactor Certificate for Control Center (backend serving
-#              cert) — qa.
+# Date:        2026-05-11 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for Control Center next-gen (REST
+#              + embedded Prometheus + AlertManager listeners share this
+#              backend cert).
 ########################################################################
-
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -18,12 +18,20 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
     metadata.command-issuer.keyfactor.com/Description: "Control Center next-gen — REST + Prometheus + AlertManager listeners"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
+  # Internal-only SANs. The FCB Keyfactor approver-policy allows DNS names
+  # under *.svc, *.svc.cluster.local, and *.ocp.fcbint.net — anything else
+  # is rejected. The earlier external UI SAN c3.dev.dah.fcbint.net failed
+  # the policy and blocked the CertificateRequest.
+  #
+  # When C3 needs external exposure, the OpenShift Route hostname will
+  # follow the *.apps.<cluster>.ocp.fcbint.net pattern (per the FCB
+  # cert-manager doc examples). Add that hostname here once allocated.
   commonName: controlcenter.dah-flink-qa.svc.cluster.local
   dnsNames:
     - controlcenter.dah-flink-qa.svc

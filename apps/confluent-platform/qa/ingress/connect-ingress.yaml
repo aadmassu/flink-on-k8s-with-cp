@@ -1,11 +1,11 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-29 (last-modified)
-# Description: Ingress exposing Kafka Connect REST/UI publicly;
-#              reencrypt termination — qa.
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Ingress exposing Kafka Connect REST/UI publicly. Backend
+#              serves HTTPS on 8083 (connect-tls); edge termination
+#              reencrypt.
 ########################################################################
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -23,7 +23,7 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: connect.apps.qa-p.ocp.fcbint.net
+    - host: connect.apps.qa.ocp.fcbint.net
       http:
         paths:
           - backend:
@@ -35,5 +35,5 @@ spec:
             pathType: Prefix
   tls:
     - hosts:
-        - connect.apps.qa-p.ocp.fcbint.net
+        - connect.apps.qa.ocp.fcbint.net
       secretName: connect-ingress-tls

@@ -1,4 +1,4 @@
-# cert-manager Certificates — qa CFK CP
+# cert-manager Certificates — dev CFK CP
 
 Six `cert-manager.io/v1` Certificate CRs. Each one asks Keyfactor (via
 the `keyfactor` ClusterIssuer) for a Keyfactor-issued cert and lands a
@@ -10,28 +10,19 @@ cert-manager/
 ├── README.md  (this file)
 ├── kafka-tls-certificate.yaml           → secret/kafka-tls
 ├── kraftcontroller-tls-certificate.yaml → secret/kraftcontroller-tls
-├── schemaregistry-tls-certificate.yaml  → secret/schemaregistry-tls         (SANs for 2 replicas)
+├── schemaregistry-tls-certificate.yaml  → secret/schemaregistry-tls
 ├── connect-tls-certificate.yaml         → secret/connect-tls
-├── kafkarest-tls-certificate.yaml       → secret/kafkarest-tls              (SANs for 2 replicas)
+├── kafkarest-tls-certificate.yaml       → secret/kafkarest-tls
 └── controlcenter-tls-certificate.yaml   → secret/controlcenter-tls
 ```
 
 The `confluent-platform.yaml` pipeline `action=install` applies all six
 and waits up to 10 minutes per Secret to materialize before applying the
-CFK CRs. Same Keyfactor + cert-manager pattern as the dev env — see
-[`../../dev/cert-manager/README.md`](../../dev/cert-manager/README.md) for
-the design rationale.
-
-## Differences from dev
-
-- **Namespace**: `dah-flink-qa`
-- **Keyfactor `Environment` annotation**: `Non-Prod-QA`
-- **Two-replica SANs** on Schema Registry and Kafka REST Proxy certs
-  (matching the planned 2-replica topology in qa).
+CFK CRs. Same Keyfactor + cert-manager pattern as
+[`apps/confluent-cmf/dev/cmf-tls-certificate.yaml`](../../../confluent-cmf/dev/cmf-tls-certificate.yaml)
+on the CMF side.
 
 The non-cert prerequisites (license, MDS keypair, OAuth client creds,
 SASL passwords) are not manifest-based — they're created by the
-`action=create-prereqs` pipeline step from the
-`kafka-openshift-credentials-qa` variable group (license is
-ESO-managed). See [`../prereqs/README.md`](../prereqs/README.md) for
-the per-Secret variable mapping.
+`action=create-prereqs` pipeline step. See [`../prereqs/README.md`](../prereqs/README.md)
+for the variable-group / CyberArk-ESO sourcing of those.

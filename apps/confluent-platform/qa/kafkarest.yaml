@@ -1,8 +1,9 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: CFK KafkaRestProxy CR — qa.
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: CFK KafkaRestProxy CR — Phase 2. OAUTHBEARER end-to-end
+#              (Okta), RBAC via ConfluentRolebinding CRs (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -10,16 +11,21 @@ kind: KafkaRestProxy
 metadata:
   name: kafkarest
   namespace: dah-flink-qa
+  annotations:
+    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-listeners-full-rewrite"
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  replicas: 2
+  replicas: 1
+
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.3
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
+
+  # Gatekeeper [required-workload-labels] inspects the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/instance: kafkarest
@@ -27,41 +33,61 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
+  license:
+    secretRef: cfk-license
+
+  tls:
+    secretRef: kafkarest-tls
+
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+          items:
+            - key: bundle.jks
+              path: bundle.jks
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /var/ssl/truststore
+        readOnly: true
+
+  authorization:
+    type: rbac
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  # Dep-to-Kafka: flat oauth+jaasConfig. Dep-to-SR/MDS: nested oauth+configuration (runbook A22).
   dependencies:
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-qa.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.dah-flink-qa.svc.cluster.local:9071
       authentication:
-        type: oauthbearer
-        oauthbearer:
+        type: oauth
+        jaasConfig:
           secretRef: oauth-kafkarest
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(UAT)          # TODO: switch to QA scope once Okta admins confirm
+          groupsClaimName: dahDev_groups
           subClaimName: sub
-          groupsClaimName: dahUAT_groups  # TODO: switch to QA groups claim once Okta admins confirm
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Dev)
       tls:
         enabled: true
+        secretRef: kafka-tls
     schemaRegistry:
       url: https://schemaregistry.dah-flink-qa.svc.cluster.local:8081
       tls:
         enabled: true
-      authentication:
-        type: oauth
-        oauth:
-          secretRef: oauth-kafkarest
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(UAT)          # TODO: switch to QA scope once Okta admins confirm
-            subClaimName: sub
-            groupsClaimName: dahUAT_groups  # TODO: switch to QA groups claim once Okta admins confirm
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        secretRef: schemaregistry-tls
     mds:
       endpoint: https://kafka.dah-flink-qa.svc.cluster.local:8090
+      tls:
+        enabled: true
+        secretRef: kafka-tls
       tokenKeyPair:
         secretRef: mds-token-keypair
       authentication:
@@ -71,69 +97,40 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(UAT)          # TODO: switch to QA scope once Okta admins confirm
+            groupsClaimName: dahDev_groups
             subClaimName: sub
-            groupsClaimName: dahUAT_groups  # TODO: switch to QA groups claim once Okta admins confirm
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-
-  authentication:
-    type: oauth
-    oauth:
-      secretRef: oauth-kafkarest
-      configuration:
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        audience: "Confluent,account,api://default"
-        subClaimName: sub
-        groupsClaimName: dahUAT_groups    # TODO: switch to QA groups claim once Okta admins confirm
-        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-        scope: 11547.DAH(UAT)             # TODO: switch to QA scope once Okta admins confirm
-
-  authorization:
-    type: rbac
-    superUsers:
-      - User:admin
-
-  tls:
-    secretRef: kafkarest-tls
-  license:
-    secretRef: cfk-license
-
-  # FCB org-wide trust bundle — see apps/confluent-platform/dev/kafka.yaml.
-  mountedVolumes:
-    volumes:
-      - name: fcb-trust-bundle
-        configMap:
-          name: fcb-trust-bundle
-    volumeMounts:
-      - name: fcb-trust-bundle
-        mountPath: /mnt/sslcerts/fcb-trust-bundle
-        readOnly: true
-
-  pdb:
-    enabled: true
-    maxUnavailable: 1
+            scope: 11547.DAH(Dev)
 
   configOverrides:
-    # JVM-default truststore → fcb-trust-bundle (see dev/kafka.yaml).
     jvm:
-      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
-    server:
-      - kafka.rest.resource.extension.class=io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension
-      - confluent.monitoring.interceptor.topic=_confluent-monitoring
+    server: []
 
   podTemplate:
     serviceAccountName: flink-operator
     resources:
       requests:
-        cpu: "4"
-        memory: 4Gi
+        cpu: "100m"
+        memory: 256Mi
       limits:
-        cpu: "4"
-        memory: 4Gi
+        cpu: "250m"
+        memory: 512Mi
+    probe:
+      liveness:
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 20
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
     labels:
       app.kubernetes.io/name: kafkarest
