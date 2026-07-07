@@ -66,6 +66,12 @@ parameters:
     type: boolean
     default: false
 
+  - name: bypassEsoForSecrets
+    displayName: "create-prereqs: force these Secrets from variable group (comma-separated names, ESO bypass)"
+    type: string
+    default: ""
+    # Emergency workaround when a SecretStore is broken (e.g. CyberArk 403 SecretSyncedError). For each name in the comma-separated list, create-prereqs deletes the ExternalSecret CR + underlying Secret BEFORE the ESO ownership snapshot, so the Secret is (re)provisioned from the corresponding variable-group value on this same run. Leave empty in normal operation. Common values while the qa CyberArk safe is being fixed: "cfk-license" or "cfk-license,confluent-license". Only honored when action=create-prereqs.
+
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: kafka-openshift-credentials-dev
@@ -162,6 +168,20 @@ stages:
                       app.kubernetes.io/part-of=confluent-platform \
                       fcbint.net/app-id=11547
                   }
+
+                  # ESO bypass: when a SecretStore is broken (e.g. CyberArk 403), delete the listed ExternalSecret CR + Secret so the snapshot below doesn't see them and apply_secret_from_literals below (re)provisions from the variable-group value. Set via bypassEsoForSecrets parameter; empty in normal operation.
+                  if [ -n "${BYPASS_ES_FOR:-}" ]; then
+                    echo ""
+                    echo "=== ESO bypass: forcing variable-group provisioning for [$BYPASS_ES_FOR] ==="
+                    IFS=',' read -ra BYPASS_LIST <<< "$BYPASS_ES_FOR"
+                    for name in "${BYPASS_LIST[@]}"; do
+                      name=$(echo "$name" | tr -d ' ')
+                      [ -z "$name" ] && continue
+                      echo "--- $name ---"
+                      oc -n "$OC_NS" delete externalsecret "$name" --ignore-not-found
+                      oc -n "$OC_NS" delete secret "$name" --ignore-not-found
+                    done
+                  fi
 
                   # ESO-safety: skip create on Secret names owned by an ExternalSecret CR — otherwise we'd flap the value until ESO re-syncs from CyberArk. Snapshot the owned set from the live cluster so new ExternalSecrets are picked up automatically.
                   echo ""
@@ -390,6 +410,7 @@ stages:
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
+                BYPASS_ES_FOR: ${{ parameters.bypassEsoForSecrets }}
                 CONFLUENT_LICENSE: $(${{ parameters.environment }}-confluent-license)
                 MDS_PEM: $(${{ parameters.environment }}-mds-token-keypair-pem)
                 SASL_ADMIN: $(${{ parameters.environment }}-sasl-plain-admin-pwd)
