@@ -67,10 +67,10 @@ parameters:
     default: false
 
   - name: bypassEsoForSecrets
-    displayName: "create-prereqs: force these Secrets from variable group (comma-separated names, ESO bypass)"
+    displayName: "create-prereqs only: ESO bypass (leave as 'none' for normal deploys)"
     type: string
-    default: ""
-    # Emergency workaround when a SecretStore is broken (e.g. CyberArk 403 SecretSyncedError). For each name in the comma-separated list, create-prereqs deletes the ExternalSecret CR + underlying Secret BEFORE the ESO ownership snapshot, so the Secret is (re)provisioned from the corresponding variable-group value on this same run. Leave empty in normal operation. Common values while the qa CyberArk safe is being fixed: "cfk-license" or "cfk-license,confluent-license". Only honored when action=create-prereqs.
+    default: "none"
+    # Emergency workaround when a SecretStore is broken (e.g. CyberArk 403 SecretSyncedError). For each name in the comma-separated list, create-prereqs deletes the ExternalSecret CR + underlying Secret BEFORE the ESO ownership snapshot, so the Secret is (re)provisioned from the corresponding variable-group value on this same run. Default "none" (also treated: empty string) means no bypass. Common values while a CyberArk safe is being fixed: "cfk-license" or "cfk-license,confluent-license". Only honored when action=create-prereqs; ignored on every other action.
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -169,8 +169,8 @@ stages:
                       fcbint.net/app-id=11547
                   }
 
-                  # ESO bypass: when a SecretStore is broken (e.g. CyberArk 403), delete the listed ExternalSecret CR + Secret so the snapshot below doesn't see them and apply_secret_from_literals below (re)provisions from the variable-group value. Set via bypassEsoForSecrets parameter; empty in normal operation.
-                  if [ -n "${BYPASS_ES_FOR:-}" ]; then
+                  # ESO bypass: when a SecretStore is broken (e.g. CyberArk 403), delete the listed ExternalSecret CR + Secret so the snapshot below doesn't see them and apply_secret_from_literals below (re)provisions from the variable-group value. Set via bypassEsoForSecrets parameter; default "none" (or empty) means no bypass.
+                  if [ -n "${BYPASS_ES_FOR:-}" ] && [ "${BYPASS_ES_FOR,,}" != "none" ]; then
                     echo ""
                     echo "=== ESO bypass: forcing variable-group provisioning for [$BYPASS_ES_FOR] ==="
                     IFS=',' read -ra BYPASS_LIST <<< "$BYPASS_ES_FOR"
