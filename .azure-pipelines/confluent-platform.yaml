@@ -72,6 +72,12 @@ parameters:
     default: "none"
     # Emergency workaround when a SecretStore is broken (e.g. CyberArk 403 SecretSyncedError). For each name in the comma-separated list, create-prereqs deletes the ExternalSecret CR + underlying Secret BEFORE the ESO ownership snapshot, so the Secret is (re)provisioned from the corresponding variable-group value on this same run. Default "none" (also treated: empty string) means no bypass. Common values while a CyberArk safe is being fixed: "cfk-license" or "cfk-license,confluent-license". Only honored when action=create-prereqs; ignored on every other action.
 
+  - name: allowNpRbacForbidden
+    displayName: "install-or-update only: continue if NetworkPolicy apply hits RBAC Forbidden"
+    type: boolean
+    default: false
+    # Workaround for environments where the AZDO service account lacks create permission on networkpolicies.networking.k8s.io (dev has this, qa is missing it as of 2026-07-07 — see runbook/TODO.md). When true, install-or-update warns and continues instead of exiting on Forbidden from the NetworkPolicy apply. All other errors on that apply still fail hard. Deploy will proceed but per runbook A14 the CFK operator may hit ApplyFailed on Jolokia :7777 probes without the NP; use only as a temporary bridge while Container Platforms grants the RBAC.
+
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: kafka-openshift-credentials-dev
@@ -680,11 +686,23 @@ stages:
                     return 1
                   }
 
-                  # Pre-Phase: NetworkPolicy for CFK-operator ingress (Jolokia :7777 probe). Must precede any CFK pod or KRaft ApplyFailed and Kafka stays at replicas=0 (runbook A14). Conditional for envs that haven't adopted the file yet.
+                  # Pre-Phase: NetworkPolicy for CFK-operator ingress (Jolokia :7777 probe). Must precede any CFK pod or KRaft ApplyFailed and Kafka stays at replicas=0 (runbook A14). Conditional for envs that haven't adopted the file yet. When allowNpRbacForbidden=true, an RBAC Forbidden on the apply is warned-and-continued (workaround for envs where the AZDO SA is missing create/networkpolicies permission — see runbook/TODO.md).
                   if [ -f "$ENV_DIR/network-policy.yaml" ]; then
                     echo ""
                     echo "+ oc apply -f $ENV_DIR/network-policy.yaml"
-                    oc apply -f "$ENV_DIR/network-policy.yaml"
+                    if ! oc apply -f "$ENV_DIR/network-policy.yaml" 2> /tmp/np-apply-err; then
+                      cat /tmp/np-apply-err
+                      if is_true "${ALLOW_NP_RBAC_FORBIDDEN:-False}" && grep -qE "forbidden|cannot create resource \"networkpolicies\"" /tmp/np-apply-err; then
+                        echo ""
+                        echo "WARNING: NetworkPolicy apply refused by RBAC (Forbidden). Continuing per allowNpRbacForbidden=true."
+                        echo "         Container Platforms must grant create/get/list/patch/delete on"
+                        echo "         networkpolicies.networking.k8s.io to the AZDO SA in $OC_NS."
+                        echo "         Runbook A14 warns KRaft may ApplyFailed and Kafka stay at replicas=0"
+                        echo "         until the NP is provisioned by some means. Tracking: runbook/TODO.md."
+                      else
+                        exit 1
+                      fi
+                    fi
                   else
                     echo ""
                     echo "(NetworkPolicy file $ENV_DIR/network-policy.yaml not present — skipping)"
@@ -797,6 +815,7 @@ stages:
                 APPLY_CONNECT: ${{ parameters.applyConnect }}
                 APPLY_KAFKA_REST_PROXY: ${{ parameters.applyKafkaRestProxy }}
                 APPLY_CONTROL_CENTER: ${{ parameters.applyControlCenter }}
+                ALLOW_NP_RBAC_FORBIDDEN: ${{ parameters.allowNpRbacForbidden }}
 
             - task: Bash@3
               displayName: "Apply public Ingresses (per-component, gated by checkboxes)"

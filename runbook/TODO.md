@@ -38,3 +38,45 @@ Rick's team is the audience.
 
 **Not blocking any current deploy** — this is a communication artifact,
 not a manifest change.
+
+---
+
+## QA `qa_db_dah_azdo-svc` — missing NetworkPolicy RBAC (Container Platforms ask)
+
+**Discovered** 2026-07-07 while running `confluent-platform.yaml action=install-or-update
+environment=qa`. First `oc apply` (of `apps/confluent-platform/qa/network-policy.yaml`)
+failed with:
+
+```
+Error from server (Forbidden): error when creating
+  "apps/confluent-platform/qa/network-policy.yaml":
+  networkpolicies.networking.k8s.io is forbidden:
+  User "qa_db_dah_azdo-svc" cannot create resource "networkpolicies"
+  in API group "networking.k8s.io" in the namespace "dah-flink-qa"
+```
+
+**Gap**: dev's SA (`dv_db_dah_azdo-svc`) has this permission in `dah-flink-dev` and
+the same pipeline succeeds there; qa's SA is missing the same. Env-parity RBAC
+issue on Container Platforms' side.
+
+**Ask** (draft for Teams / SNOW to Rick or Tom):
+> Our QA CFK deploy is failing at first-apply on the namespace-scoped
+> NetworkPolicy. Service account `qa_db_dah_azdo-svc` in `dah-flink-qa`
+> lacks `create` on `networkpolicies.networking.k8s.io`. DEV's
+> `dv_db_dah_azdo-svc` has it in `dah-flink-dev`. Please grant the equivalent
+> Role in QA: verbs `create, get, list, patch, delete` on
+> `networkpolicies.networking.k8s.io`. File in scope:
+> `apps/confluent-platform/qa/network-policy.yaml` — CFK operator ingress on
+> Jolokia :7777 per runbook A14.
+
+**Interim workaround**: `confluent-platform.yaml` now has an
+`allowNpRbacForbidden` boolean parameter (default false). Setting it to
+`true` on `install-or-update` runs makes the NetworkPolicy apply
+warn-and-continue on Forbidden instead of exiting. Deploy proceeds but per
+runbook A14 the CFK operator may hit ApplyFailed on Jolokia :7777 until
+Container Platforms provisions the NP by other means. Use as a bridge only;
+retire once RBAC lands.
+
+**Clears when**: qa's Role is patched to include `networkpolicies.networking.k8s.io`
+and a plain `install-or-update` (no bypass) succeeds. Delete this TODO section
+at that point.
