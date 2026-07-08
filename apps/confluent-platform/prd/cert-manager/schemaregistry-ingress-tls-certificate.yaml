@@ -1,11 +1,11 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-29 (last-modified)
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
 # Description: Keyfactor Certificate for the Schema Registry Ingress
-#              edge — prd.
+#              edge. Distinct from schemaregistry-tls (backend serving
+#              cert); covers the public host HAProxy presents to clients.
 ########################################################################
-
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -19,15 +19,15 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Prod
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
     metadata.command-issuer.keyfactor.com/Description: "Confluent Schema Registry REST/UI (Ingress edge cert)"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: schemaregistry.apps.pd-p.ocp.fcbint.net
+  commonName: schemaregistry.apps.pd.ocp.fcbint.net
   dnsNames:
-    - schemaregistry.apps.pd-p.ocp.fcbint.net
+    - schemaregistry.apps.pd.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:

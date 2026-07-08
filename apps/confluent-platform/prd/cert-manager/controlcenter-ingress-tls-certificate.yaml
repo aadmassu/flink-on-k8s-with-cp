@@ -1,11 +1,10 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-29 (last-modified)
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
 # Description: Keyfactor Certificate for the Control Center UI Ingress
-#              edge — prd.
+#              edge. Distinct from controlcenter-tls (backend serving cert).
 ########################################################################
-
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -19,15 +18,15 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Prod
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
     metadata.command-issuer.keyfactor.com/Description: "Confluent Control Center UI (Ingress edge cert)"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: controlcenter.apps.pd-p.ocp.fcbint.net
+  commonName: controlcenter.apps.pd.ocp.fcbint.net
   dnsNames:
-    - controlcenter.apps.pd-p.ocp.fcbint.net
+    - controlcenter.apps.pd.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:

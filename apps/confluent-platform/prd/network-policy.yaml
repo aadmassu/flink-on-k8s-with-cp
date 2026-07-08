@@ -1,0 +1,50 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-25 (created), 2026-06-25 (last-modified)
+# Description: NetworkPolicy allowing inbound from confluent-operator
+#              namespace to CFK component management ports (Jolokia 7777
+#              + Prometheus 7778 + JMX 7203 + KRaft 9074 + broker
+#              9071/9092/9094 + SR 8081 + REST 8082 + Connect 8083 +
+#              MDS 8090 + C3 9021). The three security-chart NPs in
+#              dah-flink-prd don't cover the operator namespace; without
+#              this the operator's Jolokia probe times out and KRaft
+#              sits ApplyFailed forever. Ingress-only.
+########################################################################
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-confluent-operator
+  namespace: dah-flink-prd
+  labels:
+    app.kubernetes.io/name: confluent-platform
+    app.kubernetes.io/component: network-policy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+    fcbint.net/app-tier: "4"
+    fcbint.net/network: core
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  # Apply to every Pod — any is a potential operator-reconcile target.
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              # kubelet auto-label (K8s 1.21+/OCP 4.10+) — no relabeling needed.
+              kubernetes.io/metadata.name: confluent-operator
+      ports:
+        - { protocol: TCP, port: 7777 }
+        - { protocol: TCP, port: 7778 }
+        - { protocol: TCP, port: 7203 }
+        - { protocol: TCP, port: 9074 }
+        - { protocol: TCP, port: 9071 }
+        - { protocol: TCP, port: 9092 }
+        - { protocol: TCP, port: 9094 }
+        - { protocol: TCP, port: 8081 }
+        - { protocol: TCP, port: 8082 }
+        - { protocol: TCP, port: 8083 }
+        - { protocol: TCP, port: 8090 }
+        - { protocol: TCP, port: 9021 }
