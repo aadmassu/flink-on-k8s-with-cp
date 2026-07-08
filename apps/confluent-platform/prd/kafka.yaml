@@ -81,11 +81,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahPRD_groups
+          groupsClaimName: dahProd_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(PRD)
+          scope: 11547.DAH(Prod)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -101,11 +101,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahPRD_groups
+          groupsClaimName: dahProd_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(PRD)
+          scope: 11547.DAH(Prod)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -134,11 +134,11 @@ spec:
           configurations:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahPRD_groups
+            groupsClaimName: dahProd_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(PRD)
+            scope: 11547.DAH(Prod)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -152,7 +152,7 @@ spec:
             authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
             tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            groupsClaimName: dahPRD_groups
+            groupsClaimName: dahProd_groups
             subClaimName: email
             groupsClaimScope: openid profile email
             refreshToken: true
@@ -177,11 +177,11 @@ spec:
           oauthSettings:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahPRD_groups
+            groupsClaimName: dahProd_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(PRD)
+            scope: 11547.DAH(Prod)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -198,11 +198,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahPRD_groups
+          groupsClaimName: dahProd_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(PRD)
+          scope: 11547.DAH(Prod)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -225,11 +225,11 @@ spec:
       oauthSettings:
         audience: "Confluent,account,api://default"
         expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        groupsClaimName: dahPRD_groups
+        groupsClaimName: dahProd_groups
         subClaimName: sub
         jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
         tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-        scope: 11547.DAH(PRD)
+        scope: 11547.DAH(Prod)
         loginConnectTimeoutMs: 10000
         loginReadTimeoutMs: 30000
         loginRetryBackoffMaxMs: 5000
@@ -251,7 +251,7 @@ spec:
       - sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - sasl.oauthbearer.scope=11547.DAH(PRD)
+      - sasl.oauthbearer.scope=11547.DAH(Prod)
 
       # License client (cp-server licensing to _confluent-command).
       - confluent.license.security.protocol=SASL_SSL
@@ -259,7 +259,7 @@ spec:
       - confluent.license.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.license.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.license.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.license.sasl.oauthbearer.scope=11547.DAH(PRD)
+      - confluent.license.sasl.oauthbearer.scope=11547.DAH(Prod)
 
       # Embedded kafkaRest at :8090.
       - confluent.kafkarest.security.protocol=SASL_SSL
@@ -267,7 +267,7 @@ spec:
       - confluent.kafkarest.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.kafkarest.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.kafkarest.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(PRD)
+      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(Prod)
 
       # ConfluentMetricsReporter client (spec.metricReporter block doesn't propagate all sub-keys into this prefix; runbook A26).
       - confluent.metrics.reporter.security.protocol=SASL_SSL
@@ -275,7 +275,7 @@ spec:
       - confluent.metrics.reporter.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.metrics.reporter.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.metrics.reporter.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.metrics.reporter.sasl.oauthbearer.scope=11547.DAH(PRD)
+      - confluent.metrics.reporter.sasl.oauthbearer.scope=11547.DAH(Prod)
 
       # Broker defaults.
       - log.retention.hours=168

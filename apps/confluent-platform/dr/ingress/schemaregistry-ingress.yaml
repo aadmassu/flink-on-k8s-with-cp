@@ -1,11 +1,11 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-29 (last-modified)
-# Description: Ingress exposing Schema Registry REST/UI publicly;
-#              reencrypt termination — dr.
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Ingress exposing Schema Registry REST/UI publicly.
+#              Backend HTTPS on 8081 (schemaregistry-tls); edge
+#              termination reencrypt.
 ########################################################################
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -23,7 +23,7 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: schemaregistry.apps.pd-s.ocp.fcbint.net
+    - host: schemaregistry.apps.pd.ocp.fcbint.net
       http:
         paths:
           - backend:
@@ -35,5 +35,5 @@ spec:
             pathType: Prefix
   tls:
     - hosts:
-        - schemaregistry.apps.pd-s.ocp.fcbint.net
+        - schemaregistry.apps.pd.ocp.fcbint.net
       secretName: schemaregistry-ingress-tls

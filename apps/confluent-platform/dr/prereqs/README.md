@@ -1,58 +1,116 @@
-# Prerequisites — dr CFK CP (non-TLS)
+# Prerequisites — dev CFK CP (non-TLS)
 
-> **PLACEHOLDER stub.** Walk this file with FCB ops before the first
-> `action=create-prereqs` run on dr. dr is the secondary location of the
-> prod fleet; design is identical to dev/qa/uat/prd — only the env-suffixed
-> names + dr-cluster specifics change.
-
-Same non-TLS prereq pattern as the lower envs — eleven Opaque Secrets
-(license, MDS token keypair, OAuth client creds, SASL passwords, Control
-Center basic auth) that the CFK Custom Resources one level up depend on.
-None are manifest-based; the `confluent-platform.yaml` pipeline
-`action=create-prereqs` creates them from secret variables in the
-`dr-openshift-credentials` variable group.
-
-See the [dev prereqs README](../../dev/prereqs/README.md) for the full
-table, design rationale, and the MDS-keypair base64 gotcha.
+Documents the **non-TLS Opaque Secrets** the CFK Custom Resources one
+level up depend on — license, MDS token keypair, OAuth client creds,
+SASL passwords, Control Center basic auth. None of these are manifest-
+based; they're created by the `confluent-platform.yaml` pipeline
+`action=create-prereqs`.
 
 The six **cert-manager Certificate CRs** that produce the `*-tls`
-Secrets live in [`../cert-manager/`](../cert-manager/) — see that
+Secrets have moved to [`../cert-manager/`](../cert-manager/). See that
 README for the TLS side.
 
-## Differences from dev / qa / uat / prd
+## Non-TLS Secrets — pipeline-created (temporary)
 
-- **Namespace**: `dah-flink-dr`
-- **Keyfactor `Environment` annotation**: `Prod` (DR runs production-grade certs)
-- **OAuth scope**: `11547.DAH(Prod)` (DR shares the Prod Okta tenant with prd)
-- **Groups claim**: `dahProd_groups`
-- **Source VM properties**: [`../../cp-confluent/prd-2/`](../../cp-confluent/) — VM CP prd secondary (matches the prd-1 → prd / prd-2 → dr OpenShift mapping)
-- **Cluster apps domain**: `apps.pd-s.ocp.fcbint.net` (secondary cluster, per the FCB OpenShift Ingress Confluence page Load Balancer table)
+Eleven Opaque Secrets the CFK CRs reference for OAuth, SASL, license, MDS token signing, and Control Center basic auth. **CyberArk via ESO is the target**; until that's wired up, the `confluent-platform` pipeline `action: create-prereqs` creates them from secret variables in the `kafka-openshift-credentials-<env>` variable group.
 
-## Variable group values
-
-The `dr-openshift-credentials` variable group needs the same 24 entries
-as the prd variable group, with the `dr-` prefix.
-
-**DR-specific provisioning required before first install:**
-
-| Group | What needs to be done | Owner |
+| Secret | Keys | Source variable(s) (in `kafka-openshift-credentials-<env>`) |
 |---|---|---|
-| Okta clients | Same Prod Okta application as prd. The six client IDs (broker, SR, Connect, REST, C3, MDS-REST) **must be the same as prd** — a Flink job or client failover between prd and dr must not require re-authentication with a different Okta client. Confirm with FCB Okta admins. | FCB Okta admins |
-| SASL inter-broker passwords | **Must match prd** for cluster-link compatibility during failover. Tushar copies the six prd passwords into the dr variable group. | Tushar |
-| Confluent license | Reuse the existing org license; the `confluent-license` ExternalSecret for dr already references CyberArk safe `11547_P_KEY_FP`. | Already on file |
-| MDS token keypair | **Must match prd** — tokens minted by prd MDS must validate against dr MDS post-failover. Copy the same base64-encoded PEM into `dr-mds-token-keypair-pem`. | Operations |
-| C3 Prometheus + AlertManager basic auth | Two username/password pairs. Can match prd or be DR-specific — operational preference. | Tushar |
+| `confluent-license` | `license.txt` | `<env>-confluent-license` |
+| `mds-token-keypair` | `mdsTokenKeyPair.pem` | `<env>-mds-token-keypair-pem` |
+| `sasl-plain-internal` | `admin`<br>`client`<br>`schema_registry`<br>`kafka_connect`<br>`kafka_rest`<br>`control_center` | `<env>-sasl-plain-admin-pwd`<br>`<env>-sasl-plain-client-pwd`<br>`<env>-sasl-plain-schema-registry-pwd`<br>`<env>-sasl-plain-kafka-connect-pwd`<br>`<env>-sasl-plain-kafka-rest-pwd`<br>`<env>-sasl-plain-control-center-pwd` |
+| `oauth-broker` | `clientId`<br>`clientSecret` | `<env>-oauth-broker-client-id`<br>`<env>-oauth-broker-client-secret` |
+| `oauth-schemaregistry` | `clientId`<br>`clientSecret` | `<env>-oauth-schemaregistry-client-id`<br>`<env>-oauth-schemaregistry-client-secret` |
+| `oauth-connect` | `clientId`<br>`clientSecret` | `<env>-oauth-connect-client-id`<br>`<env>-oauth-connect-client-secret` |
+| `oauth-kafkarest` | `clientId`<br>`clientSecret` | `<env>-oauth-kafkarest-client-id`<br>`<env>-oauth-kafkarest-client-secret` |
+| `oauth-controlcenter` | `clientId`<br>`clientSecret` | `<env>-oauth-controlcenter-client-id`<br>`<env>-oauth-controlcenter-client-secret` |
+| `oauth-mds-rest` | `clientId`<br>`clientSecret` | `<env>-oauth-mds-rest-client-id`<br>`<env>-oauth-mds-rest-client-secret` |
+| `c3-prometheus-basic-auth` | `username`<br>`password` | `<env>-c3-prometheus-username`<br>`<env>-c3-prometheus-password` |
+| `c3-alertmanager-basic-auth` | `username`<br>`password` | `<env>-c3-alertmanager-username`<br>`<env>-c3-alertmanager-password` |
+
+The **MDS keypair** is the only one with a non-obvious source: the VM brokers' `/var/ssl/private/tokenKeypair.pem`. **The variable value must be base64-encoded as a single line** — ADO's UI silently strips newlines from multiline secret variables, which then breaks Java's PEM parser at runtime (it requires the BEGIN/END markers on their own lines). On any dev VM broker:
+
+```
+sudo base64 -w0 /var/ssl/private/tokenKeypair.pem
+```
+
+Paste the resulting single-line string (~4400 chars for a 4096-bit RSA key) into `<env>-mds-token-keypair-pem` with the 🔒 secret lock. The `create-prereqs` action decodes it back to PEM before landing the Secret, and validates that the decoded content actually starts with `-----BEGIN` — pipeline fails fast with a clear message if either step doesn't check out.
+
+Reusing the VM keypair keeps VM-issued MDS tokens valid in the CFK cluster during the cluster-link migration window — **do not generate a fresh keypair without coordination** as doing so invalidates every outstanding token.
+
+> **OAuth client decision**: today the variable group reuses the existing VM client IDs (e.g. `0oa1owiage2MyoHdt358` for the broker). When FCB Okta admins decide whether to keep reusing or to provision new CFK-specific clients, the only change needed is in the variable group — no manifest changes here.
 
 ## Run order
 
 ```
-1. confluent-platform.yaml  environment=dr   action=create-prereqs   (creates the 11 Opaque Secrets)
-2. confluent-platform.yaml  environment=dr   action=install          (applies Certificates, waits for *-tls Secrets,
-                                                                      then applies the CFK CRs)
+1. confluent-platform.yaml  action=create-prereqs   (creates the 11 Opaque Secrets)
+2. confluent-platform.yaml  action=install          (applies Certificates, waits for *-tls Secrets,
+                                                     then applies the CFK CRs)
 ```
 
-## Open items before first dr install
+`create-prereqs` is **idempotent** — it uses `oc apply` semantics under the hood, so re-running it overwrites Secrets with whatever's in the variable group at run time. Safe to re-run after rotating an OAuth client secret in Okta or rotating any user password.
 
-- Confirm the cluster-link migration plan: dr is the failover target for prd, so the active-passive vs active-active topology choice determines what runs on dr at steady state (cold standby? hot cluster-link sink? both?). Affects everything from broker sizing to whether C3 and Connect run on dr at all.
-- Confirm the cluster's external Kafka LB domain — placeholder is `kafka.dr.dah.fcbint.net`; the SANs in `../cert-manager/kafka-tls-certificate.yaml` must match what Container team configured for the secondary cluster.
-- Confirm dr ResourceQuota — every CR sizing block is inherited from dev and undersized for production traffic.
+The pipeline **`oc describe`s** each Secret after creation (showing key names + sizes) but **never dumps values into the log**. To verify a value, pull the Secret directly outside the pipeline:
+
+```
+oc -n dah-flink-dr get secret <name> -o jsonpath='{.data.<key>}' | base64 -d
+```
+
+---
+
+## Dev values to paste into `dev-openshift-credentials` *(TEMPORARY — delete this section after Tushar has loaded them into the variable group)*
+
+> ⚠️ This section contains real credentials extracted from the dev VM `.properties` files. **Remove it from the committed README as soon as Tushar finishes populating `dev-openshift-credentials`.** The values stay in the ADO secret variables and the pipeline reads them from there; no need to keep them in Git.
+>
+> Excludes `dr-confluent-license` (already in the variable group from CMF) and `dr-mds-token-keypair-pem` (multi-line PEM — copy verbatim from VM `/var/ssl/private/tokenKeypair.pem`).
+
+### SASL PLAIN inter-broker passwords
+
+Source: broker `.properties` line `listener.name.broker.plain.sasl.jaas.config=…user_<user>=<password>…`
+
+| Variable | Value |
+|---|---|
+| `dr-sasl-plain-admin-pwd` | `admin-secret` |
+| `dr-sasl-plain-client-pwd` | `client-secret` |
+| `dr-sasl-plain-schema-registry-pwd` | `schema_registry-secret` |
+| `dr-sasl-plain-kafka-connect-pwd` | `kafka_connect-secret` |
+| `dr-sasl-plain-kafka-rest-pwd` | `kafka_rest-secret` |
+| `dr-sasl-plain-control-center-pwd` | `control_center-secret` |
+
+> These look like literal defaults that were never replaced (`<user>-secret`). Fine for dev; rotate before stg / prd-1 / prd-2.
+
+### OAuth client credentials (Okta)
+
+| Variable | Value | Source field in VM properties |
+|---|---|---|
+| `dr-oauth-broker-client-id` | `0oa1owiage2MyoHdt358` | broker `confluent.bearer.auth.client.id` |
+| `dr-oauth-broker-client-secret` | `r4xpfcAyxhI6xng4DeWgSQ9sPodj99O-17xZ5hIZ-BSD1B8ai41_B2T8rSffdXJs` | broker `confluent.bearer.auth.client.secret` |
+| `dr-oauth-schemaregistry-client-id` | `0oa1owiage2MyoHdt358` *(same client as broker)* | SR `confluent.metadata.oauthbearer.login.client.id` |
+| `dr-oauth-schemaregistry-client-secret` | `r4xpfcAyxhI6xng4DeWgSQ9sPodj99O-17xZ5hIZ-BSD1B8ai41_B2T8rSffdXJs` *(same secret as broker)* | SR `confluent.metadata.oauthbearer.login.client.secret` |
+| `dr-oauth-connect-client-id` | `0oa1owi0yntGMBvPS358` | Connect `confluent.metadata.oauthbearer.login.client.id` |
+| `dr-oauth-connect-client-secret` | `TGbBqg4XCIN6ktGkLmMQjZVeqc6ynXUBb-Pnv_8lScIQdKJZut40DPNAx2YNSgb6` | Connect `confluent.metadata.oauthbearer.login.client.secret` |
+| `dr-oauth-kafkarest-client-id` | `0oa1owi3wkxJS3b3b358` | REST Proxy `confluent.metadata.oauthbearer.login.client.id` |
+| `dr-oauth-kafkarest-client-secret` | `WL8iLzfjwROtpGgKAgpmiiRY9jWREQEDLdW8AGeDiD6mieJoOly0_V0ZrfmJuSDh` | REST Proxy `confluent.metadata.oauthbearer.login.client.secret` |
+| `dr-oauth-controlcenter-client-id` | `0oa1ov6h5mwmQTCKI358` | C3 `confluent.metadata.oauthbearer.login.client.id` |
+| `dr-oauth-controlcenter-client-secret` | `Hsf0LrSnbs3rQMR_46bFXSIgwDRBZ_rj0c1ZO1VSAYsn9DuegbN3midCQBo36VRS` | C3 `confluent.metadata.oauthbearer.login.client.secret` |
+| `dr-oauth-mds-rest-client-id` | `0oa1owhtq2olDZWwf358` | broker `kafka.rest.confluent.metadata.oauthbearer.login.client.id` |
+| `dr-oauth-mds-rest-client-secret` | `nZRMA8zFHIjlqbsnCLZyJWI5mzyMOU2gLGJ_FSiHFH9kmSf8stpBDcbXe0o2AwZb` | broker `kafka.rest.confluent.metadata.oauthbearer.login.client.secret` |
+
+> The VM reuses the **same Okta client** (`0oa1owiage2MyoHdt358`) for Broker and Schema Registry. CFK doesn't require them to be separate; carry the reuse over. If Okta admins want per-component identities later, only the variable group needs updating — no manifest changes.
+
+A separate **OIDC client** (`0oa1o0ea1m26pITBQ358` / `rLioO_quXC_PJI1MOl-5B9r0GWveI8_QwchYxR-idD4S4rxH_X5BDbdaPsWrXEI3`) is used by the broker MDS for human SSO flow. Not referenced by any current CFK CR, so not added to the variable group today — keep in mind if the Confluent UI SSO is wired up later.
+
+### Control Center basic-auth (Prometheus + AlertManager)
+
+Source: C3 `.properties` lines `confluent.controlcenter.prometheus.basic.auth.user.info` and `confluent.controlcenter.alertmanager.basic.auth.user.info` (both `confluent:bFGeIT2K`).
+
+| Variable | Value |
+|---|---|
+| `dr-c3-prometheus-username` | `confluent` |
+| `dr-c3-prometheus-password` | `bFGeIT2K` |
+| `dr-c3-alertmanager-username` | `confluent` |
+| `dr-c3-alertmanager-password` | `bFGeIT2K` |
+
+> Same `confluent:bFGeIT2K` pair is also used by the broker telemetry exporter (`confluent.telemetry.exporter._c3.api.key/secret`). Weak credential — rotate before prod.
+
+**Total**: 22 variables here + `dr-confluent-license` (existing) + `dr-mds-token-keypair-pem` (paste VM PEM separately) = **24 variables in `dev-openshift-credentials`**.

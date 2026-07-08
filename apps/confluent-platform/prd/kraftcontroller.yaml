@@ -44,11 +44,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahPRD_groups
+          groupsClaimName: dahProd_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(PRD)
+          scope: 11547.DAH(Prod)
 
   # superUser is the broker's own Okta client (peer principal during controller comms).
   authorization:
@@ -92,7 +92,7 @@ spec:
       - sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - sasl.oauthbearer.scope=11547.DAH(PRD)
+      - sasl.oauthbearer.scope=11547.DAH(Prod)
       - controller.quorum.election.timeout.ms=5000
       - controller.quorum.fetch.timeout.ms=5000
       - default.replication.factor=3

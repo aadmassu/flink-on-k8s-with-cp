@@ -73,11 +73,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahPRD_groups
+          groupsClaimName: dahProd_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(PRD)
+          scope: 11547.DAH(Prod)
       tls:
         enabled: true
         secretRef: kafka-tls
@@ -96,11 +96,11 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahPRD_groups
+            groupsClaimName: dahProd_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(PRD)
+            scope: 11547.DAH(Prod)
 
   configOverrides:
     jvm:

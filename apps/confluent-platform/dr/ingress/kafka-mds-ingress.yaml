@@ -1,11 +1,12 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-29 (last-modified)
-# Description: Ingress exposing the broker MDS REST endpoint publicly
-#              (MDS API only); reencrypt termination — dr.
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Ingress exposing the broker MDS REST endpoint (port 8090
+#              on the kafka Service) publicly. Backend HTTPS via
+#              kafka-tls; edge termination reencrypt. MDS API only —
+#              Kafka protocol clients keep talking to bootstrap directly.
 ########################################################################
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -23,7 +24,7 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: kafka-mds.apps.pd-s.ocp.fcbint.net
+    - host: kafka-mds.apps.pd.ocp.fcbint.net
       http:
         paths:
           - backend:
@@ -35,5 +36,5 @@ spec:
             pathType: Prefix
   tls:
     - hosts:
-        - kafka-mds.apps.pd-s.ocp.fcbint.net
+        - kafka-mds.apps.pd.ocp.fcbint.net
       secretName: kafka-mds-ingress-tls

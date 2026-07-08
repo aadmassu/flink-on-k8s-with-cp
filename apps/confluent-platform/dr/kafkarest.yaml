@@ -1,8 +1,9 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: CFK KafkaRestProxy CR — dr.
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: CFK KafkaRestProxy CR — Phase 2. OAUTHBEARER end-to-end
+#              (Okta), RBAC via ConfluentRolebinding CRs (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -10,67 +11,83 @@ kind: KafkaRestProxy
 metadata:
   name: kafkarest
   namespace: dah-flink-dr
+  annotations:
+    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-listeners-full-rewrite"
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
-  # TEMP — resources scaled down for the dah-flink-dr ResourceQuota.
-  # Revert to 4/4 req+limit when Tom raises the namespace quota.
   replicas: 1
+
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-kafka-rest:8.1.3
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
-  # FCB Gatekeeper [required-workload-labels] inspects the auto-generated
-  # StatefulSet (not the CR). injectLabels is CFK's mechanism for pushing
-  # labels into every managed resource — keep aligned with the FCB common-
-  # metadata standard (name, instance, component, part-of, app-id).
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
+
+  # Gatekeeper [required-workload-labels] inspects the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/instance: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # Resources MUST live under spec.podTemplate.resources — top-level
-  # spec.resources is not in the KafkaRestProxy CRD and gets pruned at
-  # admission. See schemaregistry.yaml for the full rationale.
 
+  license:
+    secretRef: cfk-license
+
+  tls:
+    secretRef: kafkarest-tls
+
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+          items:
+            - key: bundle.jks
+              path: bundle.jks
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /var/ssl/truststore
+        readOnly: true
+
+  authorization:
+    type: rbac
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  # Dep-to-Kafka: flat oauth+jaasConfig. Dep-to-SR/MDS: nested oauth+configuration (runbook A22).
   dependencies:
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-dr.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.dah-flink-dr.svc.cluster.local:9071
       authentication:
-        type: oauthbearer
-        oauthbearer:
+        type: oauth
+        jaasConfig:
           secretRef: oauth-kafkarest
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(Prod)
-          subClaimName: sub
           groupsClaimName: dahProd_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(Prod)
       tls:
         enabled: true
+        secretRef: kafka-tls
     schemaRegistry:
       url: https://schemaregistry.dah-flink-dr.svc.cluster.local:8081
       tls:
         enabled: true
-      authentication:
-        type: oauth
-        oauth:
-          secretRef: oauth-kafkarest
-          configuration:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(Prod)
-            subClaimName: sub
-            groupsClaimName: dahProd_groups
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        secretRef: schemaregistry-tls
     mds:
       endpoint: https://kafka.dah-flink-dr.svc.cluster.local:8090
+      tls:
+        enabled: true
+        secretRef: kafka-tls
       tokenKeyPair:
         secretRef: mds-token-keypair
       authentication:
@@ -80,83 +97,28 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            scope: 11547.DAH(Prod)
-            subClaimName: sub
             groupsClaimName: dahProd_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-
-  # CFK 3.1.1 requires OAuth config nested under authentication.oauth.{secretRef,configuration}
-  # — flat fields directly under authentication.* are rejected with
-  # "oauthForRest: missing authentication.oauth struct".
-  authentication:
-    type: oauth
-    oauth:
-      secretRef: oauth-kafkarest
-      configuration:
-        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        audience: "Confluent,account,api://default"
-        subClaimName: sub
-        groupsClaimName: dahProd_groups
-        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-        scope: 11547.DAH(Prod)
-
-  authorization:
-    type: rbac
-    superUsers:
-      - User:admin
-
-  tls:
-    secretRef: kafkarest-tls
-  license:
-    secretRef: cfk-license
-
-  # FCB org-wide trust bundle — see kafka.yaml for the full rationale.
-  # REST Proxy makes outbound HTTPS to: Okta (OAuth/JWKS), Schema Registry,
-  # MDS on the broker. JVM default truststore = fcb-trust-bundle.
-  mountedVolumes:
-    volumes:
-      - name: fcb-trust-bundle
-        configMap:
-          name: fcb-trust-bundle
-    volumeMounts:
-      - name: fcb-trust-bundle
-        mountPath: /mnt/sslcerts/fcb-trust-bundle
-        readOnly: true
-
-  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
-  # maxUnavailable=0. CFK auto-creates a PDB per workload; for a single-
-  # replica REST proxy it defaults to maxUnavailable=0, which the policy
-  # reads as "blocks drains forever". maxUnavailable=1 makes the
-  # auto-generated PDB drainable. Brief REST outage during node drain is
-  # acceptable for dev; bump replicas first if HA is required.
-  pdb:
-    enabled: true
-    maxUnavailable: 1
+            scope: 11547.DAH(Prod)
 
   configOverrides:
-    # JVM-default truststore → fcb-trust-bundle (see kafka.yaml for rationale).
-    # Password is trust-manager's default ("changeit"); confirm with Container
-    # team if the FCB Bundle was rebuilt with a custom password.
     jvm:
-      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
-    server:
-      - kafka.rest.resource.extension.class=io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension
-      - confluent.monitoring.interceptor.topic=_confluent-monitoring
+    server: []
 
   podTemplate:
     serviceAccountName: flink-operator
-    # TEMP sizing — see top-of-file comment.
     resources:
       requests:
-        cpu: "50m"
-        memory: 192Mi
-      limits:
         cpu: "100m"
-        memory: 384Mi
+        memory: 256Mi
+      limits:
+        cpu: "250m"
+        memory: 512Mi
     probe:
       liveness:
         initialDelaySeconds: 60
@@ -168,14 +130,8 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         failureThreshold: 3
-    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001)
-    # so OpenShift's restricted-v2 SCC assigns a namespace-range UID at
-    # admission. See kafka.yaml for the full rationale.
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
-    # podTemplate.labels lands on the Pod template inside the StatefulSet.
-    # injectLabels above only labels the StatefulSet; FCB Gatekeeper's
-    # [required-workload-labels] policy also inspects the Pod at admission,
-    # so the FCB common-metadata labels must be repeated here.
     labels:
       app.kubernetes.io/name: kafkarest
       app.kubernetes.io/instance: kafkarest

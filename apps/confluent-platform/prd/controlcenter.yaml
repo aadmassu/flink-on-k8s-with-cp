@@ -88,11 +88,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahPRD_groups
+          groupsClaimName: dahProd_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(PRD)
+          scope: 11547.DAH(Prod)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -114,11 +114,11 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahPRD_groups
+            groupsClaimName: dahProd_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(PRD)
+            scope: 11547.DAH(Prod)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -137,11 +137,11 @@ spec:
             configuration:
               audience: "Confluent,account,api://default"
               expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-              groupsClaimName: dahPRD_groups
+              groupsClaimName: dahProd_groups
               subClaimName: sub
               jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
               tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-              scope: 11547.DAH(PRD)
+              scope: 11547.DAH(Prod)
               loginConnectTimeoutMs: 10000
               loginReadTimeoutMs: 30000
               loginRetryBackoffMaxMs: 5000
@@ -163,11 +163,11 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahPRD_groups
+            groupsClaimName: dahProd_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(PRD)
+            scope: 11547.DAH(Prod)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -199,7 +199,7 @@ spec:
       - confluent.controlcenter.streams.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.controlcenter.streams.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.controlcenter.streams.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(PRD)
+      - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(Prod)
 
       # Explicit trustStore for C3's Armeria/Netty HTTP client to Okta -- JVM -Djavax.net.ssl.trustStore doesn't propagate to Netty SSL contexts (runbook A28).
       - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
@@ -215,7 +215,7 @@ spec:
       - confluent.monitoring.interceptor.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.monitoring.interceptor.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.monitoring.interceptor.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.monitoring.interceptor.sasl.oauthbearer.scope=11547.DAH(PRD)
+      - confluent.monitoring.interceptor.sasl.oauthbearer.scope=11547.DAH(Prod)
 
   podTemplate:
     serviceAccountName: flink-operator

@@ -3,12 +3,12 @@
 > 🛑 **PLACEHOLDER STATE — DO NOT DEPLOY WITHOUT FILLING IN THE VALUES BELOW.**
 > This tree was cloned from `../uat/` on 2026-07-08 with mechanical env-token
 > substitutions (namespace → dah-flink-prd, DNS → apps.pd, ESO → 11547-p-key-fp,
-> AZDO var prefix → prd-, OAuth scope → DAH(PRD), groups claim → dahPRD_groups).
+> AZDO var prefix → prd-, OAuth scope → DAH(Prod), groups claim → dahProd_groups).
 > The following values are best-guess / unverified and MUST be confirmed before
 > any pipeline run against the PRD cluster:
 >
-> - **OAuth scope `11547.DAH(PRD)`** — confirm against the PRD Okta app registration
-> - **Groups claim `dahPRD_groups`** — confirm against the PRD Okta app registration
+> - **OAuth scope `11547.DAH(Prod)`** — confirm against the PRD Okta app registration
+> - **Groups claim `dahProd_groups`** — confirm against the PRD Okta app registration
 > - **ESO SecretStore `11547-p-key-fp`** — confirm with Container Platforms; the PRD
 >   CyberArk safe follows the d/q/u pattern but the exact name is not in this repo yet
 > - **OpenShift API URL `api.pd.ocp.fcbint.net`** — confirm against ROSA; may be
@@ -138,7 +138,7 @@ If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, rai
 - Log retention 168h (7d), 1 GiB segments
 - Min ISR for transaction-state log = 2
 - KRaft quorum size = 3
-- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, scope `11547.DAH(PRD)`
+- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, scope `11547.DAH(Prod)`
 - Authorizer: `ConfluentServerAuthorizer` with `CONFLUENT,KRAFT_ACL` rule providers
 - Embedded MDS on broker port 8090 (HTTPS, BEARER)
 - Self-Balancing Cluster (SBC) enabled
