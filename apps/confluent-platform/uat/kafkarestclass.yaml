@@ -1,8 +1,10 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
-# Description: KafkaRestClass connection profile — uat (no pods).
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: KafkaRestClass connection profile. Tells the operator how
+#              to auth to the broker's embedded kafkaRest :8090 when
+#              applying rolebindings (runbook A22).
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -20,3 +22,20 @@ spec:
   kafkaClusterRef:
     name: kafka
     namespace: dah-flink-uat
+  kafkaRest:
+    authentication:
+      type: oauth
+      oauth:
+        secretRef: oauth-broker
+        configuration:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahUAT_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(UAT)
+          loginConnectTimeoutMs: 10000
+          loginReadTimeoutMs: 30000
+          loginRetryBackoffMaxMs: 5000
+          loginRetryBackoffMs: 60000

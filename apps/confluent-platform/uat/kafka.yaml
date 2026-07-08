@@ -1,8 +1,10 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-04-01 (created), 2026-06-29 (last-modified)
-# Description: CFK Kafka CR — uat (3-broker, KRaft mode).
+# Date:        2026-04-01 (created), 2026-07-01 (last-modified)
+# Description: CFK Kafka CR — Phase 2. OAUTHBEARER on all listeners
+#              against FCB Okta, MDS+OIDC SSO, RBAC via ConfluentRolebindings.
+#              Runbook A22/A23.
 ########################################################################
 
 apiVersion: platform.confluent.io/v1beta1
@@ -10,6 +12,8 @@ kind: Kafka
 metadata:
   name: kafka
   namespace: dah-flink-uat
+  annotations:
+    platform.confluent.io/force-reconcile: "2026-07-01-brokers-all-components-superusers-workaround"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -17,148 +21,263 @@ metadata:
     fcbint.net/app-id: "11547"
 spec:
   replicas: 3
+
   image:
     application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.1.2
-  # FCB Gatekeeper [required-workload-labels] checks the *StatefulSet*, not
-  # the CR. injectLabels is CFK's mechanism for pushing labels into every
-  # managed resource. Keep aligned with the FCB common-metadata standard.
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
+
+  # FCB Gatekeeper [required-workload-labels] inspects the StatefulSet.
   injectLabels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/instance: kafka
     app.kubernetes.io/component: kafka-broker
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  # SIZING follows dev's TEMP allocation until the dah-flink-uat namespace
-  # ResourceQuota is confirmed with Tom — bump to 1 TiB (matching VM
-  # broker disk; +3 TiB planned → 4 TiB) once the quota allows.
-  dataVolumeCapacity: 2Gi
+
+  dataVolumeCapacity: 15Gi
   storageClass:
-    name: ocs-storagecluster-ceph-rbd  # ODF/Ceph block — best write throughput for log dirs
+    name: kafka
 
-  # KRaft mode — points at the KRaftController CR (kraftcontroller.yaml)
-  dependencies:
-    kRaftController:
-      clusterRef:
-        name: kraftcontroller
-
-  # Listeners — mirror the VM listener model:
-  #   internal  (SASL_SSL, PLAIN)        — replaces VM BROKER:9091 inter-broker
-  #   external  (SASL_SSL, OAUTHBEARER)  — replaces VM INTERNAL:9092 (client OAuth)
-  #   custom    (SSL, mTLS)              — replaces VM CERTONLY:9094 (mTLS-only clients)
-  listeners:
-    internal:
-      authentication:
-        type: plain
-        jaasConfig:
-          secretRef: sasl-plain-internal
-      tls:
-        enabled: true
-    external:
-      # Kafka listener auth is the SERVER side — brokers accept SASL/OAUTHBEARER
-      # client connections. CRD wants OIDC config nested under oauthSettings.
-      # Flat fields (jwksEndpointUri, expectedIssuer, etc.) directly under
-      # authentication.* are silently dropped during CRD admission.
-      authentication:
-        type: oauth
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          scope: 11547.DAH(UAT)
-          subClaimName: sub
-          groupsClaimName: dahUAT_groups
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-      tls:
-        enabled: true
-      externalAccess:
-        type: loadBalancer
-        loadBalancer:
-          # TENTATIVE — confirm with Tom. Brokers will be advertised as
-          # b<N>.kafka.uat.dah.fcbint.net and the bootstrap as
-          # bootstrap.kafka.uat.dah.fcbint.net. Matching SANs are NOT yet in
-          # kafka-tls-certificate.yaml (Keyfactor approver-policy rejects
-          # *.dah.fcbint.net — allowed suffixes are *.svc, *.svc.cluster.local,
-          # *.ocp.fcbint.net). Re-add the SANs once a real LB hostname is
-          # allocated under *.ocp.fcbint.net.
-          domain: kafka.uat.dah.fcbint.net
-          brokerPrefix: b
-          bootstrapPrefix: bootstrap
-    custom:
-      - name: certonly
-        port: 9094
-        authentication:
-          type: mtls
-        tls:
-          enabled: true
-
-  tls:
-    secretRef: kafka-tls
   license:
     secretRef: cfk-license
 
-  # FCB org-wide trust bundle — see apps/confluent-platform/dev/kafka.yaml.
+  tls:
+    secretRef: kafka-tls
+
+  # JVM-wide outbound trust store — Okta certs chain through this bundle (runbook A21).
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
         configMap:
           name: fcb-trust-bundle
+          items:
+            - key: bundle.jks
+              path: bundle.jks
     volumeMounts:
       - name: fcb-trust-bundle
-        mountPath: /mnt/sslcerts/fcb-trust-bundle
+        mountPath: /var/ssl/truststore
         readOnly: true
 
-  # FCB Gatekeeper [pod-disruption-budget] constraint rejects PDBs with
-  # maxUnavailable=0. CFK auto-creates a PDB per workload; for this
-  # single-replica StatefulSet the default lands at 0, which the policy
-  # treats as "blocks drains forever". maxUnavailable=1 makes the
-  # auto-generated PDB drainable.
   pdb:
     enabled: true
     maxUnavailable: 1
 
-  # Embedded MDS (Metadata Service) — VM equivalent is the broker-hosted
-  # MDS on port 8090. In CFK, the correct path is spec.services.mds (the
-  # earlier `metadataServer:` block was NOT in the CRD schema and got
-  # silently dropped during admission, which is why SR / Connect / REST /
-  # C3 couldn't reach MDS at all in our first dev iteration).
-  services:
-    mds:
-      tokenKeyPair:
-        secretRef: mds-token-keypair
+  # superUsers: broker's own Okta client + all four component principals (SR, Connect, KafkaRest, C3) as a WORKAROUND while :8090/kafka/v3 discovery is broken and new rolebinding push fails (runbook A27). Revert to just the broker once discovery is fixed and rolebindings propagate reliably.
+  authorization:
+    type: rbac
+    superUsers:
+      - User:0oa1owhtq2olDZWwf358   # broker (oauth-broker)
+      - User:0oa1owiage2MyoHdt358   # Schema Registry
+      - User:0oa1owi0yntGMBvPS358   # Connect
+      - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
+      - User:0oa1ov6h5mwmQTCKI358   # Control Center
+
+  listeners:
+    internal:
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-broker
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahUAT_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(UAT)
+          loginConnectTimeoutMs: 10000
+          loginReadTimeoutMs: 30000
+          loginRetryBackoffMaxMs: 5000
+          loginRetryBackoffMs: 60000
       tls:
         enabled: true
+        secretRef: kafka-tls
+    external:
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-broker
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahUAT_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(UAT)
+          loginConnectTimeoutMs: 10000
+          loginReadTimeoutMs: 30000
+          loginRetryBackoffMaxMs: 5000
+          loginRetryBackoffMs: 60000
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+
+  # MDS: OAuth for API, OIDC for C3 browser SSO. oauth-mds-rest = server-side; oauth-mds-sso = browser login.
+  services:
+    mds:
       authentication:
         type: bearer
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+      tokenKeyPair:
+        secretRef: mds-token-keypair
       provider:
-        type: oauth
         oauth:
-          clientCredentials:
-            secretRef: oauth-mds-rest
+          # ignoreTrustStoreConfig routes Okta HTTPS validation through JVM defaults (runbook A22).
+          tls:
+            enabled: true
+            secretRef: kafka-tls
+            ignoreTrustStoreConfig: true
           configurations:
             audience: "Confluent,account,api://default"
-            authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
-            issuer: https://myapps.firstcitizens.com/oauth2/default
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            refreshToken: true
-            tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            subClaimName: sub
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
             groupsClaimName: dahUAT_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(UAT)
+            loginConnectTimeoutMs: 10000
+            loginReadTimeoutMs: 30000
+            loginRetryBackoffMaxMs: 5000
+            loginRetryBackoffMs: 60000
+        sso:
+          clientCredentials:
+            secretRef: oauth-mds-sso
+          configurations:
+            issuer: https://myapps.firstcitizens.com/oauth2/default
+            audience: "Confluent,account,api://default"
+            authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
+            tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            groupsClaimName: dahUAT_groups
+            subClaimName: email
+            groupsClaimScope: openid profile email
+            refreshToken: true
+      # Client IDs the operator may act on-behalf-of when reconciling rolebindings (runbook A23).
+      impersonation:
+        admins:
+          - User:0oa1owhtq2olDZWwf358   # broker / kafka-rest embedded
+          - User:0oa1owiage2MyoHdt358   # Schema Registry
+          - User:0oa1owi0yntGMBvPS358   # Connect
+          - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
+          - User:0oa1ov6h5mwmQTCKI358   # Control Center
 
-  # Carry-over Kafka server settings that don't have a structured CR field.
-  # Keep this list aligned with the broker .properties — drift here breaks
-  # cluster-link / VM client compatibility.
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller
+      controllerListener:
+        authentication:
+          type: oauth
+          jaasConfig:
+            secretRef: oauth-broker
+          oauthSettings:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahUAT_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(UAT)
+            loginConnectTimeoutMs: 10000
+            loginReadTimeoutMs: 30000
+            loginRetryBackoffMaxMs: 5000
+            loginRetryBackoffMs: 60000
+        tls:
+          enabled: true
+          secretRef: kafka-tls
+    # kafkaRest auth shape uses live-CRD flat form (type=oauth + jaasConfig + oauthSettings), NOT the vendored 3.1.x nested shape (runbook A22).
+    kafkaRest:
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-broker
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahUAT_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(UAT)
+          loginConnectTimeoutMs: 10000
+          loginReadTimeoutMs: 30000
+          loginRetryBackoffMaxMs: 5000
+          loginRetryBackoffMs: 60000
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+
+  # First-class metricReporter (Psyncopate pattern, not configOverrides).
+  metricReporter:
+    enabled: true
+    bootstrapEndpoint: kafka.dah-flink-uat.svc.cluster.local:9071
+    tls:
+      enabled: true
+      secretRef: kafka-tls
+    authentication:
+      type: oauth
+      jaasConfig:
+        secretRef: oauth-broker
+      oauthSettings:
+        audience: "Confluent,account,api://default"
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        groupsClaimName: dahUAT_groups
+        subClaimName: sub
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+        scope: 11547.DAH(UAT)
+        loginConnectTimeoutMs: 10000
+        loginReadTimeoutMs: 30000
+        loginRetryBackoffMaxMs: 5000
+        loginRetryBackoffMs: 60000
+
   configOverrides:
-    # JVM-default truststore → fcb-trust-bundle (see dev/kafka.yaml).
     jvm:
-      - "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=JKS"
     server:
-      - authorizer.class.name=io.confluent.kafka.security.authorizer.ConfluentServerAuthorizer
-      - confluent.authorizer.access.rule.providers=CONFLUENT,KRAFT_ACL
-      - super.users=User:admin
-      - inter.broker.listener.name=internal
+      # Inter-broker OAUTHBEARER uses MDS-signed tokens (not Okta) via publicKeyPath from mds-token-keypair Secret (runbook A23).
+      - listener.name.internal.oauthbearer.sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required unsecuredLoginStringClaim_sub="thePrincipalName" publicKeyPath="/mnt/secrets/mds-token/mdsPublicKey.pem";
+      - listener.name.external.oauthbearer.sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required unsecuredLoginStringClaim_sub="thePrincipalName" publicKeyPath="/mnt/secrets/mds-token/mdsPublicKey.pem";
+
+      # Broker-as-CLIENT defaults (inter-broker + license + MDS-side clients all speak OAUTHBEARER now).
+      - security.protocol=SASL_SSL
+      - sasl.mechanism=OAUTHBEARER
+      - sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - sasl.oauthbearer.scope=11547.DAH(UAT)
+
+      # License client (cp-server licensing to _confluent-command).
+      - confluent.license.security.protocol=SASL_SSL
+      - confluent.license.sasl.mechanism=OAUTHBEARER
+      - confluent.license.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - confluent.license.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - confluent.license.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - confluent.license.sasl.oauthbearer.scope=11547.DAH(UAT)
+
+      # Embedded kafkaRest at :8090.
+      - confluent.kafkarest.security.protocol=SASL_SSL
+      - confluent.kafkarest.sasl.mechanism=OAUTHBEARER
+      - confluent.kafkarest.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - confluent.kafkarest.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - confluent.kafkarest.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(UAT)
+
+      # ConfluentMetricsReporter client (spec.metricReporter block doesn't propagate all sub-keys into this prefix; runbook A26).
+      - confluent.metrics.reporter.security.protocol=SASL_SSL
+      - confluent.metrics.reporter.sasl.mechanism=OAUTHBEARER
+      - confluent.metrics.reporter.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - confluent.metrics.reporter.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - confluent.metrics.reporter.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - confluent.metrics.reporter.sasl.oauthbearer.scope=11547.DAH(UAT)
+
+      # Broker defaults.
       - log.retention.hours=168
       - log.segment.bytes=1073741824
       - log.retention.check.interval.ms=300000
@@ -173,52 +292,39 @@ spec:
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
       - confluent.cluster.link.metadata.topic.replication.factor=3
-      - confluent.metrics.reporter.topic.replicas=3
-      - confluent.security.event.logger.exporter.kafka.topic.replicas=3
-      - confluent.consumer.lag.emitter.enabled=true
-      - confluent.balancer.enable=true
-      - confluent.balancer.data.enabled=true
-      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
-      - metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter,io.confluent.metrics.reporter.ConfluentMetricsReporter
-      - confluent.telemetry.enabled=true
-      - confluent.reporters.telemetry.auto.enable=true
+      - confluent.balancer.enable=false
       - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
 
   podTemplate:
     serviceAccountName: flink-operator
-    # Same rationale as dev — sized to fit FCB's 16 vCPU / 32 GiB worker
-    # nodes alongside a co-located KRaft controller and system daemons.
-    # VM UAT was 16 vCPU / 16 GiB at low utilization — the numbers below
-    # give ~6x headroom over actual without exhausting a worker. If broker
-    # traffic grows in UAT, raise the limits first (heap auto-tunes to
-    # ~75% of memory limit).
     resources:
       requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
         cpu: "2"
         memory: 4Gi
-      limits:
-        cpu: "4"
-        memory: 8Gi
-    # Disable the operator-injected podSecurityContext (fsGroup/runAsUser=1001).
-    # OpenShift's restricted-v2 SCC then assigns a UID from this namespace's
-    # allocated range and adds GID 0 as a supplemental group. CP 8.1 images
-    # are built UID-agnostic with GID-0 group-write on runtime paths.
+    probe:
+      liveness:
+        initialDelaySeconds: 90
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
-    # podTemplate.labels lands on the Pod template inside the StatefulSet.
-    # FCB Gatekeeper's [required-workload-labels] policy ALSO inspects the
-    # Pod resource at admission, so the FCB common-metadata labels must be
-    # repeated here. cfk-role is the custom label used by the anti-affinity
-    # rule below.
+    # Gatekeeper [required-workload-labels] inspects the Pod, not just the STS.
     labels:
       app.kubernetes.io/name: kafka
       app.kubernetes.io/instance: kafka
       app.kubernetes.io/component: kafka-broker
       app.kubernetes.io/part-of: confluent-platform
-      fcbint.net/app-id: "11547"
       cfk-role: kafka-broker
-    # Spread brokers across nodes. Brokers and KRaft controllers carry
-    # different cfk-role values, so a node may host one broker + one
-    # controller — but no two brokers and no two controllers.
+      fcbint.net/app-id: "11547"
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:

@@ -1,11 +1,10 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-29 (last-modified)
+# Date:        2026-05-11 (created), 2026-06-10 (last-modified)
 # Description: Keyfactor Certificate for the Kafka REST Proxy Ingress
-#              edge — uat.
+#              edge. Distinct from kafkarest-tls (backend serving cert).
 ########################################################################
-
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -19,15 +18,15 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-UAT
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
     metadata.command-issuer.keyfactor.com/Description: "Confluent Kafka REST Proxy (Ingress edge cert)"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: kafkarest.apps.ut-p.ocp.fcbint.net
+  commonName: kafkarest.apps.ut.ocp.fcbint.net
   dnsNames:
-    - kafkarest.apps.ut-p.ocp.fcbint.net
+    - kafkarest.apps.ut.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:
