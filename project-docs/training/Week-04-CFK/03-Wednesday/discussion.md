@@ -1,7 +1,10 @@
-# Wednesday — CFK Listeners: Internal vs External
+# Wednesday — CFK Listeners: Internal vs External vs Custom
 
 **Time**: ~90 min
-**Diagram**: [`42-cfk-listeners.drawio`](42-cfk-listeners.drawio)
+
+![CFK Listeners — Internal vs External vs Custom: one broker JVM, three ports, three auth profiles](images/cfk-listeners.png)
+
+**Drawio source**: [`42-cfk-listeners.drawio`](42-cfk-listeners.drawio)
 
 ## Learning objective
 
