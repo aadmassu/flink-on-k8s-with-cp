@@ -27,6 +27,11 @@ parameters:
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: dev-openshift-credentials
+    # aep-rate-limit-job-dev holds kafka-sasl-jaas-config (OAuth clientId/
+    # clientSecret embedded in the JAAS string) used by the Kafka REST Proxy
+    # authz test step below. First run needs a one-time "authorize pipeline"
+    # approval on this group in ADO.
+    - group: aep-rate-limit-job-dev
   - ${{ if eq(parameters.environment, 'qa') }}:
     - group: qa-openshift-credentials
   - ${{ if eq(parameters.environment, 'stg') }}:
@@ -293,3 +298,104 @@ stages:
               SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
               REST_PROXY_HOSTS: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
               S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
+
+          # Kafka authz probe via REST Proxy (dev only). Debugging the
+          # aep-rate-limit-job TopicAuthorizationException: the job's OAuth
+          # token authenticates (sub=clientId, scp=[11547.DAH(Dev)] verified)
+          # but the broker denies topic metadata. This step reproduces the
+          # exact authz tuple outside Flink: it fetches a token on the AGENT
+          # (curl) using the same clientId/clientSecret/scope the job uses
+          # (parsed from kafka-sasl-jaas-config), then calls the REST Proxy
+          # v3 API from the busybox pod (in-namespace network position).
+          # Output answers three questions the platform team needs:
+          #   1. CLUSTER ID we actually connect to (compare with what they check)
+          #   2. which topics this principal can see (partial list = binding gap)
+          #   3. describe on the target topic (403 = denial reproduced,
+          #      404 = topic name mismatch)
+          - ${{ if eq(parameters.environment, 'dev') }}:
+            - task: Bash@3
+              displayName: "Kafka REST Proxy authz test (dev)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+
+                  TOPIC="cdc-dihdah-d-accountsnapshots.DAH.CoreBankingReporting.AccountSnapshot"
+                  SCOPE="11547.DAH(Dev)"
+
+                  # clientId/clientSecret are embedded in the JAAS string
+                  CLIENT_ID=$(echo "$JAAS" | sed -E 's/.*clientId="([^"]+)".*/\1/')
+                  CLIENT_SECRET=$(echo "$JAAS" | sed -E 's/.*clientSecret="([^"]+)".*/\1/')
+
+                  echo "=== Fetching OAuth token (clientId=$CLIENT_ID scope=$SCOPE) ==="
+                  TOKEN=$(curl -s -k -u "$CLIENT_ID:$CLIENT_SECRET" \
+                    -d "grant_type=client_credentials" \
+                    --data-urlencode "scope=$SCOPE" \
+                    https://myapps.firstcitizens.com/oauth2/default/v1/token \
+                    | sed -E 's/.*"access_token":"([^"]+)".*/\1/')
+                  if [ -z "${TOKEN:-}" ] || [ "${#TOKEN}" -lt 100 ]; then
+                    echo "FAIL: could not obtain OAuth token"; exit 1
+                  fi
+                  echo "Token obtained (${#TOKEN} chars). Decoded claims:"
+                  P=$(echo "$TOKEN" | cut -d '.' -f2 | tr '_-' '/+')
+                  case $(( ${#P} % 4 )) in 2) P="$P==";; 3) P="$P=";; esac
+                  echo "$P" | base64 -d 2>/dev/null || true; echo
+
+                  IFS=',' read -ra REST_HOSTS <<< "$REST_PROXY_HOSTS"
+                  RP="${REST_HOSTS[0]}"
+
+                  # Detect which scheme the proxy speaks (one-time), then reuse it
+                  echo ""
+                  echo "=== Detecting REST Proxy scheme on $RP:8082 ==="
+                  SCHEME=""
+                  if oc exec busybox -n "$OC_NS" -- wget -qO- \
+                       --header "Authorization: Bearer $TOKEN" \
+                       "http://$RP:8082/v3/clusters" >/tmp/clusters.json 2>/dev/null; then
+                    SCHEME="http"
+                  elif oc exec busybox -n "$OC_NS" -- wget -qO- --no-check-certificate \
+                       --header "Authorization: Bearer $TOKEN" \
+                       "https://$RP:8082/v3/clusters" >/tmp/clusters.json 2>/dev/null; then
+                    SCHEME="https"
+                  fi
+                  if [ -z "$SCHEME" ]; then
+                    echo "FAIL: REST Proxy answered on neither http nor https. Verbose attempts:"
+                    oc exec busybox -n "$OC_NS" -- wget -O- \
+                      --header "Authorization: Bearer $TOKEN" \
+                      "http://$RP:8082/v3/clusters" 2>&1 || true
+                    oc exec busybox -n "$OC_NS" -- wget -O- --no-check-certificate \
+                      --header "Authorization: Bearer $TOKEN" \
+                      "https://$RP:8082/v3/clusters" 2>&1 || true
+                    exit 1
+                  fi
+                  echo "REST Proxy scheme: $SCHEME"
+
+                  rp_get() {
+                    oc exec busybox -n "$OC_NS" -- wget -qO- --no-check-certificate \
+                      --header "Authorization: Bearer $TOKEN" \
+                      "$SCHEME://$RP:8082$1" 2>&1
+                  }
+
+                  echo ""
+                  echo "=== 1. Cluster ID ==="
+                  cat /tmp/clusters.json; echo
+                  CLUSTER_ID=$(sed -E 's/.*"cluster_id":"([^"]+)".*/\1/' /tmp/clusters.json)
+                  echo ""
+                  echo ">>> CLUSTER_ID: $CLUSTER_ID"
+
+                  echo ""
+                  echo "=== 2. Topics visible to this principal ==="
+                  rp_get "/v3/clusters/$CLUSTER_ID/topics" \
+                    | tr ',' '\n' | grep -o '"topic_name":"[^"]*"' \
+                    || { echo "(no topics returned -- raw response below)"; rp_get "/v3/clusters/$CLUSTER_ID/topics" || true; }
+
+                  echo ""
+                  echo "=== 3. Describe target topic: $TOPIC ==="
+                  rp_get "/v3/clusters/$CLUSTER_ID/topics/$TOPIC" \
+                    || echo "FAIL (403 = authz denial reproduced; 404 = topic name not found on this cluster)"
+
+                  echo ""
+                  echo "=== Kafka REST Proxy authz test complete ==="
+              env:
+                OC_NS: $(openshift-dev-namespace)
+                REST_PROXY_HOSTS: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
+                JAAS: $(kafka-sasl-jaas-config)
