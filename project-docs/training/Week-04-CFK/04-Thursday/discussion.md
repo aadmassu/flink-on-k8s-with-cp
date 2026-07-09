@@ -6,7 +6,36 @@
 
 > **How does trust get established between two machines on a network, and how does that trust show up in a CFK broker Pod?** By the end of this session you should be able to (1) walk any x509 cert chain and name each hop, (2) explain why a self-signed cert is fundamentally different from a CA-issued cert, (3) trace a TLS 1.2 handshake message by message and name what each message accomplishes, and (4) point at every artifact in a Kubernetes cluster that participates in issuing, storing, mounting, and consuming a broker's cert.
 
-The four topics are ordered deliberately: PKI is the foundation → self-signed is the "no-CA" edge case that clarifies what PKI adds → TLS handshake is where PKI actually gets used on the wire → cert-manager is how Kubernetes automates the whole thing, with the CFK broker as the concrete consumer.
+The four topics are ordered deliberately, preceded by a short **Cryptography Fundamentals** primer that names the three primitives (symmetric / asymmetric / hash) everything downstream is built from: PKI is the foundation → self-signed is the "no-CA" edge case that clarifies what PKI adds → TLS handshake is where PKI actually gets used on the wire → cert-manager is how Kubernetes automates the whole thing, with the CFK broker as the concrete consumer.
+
+---
+
+## Cryptography Fundamentals
+
+![Cryptography Fundamentals — the three primitives that TLS combines: symmetric encryption, asymmetric encryption, and hash functions](images/cryptography-fundamentals.png)
+
+### Engineers must know
+
+Everything downstream in this session (PKI, self-signed, handshake, cert-manager) builds on three cryptographic primitives. TLS does not invent new crypto — it choreographs these three in a specific order.
+
+- **Symmetric encryption** — ONE shared secret key handles both encrypt and decrypt. Fast, efficient, right for bulk data. Examples: AES-128 / AES-256, ChaCha20, 3DES (legacy). Weakness: how do the two sides agree on the key without either sending it in the clear? That's the problem asymmetric solves.
+- **Asymmetric encryption** — a KEY PAIR: public key encrypts (or verifies), private key decrypts (or signs). Slower than symmetric by orders of magnitude, which is why it's used only during setup, not for bulk traffic. Two distinct use cases:
+  1. **Confidentiality / key exchange** — encrypt data (or a proposed symmetric session key) with the *receiver's public* key; only the receiver's private key can decrypt.
+  2. **Digital signature** — sign data with the *sender's private* key; anyone with the sender's public key can verify (authenticates the sender AND proves the data wasn't modified).
+  - Examples: RSA (2048 / 3072 / 4096), ECDSA / ECDH (P-256, P-384, X25519).
+- **Hash functions** — one-way digest: any-size input → fixed-size output. Cannot recover input from the hash. A one-bit change in the input produces a completely different hash. Examples: SHA-256, SHA-384/512, SHA-3 family. Used for message integrity (HMAC), certificate fingerprints, and as the "content to sign" inside every digital signature (you sign the hash, not the full document).
+
+### How TLS combines them
+
+1. **Asymmetric** does the handshake: server proves its identity with a certificate (public-key signature verification), and both sides agree on a symmetric session key via ECDHE key exchange.
+2. **Symmetric** does the bulk data: once the session key is derived, all application-data records are encrypted with AES or ChaCha20 — orders of magnitude faster than doing it asymmetrically.
+3. **Hashes** guarantee integrity: HMAC (or AEAD tags in modern ciphers) on every record catches tampering; certificate fingerprints uniquely identify certs for pinning; digital signatures are always over a hash of the content, not the content itself.
+
+### Why the split matters
+
+If TLS used asymmetric for bulk data, every browser request would be tens-of-milliseconds of CPU per record — unusable. If TLS used symmetric alone, the two sides could never establish the initial key without a prior meeting. Combining them: asymmetric solves the "how do we agree on a symmetric key with a stranger" problem, then hands off to symmetric for the actual speed. Hashes bind everything together with integrity guarantees.
+
+**Key takeaway** (from the diagram): asymmetric solves the trust and key-distribution problem; symmetric gives us speed for bulk data; hash functions give us integrity. TLS combines all three to deliver a secure, efficient, and trustworthy connection — that's the machinery every subsequent topic in this session sits on top of.
 
 ---
 
