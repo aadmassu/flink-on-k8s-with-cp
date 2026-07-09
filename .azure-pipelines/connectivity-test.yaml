@@ -320,7 +320,7 @@ stages:
                 script: |
                   set -uo pipefail
 
-                  TOPIC="cdc-dihdah-d-accountsnapshots.DAH.CoreBankingReporting.AccountSnapshot"
+                  TOPIC="cdc-dihdah-d-accountsnapshot.DAH.CoreBankingReporting.AccountSnapshot"
                   SCOPE="11547.DAH(Dev)"
 
                   # clientId/clientSecret are embedded in the JAAS string
