@@ -66,11 +66,11 @@ spec:
   authorization:
     type: rbac
     superUsers:
-      - User:0oa1owhtq2olDZWwf358   # broker (oauth-broker)
-      - User:0oa1owiage2MyoHdt358   # Schema Registry
-      - User:0oa1owi0yntGMBvPS358   # Connect
-      - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
-      - User:0oa1ov6h5mwmQTCKI358   # Control Center
+      - User:0oa1owjyrmdJ4KqUt358   # broker (oauth-broker)
+      - User:0oa1owlvf2p9hiaSx358   # Schema Registry
+      - User:0oa1owkc382b6S6oj358   # Connect
+      - User:0oa1owlmto7c5zBWy358   # Kafka REST Proxy
+      - User:0oa1owk00kzjNnTxw358   # Control Center
 
   listeners:
     internal:
@@ -159,11 +159,11 @@ spec:
       # Client IDs the operator may act on-behalf-of when reconciling rolebindings (runbook A23).
       impersonation:
         admins:
-          - User:0oa1owhtq2olDZWwf358   # broker / kafka-rest embedded
-          - User:0oa1owiage2MyoHdt358   # Schema Registry
-          - User:0oa1owi0yntGMBvPS358   # Connect
-          - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
-          - User:0oa1ov6h5mwmQTCKI358   # Control Center
+          - User:0oa1owjyrmdJ4KqUt358   # broker / kafka-rest embedded
+          - User:0oa1owlvf2p9hiaSx358   # Schema Registry
+          - User:0oa1owkc382b6S6oj358   # Connect
+          - User:0oa1owlmto7c5zBWy358   # Kafka REST Proxy
+          - User:0oa1owk00kzjNnTxw358   # Control Center
 
   dependencies:
     kRaftController:

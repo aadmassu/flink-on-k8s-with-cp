@@ -38,7 +38,7 @@ Paste the resulting single-line string (~4400 chars for a 4096-bit RSA key) into
 
 Reusing the VM keypair keeps VM-issued MDS tokens valid in the CFK cluster during the cluster-link migration window — **do not generate a fresh keypair without coordination** as doing so invalidates every outstanding token.
 
-> **OAuth client decision**: today the variable group reuses the existing VM client IDs (e.g. `0oa1owiage2MyoHdt358` for the broker). When FCB Okta admins decide whether to keep reusing or to provision new CFK-specific clients, the only change needed is in the variable group — no manifest changes here.
+> **OAuth client decision**: today the variable group reuses the existing VM client IDs (e.g. `0oa1owlvf2p9hiaSx358` for the broker). When FCB Okta admins decide whether to keep reusing or to provision new CFK-specific clients, the only change needed is in the variable group — no manifest changes here.
 
 ## Run order
 
@@ -83,20 +83,20 @@ Source: broker `.properties` line `listener.name.broker.plain.sasl.jaas.config=�
 
 | Variable | Value | Source field in VM properties |
 |---|---|---|
-| `uat-oauth-broker-client-id` | `0oa1owiage2MyoHdt358` | broker `confluent.bearer.auth.client.id` |
+| `uat-oauth-broker-client-id` | `0oa1owlvf2p9hiaSx358` | broker `confluent.bearer.auth.client.id` |
 | `uat-oauth-broker-client-secret` | `r4xpfcAyxhI6xng4DeWgSQ9sPodj99O-17xZ5hIZ-BSD1B8ai41_B2T8rSffdXJs` | broker `confluent.bearer.auth.client.secret` |
-| `uat-oauth-schemaregistry-client-id` | `0oa1owiage2MyoHdt358` *(same client as broker)* | SR `confluent.metadata.oauthbearer.login.client.id` |
+| `uat-oauth-schemaregistry-client-id` | `0oa1owlvf2p9hiaSx358` *(same client as broker)* | SR `confluent.metadata.oauthbearer.login.client.id` |
 | `uat-oauth-schemaregistry-client-secret` | `r4xpfcAyxhI6xng4DeWgSQ9sPodj99O-17xZ5hIZ-BSD1B8ai41_B2T8rSffdXJs` *(same secret as broker)* | SR `confluent.metadata.oauthbearer.login.client.secret` |
-| `uat-oauth-connect-client-id` | `0oa1owi0yntGMBvPS358` | Connect `confluent.metadata.oauthbearer.login.client.id` |
+| `uat-oauth-connect-client-id` | `0oa1owkc382b6S6oj358` | Connect `confluent.metadata.oauthbearer.login.client.id` |
 | `uat-oauth-connect-client-secret` | `TGbBqg4XCIN6ktGkLmMQjZVeqc6ynXUBb-Pnv_8lScIQdKJZut40DPNAx2YNSgb6` | Connect `confluent.metadata.oauthbearer.login.client.secret` |
-| `uat-oauth-kafkarest-client-id` | `0oa1owi3wkxJS3b3b358` | REST Proxy `confluent.metadata.oauthbearer.login.client.id` |
+| `uat-oauth-kafkarest-client-id` | `0oa1owlmto7c5zBWy358` | REST Proxy `confluent.metadata.oauthbearer.login.client.id` |
 | `uat-oauth-kafkarest-client-secret` | `WL8iLzfjwROtpGgKAgpmiiRY9jWREQEDLdW8AGeDiD6mieJoOly0_V0ZrfmJuSDh` | REST Proxy `confluent.metadata.oauthbearer.login.client.secret` |
-| `uat-oauth-controlcenter-client-id` | `0oa1ov6h5mwmQTCKI358` | C3 `confluent.metadata.oauthbearer.login.client.id` |
+| `uat-oauth-controlcenter-client-id` | `0oa1owk00kzjNnTxw358` | C3 `confluent.metadata.oauthbearer.login.client.id` |
 | `uat-oauth-controlcenter-client-secret` | `Hsf0LrSnbs3rQMR_46bFXSIgwDRBZ_rj0c1ZO1VSAYsn9DuegbN3midCQBo36VRS` | C3 `confluent.metadata.oauthbearer.login.client.secret` |
-| `uat-oauth-mds-rest-client-id` | `0oa1owhtq2olDZWwf358` | broker `kafka.rest.confluent.metadata.oauthbearer.login.client.id` |
+| `uat-oauth-mds-rest-client-id` | `0oa1owjyrmdJ4KqUt358` | broker `kafka.rest.confluent.metadata.oauthbearer.login.client.id` |
 | `uat-oauth-mds-rest-client-secret` | `nZRMA8zFHIjlqbsnCLZyJWI5mzyMOU2gLGJ_FSiHFH9kmSf8stpBDcbXe0o2AwZb` | broker `kafka.rest.confluent.metadata.oauthbearer.login.client.secret` |
 
-> The VM reuses the **same Okta client** (`0oa1owiage2MyoHdt358`) for Broker and Schema Registry. CFK doesn't require them to be separate; carry the reuse over. If Okta admins want per-component identities later, only the variable group needs updating — no manifest changes.
+> The VM reuses the **same Okta client** (`0oa1owlvf2p9hiaSx358`) for Broker and Schema Registry. CFK doesn't require them to be separate; carry the reuse over. If Okta admins want per-component identities later, only the variable group needs updating — no manifest changes.
 
 A separate **OIDC client** (`0oa1o0ea1m26pITBQ358` / `rLioO_quXC_PJI1MOl-5B9r0GWveI8_QwchYxR-idD4S4rxH_X5BDbdaPsWrXEI3`) is used by the broker MDS for human SSO flow. Not referenced by any current CFK CR, so not added to the variable group today — keep in mind if the Confluent UI SSO is wired up later.
 

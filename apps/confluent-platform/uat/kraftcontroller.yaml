@@ -54,7 +54,7 @@ spec:
   authorization:
     type: rbac
     superUsers:
-      - User:0oa1owhtq2olDZWwf358
+      - User:0oa1owjyrmdJ4KqUt358
 
   tls:
     secretRef: kraftcontroller-tls
