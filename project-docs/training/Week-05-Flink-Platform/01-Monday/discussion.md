@@ -70,6 +70,8 @@ State lives in the operator's local memory backed by a **state backend** (RocksD
 
 ## Diagram Walkthrough (~30 min)
 
+![Flink job visual — a running job's operator DAG from source through transforms to sink, with state and checkpoint arrows](images/flink-job-visual.png)
+
 Trace a hypothetical job — Kafka topic `payments-raw` → Flink DAG (parse → keyBy user_id → 5-min window → count → emit) → Kafka topic `payments-per-user-5min`. At each step:
 
 - Who's running the code? (JobManager only? A TaskManager slot?)
