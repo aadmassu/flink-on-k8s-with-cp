@@ -60,13 +60,12 @@ kubectl wait --for=condition=Available deployment --all -n cert-manager --timeou
 See [`platform-chart/README.md`](platform-chart/README.md). In short:
 
 ```
-oc      apply -f platform-chart/templates/namespace.yaml
-kubectl apply -f platform-chart/templates/namespace.yaml
-
 cd platform-chart
-helm dependency update
-helm install lab-platform . -n flink-lab -f values.yaml
+helm dependency build .
+helm install lab-platform . -n flink-lab --create-namespace -f values.yaml
 ```
+
+**First-boot note**: the Flink operator Pod can take ~5 minutes to pass its startup probe (it runs with a tight 256Mi memory request in this lab's values.yaml — enough, but slow to initialize). Watch `kubectl get pods -n flink-lab -w` and wait for both operator Pods to show `Running` / `Ready` before moving on to step 4. CFK image pulls (500 MB+) can also stretch the first boot to 10+ minutes on cold caches.
 
 ### 4. Deploy the light Kafka cluster + topic + producer
 

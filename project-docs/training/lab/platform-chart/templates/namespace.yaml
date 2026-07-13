@@ -4,3 +4,9 @@ metadata:
   name: flink-lab
   labels:
     app.kubernetes.io/part-of: flink-training-lab
+    # Managed-by is set by Helm automatically when this template renders.
+    # Kept here explicit so kubectl-apply-first also produces a Helm-adoptable ns.
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name | quote }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace | quote }}

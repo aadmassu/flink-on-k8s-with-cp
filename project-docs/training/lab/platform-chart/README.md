@@ -11,20 +11,22 @@ Umbrella Helm chart that pulls in the three upstream operator/component charts a
 ## Install
 
 ```
-# 1. Create the namespace first (helm dep needs it to exist for validation)
-oc      apply -f templates/namespace.yaml
-kubectl apply -f templates/namespace.yaml
+# 1. Pull the dependency charts into ./charts/
+#    Use `helm dependency build` (not `update`) once a Chart.lock is present —
+#    it's stricter and reproducible against the versions pinned in Chart.yaml.
+helm dependency build .
 
-# 2. Pull the dependency charts into ./charts/
-helm dependency update .
+# 2. Install. --create-namespace lets Helm own the namespace; the
+#    templates/namespace.yaml is templated with Helm's ownership annotations so
+#    it's adoption-safe if the namespace happens to exist already.
+helm install lab-platform . -n flink-lab --create-namespace -f values.yaml
 
-# 3. Install
-helm install lab-platform . -n flink-lab -f values.yaml
-
-# 4. Verify
+# 3. Verify
 oc      get pods -n flink-lab
 kubectl get pods -n flink-lab
 ```
+
+**Slow first boot**: expect ~5 minutes before both operator Pods are Ready. The Flink operator's startup probe is generous (30 × 10 s) because JVM init is slow on the 256 Mi memory request in this lab's `values.yaml`. If you have memory to spare, bump `flink-operator.operatorPod.resources.requests.memory` to 512Mi for a noticeably faster boot.
 
 You should see, within ~3 minutes:
 

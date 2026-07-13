@@ -1,5 +1,9 @@
-# Lab-scale values for the umbrella chart. Every knob here favors laptop-friendliness
-# over production sizing. Do not use these numbers for real deployments.
+# Lab-scale values for the umbrella chart. Every knob favors laptop-friendliness
+# over production sizing. Do NOT reuse these numbers for real deployments.
+#
+# Value keys below are verified against the upstream chart schemas at the
+# versions pinned in Chart.yaml. If you bump a dependency version and its
+# schema changes, this file needs a corresponding update.
 
 # ------------------------------------------------------------------------------
 # CFK operator (Confluent for Kubernetes)
@@ -7,10 +11,17 @@
 cfk:
   enabled: true
 
-  # Watch only the lab namespace to keep the operator's memory footprint small.
+  # Namespaced watch keeps the operator light — reconciles only flink-lab.
   namespaced: true
   namespaceList:
     - flink-lab
+
+  # Leave licenseKey empty for evaluation mode. Provide a real key
+  # (or set license.secretRef) for anything beyond a laptop lab.
+  licenseKey: ""
+
+  # KRaft is used by cluster/kafka.yaml (no ZooKeeper).
+  kRaftEnabled: true
 
   resources:
     limits:
@@ -23,7 +34,7 @@ cfk:
 # ------------------------------------------------------------------------------
 # Flink Kubernetes operator
 # ------------------------------------------------------------------------------
-flinkOperator:
+flink-operator:
   enabled: true
 
   # Watch only the lab namespace.
@@ -39,25 +50,32 @@ flinkOperator:
         cpu: 100m
         memory: 256Mi
 
-  # Skip the operator's default webhook to reduce Pod count and cert plumbing.
-  webhook:
-    create: false
+  # Webhook adds a cert-manager Certificate + admission webhook. The lab
+  # already has cert-manager, so this can be true; we leave it default.
 
 # ------------------------------------------------------------------------------
 # CMF (Confluent Manager for Flink)
+#
+# Disabled by default — CMF requires a Confluent license Secret and asks for
+# ~2 CPU / 2 GiB memory, which is heavier than Week 5 Mon+Tue exercises need.
+# Enable this and set cmf.license.secretRef when you're ready to walk Week 5
+# Thursday (Enterprise Components).
 # ------------------------------------------------------------------------------
 cmf:
-  enabled: true
+  enabled: false
 
   image:
-    repository: confluentinc/confluent-manager-for-apache-flink
-    tag: "2.3.0"
+    repository: confluentinc
+    name: cp-cmf
+    tag: "2.4.0"
 
-  # Embedded H2 (in-memory) — statements + catalog are lost on restart.
-  # For persistence, switch to postgres and enable persistence.enabled.
-  persistence:
-    enabled: false
+  # Set to the name of a K8s Secret in flink-lab containing key 'license.txt'
+  # with the raw license blob. Required at CMF startup.
+  license:
+    secretRef: ""
 
+  # Lab-scale requests. CMF's default is 2 CPU / 2 GiB; keep this at 1 / 1
+  # for a laptop kind cluster.
   resources:
     limits:
       cpu: 1
@@ -66,10 +84,12 @@ cmf:
       cpu: 200m
       memory: 512Mi
 
-  # No auth for the lab. In production this fronts Okta OIDC.
-  auth:
-    enabled: false
+  # Persistence — CMF stores statements + catalog metadata. persistence.create
+  # provisions a PVC of dataVolumeCapacity.
+  persistence:
+    create: true
+    dataVolumeCapacity: 5Gi
 
-  service:
-    type: ClusterIP
-    port: 8080
+  # Watch the lab namespace only.
+  watchNamespaces:
+    - flink-lab

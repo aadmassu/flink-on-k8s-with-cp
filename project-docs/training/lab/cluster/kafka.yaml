@@ -16,12 +16,13 @@ spec:
   configOverrides:
     server:
       - auto.create.topics.enable=false
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      memory: 1Gi
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
@@ -46,9 +47,10 @@ spec:
       - transaction.state.log.min.isr=1
       - min.insync.replicas=1
       - auto.create.topics.enable=false
-  resources:
-    requests:
-      cpu: 500m
-      memory: 1Gi
-    limits:
-      memory: 2Gi
+  podTemplate:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        memory: 2Gi
