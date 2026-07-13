@@ -1,0 +1,54 @@
+# Minimal KRaft-mode Kafka cluster for the training lab.
+# 1 KRaft controller Pod + 1 broker Pod. No ZK, no SR, no C3.
+# Not HA; not for production.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: flink-lab
+spec:
+  replicas: 1
+  image:
+    application: confluentinc/cp-server:7.7.0
+    init: confluentinc/confluent-init-container:2.9.0
+  dataVolumeCapacity: 5Gi
+  configOverrides:
+    server:
+      - auto.create.topics.enable=false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: flink-lab
+spec:
+  replicas: 1
+  image:
+    application: confluentinc/cp-server:7.7.0
+    init: confluentinc/confluent-init-container:2.9.0
+  dataVolumeCapacity: 10Gi
+  dependencies:
+    kRaftController:
+      clusterRef:
+        name: kraftcontroller
+  configOverrides:
+    server:
+      # Lab-only: shrink replication so a 1-broker cluster boots healthy.
+      - offsets.topic.replication.factor=1
+      - transaction.state.log.replication.factor=1
+      - transaction.state.log.min.isr=1
+      - min.insync.replicas=1
+      - auto.create.topics.enable=false
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 2Gi

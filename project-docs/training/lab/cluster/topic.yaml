@@ -1,0 +1,25 @@
+# Source + sink topics for the Flink job.
+# 3 partitions demonstrates parallelism > 1; replication-factor 1 because the lab
+# has only 1 broker.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: events-in
+  namespace: flink-lab
+spec:
+  partitionCount: 3
+  replicas: 1
+  kafkaClusterRef:
+    name: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: counts-out
+  namespace: flink-lab
+spec:
+  partitionCount: 3
+  replicas: 1
+  kafkaClusterRef:
+    name: kafka

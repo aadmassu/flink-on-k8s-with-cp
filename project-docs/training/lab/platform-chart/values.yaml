@@ -1,0 +1,75 @@
+# Lab-scale values for the umbrella chart. Every knob here favors laptop-friendliness
+# over production sizing. Do not use these numbers for real deployments.
+
+# ------------------------------------------------------------------------------
+# CFK operator (Confluent for Kubernetes)
+# ------------------------------------------------------------------------------
+cfk:
+  enabled: true
+
+  # Watch only the lab namespace to keep the operator's memory footprint small.
+  namespaced: true
+  namespaceList:
+    - flink-lab
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# ------------------------------------------------------------------------------
+# Flink Kubernetes operator
+# ------------------------------------------------------------------------------
+flinkOperator:
+  enabled: true
+
+  # Watch only the lab namespace.
+  watchNamespaces:
+    - flink-lab
+
+  operatorPod:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+  # Skip the operator's default webhook to reduce Pod count and cert plumbing.
+  webhook:
+    create: false
+
+# ------------------------------------------------------------------------------
+# CMF (Confluent Manager for Flink)
+# ------------------------------------------------------------------------------
+cmf:
+  enabled: true
+
+  image:
+    repository: confluentinc/confluent-manager-for-apache-flink
+    tag: "2.3.0"
+
+  # Embedded H2 (in-memory) — statements + catalog are lost on restart.
+  # For persistence, switch to postgres and enable persistence.enabled.
+  persistence:
+    enabled: false
+
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+
+  # No auth for the lab. In production this fronts Okta OIDC.
+  auth:
+    enabled: false
+
+  service:
+    type: ClusterIP
+    port: 8080

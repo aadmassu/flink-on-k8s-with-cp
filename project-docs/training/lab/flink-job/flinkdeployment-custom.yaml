@@ -1,0 +1,66 @@
+# Custom Flink job — event-counter reads events-in, keys by user, counts per
+# user, writes counts-out.
+#
+# Assumes:
+#   1. The custom JAR is built from ./src (mvn package) and served by jar-server
+#      (kubectl apply -f jar-server.yaml).
+#   2. Kafka is up in flink-lab.
+#   3. Topics events-in and counts-out exist.
+#
+# Concept coverage:
+#   Week 5 Mon — DAG (source, keyBy, aggregate, sink), slots, parallelism.
+#   Week 5 Tue — CR spec.job / spec.flinkConfiguration / spec.podTemplate → the
+#                operator translates every field into concrete K8s resources.
+
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: event-counter
+  namespace: flink-lab
+  labels:
+    app: event-counter
+spec:
+  image: flink:1.18
+  flinkVersion: v1_18
+  serviceAccount: flink
+
+  flinkConfiguration:
+    # 2 slots per TM * 2 TMs = 4 slots. Job runs at parallelism 3 (one task per
+    # events-in partition), leaving 1 slot free — you can see this in the UI.
+    taskmanager.numberOfTaskSlots: "2"
+    # RocksDB checkpoints to MinIO (if minio is installed; otherwise remove
+    # this block and the job runs without durable state).
+    state.checkpoints.dir: "s3://flink-checkpoints/event-counter/"
+    state.backend: rocksdb
+    execution.checkpointing.interval: "30 s"
+    s3.endpoint: "http://minio.flink-lab.svc:9000"
+    s3.access-key: "minio"
+    s3.secret-key: "minio123"
+    s3.path.style.access: "true"
+
+  jobManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  taskManager:
+    replicas: 2
+    resource:
+      memory: "1536m"
+      cpu: 0.5
+
+  job:
+    # The jar-server (see jar-server.yaml) serves this URL at
+    # http://jar-server.flink-lab.svc/event-counter.jar. Build the JAR with
+    # `mvn package` in ./src/, then rebuild the jar-server Deployment so it
+    # picks up the new JAR.
+    jarURI: http://jar-server.flink-lab.svc/event-counter.jar
+    entryClass: dev.lab.EventCounter
+    args:
+      - "--kafka.bootstrap"
+      - "kafka.flink-lab.svc.cluster.local:9092"
+      - "--source.topic"
+      - "events-in"
+      - "--sink.topic"
+      - "counts-out"
+    parallelism: 3
+    upgradeMode: stateless

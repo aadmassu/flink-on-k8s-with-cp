@@ -1,0 +1,28 @@
+apiVersion: v2
+name: flink-lab-platform
+description: Umbrella chart for the Flink training lab — installs the CFK operator, the Flink Kubernetes operator, and CMF into a single laptop-friendly namespace.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+# Upstream chart dependencies. Versions pinned to what was current at authoring time;
+# bump when the training material is revised. `helm dependency update` will pull them
+# into ./charts/.
+dependencies:
+  - name: confluent-for-kubernetes
+    version: "0.1145.0"
+    repository: "https://packages.confluent.io/helm"
+    alias: cfk
+    condition: cfk.enabled
+
+  - name: flink-kubernetes-operator
+    version: "1.10.0"
+    repository: "https://downloads.apache.org/flink/flink-kubernetes-operator-1.10.0/"
+    alias: flinkOperator
+    condition: flinkOperator.enabled
+
+  - name: confluent-manager-for-apache-flink
+    version: "2.3.0"
+    repository: "https://packages.confluent.io/helm"
+    alias: cmf
+    condition: cmf.enabled
