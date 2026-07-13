@@ -8,6 +8,72 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ---
 
+## Prerequisite Setup
+
+Baseline cluster from [Week 5 Monday's lab](../01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). For today, add CMF SQL Gateway on top so the "enterprise components" story is visible end-to-end.
+
+### Install CMF (SQL Gateway + Catalog)
+
+```
+helm repo add confluentinc https://packages.confluent.io/helm
+helm repo update
+
+helm install cmf confluentinc/confluent-manager-for-apache-flink \
+  --namespace bootcamp \
+  --set image.tag=2.3.0 \
+  --set persistence.enabled=false
+```
+
+Wait until the CMF Pod is `Ready`.
+
+### Point one job at MinIO for checkpoints
+
+Save as `stateful-flinkdeployment.yaml`:
+
+```yaml
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: stateful-demo
+  namespace: bootcamp
+spec:
+  image: flink:1.18
+  flinkVersion: v1_18
+  serviceAccount: flink
+  flinkConfiguration:
+    state.checkpoints.dir: "s3://flink-checkpoints/stateful-demo/"
+    state.backend: rocksdb
+    execution.checkpointing.interval: "10 s"
+    s3.endpoint: "http://minio.bootcamp.svc:9000"
+    s3.access-key: "minio"
+    s3.secret-key: "minio123"
+    s3.path.style.access: "true"
+  jobManager:
+    resource: {memory: "1024m", cpu: 0.5}
+  taskManager:
+    resource: {memory: "1024m", cpu: 0.5}
+  job:
+    jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+    parallelism: 2
+    upgradeMode: last-state
+```
+
+```
+oc      apply -f stateful-flinkdeployment.yaml
+kubectl apply -f stateful-flinkdeployment.yaml
+```
+
+Verify checkpoints landing in MinIO:
+
+```
+oc      exec -n bootcamp deploy/minio -- ls /export/flink-checkpoints/
+kubectl exec -n bootcamp deploy/minio -- ls /export/flink-checkpoints/
+```
+
+You should see checkpoint chunk directories appearing every ~10 s.
+
+---
+
 ## Lab 1 — Enumerate dependencies for one job
 
 **Goal**: for a specific FlinkDeployment CR, produce a full "external dependencies" list.

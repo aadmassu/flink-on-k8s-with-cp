@@ -8,6 +8,25 @@ Every `oc` command below is paired with its `kubectl` equivalent (training conve
 
 ---
 
+## Prerequisite Setup
+
+The baseline `kind` + CFK + Flink Operator + MinIO cluster from [Week 5 Monday's lab](../01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline) is the sandbox for today. If it's still running, keep it. If you tore it down, re-run steps 1–6 there and reapply the `wordcount` FlinkDeployment.
+
+Today's exercises need the operator running and one FlinkDeployment CR to trace. No extra deploys required.
+
+Quick health check:
+
+```
+oc      get pods -n flink-operator
+kubectl get pods -n flink-operator
+oc      get flinkdeployment -n bootcamp
+kubectl get flinkdeployment -n bootcamp
+```
+
+You should see 1 `flink-kubernetes-operator-*` Pod and the `wordcount` FlinkDeployment in `RUNNING`.
+
+---
+
 ## Lab 1 — Read a FlinkDeployment CR line-by-line
 
 **Goal**: understand every top-level `spec.*` field on a real FCB FlinkDeployment.

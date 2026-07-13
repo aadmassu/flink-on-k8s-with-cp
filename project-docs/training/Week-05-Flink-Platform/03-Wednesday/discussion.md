@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![Flink runtime — slots per TaskManager, operator parallelism, task chaining inside a single slot](images/flink-runtime.png)
+
 ## Learning objective
 
 > **What's inside a running Flink JVM, and how does one job's work get spread across TaskManagers?** By the end of the session you should be able to draw the JobManager + TaskManager relationship, explain slots vs parallelism vs task chains, and reason about resource allocation from the operator DAG.

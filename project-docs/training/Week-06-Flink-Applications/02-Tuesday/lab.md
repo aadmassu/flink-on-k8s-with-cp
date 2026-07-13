@@ -8,6 +8,40 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ---
 
+## Prerequisite Setup
+
+Baseline cluster from [Week 5 Monday's lab](../../Week-05-Flink-Platform/01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). Today runs the *same* logic once as streaming and once as batch. Two Flink jobs against the same input.
+
+### Streaming source — the `events-in` topic from Monday
+
+If Monday's `events-in` topic is still populated, reuse it. Otherwise re-run the load-gen from [Week 6 Monday's lab](../01-Monday/lab.md#prerequisite-setup).
+
+### Batch source — a bounded file input
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: batch-input, namespace: bootcamp}
+data:
+  events.csv: |
+    user-0,click,1
+    user-1,click,2
+    user-0,view,3
+    user-2,click,4
+    user-1,view,5
+```
+
+Mount it into the batch FlinkDeployment via `spec.podTemplate.spec.volumes`. In batch mode, the job reads the file, emits the counts, and exits — the CR transitions `RUNNING → FINISHED` on its own (unlike streaming, which runs forever).
+
+### Two FlinkDeployment CRs — same JAR, different `mode`
+
+Streaming CR: `spec.mode: native` (default), source = Kafka topic, sink = Kafka topic.
+Batch CR: `spec.flinkConfiguration.execution.runtime-mode: BATCH`, source = mounted CSV, sink = stdout / another CSV.
+
+Same operator DAG on both — the runtime picks bounded vs unbounded from the config.
+
+---
+
 ## Lab 1 — Streaming job over a Kafka topic
 
 **Goal**: process events as they arrive, emit per-minute counts.

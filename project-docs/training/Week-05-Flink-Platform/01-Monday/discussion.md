@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![Apache Flink architecture — client, JobManager, TaskManagers, sources, sinks, state backend, checkpoint storage](images/flink-architecture.png)
+
 ## Learning objective
 
 > **Why does Flink exist, what does "stateful streaming" mean, and how does one Flink *job* actually live on the platform from submission to running JVM?** By the end of the session you should be able to name every top-level piece of a running Flink job and describe the lifecycle of that job — the platform pieces come Tuesday–Thursday; today is the mental model.

@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![Flink State Management — keyed vs operator state, RocksDB vs HashMap backend, checkpoint snapshot to S3](images/flink-state-management.png)
+
 ## Learning objective
 
 > **Where does Flink's per-operator state actually live, in what shape, and how does it survive a Pod restart?** Without this, Thursday's checkpoint/savepoint story doesn't make sense. State is the single most important concept in Week 6.

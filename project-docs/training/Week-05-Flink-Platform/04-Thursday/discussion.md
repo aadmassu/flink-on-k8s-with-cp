@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![Flink Enterprise Components — CMF SQL Gateway, Catalog, S3 state store, Artifactory JAR repo, cert-manager PKI, OAuth/MDS auth](images/flink-enterprise-components.png)
+
 ## Learning objective
 
 > **Everything the Flink runtime relies on that's NOT in the FlinkDeployment CR — where does it live, why is it there, and what breaks when it's gone?** By the end you should be able to draw the "everything outside the JM/TM box" picture and name the failure that surfaces when each piece is unreachable.

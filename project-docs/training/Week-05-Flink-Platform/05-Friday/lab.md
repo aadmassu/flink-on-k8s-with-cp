@@ -8,6 +8,72 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ---
 
+## Prerequisite Setup
+
+Baseline cluster from [Week 5 Monday's lab](../01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). Today simulates a real Artifactory-backed deploy — deploy a JAR-hosting file server so the FlinkDeployment CR fetches the JAR over HTTP instead of using the baked-in image path.
+
+### Deploy a stand-in "Artifactory" — nginx serving a JAR
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jar-repo
+  namespace: bootcamp
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: jar-repo}}
+  template:
+    metadata: {labels: {app: jar-repo}}
+    spec:
+      initContainers:
+      - name: seed-jar
+        image: flink:1.18
+        command: ["sh","-c","cp /opt/flink/examples/streaming/WordCount.jar /www/wordcount.jar"]
+        volumeMounts: [{name: www, mountPath: /www}]
+      containers:
+      - name: nginx
+        image: nginx:1.25-alpine
+        volumeMounts: [{name: www, mountPath: /usr/share/nginx/html}]
+      volumes: [{name: www, emptyDir: {}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: jar-repo, namespace: bootcamp}
+spec:
+  selector: {app: jar-repo}
+  ports: [{port: 80, targetPort: 80}]
+```
+
+```
+oc      apply -f jar-repo.yaml
+kubectl apply -f jar-repo.yaml
+```
+
+### Deploy a Flink job that fetches the JAR over HTTP
+
+```yaml
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: e2e-demo
+  namespace: bootcamp
+spec:
+  image: flink:1.18
+  flinkVersion: v1_18
+  serviceAccount: flink
+  jobManager: {resource: {memory: "1024m", cpu: 0.5}}
+  taskManager: {resource: {memory: "1024m", cpu: 0.5}}
+  job:
+    jarURI: http://jar-repo.bootcamp.svc/wordcount.jar
+    parallelism: 2
+    upgradeMode: stateless
+```
+
+Now you can trace the full deploy: `apply` → operator reconciles → JAR downloaded from `jar-repo` → JM starts → TMs claim slots → RUNNING. Time each transition.
+
+---
+
 ## Lab 1 — Deploy one job end-to-end, timed
 
 **Goal**: pick a small Flink job (WordCount-style, or a simple filter), take it from JAR-in-Artifactory to running-in-cluster, and time each step.

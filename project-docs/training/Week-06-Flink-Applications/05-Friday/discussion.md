@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![One Flink job, every layer — 6-week capstone view from Kubernetes up through the running job's operators](images/capstone.png)
+
 ## Learning objective
 
 > **What does an on-call engineer actually do with a running Flink job — upgrade, scale, debug, restore?** By the end of the session you should have a mental checklist for each production operation, and you should be able to walk one job's traffic through EVERY layer this bootcamp covered — Kubernetes, networking, Kafka, TLS, cert-manager, CFK, Flink platform, Flink application.

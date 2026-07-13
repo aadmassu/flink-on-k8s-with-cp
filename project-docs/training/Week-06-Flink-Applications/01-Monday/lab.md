@@ -8,6 +8,54 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ---
 
+## Prerequisite Setup
+
+Baseline cluster from [Week 5 Monday's lab](../../Week-05-Flink-Platform/01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). For today, create Kafka topics + a producer so a DataStream job can read live records and you can watch watermarks advance.
+
+### Create source + sink topics
+
+```
+oc      exec -n bootcamp kafka-0 -- kafka-topics --bootstrap-server kafka:9092 \
+  --create --topic events-in --partitions 3 --replication-factor 1
+oc      exec -n bootcamp kafka-0 -- kafka-topics --bootstrap-server kafka:9092 \
+  --create --topic counts-out --partitions 3 --replication-factor 1
+
+kubectl exec -n bootcamp kafka-0 -- kafka-topics --bootstrap-server kafka:9092 \
+  --create --topic events-in --partitions 3 --replication-factor 1
+kubectl exec -n bootcamp kafka-0 -- kafka-topics --bootstrap-server kafka:9092 \
+  --create --topic counts-out --partitions 3 --replication-factor 1
+```
+
+### Deploy a load generator (one event per second per user)
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata: {name: load-gen, namespace: bootcamp}
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: producer
+        image: confluentinc/cp-kafkacat:latest
+        command: ["sh","-c"]
+        args: ["for i in $(seq 1 3600); do echo \"user-$((RANDOM % 5))|click|$(date +%s)\" | kafkacat -b kafka:9092 -t events-in -P; sleep 1; done"]
+```
+
+```
+oc      apply -f load-gen.yaml
+kubectl apply -f load-gen.yaml
+```
+
+### Deploy a Flink DataStream job reading from `events-in`
+
+Use the Flink SQL job example JAR (bundled in `flink:1.18`) or write a small `.jar` mapping `events-in` → keyed count → `counts-out`. Point `jarURI` at your JAR host.
+
+Now the Flink UI's watermark reading in Lab 1 has live data flowing.
+
+---
+
 ## Lab 1 — Read a real DataStream job's operators
 
 **Goal**: for a running FCB Flink job, identify every operator in the Flink UI and match it back to source-code intent.

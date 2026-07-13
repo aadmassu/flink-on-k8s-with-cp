@@ -8,6 +8,48 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ---
 
+## Prerequisite Setup
+
+Baseline cluster from [Week 5 Monday's lab](../01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). For today, deploy a job with `parallelism: 4` and `numberOfTaskSlots: 2` so slot arithmetic is visible.
+
+Save as `slots-demo-flinkdeployment.yaml`:
+
+```yaml
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: slots-demo
+  namespace: bootcamp
+spec:
+  image: flink:1.18
+  flinkVersion: v1_18
+  serviceAccount: flink
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+  jobManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  taskManager:
+    replicas: 2
+    resource:
+      memory: "1536m"
+      cpu: 0.5
+  job:
+    jarURI: local:///opt/flink/examples/streaming/WindowJoin.jar
+    parallelism: 4
+    upgradeMode: stateless
+```
+
+```
+oc      apply -f slots-demo-flinkdeployment.yaml
+kubectl apply -f slots-demo-flinkdeployment.yaml
+```
+
+Expect: 2 TaskManager Pods × 2 slots = 4 slots total, exactly matching parallelism 4. If you drop `taskManager.replicas` to 1, the job stays `CREATED` waiting for slots — that's the demo.
+
+---
+
 ## Lab 1 — Slot arithmetic on a real job
 
 **Goal**: predict the slot count from the CR + operator DAG, then verify against the Flink UI.

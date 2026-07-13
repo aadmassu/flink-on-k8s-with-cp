@@ -2,9 +2,127 @@
 
 **Time**: ~3 hours
 
-Two exercises: one to build the mental model on a canonical open-source example, one to read a real FCB Flink job in the cluster.
+Two exercises: one to build the mental model on a canonical open-source example, one to read a real Flink job in the cluster.
 
 Every `oc` command below is paired with its `kubectl` equivalent (training convention). Use whichever is on your laptop.
+
+---
+
+## Prerequisite Setup — Minimal CFK + Flink cluster (Week 5+6 baseline)
+
+This baseline is the sandbox for every lab in Weeks 5 and 6. Set it up once on Monday; the remaining days add small deploys on top.
+
+**Requirements** — Docker, `kind` v0.20+, `kubectl` v1.28+ (or `oc` v4.12+), `helm` v3.12+.
+
+### 1. Create a kind cluster (1 control-plane, 2 workers)
+
+```
+kind create cluster --name flink-bootcamp --config - <<EOF
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+EOF
+```
+
+### 2. Install cert-manager (both operators depend on it)
+
+```
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+kubectl wait --for=condition=Available deployment --all -n cert-manager --timeout=180s
+```
+
+### 3. Install CFK operator + a minimal Kafka cluster
+
+```
+helm repo add confluentinc https://packages.confluent.io/helm
+helm repo update
+
+kubectl create namespace confluent
+helm install confluent-operator confluentinc/confluent-for-kubernetes -n confluent
+
+kubectl create namespace bootcamp
+kubectl apply -n bootcamp -f https://raw.githubusercontent.com/confluentinc/confluent-kubernetes-examples/master/quickstart-deploy/confluent-platform.yaml
+```
+
+Wait until all Confluent Pods in `bootcamp` are Ready (~5 min).
+
+### 4. Install Flink Kubernetes Operator
+
+```
+helm repo add flink-operator-repo https://downloads.apache.org/flink/flink-kubernetes-operator-1.10.0/
+helm repo update
+
+kubectl create namespace flink-operator
+helm install flink-kubernetes-operator flink-operator-repo/flink-kubernetes-operator \
+  --namespace flink-operator \
+  --set watchNamespaces="{bootcamp}"
+```
+
+### 5. Install MinIO (S3-compatible checkpoint store)
+
+```
+helm repo add minio https://charts.min.io/
+helm repo update
+
+helm install minio minio/minio \
+  --namespace bootcamp \
+  --set resources.requests.memory=512Mi \
+  --set persistence.size=10Gi \
+  --set rootUser=minio,rootPassword=minio123 \
+  --set buckets[0].name=flink-checkpoints,buckets[0].policy=none
+```
+
+### 6. Verify
+
+```
+kubectl get pods -n confluent
+kubectl get pods -n flink-operator
+kubectl get pods -n bootcamp
+```
+
+Every Pod should be `Running` and `Ready`.
+
+### For today's lab — deploy one canonical Flink example
+
+Save as `wordcount-flinkdeployment.yaml` and apply:
+
+```yaml
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: wordcount
+  namespace: bootcamp
+spec:
+  image: flink:1.18
+  flinkVersion: v1_18
+  serviceAccount: flink
+  jobManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  taskManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  job:
+    jarURI: local:///opt/flink/examples/streaming/WordCount.jar
+    parallelism: 2
+    upgradeMode: stateless
+```
+
+```
+kubectl apply -f wordcount-flinkdeployment.yaml
+kubectl get flinkdeployment -n bootcamp
+```
+
+### Tear-down (end of Week 6)
+
+```
+kind delete cluster --name flink-bootcamp
+```
 
 ---
 

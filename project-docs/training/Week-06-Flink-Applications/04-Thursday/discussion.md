@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![Flink Fault Tolerance — checkpoint barriers, exactly-once via Kafka transactions, restart strategies, savepoint upgrades](images/flink-fault-tolerance.png)
+
 ## Learning objective
 
 > **Given Wednesday's state model, how does Flink recover from any failure without losing data or double-processing?** By the end of the session you should be able to explain checkpoints vs savepoints, exactly-once vs at-least-once, and pick the right restart strategy per workload.

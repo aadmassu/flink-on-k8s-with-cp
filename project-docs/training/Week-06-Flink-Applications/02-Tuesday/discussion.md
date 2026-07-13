@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![Flink Job Types — streaming, batch, bounded/unbounded, topic-linked multi-job pipelines](images/flink-job-types.png)
+
 ## Learning objective
 
 > **Flink treats batch as bounded streaming. What does that mean at the API level, and what shape of workload should be streaming vs batch vs a hybrid pipeline?** By the end of the session you should be able to pick the right job type for a given business problem and know the operational tradeoffs of each.

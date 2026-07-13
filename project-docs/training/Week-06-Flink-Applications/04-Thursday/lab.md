@@ -8,6 +8,54 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ---
 
+## Prerequisite Setup
+
+Baseline cluster from [Week 5 Monday's lab](../../Week-05-Flink-Platform/01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline) + the `state-demo` job from [Week 6 Wednesday](../03-Wednesday/lab.md#prerequisite-setup). Today deliberately breaks things — configure a job with a fixed-delay restart strategy so failure/recovery is predictable.
+
+### Deploy a fault-drill Flink job with explicit restart strategy
+
+```yaml
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata: {name: fault-drill, namespace: bootcamp}
+spec:
+  image: flink:1.18
+  flinkVersion: v1_18
+  serviceAccount: flink
+  flinkConfiguration:
+    state.checkpoints.dir: "s3://flink-checkpoints/fault-drill/"
+    state.backend: rocksdb
+    execution.checkpointing.interval: "10 s"
+    execution.checkpointing.mode: EXACTLY_ONCE
+    restart-strategy: "fixed-delay"
+    restart-strategy.fixed-delay.attempts: "3"
+    restart-strategy.fixed-delay.delay: "10 s"
+    s3.endpoint: "http://minio.bootcamp.svc:9000"
+    s3.access-key: "minio"
+    s3.secret-key: "minio123"
+    s3.path.style.access: "true"
+  jobManager: {resource: {memory: "1024m", cpu: 0.5}}
+  taskManager:
+    replicas: 2
+    resource: {memory: "1536m", cpu: 0.5}
+  job:
+    jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+    parallelism: 4
+    upgradeMode: savepoint
+    savepointTriggerNonce: 0
+```
+
+### Prepare the failure inputs
+
+Two ways to trigger failure for the labs below:
+
+1. **TM Pod deletion** — `kubectl delete pod fault-drill-taskmanager-...` (Lab 2)
+2. **Checkpoint decline** — temporarily point `s3.endpoint` at a bad address, reapply, watch checkpoints fail (Lab 1)
+
+Keep the Flink UI open — you'll trace the `RUNNING → RESTARTING → RUNNING` transitions in real time.
+
+---
+
 ## Lab 1 — Force a checkpoint failure (safe)
 
 **Goal**: see what happens in the Flink UI + JM logs when a checkpoint declines.

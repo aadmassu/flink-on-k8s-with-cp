@@ -8,6 +8,50 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ---
 
+## Prerequisite Setup
+
+Baseline cluster from [Week 5 Monday's lab](../../Week-05-Flink-Platform/01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). Today's upgrade drill needs a job on `flink:1.18` that we'll savepoint and re-launch on `flink:1.18.1` (a patch bump proxy for a real image swap).
+
+### Ensure `fault-drill` (or `state-demo`) is running
+
+Reuse the Thursday `fault-drill` job. If it's gone:
+
+```
+oc      apply -f fault-drill-flinkdeployment.yaml
+kubectl apply -f fault-drill-flinkdeployment.yaml
+```
+
+### Trigger the savepoint upgrade
+
+Edit the CR — change `spec.image: flink:1.18` → `flink:1.18.1` and bump `spec.job.savepointTriggerNonce` (e.g., `1`). Apply:
+
+```
+oc      apply -f fault-drill-flinkdeployment.yaml
+kubectl apply -f fault-drill-flinkdeployment.yaml
+```
+
+The Flink Kubernetes Operator will:
+1. Trigger a savepoint via the JM REST API
+2. Wait for the savepoint to land in `s3://flink-checkpoints/fault-drill/savepoints/`
+3. Stop the job
+4. Redeploy JM+TMs with the new image
+5. Start the job from the savepoint
+
+Watch the CR status:
+
+```
+oc      get flinkdeployment fault-drill -n bootcamp -w
+kubectl get flinkdeployment fault-drill -n bootcamp -w
+```
+
+You should see `jobStatus.state` cycle `RUNNING → RECONCILING → SUSPENDED → RUNNING`, with `savepointInfo.lastSavepoint.path` updated.
+
+### Roll-back path (if the new image misbehaves)
+
+Change `spec.image` back to `flink:1.18` and bump `savepointTriggerNonce` again. The saved savepoint from the forward upgrade is the rollback point — same file, other direction.
+
+---
+
 ## Lab 1 — Real upgrade in dev
 
 **Goal**: perform a savepoint upgrade on a running Flink job, verify continuity.

@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![Flink End-to-End Deployment — developer laptop → Git → CI → Artifactory → CFK/Flink operator → running JobManager JVM](images/flink-end-to-end-deployment.png)
+
 ## Learning objective
 
 > **Trace one job from developer laptop to a running JobManager JVM, naming every system involved.** This is the capstone for Week 5 — it ties Monday's architecture, Tuesday's operator, Wednesday's runtime, and Thursday's enterprise components into one continuous story. If you can walk this trace in both directions, you understand the Flink Platform.

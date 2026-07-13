@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![Flink Kubernetes Operator — reconciles FlinkDeployment CR into JobManager Deployment, TaskManager Pods, Services, ConfigMaps, HA lease](images/flink-operator.png)
+
 ## Learning objective
 
 > **What does the Flink Kubernetes Operator actually do when you `oc apply` a FlinkDeployment CR?** By the end of the session you should be able to name every Kubernetes resource the operator creates on your behalf, describe the reconciliation loop, and explain HA + upgrades. This mirrors the CFK operator lesson from Week 4 Tuesday — same pattern, different workload.

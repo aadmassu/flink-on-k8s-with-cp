@@ -2,6 +2,8 @@
 
 **Time**: ~90 min
 
+![DataStream API — source, map, keyBy, window, aggregate, sink with watermarks flowing through the DAG](images/datastream-api.png)
+
 ## Learning objective
 
 > **Once the platform is running (Week 5), how do we actually write a Flink application?** By the end of the session you should be able to read a DataStream API job and name every operator, understand watermarks, and pick the right window type for a given latency/completeness requirement.
