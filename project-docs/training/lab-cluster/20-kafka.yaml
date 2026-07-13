@@ -38,8 +38,11 @@ spec:
           topologyKey: kubernetes.io/hostname
     resources:
       requests:
-        cpu: 100m
-        memory: 512Mi
-      limits:
         cpu: 500m
-        memory: 768Mi
+        memory: 1Gi
+      limits:
+        cpu: "2"
+        memory: 2Gi
+  pdp:
+    enabled: true
+    maxUnavailable: 1
