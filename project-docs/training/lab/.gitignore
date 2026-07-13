@@ -1,4 +1,6 @@
 # Local build + helm-dep artifacts — regenerated per user, not committed.
 flink-job/src/target/
+flink-job/src/dependency-reduced-pom.xml
+flink-job/src/event-counter.jar
 platform-chart/charts/
 platform-chart/Chart.lock

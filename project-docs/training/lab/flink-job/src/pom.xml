@@ -13,8 +13,12 @@
   <description>Per-user event counter that reads events-in and writes counts-out. Demonstrates keyed state, Kafka source/sink, and DataStream API basics.</description>
 
   <properties>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
+    <!-- Target Java 11 because flink:1.18 (and the operator's shipped runtime)
+         is built on Java 11. Compiling against 17 produces class-file version
+         61.0 which the JobManager rejects at load time with
+         UnsupportedClassVersionError. -->
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <flink.version>1.18.1</flink.version>
     <kafka.connector.version>3.1.0-1.18</kafka.connector.version>
@@ -37,6 +41,13 @@
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-connector-kafka</artifactId>
       <version>${kafka.connector.version}</version>
+    </dependency>
+    <!-- DeliveryGuarantee enum lives here; flink-connector-kafka references it
+         but doesn't pull it transitively for compile scope. -->
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-connector-base</artifactId>
+      <version>${flink.version}</version>
     </dependency>
   </dependencies>
 

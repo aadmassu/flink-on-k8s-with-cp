@@ -95,11 +95,20 @@ See [`flink-job/README.md`](flink-job/README.md). Two variants:
 
 - **Custom EventCounter variant** (reads `events-in`, does keyed counting, writes `counts-out`):
   ```
+  # 1. Build the JAR
   cd flink-job/src && mvn package
-  # deploy the built JAR via jar-server, then apply the CR
-  oc      apply -f flink-job/jar-server.yaml -n flink-lab
+
+  # 2. Bake it into a Flink image + load into kind
+  cp target/event-counter.jar .
+  docker build -t event-counter:local .
+  kind load docker-image event-counter:local --name flink-lab
+
+  # 3. Apply the CR (references image: event-counter:local + local:// jarURI)
+  cd ..
   oc      apply -f flink-job/flinkdeployment-custom.yaml -n flink-lab
+  kubectl apply -f flink-job/flinkdeployment-custom.yaml -n flink-lab
   ```
+  See [`flink-job/README.md`](flink-job/README.md) for the "why baked-in image, not HTTP" background — Flink application mode only accepts `local://` jarURIs.
 
 ### 6. Observe
 

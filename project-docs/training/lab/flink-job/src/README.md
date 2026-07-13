@@ -1,63 +1,75 @@
 # src — Custom Flink job source
 
-Minimal Maven project for the `event-counter` job — a per-user running count that keys `events-in` by user ID and writes `userId=count` records to `counts-out`.
+Maven project for the `event-counter` job — a per-user running count that keys `events-in` by user ID and writes `userId=count` records to `counts-out`.
 
-## Build
+## Build → image → cluster
+
+Flink's application mode (what `FlinkDeployment.spec.job` uses) only supports `local://` JAR URIs — the JAR must be baked into the container image. So the flow is: `mvn package` → build a Flink image with the JAR inside → `kind load` the image into the cluster.
+
+### 1. Build the JAR
 
 ```
 cd src/
 mvn package
+# produces target/event-counter.jar (~20 MB shaded)
 ```
 
-The shaded JAR lands at `target/event-counter.jar`.
-
-## Deploy to the lab
+### 2. Build the Docker image
 
 ```
-# Load the fresh JAR into a ConfigMap the jar-server serves
-kubectl create configmap event-counter-jar \
-  --from-file=event-counter.jar=target/event-counter.jar \
-  -n flink-lab --dry-run=client -o yaml | kubectl apply -f -
+cp target/event-counter.jar .
+docker build -t event-counter:local .
+```
 
-# Roll the jar-server so it picks up the new JAR
-kubectl rollout restart deployment/jar-server -n flink-lab
+The `Dockerfile` is a two-line derivative of `flink:1.18` that copies the JAR to `/opt/flink/usrlib/event-counter.jar` — the standard usrlib location Flink searches for application-mode JARs.
 
-# Apply the FlinkDeployment CR (references http://jar-server.flink-lab.svc/event-counter.jar)
+### 3. Load the image into kind (or minikube)
+
+```
+kind load docker-image event-counter:local --name flink-lab
+```
+
+For minikube: `minikube image load event-counter:local`. For a real cluster: push to a registry the cluster can pull from and update the CR's `image:` accordingly.
+
+### 4. Apply the FlinkDeployment CR
+
+```
+oc      apply -f ../flinkdeployment-custom.yaml
 kubectl apply -f ../flinkdeployment-custom.yaml
 ```
 
-For `oc`:
+The CR sets `imagePullPolicy: Never` so kubelet uses the kind-loaded image rather than trying to pull from a registry.
 
-```
-oc create configmap event-counter-jar \
-  --from-file=event-counter.jar=target/event-counter.jar \
-  -n flink-lab --dry-run=client -o yaml | oc apply -f -
-oc rollout restart deployment/jar-server -n flink-lab
-oc apply -f ../flinkdeployment-custom.yaml
-```
-
-## Verify the job
+## Verify
 
 ```
 kubectl get flinkdeployment event-counter -n flink-lab
-# spec.job.state should progress CREATED -> RECONCILING -> RUNNING
+# JOB STATUS should progress: CREATED -> RECONCILING -> RUNNING (STABLE)
+
+kubectl get pods -n flink-lab -l app=event-counter
+# Expect: 1 JobManager Pod + 2 TaskManager Pods
 
 kubectl exec -n flink-lab kafka-0 -- kafka-console-consumer \
   --bootstrap-server localhost:9092 --topic counts-out --max-messages 20
-# expect lines like: user-3=1, user-3=2, user-7=1, user-3=3, ...
+# expect: user-3=1, user-7=1, user-3=2, user-3=3, user-1=1, ...
 ```
 
 ## Code layout
 
 ```
 src/
-├── pom.xml
-├── README.md   (this file)
+├── pom.xml                 (Java 11 target -- flink:1.18 runs Java 11)
+├── Dockerfile              (bakes event-counter.jar into flink:1.18)
+├── README.md               (this file)
 └── src/main/java/dev/lab/
     └── EventCounter.java
 ```
 
-## What the code demonstrates (mapping to bootcamp weeks)
+## Why Java 11 (not 17)
+
+The `flink:1.18` image ships Java 11. Compiling against Java 17 produces class-file version 61.0, which the JobManager's classloader rejects with `UnsupportedClassVersionError` at startup. `pom.xml` pins `maven.compiler.source/target` to 11 to prevent this.
+
+## What the code demonstrates (bootcamp week mapping)
 
 | Concept | Where in EventCounter.java | Week / Day |
 |---|---|---|
@@ -69,8 +81,23 @@ src/
 
 ## Extending
 
-For further exercises the trainee can layer on:
+Layered exercises for later bootcamp weeks:
 
-- Swap `AT_LEAST_ONCE` for `EXACTLY_ONCE` and re-observe the sink latency (Week 6 Thu)
+- Swap `AT_LEAST_ONCE` for `EXACTLY_ONCE` and re-observe sink latency (Week 6 Thu)
 - Add a 1-minute tumbling window between `keyBy` and the counter (Week 6 Mon)
 - Add state TTL to `PerKeyCounter` and observe cleanup (Week 6 Wed)
+- Install MinIO into `flink-lab` and enable durable RocksDB checkpoints (see the commented-out `flinkConfiguration` block in `flinkdeployment-custom.yaml`)
+
+## Iteration tips
+
+Rebuilding the JAR after a source change requires:
+
+```
+mvn package && cp target/event-counter.jar . && \
+  docker build -t event-counter:local . && \
+  kind load docker-image event-counter:local --name flink-lab && \
+  kubectl delete flinkdeployment event-counter -n flink-lab && \
+  kubectl apply -f ../flinkdeployment-custom.yaml
+```
+
+The `delete + apply` forces the operator to pull the updated image (since the tag is stable at `:local`, without the delete kubelet would keep the cached layer).
