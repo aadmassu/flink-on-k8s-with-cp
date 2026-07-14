@@ -10,23 +10,33 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ## Prerequisite Setup
 
-Baseline cluster from [Week 5 Monday's lab](../01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). For today, add CMF SQL Gateway on top so the "enterprise components" story is visible end-to-end.
+Shared sandbox from [`project-docs/training/lab-flink/`](../../lab-flink/). For today, layer on CMF + MinIO so the "enterprise components" story is visible end-to-end.
 
-### Install CMF (SQL Gateway + Catalog)
+### Enable CMF in the umbrella chart
+
+Edit `lab-flink/platform-chart/values.yaml` → set `cmf.enabled: true` and provide a valid `cmf.license.secretRef` (CMF requires a Confluent license Secret in `flink-lab`). Then upgrade:
 
 ```
-helm repo add confluentinc https://packages.confluent.io/helm
+cd ../../lab-flink/platform-chart
+helm upgrade lab-platform . -n flink-lab -f values.yaml
+```
+
+Wait until the `lab-platform-cmf-*` Pod is Ready.
+
+### Install MinIO for the S3 checkpoint store
+
+```
+helm repo add minio https://charts.min.io/
 helm repo update
-
-helm install cmf confluentinc/confluent-manager-for-apache-flink \
-  --namespace bootcamp \
-  --set image.tag=2.3.0 \
-  --set persistence.enabled=false
+helm install minio minio/minio \
+  --namespace flink-lab \
+  --set resources.requests.memory=512Mi \
+  --set persistence.size=10Gi \
+  --set rootUser=minio,rootPassword=minio123 \
+  --set buckets[0].name=flink-checkpoints,buckets[0].policy=none
 ```
 
-Wait until the CMF Pod is `Ready`.
-
-### Point one job at MinIO for checkpoints
+### Point a Flink job at MinIO for checkpoints
 
 Save as `stateful-flinkdeployment.yaml`:
 
@@ -35,7 +45,7 @@ apiVersion: flink.apache.org/v1beta1
 kind: FlinkDeployment
 metadata:
   name: stateful-demo
-  namespace: bootcamp
+  namespace: flink-lab
 spec:
   image: flink:1.18
   flinkVersion: v1_18
@@ -44,7 +54,7 @@ spec:
     state.checkpoints.dir: "s3://flink-checkpoints/stateful-demo/"
     state.backend: rocksdb
     execution.checkpointing.interval: "10 s"
-    s3.endpoint: "http://minio.bootcamp.svc:9000"
+    s3.endpoint: "http://minio.flink-lab.svc:9000"
     s3.access-key: "minio"
     s3.secret-key: "minio123"
     s3.path.style.access: "true"
@@ -66,8 +76,8 @@ kubectl apply -f stateful-flinkdeployment.yaml
 Verify checkpoints landing in MinIO:
 
 ```
-oc      exec -n bootcamp deploy/minio -- ls /export/flink-checkpoints/
-kubectl exec -n bootcamp deploy/minio -- ls /export/flink-checkpoints/
+oc      exec -n flink-lab deploy/minio -- ls /export/flink-checkpoints/
+kubectl exec -n flink-lab deploy/minio -- ls /export/flink-checkpoints/
 ```
 
 You should see checkpoint chunk directories appearing every ~10 s.

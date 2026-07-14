@@ -10,67 +10,46 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ## Prerequisite Setup
 
-Baseline cluster from [Week 5 Monday's lab](../01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). Today simulates a real Artifactory-backed deploy — deploy a JAR-hosting file server so the FlinkDeployment CR fetches the JAR over HTTP instead of using the baked-in image path.
+Shared sandbox from [`project-docs/training/lab-flink/`](../../lab-flink/). Today walks the FULL end-to-end deploy path — source change → JAR build → container image build → cluster load → CR apply → running job. This is exactly what `lab-flink/flink-job/` walks; today you'll time each stage.
 
-### Deploy a stand-in "Artifactory" — nginx serving a JAR
+### Confirm you have the custom-job build tools
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: jar-repo
-  namespace: bootcamp
-spec:
-  replicas: 1
-  selector: {matchLabels: {app: jar-repo}}
-  template:
-    metadata: {labels: {app: jar-repo}}
-    spec:
-      initContainers:
-      - name: seed-jar
-        image: flink:1.18
-        command: ["sh","-c","cp /opt/flink/examples/streaming/WordCount.jar /www/wordcount.jar"]
-        volumeMounts: [{name: www, mountPath: /www}]
-      containers:
-      - name: nginx
-        image: nginx:1.25-alpine
-        volumeMounts: [{name: www, mountPath: /usr/share/nginx/html}]
-      volumes: [{name: www, emptyDir: {}}]
----
-apiVersion: v1
-kind: Service
-metadata: {name: jar-repo, namespace: bootcamp}
-spec:
-  selector: {app: jar-repo}
-  ports: [{port: 80, targetPort: 80}]
-```
+Required on your laptop: Docker, Maven (`mvn`), JDK 11, `kind` (or `minikube` if that's your local K8s).
+
+Sanity check:
 
 ```
-oc      apply -f jar-repo.yaml
-kubectl apply -f jar-repo.yaml
+mvn --version
+docker version
+kind get clusters   # expect: flink-lab
 ```
 
-### Deploy a Flink job that fetches the JAR over HTTP
+### Walk the E2E deploy of the event-counter custom job
 
-```yaml
-apiVersion: flink.apache.org/v1beta1
-kind: FlinkDeployment
-metadata:
-  name: e2e-demo
-  namespace: bootcamp
-spec:
-  image: flink:1.18
-  flinkVersion: v1_18
-  serviceAccount: flink
-  jobManager: {resource: {memory: "1024m", cpu: 0.5}}
-  taskManager: {resource: {memory: "1024m", cpu: 0.5}}
-  job:
-    jarURI: http://jar-repo.bootcamp.svc/wordcount.jar
-    parallelism: 2
-    upgradeMode: stateless
+Follow [`lab-flink/flink-job/README.md`](../../lab-flink/flink-job/README.md) → "Variant 2 — Custom event-counter":
+
+```
+cd ../../lab-flink/flink-job/src
+
+# Stage 1 — JAR build (T0 → T1)
+mvn package
+
+# Stage 2 — image build (T1 → T2)
+cp target/event-counter.jar .
+docker build -t event-counter:local .
+
+# Stage 3 — cluster load (T2 → T3)
+kind load docker-image event-counter:local --name flink-lab
+
+# Stage 4 — CR apply (T3 → T4)
+cd ..
+oc      apply -f flinkdeployment-custom.yaml -n flink-lab
+kubectl apply -f flinkdeployment-custom.yaml -n flink-lab
 ```
 
-Now you can trace the full deploy: `apply` → operator reconciles → JAR downloaded from `jar-repo` → JM starts → TMs claim slots → RUNNING. Time each transition.
+Record the wall-clock delta at each `T*` — the Lab section below uses those numbers.
+
+Application-mode Flink only accepts `local://` jarURIs — the JAR must be baked INTO the image, not fetched at runtime. The lab-flink Dockerfile is a 2-line derivative of `flink:1.18` that copies the JAR to `/opt/flink/usrlib/`.
 
 ---
 

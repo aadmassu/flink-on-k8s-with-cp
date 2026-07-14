@@ -10,20 +10,20 @@ Every `oc` command below is paired with its `kubectl` equivalent (training conve
 
 ## Prerequisite Setup
 
-The baseline `kind` + CFK + Flink Operator + MinIO cluster from [Week 5 Monday's lab](../01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline) is the sandbox for today. If it's still running, keep it. If you tore it down, re-run steps 1–6 there and reapply the `wordcount` FlinkDeployment.
+Shared sandbox from [`project-docs/training/lab-flink/`](../../lab-flink/) with the `example-statemachine` FlinkDeployment from Monday still running. If you tore anything down, re-run Monday's Prerequisite Setup section — same lab-flink assets.
 
-Today's exercises need the operator running and one FlinkDeployment CR to trace. No extra deploys required.
+Today's exercises trace one already-running CR, no extra deploys.
 
 Quick health check:
 
 ```
-oc      get pods -n flink-operator
-kubectl get pods -n flink-operator
-oc      get flinkdeployment -n bootcamp
-kubectl get flinkdeployment -n bootcamp
+oc      get pods -n flink-lab
+oc      get flinkdeployment -n flink-lab
+kubectl get pods -n flink-lab
+kubectl get flinkdeployment -n flink-lab
 ```
 
-You should see 1 `flink-kubernetes-operator-*` Pod and the `wordcount` FlinkDeployment in `RUNNING`.
+You should see the `flink-operator-*` Pod running and the `example-statemachine` FlinkDeployment with `JOB STATUS: RUNNING`.
 
 ---
 

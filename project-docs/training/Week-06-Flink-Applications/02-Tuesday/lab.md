@@ -10,18 +10,18 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ## Prerequisite Setup
 
-Baseline cluster from [Week 5 Monday's lab](../../Week-05-Flink-Platform/01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). Today runs the *same* logic once as streaming and once as batch. Two Flink jobs against the same input.
+Shared sandbox from [`project-docs/training/lab-flink/`](../../lab-flink/). Today runs the *same* logic once as streaming and once as batch.
 
-### Streaming source — the `events-in` topic from Monday
+### Streaming source — `events-in` (already running)
 
-If Monday's `events-in` topic is still populated, reuse it. Otherwise re-run the load-gen from [Week 6 Monday's lab](../01-Monday/lab.md#prerequisite-setup).
+The lab-flink event-generator streams into `events-in` continuously — that's your streaming source. The `event-counter` FlinkDeployment from [Monday](../01-Monday/lab.md) is the streaming job.
 
-### Batch source — a bounded file input
+### Batch source — a bounded ConfigMap-mounted CSV
 
 ```yaml
 apiVersion: v1
 kind: ConfigMap
-metadata: {name: batch-input, namespace: bootcamp}
+metadata: {name: batch-input, namespace: flink-lab}
 data:
   events.csv: |
     user-0,click,1
@@ -31,14 +31,19 @@ data:
     user-1,view,5
 ```
 
-Mount it into the batch FlinkDeployment via `spec.podTemplate.spec.volumes`. In batch mode, the job reads the file, emits the counts, and exits — the CR transitions `RUNNING → FINISHED` on its own (unlike streaming, which runs forever).
+```
+oc      apply -f batch-input-configmap.yaml
+kubectl apply -f batch-input-configmap.yaml
+```
 
-### Two FlinkDeployment CRs — same JAR, different `mode`
+Mount into a batch FlinkDeployment via `spec.podTemplate.spec.volumes`. In batch mode the job reads the file, emits the counts, and exits — the CR transitions `RUNNING → FINISHED` on its own.
 
-Streaming CR: `spec.mode: native` (default), source = Kafka topic, sink = Kafka topic.
-Batch CR: `spec.flinkConfiguration.execution.runtime-mode: BATCH`, source = mounted CSV, sink = stdout / another CSV.
+### Two FlinkDeployment CRs — same JAR, different runtime mode
 
-Same operator DAG on both — the runtime picks bounded vs unbounded from the config.
+- **Streaming CR** (already the default): `spec.mode: native`, source = Kafka topic, sink = Kafka topic.
+- **Batch CR**: add `spec.flinkConfiguration."execution.runtime-mode": "BATCH"`, swap source to the mounted CSV, sink to stdout / another topic.
+
+Same operator DAG in both — the runtime picks bounded vs unbounded from the config.
 
 ---
 

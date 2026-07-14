@@ -10,14 +10,16 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ## Prerequisite Setup
 
-Baseline cluster from [Week 5 Monday's lab](../../Week-05-Flink-Platform/01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline) + the `state-demo` job from [Week 6 Wednesday](../03-Wednesday/lab.md#prerequisite-setup). Today deliberately breaks things — configure a job with a fixed-delay restart strategy so failure/recovery is predictable.
+Shared sandbox from [`project-docs/training/lab-flink/`](../../lab-flink/) + MinIO from [Wednesday](../03-Wednesday/lab.md#prerequisite-setup). Today deliberately breaks things — configure a job with a fixed-delay restart strategy so failure/recovery is predictable.
 
-### Deploy a fault-drill Flink job with explicit restart strategy
+### Deploy the fault-drill Flink job
+
+Save as `fault-drill-flinkdeployment.yaml`:
 
 ```yaml
 apiVersion: flink.apache.org/v1beta1
 kind: FlinkDeployment
-metadata: {name: fault-drill, namespace: bootcamp}
+metadata: {name: fault-drill, namespace: flink-lab}
 spec:
   image: flink:1.18
   flinkVersion: v1_18
@@ -30,7 +32,7 @@ spec:
     restart-strategy: "fixed-delay"
     restart-strategy.fixed-delay.attempts: "3"
     restart-strategy.fixed-delay.delay: "10 s"
-    s3.endpoint: "http://minio.bootcamp.svc:9000"
+    s3.endpoint: "http://minio.flink-lab.svc:9000"
     s3.access-key: "minio"
     s3.secret-key: "minio123"
     s3.path.style.access: "true"
@@ -45,14 +47,23 @@ spec:
     savepointTriggerNonce: 0
 ```
 
+```
+oc      apply -f fault-drill-flinkdeployment.yaml
+kubectl apply -f fault-drill-flinkdeployment.yaml
+```
+
 ### Prepare the failure inputs
 
 Two ways to trigger failure for the labs below:
 
-1. **TM Pod deletion** — `kubectl delete pod fault-drill-taskmanager-...` (Lab 2)
+1. **TM Pod deletion**:
+   ```
+   oc      delete pod -n flink-lab -l app=fault-drill,component=taskmanager --wait=false
+   kubectl delete pod -n flink-lab -l app=fault-drill,component=taskmanager --wait=false
+   ```
 2. **Checkpoint decline** — temporarily point `s3.endpoint` at a bad address, reapply, watch checkpoints fail (Lab 1)
 
-Keep the Flink UI open — you'll trace the `RUNNING → RESTARTING → RUNNING` transitions in real time.
+Keep the Flink UI open (`kubectl port-forward -n flink-lab svc/fault-drill-rest 8081:8081`) — you'll trace the `RUNNING → RESTARTING → RUNNING` transitions in real time.
 
 ---
 

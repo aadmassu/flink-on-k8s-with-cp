@@ -10,7 +10,7 @@ Every `oc` command is paired with its `kubectl` equivalent.
 
 ## Prerequisite Setup
 
-Baseline cluster from [Week 5 Monday's lab](../01-Monday/lab.md#prerequisite-setup--minimal-cfk--flink-cluster-week-56-baseline). For today, deploy a job with `parallelism: 4` and `numberOfTaskSlots: 2` so slot arithmetic is visible.
+Shared sandbox from [`project-docs/training/lab-flink/`](../../lab-flink/). For today, deploy a job with `parallelism: 4` and `numberOfTaskSlots: 2` so slot arithmetic is visible.
 
 Save as `slots-demo-flinkdeployment.yaml`:
 
@@ -19,7 +19,7 @@ apiVersion: flink.apache.org/v1beta1
 kind: FlinkDeployment
 metadata:
   name: slots-demo
-  namespace: bootcamp
+  namespace: flink-lab
 spec:
   image: flink:1.18
   flinkVersion: v1_18
