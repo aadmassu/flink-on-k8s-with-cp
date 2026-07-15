@@ -12,12 +12,15 @@
 
 ### The two CRs engineers will see
 
-The Flink Kubernetes Operator ([flink.apache.org/docs/flink-kubernetes-operator](https://nightlies.apache.org/flink/flink-kubernetes-operator-docs-stable/)) defines two Custom Resources at the platform surface:
+The [Flink Kubernetes Operator](https://nightlies.apache.org/flink/flink-kubernetes-operator-docs-stable/) ships two Custom Resource kinds. Same operator, but they model two different things — a Flink **cluster** vs a Flink **job**:
 
-- **`FlinkDeployment`** — one CR per Flink *cluster*. Contains JobManager sizing, TaskManager sizing, image tag, ha config, and optionally a job spec (making it a "long-running application cluster" — one job per cluster).
-- **`FlinkSessionJob`** — one CR per *job* submitted to an existing session cluster. Points at an existing FlinkDeployment by name; contains only the job spec (JAR URI + args). Multiple session jobs can run on one session cluster, sharing TMs.
+- **`FlinkDeployment`** — models a Flink **cluster**. Sizing (JM + TMs), image, HA config, and *optionally* a job spec. Whether the job spec is present changes the whole shape of the deployment:
+  - **With `spec.job` set → application mode.** The cluster runs exactly one job and dies with the CR. One CR per job, hard isolation between jobs. This is the FCB production pattern.
+  - **Without `spec.job` → session mode.** The cluster comes up empty and waits. Jobs get submitted into it later via `FlinkSessionJob` CRs. One cluster, many jobs, shared slot pool.
 
-FCB pattern: mostly **application clusters** (one FlinkDeployment per critical job) for isolation and independent upgrades. Session clusters are used less frequently, mostly for exploratory / dev work via the SQL Gateway.
+- **`FlinkSessionJob`** — models a single **job** running inside an existing session cluster. Points at a `FlinkDeployment` by name and carries only the job spec (JAR URI + args). Multiple `FlinkSessionJob` CRs can target the same session cluster and share its TMs.
+
+**FCB pattern.** Application mode for every production job — isolated JM+TMs give you independent scaling, independent upgrades, and a bounded blast radius when one job misbehaves. Session mode is reserved for dev / exploratory work through the CMF SQL Gateway, where the iteration speed of sharing one warm cluster outweighs the isolation loss.
 
 ### Reconciliation — the same loop you learned for CFK
 
