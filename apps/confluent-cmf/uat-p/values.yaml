@@ -1,0 +1,143 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-03-04 (created), 2026-07-22 (last-modified)
+# Description: CMF (Confluent Manager for Apache Flink) Helm values —
+#              uat. Single-tenant (watches its own namespace via
+#              namespaced=true), local SQLite database (ephemeral,
+#              state lost on restart), license + encryption key via ESO
+#              from CyberArk. Includes debug logging for SQL diagnostics.
+########################################################################
+
+cmf:
+  # Single-tenant CMF per env — watch only its own namespace. Pairs with
+  # `namespaced: true` below so the chart emits Role/RoleBinding instead of
+  # ClusterRole/ClusterRoleBinding (FCB's pipeline SA isn't cluster-scoped).
+  k8s:
+    watchNamespaces:
+      - dah-flink-uat
+
+  # `production: false` disables CMF's SQL guardrails (DDL without
+  # confirmation prompts). uat only — flip to `true` for prd.
+  sql:
+    production: false
+
+  # Using local SQLite on pod ephemeral storage. When UAT SQL Server is ready,
+  # set type to jdbc and uncomment the jdbc block below.
+  database:
+    type: local
+    # jdbc:
+    #   engine: sqlserver
+    #   url: ""        # set at install time from uat-cmf-sql-server-jdbc-url
+    #   port: 3085
+    #   database: DAHFLINK
+    #   user: ""       # set at install time from uat-cmf-sql-server-user
+    #   options: "encrypt=true;trustServerCertificate=true;"
+    #   password:
+    #     kubernetesSecretName: cmf-db-credentials
+    #     kubernetesSecretProperty: password
+
+  # TLS for the CMF REST endpoint. The cmf-tls Secret is populated by the
+  # cert-manager Certificate at apps/confluent-cmf/uat/cmf-tls-certificate.yaml
+  # (Keyfactor-issued). Spring Boot 3.1+ reads PEM cert + key directly; if
+  # the runtime ever rejects PEM, switch to a PKCS12 keystore via an
+  # init-container that converts tls.crt + tls.key -> keystore.p12.
+  ssl:
+    enabled: true
+    certificate: file:/etc/cmf/tls/tls.crt
+    certificate-private-key: file:/etc/cmf/tls/tls.key
+
+# Mount the cmf-tls Secret for Spring Boot to read, plus the FCB org-wide
+# trust bundle (trust-manager-managed ConfigMap from the fcb-security Helm
+# chart). The bundle holds the public-root CAs PLUS FCB Root CA 1/2 — CMF
+# needs it for outbound HTTPS to Okta (OAuth/JWKS when auth is enabled),
+# Schema Registry (catalog/database integration), JDBC over TLS to SQL
+# Server, and any other FCB-internal endpoint signed under FCB Root CA.
+# The JVM-default truststore is pointed at /mnt/sslcerts/fcb-trust-bundle/
+# bundle.jks via jvmArgs (see below). The cmf-tls mount stays separate
+# — that one is for the inbound Spring Boot REST listener cert/key.
+mountedVolumes:
+  volumes:
+    - name: cmf-tls
+      secret:
+        secretName: cmf-tls
+        defaultMode: 0440
+    - name: fcb-trust-bundle
+      configMap:
+        name: fcb-trust-bundle
+  volumeMounts:
+    - name: cmf-tls
+      mountPath: /etc/cmf/tls
+      readOnly: true
+    - name: fcb-trust-bundle
+      mountPath: /mnt/sslcerts/fcb-trust-bundle
+      readOnly: true
+
+# Point the JVM default truststore at the fcb-trust-bundle JKS. Includes debug
+# logging for JDBC/Flyway troubleshooting; remove after SQL Server integration
+# is complete. CMF's deployment template appends this string to the container
+# args; the CP-CMF image's entrypoint shell-tokenizes it onto the java command line.
+# Password is trust-manager's default ("changeit"); confirm with Container team if
+# the FCB Bundle was rebuilt with a custom password.
+jvmArgs: "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=JKS -Dlogging.level.org.springframework.jdbc=DEBUG -Dlogging.level.org.flywaydb=DEBUG -Dlogging.level.com.microsoft.sqlserver.jdbc=DEBUG -Dlogging.level.io.confluent.cmf=DEBUG"
+
+encryption:
+  key:
+    kubernetesSecretName: cmf-encryption-key
+    kubernetesSecretProperty: key
+
+license:
+  secretRef: confluent-license
+
+image:
+  # Pulled from FCB Artifactory mirror (cluster has no Docker Hub egress).
+  repository: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc
+  name: cp-cmf
+  # Custom Confluent build with namespace-scoped RBAC support (the upstream
+  # 2.3.0 chart hard-codes ClusterRole/ClusterRoleBinding which our SA can't
+  # create). Bump only after Confluent ships namespace-scoped support upstream.
+  tag: 2.3.0-fcb-preview-2
+
+# NOTE — imagePullSecrets wiring is STAGED but not yet active. Uncomment
+# once the externalsecret-artifactory-pull-secret.yaml ExternalSecret has
+# been applied AND its target Secret `artifactory-pull-secret` has reached
+# SecretSynced=True. Until then the pod relies on the cluster-default pull
+# credential, which is the existing working state.
+# imagePullSecrets:
+#   - name: artifactory-pull-secret
+
+# FCB CMDB Application ID — required on every object by the cluster's
+# Common Metadata admission policy.
+additionalLabels:
+  fcbint.net/app-id: "11547"
+
+# Pairs with cmf.k8s.watchNamespaces above — emit Role/RoleBinding scoped
+# to dah-flink-uat instead of ClusterRole/ClusterRoleBinding.
+namespaced: true
+
+# RBAC and ServiceAccount are pre-created in dah-flink-uat by FCB's
+# fcb-security ArgoCD chart (see openshift-prereqs/uat/manifests/ for our
+# parallel template). The chart consumes the existing `flink-operator` SA;
+# do not let Helm try to create either.
+rbac: false
+serviceAccount:
+  create: false
+  name: flink-operator
+
+# Suppress the chart's hardcoded podSecurityContext (fsGroup: 1001,
+# runAsUser: 1001). On OpenShift, SCC assigns UIDs from the namespace's
+# allowed range at admission — fixed UIDs trip restricted-v2 SCC validation.
+podSecurity:
+  enabled: false
+
+# CMF state lives in local SQLite on pod ephemeral storage, not on a local PVC.
+persistence:
+  create: false
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1
+    memory: 2Gi

@@ -10,7 +10,7 @@ parameters:
     displayName: "Target Environment"
     type: string
     default: dev
-    values: [dev, qa, uat, prd, dr]
+    values: [dev, qa, uat-p, uat-s, prd, dr]
   - name: action
     displayName: "Action"
     type: string
@@ -83,8 +83,10 @@ variables:
     - group: kafka-openshift-credentials-dev
   - ${{ if eq(parameters.environment, 'qa') }}:
     - group: kafka-openshift-credentials-qa
-  - ${{ if eq(parameters.environment, 'uat') }}:
-    - group: kafka-openshift-credentials-uat
+  - ${{ if eq(parameters.environment, 'uat-p') }}:
+    - group: kafka-openshift-credentials-uat-p
+  - ${{ if eq(parameters.environment, 'uat-s') }}:
+    - group: kafka-openshift-credentials-uat-s
   - ${{ if eq(parameters.environment, 'prd') }}:
     - group: kafka-openshift-credentials-prd
   - ${{ if eq(parameters.environment, 'dr') }}:

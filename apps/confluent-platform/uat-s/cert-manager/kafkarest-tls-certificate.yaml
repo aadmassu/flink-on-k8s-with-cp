@@ -1,0 +1,47 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for the Kafka REST Proxy HTTPS
+#              listener (backend serving cert; in-cluster SANs only).
+########################################################################
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kafkarest-tls
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/instance: kafkarest-tls
+    app.kubernetes.io/component: kafka-rest-proxy
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Description: "Kafka REST Proxy — HTTPS listener"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: kafkarest.dah-flink-uat.svc.cluster.local
+  dnsNames:
+    - kafkarest.dah-flink-uat.svc
+    - kafkarest.dah-flink-uat.svc.cluster.local
+    - kafkarest-0.kafkarest.dah-flink-uat.svc.cluster.local
+  duration: 8760h0m0s
+  renewBefore: 360h
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: kafkarest-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: kafkarest
+      app.kubernetes.io/instance: kafkarest-tls
+      app.kubernetes.io/component: kafka-rest-proxy
+      fcbint.net/app-id: "11547"

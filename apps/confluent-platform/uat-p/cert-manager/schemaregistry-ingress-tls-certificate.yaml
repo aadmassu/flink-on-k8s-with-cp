@@ -1,0 +1,48 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Description: Keyfactor Certificate for the Schema Registry Ingress
+#              edge. Distinct from schemaregistry-tls (backend serving
+#              cert); covers the public host HAProxy presents to clients.
+########################################################################
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: schemaregistry-ingress-tls
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/instance: schemaregistry-ingress-tls
+    app.kubernetes.io/component: ingress-cert
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Description: "Confluent Schema Registry REST/UI (Ingress edge cert)"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: schemaregistry.apps.ut.ocp.fcbint.net
+  dnsNames:
+    - schemaregistry.apps.ut.ocp.fcbint.net
+  duration: 8760h0m0s
+  renewBefore: 1080h0m0s
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: schemaregistry-ingress-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: schemaregistry
+      app.kubernetes.io/instance: schemaregistry-ingress-tls
+      app.kubernetes.io/component: ingress-cert
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

@@ -1,0 +1,237 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: CFK ControlCenter CR — Phase 2. OIDC user auth via
+#              dependencies.mds.ssoProtocol=oidc; top-level auth is
+#              mtls+requested per CRD enum (runbook A24).
+########################################################################
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: dah-flink-uat
+  annotations:
+    platform.confluent.io/force-reconcile: "2026-07-01-c3-basic-auth"
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  replicas: 1
+
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:2.5.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
+
+  # Gatekeeper [required-workload-labels] inspects the StatefulSet.
+  injectLabels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+
+  # 15 Gi dev; VM target 300 Gi.
+  dataVolumeCapacity: 15Gi
+  storageClass:
+    name: kafka
+
+  license:
+    secretRef: cfk-license
+
+  tls:
+    secretRef: controlcenter-tls
+
+  # JVM outbound trust store (runbook A21).
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+          items:
+            - key: bundle.jks
+              path: bundle.jks
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /var/ssl/truststore
+        readOnly: true
+
+  # Basic auth smoke-test pattern: username=C3 Okta client ID, password=client secret (runbook A29). Backend calls run as C3 service principal (in super.users), so post-login every action succeeds.
+  authentication:
+    type: basic
+    basic:
+      secretRef: controlcenter-basic-auth
+      roles:
+        - Administrators
+      restrictedRoles:
+        - Restricted
+
+  # No superUsers — all access via ConfluentRolebindings.
+  authorization:
+    type: rbac
+
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  dependencies:
+    # Dep-to-Kafka: flat oauth+jaasConfig (runbook A22).
+    kafka:
+      bootstrapEndpoint: kafka.dah-flink-uat.svc.cluster.local:9071
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-controlcenter
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahUAT_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(UAT)
+          loginConnectTimeoutMs: 10000
+          loginReadTimeoutMs: 30000
+          loginRetryBackoffMaxMs: 5000
+          loginRetryBackoffMs: 60000
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+
+    # Dep-to-SR (HTTP API): nested oauth+configuration.
+    schemaRegistry:
+      url: https://schemaregistry.dah-flink-uat.svc.cluster.local:8081
+      tls:
+        enabled: true
+        secretRef: schemaregistry-tls
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-controlcenter
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahUAT_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(UAT)
+            loginConnectTimeoutMs: 10000
+            loginReadTimeoutMs: 30000
+            loginRetryBackoffMaxMs: 5000
+            loginRetryBackoffMs: 60000
+
+    connect:
+      - name: connect-cluster
+        url: https://connect.dah-flink-uat.svc.cluster.local:8083
+        tls:
+          enabled: true
+          secretRef: connect-tls
+        authentication:
+          type: oauth
+          oauth:
+            secretRef: oauth-controlcenter
+            configuration:
+              audience: "Confluent,account,api://default"
+              expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+              groupsClaimName: dahUAT_groups
+              subClaimName: sub
+              jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+              tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+              scope: 11547.DAH(UAT)
+              loginConnectTimeoutMs: 10000
+              loginReadTimeoutMs: 30000
+              loginRetryBackoffMaxMs: 5000
+              loginRetryBackoffMs: 60000
+
+    # OIDC SSO for the C3 UI is delivered through MDS.
+    mds:
+      endpoint: https://kafka.dah-flink-uat.svc.cluster.local:8090
+      ssoProtocol: oidc
+      tls:
+        enabled: true
+        secretRef: kafka-tls
+      tokenKeyPair:
+        secretRef: mds-token-keypair
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-controlcenter
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahUAT_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(UAT)
+            loginConnectTimeoutMs: 10000
+            loginReadTimeoutMs: 30000
+            loginRetryBackoffMaxMs: 5000
+            loginRetryBackoffMs: 60000
+
+    kafkaRestClassRef:
+      name: default
+      namespace: dah-flink-uat
+
+  # Prometheus + AlertManager bundle deferred; c3-*-basic-auth Secrets already exist.
+
+  configOverrides:
+    jvm:
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
+      - "-Djavax.net.ssl.trustStorePassword=changeit"
+      - "-Djavax.net.ssl.trustStoreType=JKS"
+    server:
+      # Do NOT set confluent.controlcenter.data.dir here — CFK mounts the PVC at /mnt/data/data0 (runbook A25).
+      - confluent.controlcenter.streams.num.stream.threads=12
+      - confluent.controlcenter.command.topic.replication=3
+      - confluent.controlcenter.internal.topics.replication=3
+      - confluent.controlcenter.metrics.topic.replication=3
+      - confluent.controlcenter.monitoring.interceptor.topic.replication=3
+      - confluent.controlcenter.cmf.healthcheck.interval.sec=600000
+
+      # C3 streams client (CFK doesn't auto-derive per-prefix, same pattern as broker's confluent.license.* / confluent.kafkarest.*).
+      - confluent.controlcenter.streams.security.protocol=SASL_SSL
+      - confluent.controlcenter.streams.sasl.mechanism=OAUTHBEARER
+      - confluent.controlcenter.streams.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - confluent.controlcenter.streams.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - confluent.controlcenter.streams.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(UAT)
+
+      # Explicit trustStore for C3's Armeria/Netty HTTP client to Okta -- JVM -Djavax.net.ssl.trustStore doesn't propagate to Netty SSL contexts (runbook A28).
+      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
+      - confluent.metadata.ssl.truststore.password=changeit
+      - confluent.metadata.ssl.truststore.type=JKS
+      - confluent.controlcenter.streams.ssl.truststore.location=/var/ssl/truststore/bundle.jks
+      - confluent.controlcenter.streams.ssl.truststore.password=changeit
+      - confluent.controlcenter.streams.ssl.truststore.type=JKS
+
+      # Monitoring interceptor client.
+      - confluent.monitoring.interceptor.security.protocol=SASL_SSL
+      - confluent.monitoring.interceptor.sasl.mechanism=OAUTHBEARER
+      - confluent.monitoring.interceptor.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - confluent.monitoring.interceptor.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - confluent.monitoring.interceptor.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - confluent.monitoring.interceptor.sasl.oauthbearer.scope=11547.DAH(UAT)
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    # Dev-smoke sizing (runbook F2). VM/UAT target 12/16.
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
+    podSecurityContext: {}
+    labels:
+      app.kubernetes.io/name: controlcenter
+      app.kubernetes.io/instance: controlcenter
+      app.kubernetes.io/component: control-center
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"

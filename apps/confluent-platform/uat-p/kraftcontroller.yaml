@@ -1,0 +1,141 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
+# Description: CFK KRaftController CR — Phase 2. 3-node quorum,
+#              OAUTHBEARER controller listener, RBAC (runbook A22).
+########################################################################
+
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  # 3-controller quorum — do NOT drop to 1.
+  replicas: 3
+  image:
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-server:8.1.3
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
+  # Gatekeeper [required-workload-labels] inspects the StatefulSet.
+  injectLabels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/instance: kraftcontroller
+    app.kubernetes.io/component: kraft-controller
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  dataVolumeCapacity: 1Gi
+  storageClass:
+    name: kafka
+
+  listeners:
+    controller:
+      tls:
+        enabled: true
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: oauth-broker
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahUAT_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(UAT)
+
+  # superUser is the broker's own Okta client (peer principal during controller comms).
+  authorization:
+    type: rbac
+    superUsers:
+      - User:0oa1owjyrmdJ4KqUt358
+
+  tls:
+    secretRef: kraftcontroller-tls
+  license:
+    secretRef: cfk-license
+
+  # JVM outbound trust store (runbook A21).
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+          items:
+            - key: bundle.jks
+              path: bundle.jks
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /var/ssl/truststore
+        readOnly: true
+
+  # Gatekeeper [pod-disruption-budget] rejects maxUnavailable=0.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  configOverrides:
+    jvm:
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
+      - "-Djavax.net.ssl.trustStorePassword=changeit"
+      - "-Djavax.net.ssl.trustStoreType=JKS"
+    server:
+      # Controller-as-CLIENT OAUTHBEARER defaults.
+      - security.protocol=SASL_SSL
+      - sasl.mechanism=OAUTHBEARER
+      - sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
+      - sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
+      - sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
+      - sasl.oauthbearer.scope=11547.DAH(UAT)
+      - controller.quorum.election.timeout.ms=5000
+      - controller.quorum.fetch.timeout.ms=5000
+      - default.replication.factor=3
+      - confluent.metadata.topic.replication.factor=3
+      - confluent.balancer.topic.replication.factor=3
+      - confluent.license.topic.replication.factor=3
+      - confluent.security.event.logger.enable=false
+
+  podTemplate:
+    serviceAccountName: flink-operator
+    # request == limit → Guaranteed QoS.
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 2Gi
+    probe:
+      liveness:
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 20
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+    # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
+    podSecurityContext: {}
+    # Gatekeeper [required-workload-labels] inspects the Pod.
+    labels:
+      app.kubernetes.io/name: kraftcontroller
+      app.kubernetes.io/instance: kraftcontroller
+      app.kubernetes.io/component: kraft-controller
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: "11547"
+      cfk-role: kraft-controller
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                cfk-role: kraft-controller
+            topologyKey: kubernetes.io/hostname
