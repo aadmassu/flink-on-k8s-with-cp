@@ -3,6 +3,7 @@
 #            (cmf-tls Secret) used by the CMF REST endpoint.
 # Author:    Ayu Admassu
 # Created:   2026-04-29
+# Updated:   2026-07-31
 #
 # Variable Group: kafka-openshift-credentials-<env>
 #   openshift-service-account-name  — service account username

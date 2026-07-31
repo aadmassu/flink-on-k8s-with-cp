@@ -1,5 +1,5 @@
 # Pipeline: confluent-platform — install/uninstall CFK Confluent Platform
-# in dah-flink-<env>. Author: Ayu Admassu. Created 2026-05-12.
+# in dah-flink-<env>. Author: Ayu Admassu. Created 2026-05-12. Updated 2026-07-31.
 # Variable group: kafka-openshift-credentials-<env>. Prereq Secrets +
 # Certificate CRs documented in apps/confluent-platform/<env>/prereqs/README.md.
 

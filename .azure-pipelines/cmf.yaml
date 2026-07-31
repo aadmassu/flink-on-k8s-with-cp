@@ -2,6 +2,7 @@
 # Purpose:   Install/uninstall Confluent Manager for Apache Flink (CMF) via Helm.
 # Author:    Ayu Admassu
 # Created:   2026-04-09
+# Updated:   2026-07-31
 #
 # Secrets (license, cmf-db-credentials, cmf-encryption-key) come from CyberArk via ESO
 # ExternalSecrets under apps/confluent-cmf/<env>/externalsecrets/. DB URL + user stay in
