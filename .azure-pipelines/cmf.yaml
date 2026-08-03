@@ -80,6 +80,7 @@ stages:
                 targetType: inline
                 script: |
                   set -euo pipefail
+                  TARGET_ENV="${{ parameters.environment }}"
 
                   echo "=== Git commit ==="
                   git rev-parse HEAD
@@ -160,7 +161,6 @@ stages:
                   oc get pods -n "$OC_NS" -l app.kubernetes.io/name=confluent-manager-for-apache-flink
               env:
                 OC_NS: $(openshift-namespace)
-                TARGET_ENV: ${{ parameters.environment }}
                 CMF_DB_URL: $(${{ parameters.environment }}-cmf-sql-server-jdbc-url)
                 CMF_DB_USER: $(${{ parameters.environment }}-cmf-sql-server-user)
 
@@ -190,7 +190,6 @@ stages:
                   oc get ingress -n "$OC_NS" -l app.kubernetes.io/part-of=confluent-manager-for-flink 2>&1 || true
               env:
                 OC_NS: $(openshift-namespace)
-                TARGET_ENV: ${{ parameters.environment }}
 
           - ${{ if eq(parameters.action, 'uninstall') }}:
             - task: Bash@3
@@ -199,6 +198,7 @@ stages:
                 targetType: inline
                 script: |
                   set -euo pipefail
+                  TARGET_ENV="${{ parameters.environment }}"
 
                   echo "=== Helm release status (before) ==="
                   helm status confluent-cmf -n "$OC_NS" 2>&1 | head -20 || echo "(no release)"
@@ -225,4 +225,3 @@ stages:
                     -l app.kubernetes.io/name=confluent-manager-for-apache-flink || true
               env:
                 OC_NS: $(openshift-namespace)
-                TARGET_ENV: ${{ parameters.environment }}
