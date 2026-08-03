@@ -170,6 +170,7 @@ stages:
                 targetType: inline
                 script: |
                   set -euo pipefail
+                  TARGET_ENV="${{ parameters.environment }}"
 
                   ENV_DIR="apps/confluent-cmf/$TARGET_ENV"
 
