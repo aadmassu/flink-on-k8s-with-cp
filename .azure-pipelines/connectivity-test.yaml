@@ -24,6 +24,36 @@ parameters:
     type: string
     default: dev
     values: [dev, qa, stg, prd]
+
+  # Outbound HTTPS dependencies that live in a job's ConfigMap rather than in a
+  # variable group, so they cannot be picked up automatically. The default pair
+  # is what http-patch-sql-job's UDF calls per record:
+  #   apimanagement-d.firstcitizens.com — APIM (HTTP_ENDPOINT_BASE_URL), the
+  #     PATCH target. '-d' is the DEV hostname; other envs differ, so override.
+  #   myapps.firstcitizens.com — Okta authorization server (OAUTH_TOKEN_URL),
+  #     called before every PATCH to mint the bearer token.
+  # Added 2026-08-04 while diagnosing HttpConnectTimeoutException from the
+  # TaskManager pods: a connect timeout means the TCP handshake never
+  # completed, which these steps confirm or rule out from the same network
+  # position as the Flink pods.
+  - name: extraHosts
+    displayName: "Extra hosts to probe (comma-separated host:port)"
+    type: string
+    default: "apimanagement-d.firstcitizens.com:443,myapps.firstcitizens.com:443"
+
+  # Optional path-level probe: does APIM actually ROUTE the endpoint the records
+  # carry, as opposed to merely accepting a TCP connection on 443? Pass a full
+  # URL at queue time, e.g.
+  #   https://apimanagement-d.firstcitizens.com/wealth/mosaic/api/relationship/<id>
+  # Deliberately EMPTY by default and never committed with a value: the path
+  # comes from each Kafka record's `endpoint` header, so any id here is test
+  # data that rots, and real relationship ids do not belong in pipeline config.
+  # No credentials are sent, so a 401/403 is the success case — it proves the
+  # route exists and terminates TLS. 404 suggests the path is not routed.
+  - name: probeUrl
+    displayName: "Optional full URL for a path-level probe (no credentials sent)"
+    type: string
+    default: " "
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: dev-openshift-credentials
@@ -230,6 +260,19 @@ stages:
                 test_dns "$S3_HOST" "NetApp S3"
 
                 echo ""
+                echo "=== Extra hosts (APIM / Okta) ==="
+                if [ -n "${EXTRA_HOSTS:-}" ]; then
+                  IFS=',' read -ra EXTRA <<< "$EXTRA_HOSTS"
+                  for entry in "${EXTRA[@]}"; do
+                    entry=$(echo "$entry" | tr -d '[:space:]')
+                    [ -z "$entry" ] && continue
+                    test_dns "${entry%%:*}" "Extra host"
+                  done
+                else
+                  echo "(none configured)"
+                fi
+
+                echo ""
                 echo "=== DNS resolution test complete ==="
             env:
               OC_NS: $(openshift-dev-namespace)
@@ -238,6 +281,7 @@ stages:
               SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
               REST_PROXY_HOSTS: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
               S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
+              EXTRA_HOSTS: ${{ parameters.extraHosts }}
 
           - task: Bash@3
             displayName: "Connectivity Test"
@@ -290,6 +334,22 @@ stages:
                 test_connection "$S3_HOST" 443 "NetApp S3 (HTTPS)"
 
                 echo ""
+                echo "=== Extra hosts (APIM / Okta) ==="
+                if [ -n "${EXTRA_HOSTS:-}" ]; then
+                  IFS=',' read -ra EXTRA <<< "$EXTRA_HOSTS"
+                  for entry in "${EXTRA[@]}"; do
+                    entry=$(echo "$entry" | tr -d '[:space:]')
+                    [ -z "$entry" ] && continue
+                    host="${entry%%:*}"
+                    port="${entry##*:}"
+                    [ "$host" = "$port" ] && port=443
+                    test_connection "$host" "$port" "Extra host"
+                  done
+                else
+                  echo "(none configured)"
+                fi
+
+                echo ""
                 echo "=== Connectivity test complete ==="
             env:
               OC_NS: $(openshift-dev-namespace)
@@ -298,6 +358,61 @@ stages:
               SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
               REST_PROXY_HOSTS: $(${{ parameters.environment }}-kafka-rest-proxy-hosts)
               S3_URL: $(${{ parameters.environment }}-net-app-s3-url)
+              EXTRA_HOSTS: ${{ parameters.extraHosts }}
+
+          # A bare TCP check cannot separate the two failures that look alike
+          # from a Flink pod: nothing listening / blocked (connect timeout) vs
+          # reachable but the TLS handshake or an intercepting proxy fails.
+          # Probe the HTTPS layer too, best-effort. Expected on a healthy path:
+          # HTTP 401/403/404 from APIM (no credentials sent) — any HTTP status
+          # proves end-to-end reachability. Never fails the pipeline: the
+          # output is the diagnostic.
+          - task: Bash@3
+            displayName: "HTTPS probe (extra hosts)"
+            inputs:
+              targetType: inline
+              script: |
+                set -uo pipefail
+
+                if [ -z "${EXTRA_HOSTS:-}" ]; then
+                  echo "(no extra hosts configured)"
+                  exit 0
+                fi
+
+                IFS=',' read -ra EXTRA <<< "$EXTRA_HOSTS"
+                for entry in "${EXTRA[@]}"; do
+                  entry=$(echo "$entry" | tr -d '[:space:]')
+                  [ -z "$entry" ] && continue
+                  host="${entry%%:*}"
+                  echo ""
+                  echo "--- HTTPS GET https://$host/ ---"
+                  # busybox wget uses the ssl_client applet; --no-check-certificate
+                  # keeps the FCB CA chain out of the picture so this reports on
+                  # reachability, not trust. -T 10 bounds a hang.
+                  oc exec busybox -n "$OC_NS" -- \
+                    wget -S -O /dev/null -T 10 --no-check-certificate "https://$host/" 2>&1 \
+                    || echo "(non-zero exit — read the response headers above: an HTTP" \
+                            "status means reachable; 'wget: error getting response' or a" \
+                            "timeout means the connection never completed)"
+                done
+
+                PROBE_URL=$(echo "${PROBE_URL:-}" | tr -d '[:space:]')
+                if [ -n "$PROBE_URL" ]; then
+                  echo ""
+                  echo "--- Path-level probe: $PROBE_URL ---"
+                  echo "(no Authorization header sent: 401/403 = route exists and"
+                  echo " TLS terminated; 404 = path not routed; timeout = not reachable)"
+                  oc exec busybox -n "$OC_NS" -- \
+                    wget -S -O /dev/null -T 10 --no-check-certificate "$PROBE_URL" 2>&1 \
+                    || echo "(non-zero exit — read the response headers above)"
+                fi
+
+                echo ""
+                echo "=== HTTPS probe complete ==="
+            env:
+              OC_NS: $(openshift-dev-namespace)
+              EXTRA_HOSTS: ${{ parameters.extraHosts }}
+              PROBE_URL: ${{ parameters.probeUrl }}
 
           # Kafka authz probe via REST Proxy (dev only). Debugging the
           # aep-rate-limit-job TopicAuthorizationException: the job's OAuth
