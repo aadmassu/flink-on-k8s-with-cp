@@ -1,40 +1,37 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-04-29 (created), 2026-06-29 (last-modified)
-# Description: Keyfactor Certificate for the CMF REST endpoint backend
-#              (Secret cmf-tls) — uat.
+# Date:        2026-08-04 (created)
+# Description: Keyfactor Certificate for the CMF management UI Ingress
+#              edge (Secret cmf-ingress-tls). Distinct from cmf-tls
+#              (backend cert Spring Boot uses for HTTPS on the CMF pod);
+#              this is the edge cert HAProxy presents to browsers.
+#              Reencrypt termination spans both legs. UAT-S instance.
 ########################################################################
-
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: cmf-tls
+  name: cmf-ingress-tls
   namespace: dah-flink-uat
   labels:
     app.kubernetes.io/name: confluent-manager-for-apache-flink
-    app.kubernetes.io/instance: cmf-tls
-    app.kubernetes.io/component: cmf
+    app.kubernetes.io/instance: cmf-ingress-tls
+    app.kubernetes.io/component: ingress-cert
+    app.kubernetes.io/part-of: confluent-manager-for-flink
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
     metadata.command-issuer.keyfactor.com/Environment: Non-Prod-UAT
-    metadata.command-issuer.keyfactor.com/Description: "Confluent Manager for Apache Flink — REST endpoint TLS"
+    metadata.command-issuer.keyfactor.com/Description: "Confluent Manager for Apache Flink — management UI (Ingress edge cert, UAT-S)"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  # Specific (non-wildcard) names for the CMF Service in this env.
-  # The `keyfactor` ClusterIssuer is bound to the Entity Keyfactor template,
-  # which requires concrete SANs — wildcards get rejected. Future services
-  # in this namespace get their own Certificate manifest with their own
-  # specific names; do not reuse this cert for other services.
-  commonName: cmf-service.dah-flink-uat.svc.cluster.local
+  commonName: cmf.apps.ut-s.ocp.fcbint.net
   dnsNames:
-    - cmf-service.dah-flink-uat.svc
-    - cmf-service.dah-flink-uat.svc.cluster.local
+    - cmf.apps.ut-s.ocp.fcbint.net
   duration: 8760h0m0s
-  renewBefore: 360h
+  renewBefore: 1080h0m0s
   privateKey:
     algorithm: RSA
     size: 4096
@@ -43,10 +40,11 @@ spec:
     group: command-issuer.keyfactor.com
     kind: ClusterIssuer
     name: keyfactor
-  secretName: cmf-tls
+  secretName: cmf-ingress-tls
   secretTemplate:
     labels:
       app.kubernetes.io/name: confluent-manager-for-apache-flink
-      app.kubernetes.io/instance: cmf-tls
-      app.kubernetes.io/component: cmf
+      app.kubernetes.io/instance: cmf-ingress-tls
+      app.kubernetes.io/component: ingress-cert
+      app.kubernetes.io/part-of: confluent-manager-for-flink
       fcbint.net/app-id: "11547"

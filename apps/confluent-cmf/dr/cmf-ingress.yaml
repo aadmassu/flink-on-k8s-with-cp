@@ -1,0 +1,41 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-08-04 (created)
+# Description: Ingress exposing the CMF management UI publicly on the DR
+#              cluster. Edge (cmf-ingress-tls) → HAProxy → cmf-service:443
+#              → pod:8080 (cmf-tls). Both legs HTTPS → reencrypt termination.
+########################################################################
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cmf-ui
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/instance: cmf-ui
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-manager-for-flink
+    fcbint.net/app-id: "11547"
+  annotations:
+    # Backend is HTTPS — reencrypt at the router instead of the default edge.
+    # See https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress "Ingress Example" — recommended pattern.
+    route.openshift.io/termination: reencrypt
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+    - host: cmf.apps.pd-s.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: cmf-service
+                port:
+                  number: 443
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - cmf.apps.pd-s.ocp.fcbint.net
+      secretName: cmf-ingress-tls

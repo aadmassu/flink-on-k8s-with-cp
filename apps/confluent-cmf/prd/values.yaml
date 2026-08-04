@@ -12,7 +12,7 @@ cmf:
   # ClusterRole/ClusterRoleBinding (FCB's pipeline SA isn't cluster-scoped).
   k8s:
     watchNamespaces:
-      - dah-flink-prd
+      - dah-flink-prod
 
   # `production: true` enables CMF's SQL guardrails (DDL requires confirmation
   # prompts). prd onward.
@@ -145,7 +145,7 @@ additionalLabels:
 # to dah-flink-prd instead of ClusterRole/ClusterRoleBinding.
 namespaced: true
 
-# RBAC and ServiceAccount are pre-created in dah-flink-prd by FCB's
+# RBAC and ServiceAccount are pre-created in dah-flink-prod by FCB's
 # fcb-security ArgoCD chart (see openshift-prereqs/prd/manifests/ for our
 # parallel template). The chart consumes the existing `flink-operator` SA;
 # do not let Helm try to create either — the pipeline SA in upper envs

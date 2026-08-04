@@ -1,0 +1,50 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-08-04 (created)
+# Description: Keyfactor Certificate for the CMF management UI Ingress
+#              edge (Secret cmf-ingress-tls). Distinct from cmf-tls
+#              (backend cert Spring Boot uses for HTTPS on the CMF pod);
+#              this is the edge cert HAProxy presents to browsers.
+#              Reencrypt termination spans both legs.
+########################################################################
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cmf-ingress-tls
+  namespace: dah-flink-qa
+  labels:
+    app.kubernetes.io/name: confluent-manager-for-apache-flink
+    app.kubernetes.io/instance: cmf-ingress-tls
+    app.kubernetes.io/component: ingress-cert
+    app.kubernetes.io/part-of: confluent-manager-for-flink
+    fcbint.net/app-id: "11547"
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
+    metadata.command-issuer.keyfactor.com/Description: "Confluent Manager for Apache Flink — management UI (Ingress edge cert)"
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: cmf.apps.qa-p.ocp.fcbint.net
+  dnsNames:
+    - cmf.apps.qa-p.ocp.fcbint.net
+  duration: 8760h0m0s
+  renewBefore: 1080h0m0s
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretName: cmf-ingress-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: confluent-manager-for-apache-flink
+      app.kubernetes.io/instance: cmf-ingress-tls
+      app.kubernetes.io/component: ingress-cert
+      app.kubernetes.io/part-of: confluent-manager-for-flink
+      fcbint.net/app-id: "11547"

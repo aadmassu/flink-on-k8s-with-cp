@@ -10,7 +10,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: cmf-tls
-  namespace: dah-flink-prd
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: confluent-manager-for-apache-flink
     app.kubernetes.io/instance: cmf-tls
@@ -29,10 +29,10 @@ spec:
   # which requires concrete SANs — wildcards get rejected. Future services
   # in this namespace get their own Certificate manifest with their own
   # specific names; do not reuse this cert for other services.
-  commonName: cmf-service.dah-flink-prd.svc.cluster.local
+  commonName: cmf-service.dah-flink-prod.svc.cluster.local
   dnsNames:
-    - cmf-service.dah-flink-prd.svc
-    - cmf-service.dah-flink-prd.svc.cluster.local
+    - cmf-service.dah-flink-prod.svc
+    - cmf-service.dah-flink-prod.svc.cluster.local
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:
