@@ -1,16 +1,19 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-03-04 (created), 2026-08-04 (last-modified)
+# Date:        2026-03-04 (created), 2026-08-05 (last-modified)
 # Description: CMF (Confluent Manager for Apache Flink) Helm values —
-#              dr. Disaster recovery cluster — shares namespace and
-#              secrets with prd (dah-flink-prod) for dual-write
-#              replication scenarios.
+#              dr. Single-tenant (watches shared dah-flink-prod namespace
+#              via namespaced=true), local SQLite database (ephemeral,
+#              state lost on restart), license + encryption key via ESO
+#              from CyberArk. Includes debug logging for SQL diagnostics.
 ########################################################################
 
 cmf:
-  # Single-tenant CMF per env — watches the shared dah-flink-prod namespace.
-  # Both prd and dr watch the same namespace for failover scenarios.
+  # Single-tenant CMF per env — watch only its own namespace. Pairs with
+  # `namespaced: true` below so the chart emits Role/RoleBinding instead of
+  # ClusterRole/ClusterRoleBinding (FCB's pipeline SA isn't cluster-scoped).
+  # DR shares namespace with PRD (dah-flink-prod) for failover scenarios.
   k8s:
     watchNamespaces:
       - dah-flink-prod
@@ -20,61 +23,20 @@ cmf:
   sql:
     production: true
 
-  # OAuth authentication for the CMF REST API — requires valid Okta token on every request.
-  # DISABLED for dr: the Okta endpoints / audience / OAuth client credentials below are
-  # still placeholders. MUST be re-enabled (un-comment) before a real disaster recovery
-  # failover — once the prd Okta authorization server is provisioned and the OAuth client
-  # id/secret are bound to CyberArk path /confluent/prd/cmf-oauth-credentials.
-  # authentication:
-  #   type: oauth
-  #   config:
-  #     ## TODO: Replace all Okta endpoints with FCB's Okta org/authorization server
-  #     # Okta JWKS endpoint — CMF fetches public keys to verify token signatures
-  #     oauthbearer.jwks.endpoint.url: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/keys
-  #     # Expected token issuer — rejects tokens from other issuers
-  #     oauthbearer.expected.issuer: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>
-  #     # JWT claim used as the user identity
-  #     oauthbearer.sub.claim.name: sub
-  #     # JWT claim containing group memberships for RBAC
-  #     oauthbearer.groups.claim.name: groups
-  #     # Expected audience in the token — must match Okta app config
-  #     oauthbearer.expected.audience: api://confluent
-  #
-  #     # MDS connectivity — CMF checks RBAC permissions via Kafka's Metadata Service
-  #     ## TODO: Update MDS URL to match the environment namespace
-  #     confluent.metadata.bootstrap.server.urls: https://kafka.confluent.svc.cluster.local:8090
-  #     # Use OAuth to authenticate CMF's own requests to MDS
-  #     confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
-  #     # Okta token endpoint for CMF to obtain its own access token
-  #     confluent.metadata.oauthbearer.token.endpoint.url: https://<fcb-okta-domain>/oauth2/<fcb-auth-server-id>/v1/token
-  #     ## TODO: Replace with FCB's CMF OAuth client credentials
-  #     ## CyberArk vault path (production): /confluent/<env>/cmf-oauth-credentials
-  #     confluent.metadata.oauthbearer.login.client.id: <fcb-cmf-oauth-client-id>
-  #     confluent.metadata.oauthbearer.login.client.secret: <fcb-cmf-oauth-client-secret>
-
-  # External database for CMF catalog (environments, statements, credentials).
-  # Shared with prd for dual-write replication.
+  # Using local SQLite on pod ephemeral storage. When DR SQL Server is ready,
+  # set type to jdbc and uncomment the jdbc block below.
   database:
-    # jdbc = external database; local = SQLite on PVC (dev only)
-    type: jdbc
-    jdbc:
-      # SQL Server — FCB's standard database platform (provisioned by DBA team)
-      engine: sqlserver
-      # url + user are injected at install time via `helm --set` from the
-      # prd-cmf-sql-server-* variable group entries (reused for dr);
-      # only the password reference lives here (consumed via the cmf-db-credentials
-      # Secret created by the cmf pipeline).
-      url: ""        # set at install time from prd-cmf-sql-server-jdbc-url
-      # FCB MSSQL custom port (NOT the SQL Server default 1433)
-      port: 3085
-      database: DAHFLINK
-      user: ""       # set at install time from prd-cmf-sql-server-user
-      # trustServerCertificate=true matches DEV/UAT (self-signed cert today).
-      # Flip to false once PRD SQL Server has a CA-signed cert.
-      options: "encrypt=true;trustServerCertificate=true;"
-      password:
-        kubernetesSecretName: cmf-db-credentials
-        kubernetesSecretProperty: password
+    type: local
+    # jdbc:
+    #   engine: sqlserver
+    #   url: ""        # set at install time from prd-cmf-sql-server-jdbc-url (shared with prd)
+    #   port: 3085
+    #   database: DAHFLINK
+    #   user: ""       # set at install time from prd-cmf-sql-server-user (shared with prd)
+    #   options: "encrypt=true;trustServerCertificate=true;"
+    #   password:
+    #     kubernetesSecretName: cmf-db-credentials
+    #     kubernetesSecretProperty: password
 
   # TLS for the CMF REST endpoint. The cmf-tls Secret is populated by the
   # cert-manager Certificate at apps/confluent-cmf/dr/cmf-tls-certificate.yaml
@@ -87,8 +49,14 @@ cmf:
     certificate-private-key: file:/etc/cmf/tls/tls.key
 
 # Mount the cmf-tls Secret for Spring Boot to read, plus the FCB org-wide
-# trust bundle (trust-manager-managed ConfigMap). See apps/confluent-cmf/dev/
-# values.yaml for the full rationale; identical wiring here.
+# trust bundle (trust-manager-managed ConfigMap from the fcb-security Helm
+# chart). The bundle holds the public-root CAs PLUS FCB Root CA 1/2 — CMF
+# needs it for outbound HTTPS to Okta (OAuth/JWKS when auth is enabled),
+# Schema Registry (catalog/database integration), JDBC over TLS to SQL
+# Server, and any other FCB-internal endpoint signed under FCB Root CA.
+# The JVM-default truststore is pointed at /mnt/sslcerts/fcb-trust-bundle/
+# bundle.jks via jvmArgs (see below). The cmf-tls mount stays separate
+# — that one is for the inbound Spring Boot REST listener cert/key.
 mountedVolumes:
   volumes:
     - name: cmf-tls
@@ -106,18 +74,14 @@ mountedVolumes:
       mountPath: /mnt/sslcerts/fcb-trust-bundle
       readOnly: true
 
-# JVM default truststore → fcb-trust-bundle (see dev/values.yaml for rationale).
-jvmArgs: "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=JKS"
+# Point the JVM default truststore at the fcb-trust-bundle JKS. Includes debug
+# logging for JDBC/Flyway troubleshooting; remove after SQL Server integration
+# is complete. CMF's deployment template appends this string to the container
+# args; the CP-CMF image's entrypoint shell-tokenizes it onto the java command line.
+# Password is trust-manager's default ("changeit"); confirm with Container team if
+# the FCB Bundle was rebuilt with a custom password.
+jvmArgs: "-Djavax.net.ssl.trustStore=/mnt/sslcerts/fcb-trust-bundle/bundle.jks -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=JKS -Dlogging.level.org.springframework.jdbc=DEBUG -Dlogging.level.org.flywaydb=DEBUG -Dlogging.level.com.microsoft.sqlserver.jdbc=DEBUG -Dlogging.level.io.confluent.cmf=DEBUG"
 
-# Application-level encryption of CMF catalog rows. CMF encrypts
-# sensitive columns (credentials, secret-set values) BEFORE writing
-# to the SQL Server, so even a DBA with raw table access can't read
-# the cleartext. Enabled from UAT onward per FCB's data-protection
-# standard — dev intentionally uses the same plumbing for parity
-# but FCB has signed off on the JDBC-only encrypt=true posture for
-# dev. The key lives in Secret `cmf-encryption-key`; rotating it
-# would corrupt every existing encrypted row, so the corresponding
-# CyberArk account MUST be locked for rotation.
 encryption:
   key:
     kubernetesSecretName: cmf-encryption-key
@@ -135,10 +99,16 @@ image:
   # create). Bump only after Confluent ships namespace-scoped support upstream.
   tag: 2.3.0-fcb-preview-2
 
-# Carry the FCB common-metadata onto every chart resource. The chart's
-# cmf.labels helper natively appends `.Values.additionalLabels`, so this
-# satisfies the [required-workload-labels] Gatekeeper constraint without
-# any chart edits.
+# NOTE — imagePullSecrets wiring is STAGED but not yet active. Uncomment
+# once the externalsecret-artifactory-pull-secret.yaml ExternalSecret has
+# been applied AND its target Secret `artifactory-pull-secret` has reached
+# SecretSynced=True. Until then the pod relies on the cluster-default pull
+# credential, which is the existing working state.
+# imagePullSecrets:
+#   - name: artifactory-pull-secret
+
+# FCB CMDB Application ID — required on every object by the cluster's
+# Common Metadata admission policy.
 additionalLabels:
   fcbint.net/app-id: "11547"
 
@@ -149,8 +119,7 @@ namespaced: true
 # RBAC and ServiceAccount are pre-created in dah-flink-prod by FCB's
 # fcb-security ArgoCD chart (see openshift-prereqs/dr/manifests/ for our
 # parallel template). The chart consumes the existing `flink-operator` SA;
-# do not let Helm try to create either — the pipeline SA in upper envs
-# doesn't have create permission on SA/Role/RoleBinding anyway.
+# do not let Helm try to create either.
 rbac: false
 serviceAccount:
   create: false
@@ -162,14 +131,10 @@ serviceAccount:
 podSecurity:
   enabled: false
 
-# CMF state lives in the external SQL Server above, not on a local PVC.
-# Setting create: false also avoids the [ceph-storage] Gatekeeper denial
-# the chart's default PVC triggers (no storageClassName → falls back to
-# "default", which FCB rejects).
+# CMF state lives in local SQLite on pod ephemeral storage, not on a local PVC.
 persistence:
   create: false
 
-# CPU and memory for the CMF pod
 resources:
   requests:
     cpu: 200m
