@@ -17,10 +17,10 @@ cmf:
     watchNamespaces:
       - dah-flink-prod
 
-  # `production: true` enables CMF's SQL guardrails (DDL requires confirmation
-  # prompts). prd onward.
+  # `production: false` for now — encryption key deserialization failing.
+  # Once the encryption key is fixed in CyberArk, set back to true.
   sql:
-    production: true
+    production: false
 
   # Using local SQLite on pod ephemeral storage. When PRD SQL Server is ready,
   # set type to jdbc and uncomment the jdbc block below.
