@@ -18,10 +18,10 @@ cmf:
     watchNamespaces:
       - dah-flink-prod
 
-  # `production: false` for now — encryption key deserialization failing.
-  # Once the encryption key is fixed in CyberArk, set back to true.
+  # `production: true` enables CMF's SQL guardrails (DDL requires confirmation
+  # prompts). prd/dr onward. Encryption key now validated in CyberArk.
   sql:
-    production: false
+    production: true
 
   # Using local SQLite on pod ephemeral storage. When DR SQL Server is ready,
   # set type to jdbc and uncomment the jdbc block below.
