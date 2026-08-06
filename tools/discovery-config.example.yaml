@@ -1,0 +1,70 @@
+# FCB Kafka Discovery Automation Configuration
+# Copy this file to discovery-config.yaml and update with your environment details
+
+environment: "uat-p"
+discovery_timestamp: "2026-08-03T12:00:00Z"
+
+clusters:
+  - name: "uat-p-kafka-primary"
+    bootstrap_servers: "kafka-broker-0.kafka:9092,kafka-broker-1.kafka:9092,kafka-broker-2.kafka:9092"
+    security_protocol: "PLAINTEXT"
+
+    # SASL configuration (optional)
+    # security_protocol: "SASL_SSL"
+    # sasl_mechanism: "PLAIN"
+    # sasl_username: "${KAFKA_SASL_USER}"
+    # sasl_password: "${KAFKA_SASL_PASSWORD}"
+
+    # Schema Registry (optional)
+    schema_registry_url: "http://schema-registry.kafka:8081"
+
+    # Include ACLs in discovery (requires appropriate permissions)
+    include_acls: true
+
+    # Metrics configuration (optional)
+    metrics:
+      enabled: true
+      type: "prometheus"  # or "datadog"
+      prometheus_url: "http://prometheus:9090"
+      # datadog_api_key: "${DATADOG_API_KEY}"
+      # datadog_app_key: "${DATADOG_APP_KEY}"
+
+  - name: "uat-s-kafka-secondary"
+    bootstrap_servers: "kafka-broker-0.kafka-s:9092,kafka-broker-1.kafka-s:9092,kafka-broker-2.kafka-s:9092"
+    security_protocol: "PLAINTEXT"
+    schema_registry_url: "http://schema-registry.kafka-s:8081"
+    include_acls: true
+    metrics:
+      enabled: true
+      type: "prometheus"
+      prometheus_url: "http://prometheus:9090"
+
+# Output configuration
+output:
+  format: "json"  # or "yaml", "csv"
+  include_sensitive_data: false  # exclude secrets, passwords from report
+
+  # Report sections to include
+  sections:
+    - brokers
+    - topics
+    - consumer_groups
+    - acls
+    - configs
+    - schema_registry
+    - metrics
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "kafka-discovery.log"
+
+# Timeouts and retries
+timeouts:
+  admin_client: 10  # seconds
+  schema_registry: 10  # seconds
+  metrics_query: 30  # seconds
+
+retries:
+  admin_client: 3
+  schema_registry: 2

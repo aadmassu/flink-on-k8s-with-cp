@@ -243,6 +243,20 @@ stages:
                   oauth-broker oauth-schemaregistry oauth-connect \
                   oauth-kafkarest oauth-controlcenter oauth-mds-rest oauth-mds-sso
 
+                # CMF encryption key validation — must be exactly 16 or 32 bytes
+                # (decoded). If it's 44 bytes, the key was double base64-encoded.
+                echo ""
+                echo "=== CMF encryption-key byte validation (must be 16 or 32 bytes) ==="
+                KEY_BYTES=$(oc get secret cmf-encryption-key -n "$OC_NS" -o jsonpath='{.data.key}' 2>/dev/null | base64 --decode 2>/dev/null | wc -c)
+                if [ -z "$KEY_BYTES" ]; then
+                  echo "  Secret not found or unable to decode"
+                elif [ "$KEY_BYTES" -eq 16 ] || [ "$KEY_BYTES" -eq 32 ]; then
+                  echo "  ✓ Encryption key is $KEY_BYTES bytes (valid for AES)"
+                else
+                  echo "  ✗ ERROR: Encryption key is $KEY_BYTES bytes (expected 16 or 32)"
+                  echo "    If it's 44 bytes, the key was double base64-encoded (common mistake)"
+                fi
+
                 # cert-manager Certificate objects — Ready condition tells us
                 # whether Keyfactor has issued the cert. A Secret that is
                 # MISSING in the matrix above is almost always paired with a

@@ -1,0 +1,16 @@
+# Kafka Discovery Automation Requirements
+
+# Kafka client
+kafka-python==2.0.2
+
+# Configuration management
+PyYAML==6.0
+
+# HTTP requests
+requests==2.31.0
+
+# Optional: for parallel execution
+GNU-Parallel>=2020
+
+# Optional: for metrics collection
+prometheus-client==0.18.0
