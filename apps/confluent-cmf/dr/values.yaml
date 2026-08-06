@@ -27,7 +27,7 @@ cmf:
       engine: sqlserver
       url: ""        # set at install time from prd-cmf-sql-server-jdbc-url (shared with prd)
       port: 3085
-      database: DAHFLINK
+      database: DAHFLINK_PRD_2
       user: ""       # set at install time from prd-cmf-sql-server-user (shared with prd)
       options: "encrypt=true;trustServerCertificate=true;"
       password:
