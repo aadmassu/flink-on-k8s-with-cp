@@ -134,7 +134,21 @@ stages:
                   ES_DIR="apps/confluent-cmf/$TARGET_ENV/externalsecrets"
                   apply_externalsecret_and_wait confluent-license   "$ES_DIR/externalsecret-confluent-license.yaml"
                   apply_externalsecret_and_wait cmf-db-credentials  "$ES_DIR/externalsecret-cmf-db-password.yaml"
-                  apply_externalsecret_and_wait cmf-encryption-key  "$ES_DIR/externalsecret-cmf-encryption-key.yaml"
+
+                  # TEMPORARY WORKAROUND (prd/dr only): Create cmf-encryption-key Secret directly
+                  # TODO: Remove after Tushar updates CyberArk with the encryption key
+                  if [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
+                    echo ""
+                    echo "=== TEMPORARY: Creating cmf-encryption-key Secret directly (bypass ESO) ==="
+                    oc -n "$OC_NS" create secret generic cmf-encryption-key \
+                      --from-literal=key='6a+zypYzJoSHO6An9RPtUDJ41Ivx4DUdbqnNBEr7S6Q=' \
+                      -o yaml --dry-run=client | oc apply -f -
+                    echo "cmf-encryption-key Secret created (temporary, for prd/dr only)"
+                  else
+                    echo ""
+                    echo "=== Provisioning cmf-encryption-key via ESO (CyberArk) ==="
+                    apply_externalsecret_and_wait cmf-encryption-key  "$ES_DIR/externalsecret-cmf-encryption-key.yaml"
+                  fi
 
                   echo ""
                   echo "=== Verifying cmf-tls Secret exists ==="
