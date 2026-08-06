@@ -2,7 +2,10 @@
 secrets/
 # EXCEPTION: Temporary CMF encryption key Secret manifests (raw 32-byte key)
 # TODO: Remove these files and the gitignore exception once Tushar updates CyberArk
-!apps/confluent-cmf/*/secrets/secret-cmf-encryption-key.yaml
+!apps/confluent-cmf/prd/secrets/
+!apps/confluent-cmf/prd/secrets/secret-cmf-encryption-key.yaml
+!apps/confluent-cmf/dr/secrets/
+!apps/confluent-cmf/dr/secrets/secret-cmf-encryption-key.yaml
 *.secret
 *.key
 *.pem
