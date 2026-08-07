@@ -21,9 +21,9 @@ metadata:
   annotations:
     # route.openshift.io/termination: reencrypt
     # route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle # required by reencrypt annotation
-    route.openshift.io/insecureEdgeTerminationPolicy: Redirect
-    route.openshift.io/termination: edge
-    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com # Edge termination + redirect insecure
+    route.openshift.io/insecureEdgeTerminationPolicy: Redirect   # Redirect HTTP to HTTPS
+    route.openshift.io/termination: edge                         # Edge termination (HTTP to TLS)
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
 spec:
   ingressClassName: openshift-core-zone
   rules:
