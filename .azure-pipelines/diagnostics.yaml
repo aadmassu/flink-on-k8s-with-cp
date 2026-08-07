@@ -542,6 +542,22 @@ stages:
                 oc -n "$OC_NS" describe endpoints 2>/dev/null \
                   || echo "  (no Endpoints or oc error)"
 
+                echo ""
+                echo "=== Route describe (OpenShift ingress, TLS termination) ==="
+                if oc -n "$OC_NS" get route >/dev/null 2>&1; then
+                  oc -n "$OC_NS" describe route 2>/dev/null
+                else
+                  echo "  (no Routes in namespace)"
+                fi
+
+                echo ""
+                echo "=== Ingress describe (Kubernetes ingress, HAProxy rules) ==="
+                if oc -n "$OC_NS" get ingress >/dev/null 2>&1; then
+                  oc -n "$OC_NS" describe ingress 2>/dev/null
+                else
+                  echo "  (no Ingresses in namespace)"
+                fi
+
                 # Dump the FULL StatefulSet yaml — no sed, no head, nothing
                 # trimmed. We need to see the entire manifest CFK is
                 # producing so we can review the vct AND every other
