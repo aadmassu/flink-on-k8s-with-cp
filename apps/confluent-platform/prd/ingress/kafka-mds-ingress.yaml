@@ -20,6 +20,7 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     route.openshift.io/termination: reencrypt
+    route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle # required by reencrypt annotation
     fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
 spec:
   ingressClassName: openshift-core-zone

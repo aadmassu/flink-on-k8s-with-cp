@@ -21,6 +21,7 @@ metadata:
     # Backend is HTTPS — reencrypt at the router instead of the default edge.
     # See https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress "Ingress Example" — recommended pattern.
     route.openshift.io/termination: reencrypt
+    route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle # required by reencrypt annotation
     fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
 spec:
   ingressClassName: openshift-core-zone
