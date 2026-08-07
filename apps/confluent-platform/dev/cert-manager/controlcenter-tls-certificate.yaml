@@ -37,6 +37,7 @@ spec:
     - controlcenter.dah-flink-dev.svc
     - controlcenter.dah-flink-dev.svc.cluster.local
     - controlcenter-0.controlcenter.dah-flink-dev.svc.cluster.local
+    - controlcenter.apps.dv.ocp.fcbint.net
     - controlcenter.apps.dv-p.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
