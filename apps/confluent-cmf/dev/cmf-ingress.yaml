@@ -1,7 +1,7 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Date:        2026-08-07 (last-modified)
 # Description: Ingress exposing the CMF management UI publicly. Edge
 #              (cmf-ingress-tls) → HAProxy → cmf-service:443 → pod:8080
 #              (cmf-tls). Both legs HTTPS → reencrypt termination.

@@ -1,7 +1,7 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Date:        2026-08-07 (last-modified)
 # Description: Ingress exposing Kafka Connect REST/UI publicly. Backend
 #              serves HTTPS on 8083 (connect-tls); edge termination
 #              reencrypt.

@@ -1,7 +1,7 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Date:        2026-08-07 (last-modified)
 # Description: Ingress exposing Control Center UI publicly (main
 #              browser-facing CP dashboard). Backend HTTPS on 9021
 #              (controlcenter-tls); edge termination reencrypt.

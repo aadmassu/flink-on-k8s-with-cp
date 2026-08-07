@@ -1,7 +1,7 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
+# Date:        2026-08-07 (last-modified)
 # Description: Ingress exposing the broker MDS REST endpoint (port 8090
 #              on the kafka Service) publicly. Backend HTTPS via
 #              kafka-tls; edge termination reencrypt. MDS API only —
