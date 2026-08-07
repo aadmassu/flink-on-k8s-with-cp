@@ -19,8 +19,10 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
   annotations:
-    route.openshift.io/termination: reencrypt
-    route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle # required by reencrypt annotation
+    # route.openshift.io/termination: reencrypt
+    # route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle # required by reencrypt annotation
+    route.openshift.io/insecureEdgeTerminationPolicy: Redirect
+    route.openshift.io/termination: edge
     fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
 spec:
   ingressClassName: openshift-core-zone
