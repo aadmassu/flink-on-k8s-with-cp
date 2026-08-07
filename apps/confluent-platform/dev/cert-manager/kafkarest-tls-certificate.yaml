@@ -28,6 +28,8 @@ spec:
     - kafkarest.dah-flink-dev.svc
     - kafkarest.dah-flink-dev.svc.cluster.local
     - kafkarest-0.kafkarest.dah-flink-dev.svc.cluster.local
+    - kafkarest.apps.dv.ocp.fcbint.net
+    - kafkarest.apps.dv-p.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:

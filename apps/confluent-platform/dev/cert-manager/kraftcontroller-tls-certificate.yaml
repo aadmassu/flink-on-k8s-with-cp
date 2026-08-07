@@ -32,6 +32,13 @@ spec:
     - kraftcontroller-0.kraftcontroller.dah-flink-dev.svc.cluster.local
     - kraftcontroller-1.kraftcontroller.dah-flink-dev.svc.cluster.local
     - kraftcontroller-2.kraftcontroller.dah-flink-dev.svc.cluster.local
+    - kraftcontroller.apps.dv.ocp.fcbint.net
+    - kraftcontroller-0.kraftcontroller.apps.dv-p.ocp.fcbint.net
+    - kraftcontroller-1.kraftcontroller.apps.dv-p.ocp.fcbint.net
+    - kraftcontroller-2.kraftcontroller.apps.dv-p.ocp.fcbint.net
+    - kraftcontroller-0.kraftcontroller.apps.dv.ocp.fcbint.net
+    - kraftcontroller-1.kraftcontroller.apps.dv.ocp.fcbint.net
+    - kraftcontroller-2.kraftcontroller.apps.dv.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:

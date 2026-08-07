@@ -46,6 +46,13 @@ spec:
     - kafka-0.kafka.dah-flink-dev.svc.cluster.local
     - kafka-1.kafka.dah-flink-dev.svc.cluster.local
     - kafka-2.kafka.dah-flink-dev.svc.cluster.local
+    - kafka.apps.dv-p.ocp.fcbint.net
+    - kafka-0.kafka.apps.dv.ocp.fcbint.net
+    - kafka-1.kafka.apps.dv.ocp.fcbint.net
+    - kafka-2.kafka.apps.dv.ocp.fcbint.net
+    - kafka-0.kafka.apps.dv-p.ocp.fcbint.net
+    - kafka-1.kafka.apps.dv-p.ocp.fcbint.net
+    - kafka-2.kafka.apps.dv-p.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:

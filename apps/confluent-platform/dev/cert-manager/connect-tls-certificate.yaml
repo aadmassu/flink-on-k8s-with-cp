@@ -29,6 +29,8 @@ spec:
     - connect.dah-flink-dev.svc.cluster.local
     - connect-0.connect.dah-flink-dev.svc.cluster.local
     - connect-1.connect.dah-flink-dev.svc.cluster.local
+    - connect.apps.dv.ocp.fcbint.net
+    - connect.apps.dv-p.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:
