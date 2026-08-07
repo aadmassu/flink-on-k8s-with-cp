@@ -532,6 +532,16 @@ stages:
                 echo ""
                 echo "(Look for any service with ENDPOINTS=<none>; that's the broken edge.)"
 
+                echo ""
+                echo "=== Service describe (detailed port/selector/sessionAffinity info) ==="
+                oc -n "$OC_NS" describe svc 2>/dev/null \
+                  || echo "  (no Services or oc error)"
+
+                echo ""
+                echo "=== Endpoints describe (pod IPs, readiness state per port) ==="
+                oc -n "$OC_NS" describe endpoints 2>/dev/null \
+                  || echo "  (no Endpoints or oc error)"
+
                 # Dump the FULL StatefulSet yaml — no sed, no head, nothing
                 # trimmed. We need to see the entire manifest CFK is
                 # producing so we can review the vct AND every other
