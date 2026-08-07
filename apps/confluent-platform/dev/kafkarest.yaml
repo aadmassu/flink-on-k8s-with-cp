@@ -36,8 +36,8 @@ spec:
   license:
     secretRef: cfk-license
 
-  tls:
-    secretRef: kafkarest-tls
+  # tls:
+  #   secretRef: kafkarest-tls
 
   mountedVolumes:
     volumes:

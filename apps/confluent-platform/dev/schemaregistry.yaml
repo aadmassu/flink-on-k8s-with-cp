@@ -37,8 +37,8 @@ spec:
   license:
     secretRef: cfk-license
 
-  tls:
-    secretRef: schemaregistry-tls
+  # tls:
+  #   secretRef: schemaregistry-tls
 
   # JVM outbound trust store (kafka-tls signed by FCB CA in this bundle; runbook A21).
   mountedVolumes:

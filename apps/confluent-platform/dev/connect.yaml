@@ -35,8 +35,8 @@ spec:
   license:
     secretRef: cfk-license
 
-  tls:
-    secretRef: connect-tls
+  # tls:
+  #   secretRef: connect-tls
 
   mountedVolumes:
     volumes:
