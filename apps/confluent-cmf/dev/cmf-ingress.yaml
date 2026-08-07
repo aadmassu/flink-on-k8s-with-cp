@@ -18,14 +18,13 @@ metadata:
     app.kubernetes.io/part-of: confluent-manager-for-flink
     fcbint.net/app-id: "11547"
   annotations:
-    # Edge termination + redirect insecure
     # Backend is HTTPS — reencrypt at the router instead of the default edge.
     # See https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress "Ingress Example" — recommended pattern.
     # route.openshift.io/termination: reencrypt
     # route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle # required by reencrypt annotation
     route.openshift.io/insecureEdgeTerminationPolicy: Redirect
     route.openshift.io/termination: edge
-    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com # Edge termination + redirect insecure
 spec:
   ingressClassName: openshift-core-zone
   rules:
