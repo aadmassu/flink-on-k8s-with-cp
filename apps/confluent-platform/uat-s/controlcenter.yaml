@@ -42,8 +42,8 @@ spec:
   license:
     secretRef: cfk-license
 
-  tls:
-    secretRef: controlcenter-tls
+  # tls:
+#    secretRef: controlcenter-tls
 
   # JVM outbound trust store (runbook A21).
   mountedVolumes:
