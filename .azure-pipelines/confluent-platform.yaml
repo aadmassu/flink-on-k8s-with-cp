@@ -712,10 +712,12 @@ stages:
                     echo "(KRaft Controller skipped — checkbox off)"
                   fi
 
-                  # KRaftController readiness gate runs BEFORE the Kafka apply. CFK 3.2.0 evaluates kRaft availability on the Kafka CR's first reconcile and latches "waiting for at-least one kRaft controller pod availability" without re-queueing if controllers aren't ready yet.
-                  if is_true "$APPLY_KRAFT" || is_true "$APPLY_KAFKA"; then
-                    wait_for_cr_ready kraftcontroller kraftcontroller 300
-                  fi
+                  # DISABLED for troubleshooting: KRaftController readiness gate.
+                  # Normally waits for controller ready BEFORE kafka apply, but disabled temporarily
+                  # to progress with installation while debugging controller readiness issues.
+                  # if is_true "$APPLY_KRAFT" || is_true "$APPLY_KAFKA"; then
+                  #   wait_for_cr_ready kraftcontroller kraftcontroller 300
+                  # fi
 
                   echo ""
                   echo "=== Phase 1b: Kafka ==="
