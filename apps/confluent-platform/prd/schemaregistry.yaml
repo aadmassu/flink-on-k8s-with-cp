@@ -111,7 +111,7 @@ spec:
       - schema.registry.group.id=schema-registry
       - kafkastore.topic=_schemas
       - kafkastore.topic.replication.factor=3
-      - inter.instance.protocol=https
+      - inter.instance.protocol=http
       - resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension
       - kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler
 
