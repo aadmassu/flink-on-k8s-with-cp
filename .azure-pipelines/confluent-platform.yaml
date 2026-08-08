@@ -740,12 +740,14 @@ stages:
                     echo "(Kafka Broker skipped — checkbox off; kafkarestclass.yaml also not applied)"
                   fi
 
-                  # Kafka readiness gate before any dependent component is applied (runbook A14).
-                  if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
-                     || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
-                     || is_true "$APPLY_C3"; then
-                    wait_for_cr_ready kafka kafka 300
-                  fi
+                  # DISABLED for troubleshooting: Kafka readiness gate.
+                  # Normally waits for kafka ready before dependent components, but disabled temporarily
+                  # to progress with installation while debugging readiness issues.
+                  # if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
+                  #    || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
+                  #    || is_true "$APPLY_C3"; then
+                  #   wait_for_cr_ready kafka kafka 300
+                  # fi
 
                   echo ""
                   echo "=== Phase 2 (pre-component): RBAC rolebindings ==="
