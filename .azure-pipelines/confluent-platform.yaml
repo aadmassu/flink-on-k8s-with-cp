@@ -683,15 +683,21 @@ stages:
                   }
 
                   # Pre-Phase: NetworkPolicy for CFK-operator ingress (Jolokia :7777 probe).
-                  # DEV ONLY: App team has RBAC permission to create NetworkPolicies in dev.
-                  # Upper environments (qa, uat-p, uat-s, prd, dr): requires SNOW request to infrastructure team.
-                  if [ "$TARGET_ENV" = "dev" ] && [ -f "$ENV_DIR/network-policy/network-policy.yaml" ]; then
+                  # DEV: App team has RBAC permission to create NetworkPolicies in dev (auto-apply).
+                  # Upper environments (qa, uat-p, uat-s, prd, dr): apply if file exists; if RBAC
+                  # forbidden, contact infrastructure team (Rick/Tom) or submit SNOW request.
+                  if [ -f "$ENV_DIR/network-policy/network-policy.yaml" ]; then
                     echo ""
                     echo "+ oc apply -f $ENV_DIR/network-policy/network-policy.yaml"
-                    oc apply -f "$ENV_DIR/network-policy/network-policy.yaml"
-                  elif [ "$TARGET_ENV" != "dev" ]; then
-                    echo ""
-                    echo "NetworkPolicy: skipped for $TARGET_ENV (requires SNOW request to infrastructure team)."
+                    if ! oc apply -f "$ENV_DIR/network-policy/network-policy.yaml"; then
+                      if [ "$TARGET_ENV" != "dev" ]; then
+                        echo ""
+                        echo "WARNING: NetworkPolicy apply failed for $TARGET_ENV (likely RBAC permission)."
+                        echo "         Contact infrastructure team (Rick/Tom) or submit SNOW request."
+                      else
+                        exit 1
+                      fi
+                    fi
                   else
                     echo ""
                     echo "(NetworkPolicy file not found — skipping)"
