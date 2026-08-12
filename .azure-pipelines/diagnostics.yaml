@@ -1111,6 +1111,10 @@ stages:
                   fi
                 fi
 
+                echo ""
+                echo "Quick byte-count check:"
+                oc -n "$OC_NS" get secret cmf-encryption-key -o jsonpath='{.data.key}' 2>/dev/null | base64 -d 2>/dev/null | wc -c || echo "(secret not found or decode failed)"
+
                 # CMF.4 — Deployment + Pod state. CMF runs as a single Deployment
                 # named `cmf` (Helm chart's default release name). Replicas, ready
                 # count, restart count, and lastState.terminated tell us in one
