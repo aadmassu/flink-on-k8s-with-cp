@@ -16,7 +16,7 @@
       }
     },
     "ddlEnvironments": [
-      "dah-flink-prd"
+      "dah-flink-prod"
     ]
   }
 }

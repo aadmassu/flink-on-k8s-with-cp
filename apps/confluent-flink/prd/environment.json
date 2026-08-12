@@ -1,6 +1,6 @@
 {
-  "name": "dah-flink-prd",
-  "kubernetesNamespace": "dah-flink-prd",
+  "name": "dah-flink-prod",
+  "kubernetesNamespace": "dah-flink-prod",
   "flinkApplicationDefaults": {
     "spec": {
       "flinkConfiguration": {
