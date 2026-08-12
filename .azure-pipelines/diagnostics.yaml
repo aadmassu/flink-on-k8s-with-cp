@@ -1115,6 +1115,23 @@ stages:
                 echo "Quick byte-count check:"
                 oc -n "$OC_NS" get secret cmf-encryption-key -o jsonpath='{.data.key}' 2>/dev/null | base64 -d 2>/dev/null | wc -c || echo "(secret not found or decode failed)"
 
+                # CMF.3a — ExternalSecret status (if used).
+                # Checks whether ESO has successfully synced the cmf-encryption-key from CyberArk.
+                echo ""
+                echo "=== CMF.3a  ExternalSecret cmf-encryption-key status ==="
+                if oc -n "$OC_NS" get externalsecret cmf-encryption-key >/dev/null 2>&1; then
+                  echo "--- ExternalSecret status ---"
+                  oc -n "$OC_NS" get externalsecret cmf-encryption-key 2>/dev/null
+                  echo ""
+                  echo "--- ExternalSecret full details ---"
+                  oc -n "$OC_NS" describe externalsecret cmf-encryption-key 2>/dev/null
+                else
+                  echo "  (no ExternalSecret cmf-encryption-key found — may be using manifest-based Secret)"
+                  echo ""
+                  echo "  If ESO-managed, to force resync:"
+                  echo "    oc -n $OC_NS annotate externalsecret cmf-encryption-key force-sync=\"\$(date +%s)\" --overwrite"
+                fi
+
                 # CMF.4 — Deployment + Pod state. CMF runs as a single Deployment
                 # named `cmf` (Helm chart's default release name). Replicas, ready
                 # count, restart count, and lastState.terminated tell us in one
