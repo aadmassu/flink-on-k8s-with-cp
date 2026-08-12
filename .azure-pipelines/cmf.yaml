@@ -135,24 +135,12 @@ stages:
                   apply_externalsecret_and_wait confluent-license   "$ES_DIR/externalsecret-confluent-license.yaml"
                   apply_externalsecret_and_wait cmf-db-credentials  "$ES_DIR/externalsecret-cmf-db-password.yaml"
 
-                  # TEMPORARY WORKAROUND (qa, uat-p, uat-s, prd, dr): Apply cmf-encryption-key Secret manifest
-                  # TODO: Remove after Tushar updates CyberArk with the encryption key (all environments)
-                  if [ "$TARGET_ENV" = "dev" ]; then
-                    echo ""
-                    echo "=== Provisioning cmf-encryption-key via ESO (CyberArk) ==="
-                    apply_externalsecret_and_wait cmf-encryption-key  "$ES_DIR/externalsecret-cmf-encryption-key.yaml"
-                  else
-                    echo ""
-                    echo "=== TEMPORARY: Applying cmf-encryption-key Secret (raw 32-byte key) ==="
-                    TEMP_SECRET="apps/confluent-cmf/$TARGET_ENV/secrets/secret-cmf-encryption-key.yaml"
-                    if [ -f "$TEMP_SECRET" ]; then
-                      oc apply -f "$TEMP_SECRET"
-                      echo "cmf-encryption-key Secret applied from $TEMP_SECRET"
-                    else
-                      echo "ERROR: $TEMP_SECRET not found"
-                      exit 1
-                    fi
-                  fi
+                  # CMF encryption key via ESO (CyberArk-backed).
+                  # ExternalSecret now uses decodingStrategy: Base64 to properly decode
+                  # the Base64-encoded value from CyberArk before creating the Kubernetes Secret.
+                  echo ""
+                  echo "=== Provisioning cmf-encryption-key via ESO (CyberArk) ==="
+                  apply_externalsecret_and_wait cmf-encryption-key  "$ES_DIR/externalsecret-cmf-encryption-key.yaml"
 
                   echo ""
                   echo "=== Verifying cmf-tls Secret exists ==="
