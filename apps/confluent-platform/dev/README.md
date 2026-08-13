@@ -107,7 +107,7 @@ If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, rai
 - Log retention 168h (7d), 1 GiB segments
 - Min ISR for transaction-state log = 2
 - KRaft quorum size = 3
-- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, temporary QA scope `11547.DAH(QA)`
+- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, and DEV scope `11547.DAH(Dev)`
 - Authorizer: `ConfluentServerAuthorizer` with `CONFLUENT,KRAFT_ACL` rule providers
 - Embedded MDS on broker port 8090 (HTTPS, BEARER)
 - Self-Balancing Cluster (SBC) enabled

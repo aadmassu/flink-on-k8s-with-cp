@@ -61,7 +61,7 @@ spec:
   # Dep-to-Kafka: flat oauth+jaasConfig. Dep-to-SR/MDS: nested oauth+configuration (runbook A22).
   dependencies:
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-prd.svc.cluster.local:9071
+      bootstrapEndpoint: kafka.dah-flink-prd.svc.cluster.local:9092
       authentication:
         type: oauth
         jaasConfig:

@@ -40,7 +40,7 @@ spec:
     - controlcenter.apps.dv.ocp.fcbint.net
     - controlcenter.apps.dv-p.ocp.fcbint.net
   duration: 8760h0m0s
-  renewBefore: 360h
+  renewBefore: 1080h0m0s
   privateKey:
     algorithm: RSA
     size: 4096

@@ -29,7 +29,7 @@ spec:
     - schemaregistry.dah-flink-dev.svc.cluster.local
     - schemaregistry-0.schemaregistry.dah-flink-dev.svc.cluster.local
   duration: 8760h0m0s
-  renewBefore: 360h
+  renewBefore: 1080h0m0s
   privateKey:
     algorithm: RSA
     size: 4096

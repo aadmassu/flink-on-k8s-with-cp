@@ -62,7 +62,7 @@ spec:
   # Dep-to-Kafka: flat oauth+jaasConfig. Dep-to-SR/MDS: nested oauth+configuration (runbook A22).
   dependencies:
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
+      bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9092
       authentication:
         type: oauth
         jaasConfig:
@@ -70,11 +70,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahQa_groups
+          groupsClaimName: dahDev_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(QA)
+          scope: 11547.DAH(Dev)
       tls:
         enabled: true
         secretRef: kafka-tls
@@ -97,11 +97,11 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahQa_groups
+            groupsClaimName: dahDev_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(QA)
+            scope: 11547.DAH(Dev)
     kafkaRestClassRef:
       name: default
       namespace: dah-flink-dev
@@ -117,7 +117,7 @@ spec:
       - confluent.metadata.ssl.truststore.password=changeit
       - confluent.metadata.ssl.truststore.type=JKS
 
-      - group.id=qa_connect_cluster
+      - group.id=connect-cluster
       - config.storage.topic=connect-cluster-configs
       - offset.storage.topic=connect-cluster-offsets
       - status.storage.topic=connect-cluster-status

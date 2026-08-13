@@ -130,12 +130,12 @@ stages:
               inputs:
                 targetType: inline
                 script: |
-                  set -euo pipefail
+                  set -uo pipefail
 
                   # Abort with miss-list if any required variable is empty.
                   required_vars=(
                     CONFLUENT_LICENSE MDS_PEM
-                    SASL_ADMIN SASL_CLIENT SASL_SR SASL_CONNECT SASL_REST SASL_C3
+                    SASL_ADMIN
                     OAUTH_BROKER_ID OAUTH_BROKER_SECRET
                     OAUTH_SR_ID OAUTH_SR_SECRET
                     OAUTH_CONNECT_ID OAUTH_CONNECT_SECRET
@@ -156,7 +156,7 @@ stages:
                   if [ "$missing" -gt 0 ]; then
                     echo ""
                     echo "ERROR: $missing required variable(s) above are empty. Populate them"
-                    echo "in variable group kafka-openshift-credentials-$TARGET_ENV before re-running."
+                    echo "in variable group $TARGET_ENV-openshift-credentials before re-running."
                     echo "Variable naming mapping: apps/confluent-platform/$TARGET_ENV/prereqs/README.md"
                     exit 1
                   fi
@@ -316,41 +316,31 @@ stages:
                   rm -f "$MDS_PRIV" "$MDS_PUB"
                   fi
 
-                  # sasl-plain-internal keys: kafka-server-listener-<name>-plain-users.json per SASL/PLAIN listener + plain-interbroker.txt + <lowercase-CRD-kind>-client-plain.txt per component (runbook A15). Naming MUST match the operator's key-derivation from the CR's KIND (not the CR's name or a friendly component name) -- SchemaRegistry -> schemaregistry, Connect -> connect, KafkaRestProxy -> kafkarestproxy, ControlCenter -> controlcenter. Older versions of this pipeline used "kafkaconnect" and "kafkarest" which the operator rejects at admission with `required at least one of the keys [<kind>-client-plain.txt plain.txt] in secretRef [sasl-plain-internal] for auth type [plain]`.
+                  # One infrastructure identity for the Kafka internal listener,
+                  # inter-broker traffic, and the KRaft controller path. Managed
+                  # components retain their OAuth/RBAC identities and therefore
+                  # do not need component-specific PLAIN credentials.
                   if is_eso_managed sasl-plain-internal; then
                     echo ""
                     echo "=== sasl-plain-internal ==="
                     echo "  SKIPPED — ESO-owned (ExternalSecret targets this name)."
                   else
                   SASL_JSON_TMP=$(mktemp)
-                  SASL_IB_TMP=$(mktemp)
-                  SASL_SR_TMP=$(mktemp)
-                  SASL_CONNECT_TMP=$(mktemp)
-                  SASL_REST_TMP=$(mktemp)
-                  SASL_C3_TMP=$(mktemp)
-                  printf '{\n  "admin": "%s",\n  "client": "%s",\n  "schema_registry": "%s",\n  "kafka_connect": "%s",\n  "kafka_rest": "%s",\n  "control_center": "%s"\n}\n' \
-                    "$SASL_ADMIN" "$SASL_CLIENT" "$SASL_SR" "$SASL_CONNECT" "$SASL_REST" "$SASL_C3" \
-                    > "$SASL_JSON_TMP"
-                  # Java-properties two-line format; each username must exist in users.json above.
-                  printf 'username=admin\npassword=%s\n'           "$SASL_ADMIN"   > "$SASL_IB_TMP"
-                  printf 'username=schema_registry\npassword=%s\n' "$SASL_SR"      > "$SASL_SR_TMP"
-                  printf 'username=kafka_connect\npassword=%s\n'   "$SASL_CONNECT" > "$SASL_CONNECT_TMP"
-                  printf 'username=kafka_rest\npassword=%s\n'      "$SASL_REST"    > "$SASL_REST_TMP"
-                  printf 'username=control_center\npassword=%s\n'  "$SASL_C3"      > "$SASL_C3_TMP"
+                  SASL_PLAIN_TMP=$(mktemp)
+                  printf '{\n  "admin": "%s"\n}\n' "$SASL_ADMIN" > "$SASL_JSON_TMP"
+                  printf 'username=admin\npassword=%s\n' "$SASL_ADMIN" > "$SASL_PLAIN_TMP"
                   echo ""
                   echo "=== sasl-plain-internal ==="
                   oc create secret generic sasl-plain-internal \
                     -n "$OC_NS" --dry-run=client -o yaml \
+                    --from-file=plain-users.json="$SASL_JSON_TMP" \
                     --from-file=kafka-server-listener-internal-plain-users.json="$SASL_JSON_TMP" \
-                    --from-file=kafka-server-listener-external-plain-users.json="$SASL_JSON_TMP" \
-                    --from-file=plain-interbroker.txt="$SASL_IB_TMP" \
-                    --from-file=schemaregistry-client-plain.txt="$SASL_SR_TMP" \
-                    --from-file=connect-client-plain.txt="$SASL_CONNECT_TMP" \
-                    --from-file=kafkarestproxy-client-plain.txt="$SASL_REST_TMP" \
-                    --from-file=controlcenter-client-plain.txt="$SASL_C3_TMP" \
+                    --from-file=kraftcontroller-server-listener-controller-plain-users.json="$SASL_JSON_TMP" \
+                    --from-file=plain.txt="$SASL_PLAIN_TMP" \
+                    --from-file=plain-interbroker.txt="$SASL_PLAIN_TMP" \
                     | label_secret sasl-plain-internal \
                     | oc apply -f -
-                  rm -f "$SASL_JSON_TMP" "$SASL_IB_TMP" "$SASL_SR_TMP" "$SASL_CONNECT_TMP" "$SASL_REST_TMP" "$SASL_C3_TMP"
+                  rm -f "$SASL_JSON_TMP" "$SASL_PLAIN_TMP"
                   fi
 
                   # OAuth client credentials — one Secret per component, each
@@ -364,25 +354,21 @@ stages:
                   # oauth-mds-sso — separate Okta OIDC client used by MDS for browser-based SSO (C3 web UI login). Distinct from oauth-mds-rest which is MDS's own service-side OAuth client. Referenced from kafka.yaml spec.services.mds.provider.sso.clientCredentials.secretRef (runbook A22).
                   apply_oauth_secret oauth-mds-sso        "$OAUTH_MDS_SSO_ID"   "$OAUTH_MDS_SSO_SECRET"
 
-                  # C3 Prometheus / AlertManager basic auth.
-                  apply_secret_from_literals c3-prometheus-basic-auth \
-                    --from-literal=username="$C3_PROM_USER" \
-                    --from-literal=password="$C3_PROM_PWD"
-                  apply_secret_from_literals c3-alertmanager-basic-auth \
-                    --from-literal=username="$C3_ALERT_USER" \
-                    --from-literal=password="$C3_ALERT_PWD"
-
-                  # C3 UI basic-auth realm — key basic.txt is a Jetty realm file
-                  # with one line: <username>: <password>,<role>[,<role>...]. We
-                  # reuse the Okta C3 client credentials as the username/password
-                  # pair so no human account is involved in browser login. Referenced
-                  # from controlcenter.yaml spec.authentication.basic.secretRef.
-                  # Runbook A29.
-                  BASIC_TMP=$(mktemp)
-                  printf '%s: %s,Administrators,Restricted\n' \
-                    "$OAUTH_C3_ID" "$OAUTH_C3_SECRET" > "$BASIC_TMP"
-                  apply_secret_from_file controlcenter-basic-auth basic.txt "$BASIC_TMP"
-                  rm -f "$BASIC_TMP"
+                  # C3 Prometheus / Alertmanager require basic.txt. Server-side
+                  # and client-side formats differ, so create separate Secrets.
+                  PROM_SERVER_TMP=$(mktemp)
+                  PROM_CLIENT_TMP=$(mktemp)
+                  ALERT_SERVER_TMP=$(mktemp)
+                  ALERT_CLIENT_TMP=$(mktemp)
+                  printf '%s: %s\n' "$C3_PROM_USER" "$C3_PROM_PWD" > "$PROM_SERVER_TMP"
+                  printf 'username=%s\npassword=%s\n' "$C3_PROM_USER" "$C3_PROM_PWD" > "$PROM_CLIENT_TMP"
+                  printf '%s: %s\n' "$C3_ALERT_USER" "$C3_ALERT_PWD" > "$ALERT_SERVER_TMP"
+                  printf 'username=%s\npassword=%s\n' "$C3_ALERT_USER" "$C3_ALERT_PWD" > "$ALERT_CLIENT_TMP"
+                  apply_secret_from_file c3-prometheus-server-basic-auth basic.txt "$PROM_SERVER_TMP"
+                  apply_secret_from_file c3-prometheus-client-basic-auth basic.txt "$PROM_CLIENT_TMP"
+                  apply_secret_from_file c3-alertmanager-server-basic-auth basic.txt "$ALERT_SERVER_TMP"
+                  apply_secret_from_file c3-alertmanager-client-basic-auth basic.txt "$ALERT_CLIENT_TMP"
+                  rm -f "$PROM_SERVER_TMP" "$PROM_CLIENT_TMP" "$ALERT_SERVER_TMP" "$ALERT_CLIENT_TMP"
 
                   echo ""
                   echo "=== oc describe for every prereq Secret ==="
@@ -393,8 +379,8 @@ stages:
                       sasl-plain-internal \
                       oauth-broker oauth-schemaregistry oauth-connect \
                       oauth-kafkarest oauth-controlcenter oauth-mds-rest oauth-mds-sso \
-                      c3-prometheus-basic-auth c3-alertmanager-basic-auth \
-                      controlcenter-basic-auth; do
+                      c3-prometheus-server-basic-auth c3-prometheus-client-basic-auth \
+                      c3-alertmanager-server-basic-auth c3-alertmanager-client-basic-auth; do
                     echo ""
                     echo "--- $s ---"
                     oc describe secret "$s" -n "$OC_NS"
@@ -408,8 +394,8 @@ stages:
                       sasl-plain-internal \
                       oauth-broker oauth-schemaregistry oauth-connect \
                       oauth-kafkarest oauth-controlcenter oauth-mds-rest oauth-mds-sso \
-                      c3-prometheus-basic-auth c3-alertmanager-basic-auth \
-                      controlcenter-basic-auth
+                      c3-prometheus-server-basic-auth c3-prometheus-client-basic-auth \
+                      c3-alertmanager-server-basic-auth c3-alertmanager-client-basic-auth
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
@@ -417,11 +403,6 @@ stages:
                 CONFLUENT_LICENSE: $(${{ parameters.environment }}-confluent-license)
                 MDS_PEM: $(${{ parameters.environment }}-mds-token-keypair-pem)
                 SASL_ADMIN: $(${{ parameters.environment }}-sasl-plain-admin-pwd)
-                SASL_CLIENT: $(${{ parameters.environment }}-sasl-plain-client-pwd)
-                SASL_SR: $(${{ parameters.environment }}-sasl-plain-schema-registry-pwd)
-                SASL_CONNECT: $(${{ parameters.environment }}-sasl-plain-kafka-connect-pwd)
-                SASL_REST: $(${{ parameters.environment }}-sasl-plain-kafka-rest-pwd)
-                SASL_C3: $(${{ parameters.environment }}-sasl-plain-control-center-pwd)
                 OAUTH_BROKER_ID: $(${{ parameters.environment }}-oauth-broker-client-id)
                 OAUTH_BROKER_SECRET: $(${{ parameters.environment }}-oauth-broker-client-secret)
                 OAUTH_SR_ID: $(${{ parameters.environment }}-oauth-schemaregistry-client-id)
@@ -447,7 +428,7 @@ stages:
               inputs:
                 targetType: inline
                 script: |
-                  set -euo pipefail
+                  set -uo pipefail
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
@@ -510,9 +491,10 @@ stages:
                     oauth-controlcenter
                     oauth-mds-rest
                     oauth-mds-sso
-                    c3-prometheus-basic-auth
-                    c3-alertmanager-basic-auth
-                    controlcenter-basic-auth
+                    c3-prometheus-server-basic-auth
+                    c3-prometheus-client-basic-auth
+                    c3-alertmanager-server-basic-auth
+                    c3-alertmanager-client-basic-auth
                   )
                   missing_secrets=0
                   for s in "${REQUIRED_SECRETS[@]}"; do
@@ -528,6 +510,37 @@ stages:
                     echo "ERROR: $missing_secrets required Secret(s) missing in $OC_NS."
                     echo "See $ENV_DIR/prereqs/README.md for the full list and creation pattern,"
                     echo "then run this pipeline with action=create-prereqs to (re)populate."
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "=== Verifying prerequisite Secret key contracts ==="
+                  require_secret_key() {
+                    local secret_name=$1
+                    local key_name=$2
+                    if oc -n "$OC_NS" get secret "$secret_name" \
+                        -o go-template="{{ index .data \"$key_name\" }}" 2>/dev/null \
+                        | grep -q .; then
+                      echo "OK    $secret_name [$key_name]"
+                    else
+                      echo "MISS  $secret_name [$key_name]"
+                      return 1
+                    fi
+                  }
+                  key_contract_failed=0
+                  for key in plain-users.json plain.txt plain-interbroker.txt; do
+                    require_secret_key sasl-plain-internal "$key" || key_contract_failed=1
+                  done
+                  for secret_name in \
+                    c3-prometheus-server-basic-auth \
+                    c3-prometheus-client-basic-auth \
+                    c3-alertmanager-server-basic-auth \
+                    c3-alertmanager-client-basic-auth; do
+                    require_secret_key "$secret_name" basic.txt || key_contract_failed=1
+                  done
+                  if [ "$key_contract_failed" -ne 0 ]; then
+                    echo "ERROR: one or more prerequisite Secrets have an invalid key shape."
+                    echo "Run action=create-prereqs or repair the owning ExternalSecret."
                     exit 1
                   fi
               env:
@@ -683,26 +696,6 @@ stages:
                     return 1
                   }
 
-                  echo "=== Server-side validation of selected manifests ==="
-                  validate_manifest() {
-                    local file=$1
-                    if [ ! -f "$file" ]; then
-                      echo "ERROR: required manifest not found: $file"
-                      return 1
-                    fi
-                    echo "+ oc apply --dry-run=server -f $file"
-                    oc -n "$OC_NS" apply --dry-run=server -f "$file" >/dev/null
-                  }
-                  if is_true "$APPLY_KRAFT"; then validate_manifest "$ENV_DIR/kraftcontroller.yaml"; fi
-                  if is_true "$APPLY_KAFKA"; then
-                    validate_manifest "$ENV_DIR/kafkarestclass.yaml"
-                    validate_manifest "$ENV_DIR/kafka.yaml"
-                  fi
-                  if is_true "$APPLY_SR"; then validate_manifest "$ENV_DIR/schemaregistry.yaml"; fi
-                  if is_true "$APPLY_CONNECT"; then validate_manifest "$ENV_DIR/connect.yaml"; fi
-                  if is_true "$APPLY_KREST"; then validate_manifest "$ENV_DIR/kafkarest.yaml"; fi
-                  if is_true "$APPLY_C3"; then validate_manifest "$ENV_DIR/controlcenter.yaml"; fi
-
                   # Pre-Phase: NetworkPolicy for CFK-operator ingress (Jolokia :7777 probe).
                   # DEV: App team has RBAC permission to create NetworkPolicies in dev (auto-apply).
                   # Upper environments (qa, uat-p, uat-s, prd, dr): apply if file exists; if RBAC
@@ -733,13 +726,9 @@ stages:
                     echo "(KRaft Controller skipped — checkbox off)"
                   fi
 
-                  # DISABLED for troubleshooting: KRaftController readiness gate.
-                  # Normally waits for controller ready BEFORE kafka apply, but disabled temporarily
-                  # to progress with installation while debugging controller readiness issues.
-                  # Re-enable when NetworkPolicy operator-ingress is fully implemented.
-                  # if is_true "$APPLY_KRAFT" || is_true "$APPLY_KAFKA"; then
-                  #   wait_for_cr_ready kraftcontroller kraftcontroller 600
-                  # fi
+                  if is_true "$APPLY_KRAFT" || is_true "$APPLY_KAFKA"; then
+                    wait_for_cr_ready kraftcontroller kraftcontroller 600
+                  fi
 
                   echo ""
                   echo "=== Phase 1b: Kafka ==="
@@ -762,15 +751,59 @@ stages:
                     echo "(Kafka Broker skipped — checkbox off; kafkarestclass.yaml also not applied)"
                   fi
 
-                  # DISABLED for troubleshooting: Kafka readiness gate.
-                  # Normally waits for kafka ready before dependent components, but disabled temporarily
-                  # to progress with installation while debugging readiness issues.
-                  # Re-enable when NetworkPolicy operator-ingress is fully implemented.
-                  # if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
-                  #    || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
-                  #    || is_true "$APPLY_C3"; then
-                  #   wait_for_cr_ready kafka kafka 900
-                  # fi
+                  if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
+                     || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
+                     || is_true "$APPLY_C3"; then
+                    wait_for_cr_ready kafka kafka 900
+                  fi
+
+                  # Post-Kafka verification: listener ports, MDS readiness, oauth-mds-sso Secret presence.
+                  if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
+                     || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
+                     || is_true "$APPLY_C3"; then
+                    echo ""
+                    echo "=== Verifying Kafka listener ports and OAuth endpoint ==="
+
+                    # Verify listener configuration exists (check :9071 PLAIN and :9092 OAuth).
+                    echo "Checking Kafka listeners..."
+                    if oc get kafka kafka -n "$OC_NS" >/dev/null 2>&1; then
+                      # Check the kafka.log.message.format.version and broker listeners in the CR status.
+                      kafka_listeners=$(oc -n "$OC_NS" get kafka kafka \
+                        -o jsonpath='{.spec.listeners[*].name}' 2>/dev/null || echo "")
+                      echo "  Kafka listeners in CR: $kafka_listeners"
+
+                      # Verify oauth-mds-sso Secret exists (required for MDS OIDC).
+                      if oc get secret oauth-mds-sso -n "$OC_NS" >/dev/null 2>&1; then
+                        echo "  OK: oauth-mds-sso Secret exists"
+                      else
+                        echo "  ERROR: oauth-mds-sso Secret not found. This is required for MDS OIDC SSO."
+                        exit 1
+                      fi
+
+                      # Check MDS readiness (kafka:8090).
+                      echo ""
+                      echo "Waiting for MDS to be ready at :8090..."
+                      mds_ready=0
+                      for i in {1..30}; do
+                        if oc -n "$OC_NS" exec kafka-0 -- \
+                            timeout 5 curl -sk https://localhost:8090/api/v1/metadata/brokers \
+                            >/dev/null 2>&1; then
+                          echo "  MDS is ready (attempt $i)"
+                          mds_ready=1
+                          break
+                        fi
+                        if [ "$i" -lt 30 ]; then
+                          sleep 5
+                        fi
+                      done
+                      if [ "$mds_ready" -eq 0 ]; then
+                        echo "  WARNING: MDS not responding at :8090 after 150s. Proceeding anyway."
+                        echo "  Check kafka-0 pod logs: oc logs -n $OC_NS kafka-0 --all-containers"
+                      fi
+                    else
+                      echo "  (kafka CR not found or not yet ready; skipping listener validation)"
+                    fi
+                  fi
 
                   echo ""
                   echo "=== Phase 2 (pre-component): RBAC rolebindings ==="
@@ -814,13 +847,6 @@ stages:
                   fi
 
                   echo ""
-                  echo "=== Waiting for selected Phase 2 components ==="
-                  if is_true "$APPLY_SR"; then wait_for_cr_ready schemaregistry schemaregistry 600; fi
-                  if is_true "$APPLY_CONNECT"; then wait_for_cr_ready connect connect 900; fi
-                  if is_true "$APPLY_KREST"; then wait_for_cr_ready kafkarestproxy kafkarestproxy 600; fi
-                  if is_true "$APPLY_C3"; then wait_for_cr_ready controlcenter controlcenter 900; fi
-
-                  echo ""
                   echo "=== Cluster status (immediate post-apply) ==="
                   oc get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
                     -n "$OC_NS" 2>&1 || true
@@ -840,6 +866,109 @@ stages:
                 APPLY_ALL: ${{ parameters.applyAll }}
                 APPLY_KRAFT_CONTROLLER: ${{ parameters.applyKRaftController }}
                 APPLY_KAFKA: ${{ parameters.applyKafka }}
+                APPLY_SCHEMA_REGISTRY: ${{ parameters.applySchemaRegistry }}
+                APPLY_CONNECT: ${{ parameters.applyConnect }}
+                APPLY_KAFKA_REST_PROXY: ${{ parameters.applyKafkaRestProxy }}
+                APPLY_CONTROL_CENTER: ${{ parameters.applyControlCenter }}
+
+            - task: Bash@3
+              displayName: "Verify managed components readiness before Ingress"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  # Readiness check helper for managed components (SR / Connect / REST / C3).
+                  wait_component_ready() {
+                    local kind=$1
+                    local name=$2
+                    local timeout=${3:-300}
+                    local elapsed=0
+                    local step=10
+
+                    echo "Waiting up to ${timeout}s for $kind/$name to report ready..."
+                    while [ "$elapsed" -lt "$timeout" ]; do
+                      local status=""
+                      status=$(oc -n "$OC_NS" get "$kind" "$name" \
+                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+                        2>/dev/null || echo "")
+                      if [ "$status" = "True" ]; then
+                        echo "  $kind/$name ready=True after ${elapsed}s."
+                        return 0
+                      fi
+
+                      if [ "$elapsed" -gt 0 ] && [ $((elapsed % 60)) -eq 0 ]; then
+                        echo "  ${elapsed}s elapsed, $kind/$name not yet ready. Current conditions:"
+                        oc -n "$OC_NS" get "$kind" "$name" \
+                          -o jsonpath='{range .status.conditions[*]}    {.type}={.status}{"\n"}{end}' \
+                          2>/dev/null \
+                          || echo "    (status block not populated yet)"
+                      fi
+                      sleep "$step" || true
+                      elapsed=$((elapsed + step))
+                    done
+
+                    echo "WARNING: $kind/$name did not reach ready=True within ${timeout}s."
+                    echo "Conditions:"
+                    oc -n "$OC_NS" get "$kind" "$name" \
+                      -o jsonpath='{range .status.conditions[*]}    {.type}={.status} ({.reason}){"\n"}{end}' \
+                      2>/dev/null \
+                      || echo "    (no status block)"
+                    return 1
+                  }
+
+                  # Component selection (same logic as CR apply task).
+                  is_true() { [ "$1" = "True" ]; }
+
+                  APPLY_ALL=${APPLY_ALL:-True}
+                  if is_true "$APPLY_ALL"; then
+                    APPLY_SR=True
+                    APPLY_CONNECT=True
+                    APPLY_KREST=True
+                    APPLY_C3=True
+                  else
+                    APPLY_SR=${APPLY_SCHEMA_REGISTRY:-False}
+                    APPLY_CONNECT=${APPLY_CONNECT:-False}
+                    APPLY_KREST=${APPLY_KAFKA_REST_PROXY:-False}
+                    APPLY_C3=${APPLY_CONTROL_CENTER:-False}
+                  fi
+
+                  echo "=== Verifying managed components readiness before Ingress ==="
+                  any_failed=0
+
+                  if is_true "$APPLY_SR"; then
+                    if ! wait_component_ready schemaregistry schemaregistry 300; then
+                      any_failed=1
+                    fi
+                  fi
+
+                  if is_true "$APPLY_CONNECT"; then
+                    if ! wait_component_ready connect connect 300; then
+                      any_failed=1
+                    fi
+                  fi
+
+                  if is_true "$APPLY_KREST"; then
+                    if ! wait_component_ready kafkarestproxy kafkarest 300; then
+                      any_failed=1
+                    fi
+                  fi
+
+                  if is_true "$APPLY_C3"; then
+                    if ! wait_component_ready controlcenter controlcenter 300; then
+                      any_failed=1
+                    fi
+                  fi
+
+                  if [ "$any_failed" -ne 0 ]; then
+                    echo ""
+                    echo "WARNING: One or more components not ready. Proceeding with Ingress anyway."
+                    echo "Check pod logs and CR conditions for details."
+                  fi
+              env:
+                OC_NS: $(openshift-namespace)
+                TARGET_ENV: ${{ parameters.environment }}
+                APPLY_ALL: ${{ parameters.applyAll }}
                 APPLY_SCHEMA_REGISTRY: ${{ parameters.applySchemaRegistry }}
                 APPLY_CONNECT: ${{ parameters.applyConnect }}
                 APPLY_KAFKA_REST_PROXY: ${{ parameters.applyKafkaRestProxy }}

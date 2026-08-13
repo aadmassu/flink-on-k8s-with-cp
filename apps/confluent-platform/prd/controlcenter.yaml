@@ -59,17 +59,6 @@ spec:
         mountPath: /var/ssl/truststore
         readOnly: true
 
-  # Basic auth smoke-test pattern: username=C3 Okta client ID, password=client secret (runbook A29). Backend calls run as C3 service principal (in super.users), so post-login every action succeeds.
-  authentication:
-    type: basic
-    basic:
-      secretRef: controlcenter-basic-auth
-      roles:
-        - Administrators
-      restrictedRoles:
-        - Restricted
-
-  # No superUsers — all access via ConfluentRolebindings.
   authorization:
     type: rbac
 
@@ -80,7 +69,7 @@ spec:
   dependencies:
     # Dep-to-Kafka: flat oauth+jaasConfig (runbook A22).
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-prd.svc.cluster.local:9071
+      bootstrapEndpoint: kafka.dah-flink-prd.svc.cluster.local:9092
       authentication:
         type: oauth
         jaasConfig:

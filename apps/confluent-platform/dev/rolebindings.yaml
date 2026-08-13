@@ -7,14 +7,14 @@
 #              Applied after Kafka cluster-ready (runbook A22).
 #
 # Client ID map:
-#   Kafka broker    0oa1yqr0z4oGawRNe358  (super-user)
-#   Schema Registry 0oa1yqraigduz0LrF358
-#   Connect         0oa1yqqxys7lGJqRj358
-#   Kafka REST      0oa1yqquv75QZ7d3C358
-#   Control Center  0oa1z6d5wjgBLvoKz358
+#   Kafka broker    0oa1owhtq2olDZWwf358  (super-user)
+#   Schema Registry 0oa1owiage2MyoHdt358
+#   Connect         0oa1owi0yntGMBvPS358
+#   Kafka REST      0oa1owi3wkxJS3b3b358
+#   Control Center  0oa1ov6h5mwmQTCKI358
 ########################################################################
 
-# -- Schema Registry (0oa1yqraigduz0LrF358) --------------------------------
+# -- Schema Registry (0oa1owiage2MyoHdt358) --------------------------------
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
@@ -29,7 +29,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1yqraigduz0LrF358"
+    name: "0oa1owiage2MyoHdt358"
   role: ResourceOwner
   resourcePatterns:
     - resourceType: Topic
@@ -52,7 +52,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1yqraigduz0LrF358"
+    name: "0oa1owiage2MyoHdt358"
   role: ResourceOwner
   resourcePatterns:
     - resourceType: Group
@@ -63,7 +63,7 @@ spec:
     namespace: dah-flink-dev
 ---
 
-# -- Kafka Connect (0oa1yqqxys7lGJqRj358) ----------------------------------
+# -- Kafka Connect (0oa1owi0yntGMBvPS358) ----------------------------------
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
@@ -78,7 +78,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1yqqxys7lGJqRj358"
+    name: "0oa1owi0yntGMBvPS358"
   role: ResourceOwner
   resourcePatterns:
     - resourceType: Topic
@@ -107,7 +107,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1yqqxys7lGJqRj358"
+    name: "0oa1owi0yntGMBvPS358"
   role: ResourceOwner
   resourcePatterns:
     - resourceType: Group
@@ -133,14 +133,14 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1yqqxys7lGJqRj358"
+    name: "0oa1owi0yntGMBvPS358"
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-dev
 ---
 
-# -- Kafka REST Proxy (0oa1yqquv75QZ7d3C358) -------------------------------
+# -- Kafka REST Proxy (0oa1owi3wkxJS3b3b358) -------------------------------
 # SystemAdmin cluster-scope for Phase 2; tighten per-topic once we know which topics REST clients exercise.
 
 apiVersion: platform.confluent.io/v1beta1
@@ -156,14 +156,14 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1yqquv75QZ7d3C358"
+    name: "0oa1owi3wkxJS3b3b358"
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-dev
 ---
 
-# -- Control Center (0oa1z6d5wjgBLvoKz358) ---------------------------------
+# -- Control Center (0oa1ov6h5mwmQTCKI358) ---------------------------------
 # SystemAdmin cluster-scope for Phase 2 — C3's own producers (heartbeat, metrics, monitoring interceptor, streams) need IdempotentWrite + Write on _confluent-controlcenter*/monitoring*/metrics*. Tighten later.
 
 apiVersion: platform.confluent.io/v1beta1
@@ -179,7 +179,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1z6d5wjgBLvoKz358"
+    name: "0oa1ov6h5mwmQTCKI358"
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
