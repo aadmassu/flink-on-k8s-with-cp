@@ -62,3 +62,4 @@ note.txt
 
 # Build artifacts (regenerated from source)
 *-refactored*.zip
+*.zip
