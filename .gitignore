@@ -59,3 +59,6 @@ generate_*gantt*.py
 # Temporary
 tmp/
 note.txt
+
+# Build artifacts (regenerated from source)
+*-refactored*.zip
