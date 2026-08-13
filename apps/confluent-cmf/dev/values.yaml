@@ -33,8 +33,7 @@ cmf:
     type: jdbc
     jdbc:
       engine: sqlserver
-      url: ""        # set at install time from dev-cmf-sql-server-jdbc-url
-      port: 3085
+      url: ""        # set at install time from dev-cmf-sql-server-jdbc-url (includes port)
       database: DAHFLINK
       user: ""       # set at install time from dev-cmf-sql-server-user
       # trustServerCertificate=true because dev SQL Server uses a self-signed
