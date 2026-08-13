@@ -1,10 +1,31 @@
 trigger: none
 
+parameters:
+  - name: adHocCommand
+    displayName: "Ad hoc command to execute (leave blank to skip)"
+    type: string
+    default: ""
+    # Example: oc apply --dry-run=server -f apps/confluent-platform/dev/kafkarestclass.yaml
+
 pool:
   name: DevOpsLinux
 
 steps:
   - checkout: self
+
+  - ${{ if ne(parameters.adHocCommand, '') }}:
+    - task: Bash@3
+      displayName: "Execute ad hoc command"
+      inputs:
+        targetType: inline
+        script: |
+          set -euo pipefail
+          echo "=== Executing ad hoc command ==="
+          echo "Command: $AD_HOC_CMD"
+          echo ""
+          eval "$AD_HOC_CMD"
+      env:
+        AD_HOC_CMD: ${{ parameters.adHocCommand }}
 
   - task: Bash@3
     displayName: "Verify validation prerequisites"
