@@ -1,8 +1,11 @@
 # Hybrid Authentication Implementation Status
 
 **Date:** 2026-08-12  
-**Scope:** All environments (dev, qa, uat-p, uat-s, prd, dr)  
-**Decision:** Unified SASL/PLAIN internal infrastructure + environment-specific OAuth external
+**Scope:** All environments (dev, qa, uat-p, uat-s, prd, dr)
+
+## Summary
+
+SASL/PLAIN + TLS for internal Kafka infrastructure (inter-broker, internal listener, metrics, KRaft controller). OAuth + TLS for external listeners and managed components. One admin credential per environment.
 
 ## What Was Done
 
