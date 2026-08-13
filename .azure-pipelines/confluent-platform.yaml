@@ -1415,21 +1415,25 @@ stages:
                     fi
                     CA_CERT=$(echo "$CA_CERT_B64" | base64 -d)
 
+                    # This endpoint can return 200, 401, 403, or 404 depending on
+                    # the Confluent Platform/MDS version and authentication mode.
+                    # Any HTTP response below 500 proves that the TLS listener is
+                    # reachable. A connection/TLS failure yields curl code 000;
+                    # a 5xx response means MDS is not ready.
                     for i in {1..30}; do
                       if oc -n "$OC_NS" exec -i kafka-0 -- bash -s << CURL_EOF >/dev/null 2>&1
                   set -euo pipefail
                   cat > /tmp/ca-cert.pem << 'CERT_EOF'
                   $CA_CERT
                   CERT_EOF
-                  http_code=$(timeout 5 curl -s -w '%{http_code}' -o /dev/null \
+                  http_code=$(timeout 5 curl --silent --show-error -w '%{http_code}' -o /dev/null \
                     --cacert /tmp/ca-cert.pem \
                     --resolve "kafka.$OC_NS.svc.cluster.local:8090:127.0.0.1" \
-                    "https://kafka.$OC_NS.svc.cluster.local:8090/security/1.0/activenodes/https")
-                  # Accept 200 (ready), 401 (auth needed but accessible), 403 (forbidden but available)
-                  [[ "$http_code" =~ ^(200|401|403)$ ]]
+                    "https://kafka.$OC_NS.svc.cluster.local:8090/")
+                  [[ "$http_code" =~ ^[1-4][0-9][0-9]$ ]]
                   CURL_EOF
                       then
-                        echo "✅ MDS is ready at :8090 (attempt $i)"
+                        echo "✅ MDS TLS listener is responding at :8090 (attempt $i)"
                         mds_ready=1
                         break
                       fi
@@ -1438,7 +1442,7 @@ stages:
                       fi
                     done
                     if [ "$mds_ready" -eq 0 ]; then
-                      echo "FATAL: MDS not responding at :8090 after 150s"
+                      echo "FATAL: MDS TLS listener did not return an HTTP response below 500 at :8090 after 150s"
                       oc logs -n "$OC_NS" kafka-0 --all-containers | tail -50 || true
                       exit 1
                     fi
