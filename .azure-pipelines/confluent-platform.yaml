@@ -1070,6 +1070,7 @@ stages:
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
                   echo "=== Validating hybrid listener contract ==="
+                  python3 --version
                   python3 .azure-pipelines/scripts/validate_listeners.py "$ENV_DIR"
 
               env:

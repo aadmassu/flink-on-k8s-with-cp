@@ -4,6 +4,7 @@
 import argparse
 from pathlib import Path
 import sys
+from typing import List
 
 import yaml
 
@@ -28,13 +29,13 @@ def load_yaml(path: Path) -> dict:
     return document
 
 
-def require(condition: bool, message: str, errors: list[str]) -> None:
+def require(condition: bool, message: str, errors: List[str]) -> None:
     if not condition:
         errors.append(message)
 
 
-def validate_environment(env_dir: Path) -> list[str]:
-    errors: list[str] = []
+def validate_environment(env_dir: Path) -> List[str]:
+    errors: List[str] = []
     kafka = load_yaml(env_dir / "kafka.yaml")
     spec = kafka.get("spec", {})
     listeners = spec.get("listeners", {})
