@@ -1,0 +1,41 @@
+trigger: none
+
+pool:
+  name: DevOpsLinux
+
+steps:
+  - checkout: self
+
+  - task: Bash@3
+    displayName: "Verify validation prerequisites"
+    inputs:
+      targetType: inline
+      script: |
+        set -euo pipefail
+
+        command -v python3
+        python3 --version
+        command -v bash
+        command -v sha256sum
+
+        python3 - <<'PY'
+        try:
+            import yaml
+            print(f"PyYAML available: {yaml.__version__}")
+        except ImportError:
+            raise SystemExit(
+                "FATAL: PyYAML is unavailable on this build agent"
+            )
+        PY
+
+  - task: Bash@3
+    displayName: "Run CFK regression tests"
+    inputs:
+      targetType: inline
+      script: |
+        set -euo pipefail
+
+        chmod +x .azure-pipelines/test-pipeline-corrections.sh
+        chmod +x .azure-pipelines/scripts/*.py
+
+        ./.azure-pipelines/test-pipeline-corrections.sh
