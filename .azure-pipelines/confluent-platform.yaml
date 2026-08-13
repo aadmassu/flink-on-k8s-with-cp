@@ -223,8 +223,8 @@ stages:
                   echo "FATAL: YAML validation failed. Fix duplicate keys above before retrying."
                   exit 1
                 }
-              env:
-                TARGET_ENV: ${{ parameters.environment }}
+            env:
+              TARGET_ENV: ${{ parameters.environment }}
 
           - task: Bash@3
             displayName: "Compute canonical namespace (all actions)"
