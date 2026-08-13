@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="ROSA Upgrade Flow" id="rosa-upgrade">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="ROSA Upgrade — two waves: control plane (RH) then worker rolling replacement (MCO)" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;verticalAlign=top;fontStyle=1;fontSize=14;spacingTop=10;" value="Wave 1 — Control Plane Upgrade (Red Hat-orchestrated)" vertex="1">
+          <mxGeometry x="80" y="100" width="1500" height="240" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cp_old" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;align=center;fontSize=11;" value="kube-apiserver v4.14&#10;etcd v3.5&#10;scheduler · c-m" vertex="1">
+          <mxGeometry x="120" y="170" width="260" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="cp_step" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=center;fontSize=11;" value="Red Hat rolls control plane forward&#10;HCP: hosted swap in RH&#39;s AWS account&#10;Classic: rolling restart of master EC2s" vertex="1">
+          <mxGeometry x="500" y="170" width="500" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="cp_new" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="kube-apiserver v4.16&#10;etcd v3.5&#10;scheduler · c-m" vertex="1">
+          <mxGeometry x="1120" y="170" width="260" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="cp_impact" parent="1" style="text;html=1;align=center;fontSize=10;fontStyle=2;" value="Worker nodes untouched · brief API blips · workloads keep running" vertex="1">
+          <mxGeometry x="80" y="300" width="1500" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=top;fontStyle=1;fontSize=14;spacingTop=10;" value="Wave 2 — Worker Node Upgrade (MachineConfigOperator-driven, rolling)" vertex="1">
+          <mxGeometry x="80" y="370" width="1500" height="520" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mco" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EE0000;strokeColor=#FFFFFF;strokeWidth=2;align=center;fontColor=#FFFFFF;fontSize=12;fontStyle=1;" value="MachineConfigOperator&#10;renders new MachineConfig" vertex="1">
+          <mxGeometry x="120" y="430" width="320" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mcp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="MachineConfigPool worker&#10;  maxUnavailable: 1 (drain ONE node at a time)&#10;  desired config: new OS image + kubelet" vertex="1">
+          <mxGeometry x="520" y="430" width="500" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ms" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="MachineSet (per AZ)&#10;  Provisions/replaces EC2 instances" vertex="1">
+          <mxGeometry x="1100" y="430" width="460" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="per_node" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="Per-node upgrade sequence" vertex="1">
+          <mxGeometry x="120" y="550" width="1440" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="cordon" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="1. cordon&#10;mark node unschedulable" vertex="1">
+          <mxGeometry x="160" y="610" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="drain" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="2. drain&#10;evict Pods&#10;(PDBs respected)" vertex="1">
+          <mxGeometry x="400" y="610" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="terminate" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="3. terminate&#10;EC2 instance gone&#10;new instance launched" vertex="1">
+          <mxGeometry x="640" y="610" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="rejoin" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="4. rejoin&#10;new node Ready" vertex="1">
+          <mxGeometry x="880" y="610" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="uncordon" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="5. uncordon&#10;next node begins" vertex="1">
+          <mxGeometry x="1120" y="610" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="loop_note" parent="1" style="text;html=1;align=center;fontSize=10;fontStyle=2;" value="Repeats per node until all worker nodes match the desired MachineConfig." vertex="1">
+          <mxGeometry x="160" y="710" width="1240" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cfk_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;fontStyle=2;spacingLeft=12;" value="CFK during worker upgrades: each broker Pod evicted in turn; broker.id stable via StatefulSet identity; PVC follows the Pod to new node. CRITICAL: cluster-link / replication must catch up before next broker is touched — otherwise data loss. Use a PDB with maxUnavailable=1 on the broker StatefulSet." vertex="1">
+          <mxGeometry x="80" y="910" width="1500" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_mco_mcp" parent="1" edge="1" source="mco" target="mcp" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#EE0000;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_mcp_ms" parent="1" edge="1" source="mcp" target="ms" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#b85450;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_cordon_drain" parent="1" edge="1" source="cordon" target="drain" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_drain_term" parent="1" edge="1" source="drain" target="terminate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_term_rejoin" parent="1" edge="1" source="terminate" target="rejoin" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_rejoin_uncordon" parent="1" edge="1" source="rejoin" target="uncordon" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="Operator Reconciliation" id="operator-reconciliation">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="The Operator Reconciliation Loop — same pattern for CFK, Flink Op, cert-manager, every operator" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cr" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;fontSize=12;fontStyle=1;" value="Custom Resource&#10;e.g. Kafka my-kafka&#10;spec.replicas: 3&#10;spec.dataVolumeCapacity: 1Ti" vertex="1">
+          <mxGeometry x="80" y="120" width="300" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;" value="kube-apiserver" vertex="1">
+          <mxGeometry x="700" y="180" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="operator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=10;" value="Operator (a Pod running its reconcile loop)&#10;e.g. CFK Operator in namespace confluent-operator" vertex="1">
+          <mxGeometry x="1080" y="120" width="500" height="500" as="geometry"/>
+        </mxCell>
+        <mxCell id="step1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="Step 1 — read CR.spec (desired state)" vertex="1">
+          <mxGeometry x="1100" y="180" width="460" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="step2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="Step 2 — read live cluster (existing StatefulSet, Pods, etc.)" vertex="1">
+          <mxGeometry x="1100" y="240" width="460" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="step3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="Step 3 — compute the delta (what to create / update / delete)" vertex="1">
+          <mxGeometry x="1100" y="300" width="460" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="step4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="Step 4 — make the delta zero: apply child objects via apiserver" vertex="1">
+          <mxGeometry x="1100" y="360" width="460" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="step5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="Step 5 — update CR.status.conditions (cluster-ready=True / False)" vertex="1">
+          <mxGeometry x="1100" y="420" width="460" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="loop_note" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=2;" value="Loop triggers:&#10;  • CR changed (CRUD on Kafka via apiserver watch)&#10;  • child object changed (Pod restart, StatefulSet status update)&#10;  • periodic resync (~10 min) — catches missed events&#10;  • Steps 1–5 run idempotently every time" vertex="1">
+          <mxGeometry x="1100" y="480" width="460" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="children" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=10;" value="Owned child objects (apiserver writes; built-in controllers take over)" vertex="1">
+          <mxGeometry x="80" y="700" width="1500" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="sts" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="StatefulSet&#10;kafka" vertex="1">
+          <mxGeometry x="120" y="760" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="Service&#10;kafka-headless" vertex="1">
+          <mxGeometry x="330" y="760" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="cm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=11;" value="ConfigMap&#10;broker.properties" vertex="1">
+          <mxGeometry x="540" y="760" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="secret" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4e1f5;strokeColor=#5b87b9;align=center;fontSize=11;" value="Secret&#10;kafka-tls / sasl-plain" vertex="1">
+          <mxGeometry x="750" y="760" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="pvc" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PVC&#10;data-kafka-N" vertex="1">
+          <mxGeometry x="960" y="760" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="pod" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="Pod&#10;kafka-0 / 1 / 2" vertex="1">
+          <mxGeometry x="1170" y="760" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="owner_note" parent="1" style="text;html=1;align=center;fontSize=10;fontStyle=2;" value="Each child carries ownerReferences pointing at the Kafka CR — delete the CR and the GC cascade-deletes all children." vertex="1">
+          <mxGeometry x="80" y="860" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="status_anchor" parent="1" style="text;html=1;align=center;fontSize=12;fontStyle=1;" value="Status — the truth oracle&#10;oc get kafka my-kafka -o jsonpath='{.status.conditions[?(@.type==&quot;cluster-ready&quot;)].status}'" vertex="1">
+          <mxGeometry x="80" y="970" width="1500" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="status_note" parent="1" style="text;html=1;align=center;fontSize=10;fontStyle=2;" value="If status.conditions reports False with message containing &quot;Forbidden&quot;: the operator&apos;s SA lacks an RBAC verb. That&apos;s tracker 2.3 / RITM1093307 — the operator needs &apos;update, patch&apos; on persistentvolumes." vertex="1">
+          <mxGeometry x="80" y="1020" width="1500" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_cr_api" parent="1" edge="1" source="cr" target="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontSize=10;" value="oc apply"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_api_operator" parent="1" edge="1" source="api" target="operator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#d79b00;strokeWidth=2;fontSize=10;fontStyle=1;" value="watch + apply"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_operator_children" parent="1" edge="1" source="step4" target="children" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;fontSize=10;fontStyle=2;" value="creates &amp; manages"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

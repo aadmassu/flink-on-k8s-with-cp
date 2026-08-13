@@ -1,0 +1,182 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="K8s Architecture" id="k8s-architecture">
+    <mxGraphModel dx="1786" dy="905" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontStyle=1;" value="Kubernetes Architecture — native components" vertex="1">
+          <mxGeometry height="50" width="410" x="675" y="35" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="kubectl / oc&#xa;UI / CI-CD" vertex="1">
+          <mxGeometry height="80" width="220" x="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="cp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff5ff;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#326CE5;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=4;" value="Control Plane" vertex="1">
+          <mxGeometry height="640" width="680" x="80" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="api" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=26;fontStyle=1;html=1;aspect=fixed;" value="api" vertex="1">
+          <mxGeometry height="160" width="160" x="330" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="api_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#326CE5;fontStyle=2;" value="kube-apiserver" vertex="1">
+          <mxGeometry height="20" width="180" x="320" y="635" as="geometry" />
+        </mxCell>
+        <mxCell id="ccm" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=20;fontStyle=1;html=1;aspect=fixed;" value="c-c-m" vertex="1">
+          <mxGeometry height="120" width="120" x="130" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="ccm_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#326CE5;fontStyle=2;" value="cloud-controller-manager" vertex="1">
+          <mxGeometry height="20" width="180" x="100" y="415" as="geometry" />
+        </mxCell>
+        <mxCell id="cm" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=22;fontStyle=1;html=1;aspect=fixed;" value="c-m" vertex="1">
+          <mxGeometry height="120" width="120" x="540" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="cm_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#326CE5;fontStyle=2;" value="kube-controller-manager" vertex="1">
+          <mxGeometry height="20" width="180" x="510" y="415" as="geometry" />
+        </mxCell>
+        <mxCell id="sched" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=20;fontStyle=1;html=1;aspect=fixed;" value="sched" vertex="1">
+          <mxGeometry height="120" width="120" x="540" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="sched_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#326CE5;fontStyle=2;" value="kube-scheduler" vertex="1">
+          <mxGeometry height="20" width="180" x="510" y="805" as="geometry" />
+        </mxCell>
+        <mxCell id="etcd" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=22;fontStyle=1;html=1;aspect=fixed;" value="etcd" vertex="1">
+          <mxGeometry height="120" width="120" x="130" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="etcd_name" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#326CE5;fontStyle=2;" value="etcd" vertex="1">
+          <mxGeometry height="20" width="180" x="100" y="805" as="geometry" />
+        </mxCell>
+        <mxCell id="node1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=7;" value="Node" vertex="1">
+          <mxGeometry height="300" width="680" x="820" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="kubelet" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="kubelet" vertex="1">
+          <mxGeometry height="130" width="130" x="870" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="kproxy" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="k-proxy" vertex="1">
+          <mxGeometry height="130" width="130" x="1050" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="pod1" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="60" width="100" x="1230" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="pod2" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="60" width="100" x="1360" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="pod3" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="60" width="100" x="1230" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="pod4" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="60" width="100" x="1360" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="cri_label" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=11;fontStyle=2;" value="Container Runtime" vertex="1">
+          <mxGeometry height="30" width="150" x="870" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="node2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9bb3dd;strokeColor=#326CE5;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#FFFFFF;verticalAlign=top;align=left;spacingLeft=20;spacingTop=10;arcSize=9;" value="Node" vertex="1">
+          <mxGeometry height="291" width="680" x="820" y="579" as="geometry" />
+        </mxCell>
+        <mxCell id="kubelet2" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="kubelet" vertex="1">
+          <mxGeometry height="130" width="130" x="870" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="kproxy2" parent="1" style="shape=polygon;points=[[0.5,0],[0.891,0.188],[0.987,0.611],[0.717,0.95],[0.283,0.95],[0.013,0.611],[0.109,0.188]];perimeter=ellipsePerimeter;outlineConnect=0;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;dashed=0;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=18;fontStyle=1;html=1;aspect=fixed;" value="k-proxy" vertex="1">
+          <mxGeometry height="130" width="130" x="1050" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="pod5" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="60" width="100" x="1230" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="pod6" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="60" width="100" x="1360" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="pod7" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="60" width="100" x="1230" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="pod8" parent="1" style="rounded=20;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" value="Pod" vertex="1">
+          <mxGeometry height="60" width="100" x="1360" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="cri_label2" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=11;fontStyle=2;" value="Container Runtime" vertex="1">
+          <mxGeometry height="30" width="310" x="870" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="e_user_api" edge="1" parent="1" source="user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;fontColor=#326CE5;fontSize=11;fontStyle=1;" target="api" value="REST">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_api_etcd" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="etcd" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290" y="570" />
+              <mxPoint x="290" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_ccm" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;dashed=1;" target="ccm" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_api_cm" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.004;exitY=0.134;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;exitPerimeter=0;" target="cm" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_api_sched" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="sched" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="515" y="610" />
+              <mxPoint x="515" y="740" />
+            </Array>
+            <mxPoint x="490" y="610" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_kubelet" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;exitX=1.007;exitY=0.306;exitDx=0;exitDy=0;exitPerimeter=0;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="778.88" y="524" />
+              <mxPoint x="778.88" y="360" />
+            </Array>
+            <mxPoint x="490.0000000000001" y="523.9599999999999" as="sourcePoint" />
+            <mxPoint x="868.8800000000016" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_kproxy" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1115" y="545" />
+            </Array>
+            <mxPoint x="489.999999999999" y="545" as="sourcePoint" />
+            <mxPoint x="1115.0000000000002" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_kubelet2" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="kubelet2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="490" y="590" />
+              <mxPoint x="780" y="590" />
+              <mxPoint x="780" y="695" />
+            </Array>
+            <mxPoint x="490" y="590" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_kproxy2" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.987;exitY=0.611;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;startArrow=classic;strokeColor=#326CE5;strokeWidth=2;" target="kproxy2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="key_title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=12;" value="Component Roles (one-liner each)" vertex="1">
+          <mxGeometry height="20" width="500" x="80" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="key_api" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="api    — kube-api-server: the front door; only component that reads/writes etcd; everything goes through it." vertex="1">
+          <mxGeometry height="20" width="1000" x="79" y="925" as="geometry" />
+        </mxCell>
+        <mxCell id="key_etcd" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="etcd   — distributed Raft k/v store; the single source of truth for cluster state." vertex="1">
+          <mxGeometry height="20" width="1000" x="79" y="945" as="geometry" />
+        </mxCell>
+        <mxCell id="key_sched" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="sched  — kube-scheduler: watches unscheduled Pods; picks a Node based on resource fit, affinity, taints; writes the Pod-Node binding back via the api-server." vertex="1">
+          <mxGeometry height="20" width="1000" x="79" y="965" as="geometry" />
+        </mxCell>
+        <mxCell id="key_cm" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="c-m    — kube-controller-manager: hosts built-in control loops (Deployment, ReplicaSet, Node, Endpoint, ServiceAccount-token, ...) — each reconciles current → desired state." vertex="1">
+          <mxGeometry height="20" width="1000" x="79" y="985" as="geometry" />
+        </mxCell>
+        <mxCell id="key_ccm" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="c-c-m  — cloud-controller-manager: cloud-provider-specific control loops (Node lifecycle, LoadBalancer Services, Routes, Volumes); empty/absent on bare-metal." vertex="1">
+          <mxGeometry height="20" width="1000" x="79" y="1005" as="geometry" />
+        </mxCell>
+        <mxCell id="key_kubelet" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="kubelet — node agent on every Node; watches for Pods assigned to its Node, talks to the container runtime via CRI gRPC, reports Pod/Node status back." vertex="1">
+          <mxGeometry height="20" width="1000" x="79" y="1025" as="geometry" />
+        </mxCell>
+        <mxCell id="key_kproxy" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="k-proxy — kube-proxy: programs the Node&#39;s iptables/IPVS/eBPF rules so Service ClusterIPs are load-balanced to backing Pods; no traffic passes through kube-proxy itself." vertex="1">
+          <mxGeometry height="20" width="1000" x="79" y="1045" as="geometry" />
+        </mxCell>
+        <mxCell id="key_runtime" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=1" value="Container Runtime (containerd / CRI-O) — actually runs containers via the CRI interface; pulls images; not a K8s binary, swappable." vertex="1">
+          <mxGeometry height="20" width="1000" x="79" y="1065" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

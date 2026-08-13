@@ -1,0 +1,25 @@
+
+TRAINING PROGRAM VERSION 2.0
+
+Training Philosophy
+Architecture -> Deployment -> Operations -> Troubleshooting -> Disaster Recovery
+
+Every Day
+- Architecture Discussion
+- Diagram Walkthrough
+- Hands-On Lab
+- Troubleshooting Exercise
+- Runbook Update
+
+Every Friday
+- Practical Exam
+- Whiteboard Challenge
+- Runbook Review
+
+Program Goal
+Develop engineers capable of deploying, operating, troubleshooting,
+and recovering a production-grade OpenShift, ROSA, CFK, Kafka, and
+Flink platform.
+
+Capstone
+Restore a degraded multi-region Kafka/Flink platform and produce RCA.

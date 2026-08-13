@@ -1,0 +1,79 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="Quota Failures" id="quota-failures">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="ResourceQuota + LimitRange — where admission fails (the DEV CFK story)" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="apply" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="oc apply -f pod.yaml" vertex="1">
+          <mxGeometry x="80" y="110" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326CE5;strokeColor=#FFFFFF;strokeWidth=2;align=center;fontColor=#FFFFFF;fontSize=14;fontStyle=1;" value="kube-apiserver" vertex="1">
+          <mxGeometry x="440" y="110" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="chain" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;verticalAlign=top;fontStyle=1;fontSize=13;spacingTop=10;" value="Admission controller chain (in order)" vertex="1">
+          <mxGeometry x="80" y="230" width="1500" height="500" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="step1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;align=center;fontSize=11;fontStyle=1;" value="1. LimitRange defaults plugin&#10;If Pod has no requests.cpu / requests.memory,&#10;LimitRange supplies the namespace default" vertex="1">
+          <mxGeometry x="120" y="280" width="320" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="step2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;align=center;fontSize=11;fontStyle=1;" value="2. ResourceQuota plugin&#10;Sum (across all Pods in this namespace) +&#10;THIS POD&apos;S requests.&#10;Compare to quota cap.&#10;Over cap? REJECT." vertex="1">
+          <mxGeometry x="500" y="280" width="320" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="step3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;align=center;fontSize=11;fontStyle=1;" value="3. Gatekeeper / OpenShift SCC&#10;label requirements, security context constraints,&#10;site-specific common metadata" vertex="1">
+          <mxGeometry x="880" y="280" width="320" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="step4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;fontStyle=1;" value="4. Pod admitted&#10;Persisted to etcd&#10;Scheduler binds → kubelet starts" vertex="1">
+          <mxGeometry x="1240" y="280" width="320" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="reject_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="The four flavors of quota rejection" vertex="1">
+          <mxGeometry x="120" y="450" width="1420" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="r_cpu" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=10;spacingLeft=10;verticalAlign=middle;" value="CPU dimension exhausted&#10;&#10;pods &quot;xyz&quot; is forbidden: exceeded quota: training-quota,&#10;requested: requests.cpu=500m, used: requests.cpu=1800m, limited: requests.cpu=2" vertex="1">
+          <mxGeometry x="140" y="500" width="660" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="r_mem" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=10;spacingLeft=10;verticalAlign=middle;" value="Memory dimension exhausted&#10;&#10;exceeded quota: training-quota,&#10;requested: requests.memory=512Mi, used: requests.memory=2Gi, limited: requests.memory=2Gi" vertex="1">
+          <mxGeometry x="820" y="500" width="700" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="r_pvc_cnt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=10;spacingLeft=10;verticalAlign=middle;" value="PVC count exhausted&#10;&#10;exceeded quota: training-quota,&#10;requested: persistentvolumeclaims=1, used: persistentvolumeclaims=10, limited: persistentvolumeclaims=10" vertex="1">
+          <mxGeometry x="140" y="600" width="660" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="r_pvc_size" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;align=left;fontSize=10;spacingLeft=10;verticalAlign=middle;" value="PVC storage exhausted&#10;&#10;exceeded quota: training-quota,&#10;requested: requests.storage=1Ti, used: requests.storage=99Gi, limited: requests.storage=100Gi" vertex="1">
+          <mxGeometry x="820" y="600" width="700" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="env_anchor" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="The DEV CFK story — tracker 2.5 / runbook A3" vertex="1">
+          <mxGeometry x="80" y="780" width="1500" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="env_text" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=11;spacingLeft=20;spacingTop=10;" value="• DEV namespace ResourceQuota was set to: requests.cpu=2, requests.memory=8Gi, requests.storage=10Gi&#10;• CFK 3.1.x operator-injected init container has ~500m CPU floor per Pod (no override available in CRDs — runbook A3)&#10;• A full CFK stack = 6 Pods (3 broker + 1 KRaftController + 1 SR + 1 Connect ...) × ~500m init + main container CPU&#10;• At 2-CPU quota, only ~4 Pods could admit. Connect + ControlCenter parked at replicas: 0 as a workaround.&#10;• Storage was raised 10Gi → 100Gi but the workbook target is ~1.272 TB per lower env — only enough for smoke testing.&#10;&#10;Symptom engineers saw: Kafka Pods stuck Pending; Events on the ReplicaSet/StatefulSet said &apos;exceeded quota: ...&apos; — read THAT line first, not the Pod&apos;s `oc describe`." vertex="1">
+          <mxGeometry x="100" y="820" width="1460" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="diag_anchor" parent="1" style="text;html=1;align=center;fontSize=11;fontStyle=1;" value="Diagnostic ladder — in 4 commands, identify the quota dimension at fault" vertex="1">
+          <mxGeometry x="80" y="1040" width="1500" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="diag_text" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;spacingLeft=20;" value="1. oc describe quota   — see used/hard for every dimension     2. oc describe rs &lt;ReplicaSet&gt;   — Events explain WHY admission failed&#10;3. oc get events --sort-by=.lastTimestamp | tail -20   — broader context    4. oc top pod   — runtime usage (different from request)" vertex="1">
+          <mxGeometry x="80" y="1070" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_apply_api" parent="1" edge="1" source="apply" target="api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#666666;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_api_step1" parent="1" edge="1" source="api" target="step1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#326CE5;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_step1_step2" parent="1" edge="1" source="step1" target="step2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_step2_step3" parent="1" edge="1" source="step2" target="step3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;fontSize=10;" value="(if under cap)"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_step2_reject" parent="1" edge="1" source="step2" target="reject_box" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#b85450;strokeWidth=2;fontSize=10;fontStyle=1;" value="if over cap → REJECT"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_step3_step4" parent="1" edge="1" source="step3" target="step4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

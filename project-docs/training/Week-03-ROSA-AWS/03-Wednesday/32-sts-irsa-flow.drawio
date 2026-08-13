@@ -1,0 +1,69 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="STS IRSA Flow" id="sts-irsa">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="STS / IRSA — Pod → ServiceAccount → IAM Role → AWS API  (no long-lived credentials anywhere)" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pod" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="Pod (in dah-flink-uat)" vertex="1">
+          <mxGeometry x="80" y="100" width="500" height="320" as="geometry"/>
+        </mxCell>
+        <mxCell id="pod_spec" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=11;spacingLeft=12;" value="spec.serviceAccountName: my-app-sa" vertex="1">
+          <mxGeometry x="120" y="160" width="420" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="proj_token" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=11;spacingLeft=12;" value="kubelet projects SA token at:&#10;/var/run/secrets/.../token&#10;(short-lived JWT, signed by cluster OIDC issuer, aud=sts.amazonaws.com)" vertex="1">
+          <mxGeometry x="120" y="220" width="420" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="sdk_env" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=11;spacingLeft=12;" value="AWS SDK reads env:&#10;AWS_WEB_IDENTITY_TOKEN_FILE=&lt;token-path&gt;&#10;AWS_ROLE_ARN=arn:aws:iam::ACCT:role/my-app-role" vertex="1">
+          <mxGeometry x="120" y="320" width="420" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sa" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;fontStyle=1;" value="ServiceAccount my-app-sa&#10;annotation: eks.amazonaws.com/role-arn=arn:aws:iam::ACCT:role/my-app-role" vertex="1">
+          <mxGeometry x="660" y="160" width="500" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sts" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="AWS STS  (sts.amazonaws.com or VPC endpoint)" vertex="1">
+          <mxGeometry x="660" y="280" width="700" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="sts_call" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;verticalAlign=middle;fontSize=11;spacingLeft=12;" value="AssumeRoleWithWebIdentity({&#10;  RoleArn: my-app-role&#10;  WebIdentityToken: &lt;the projected JWT&gt;&#10;  RoleSessionName: pod-name&#10;})" vertex="1">
+          <mxGeometry x="700" y="330" width="620" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="sts_validate" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;spacingLeft=12;" value="STS validates: token signature against cluster OIDC issuer; sub claim matches Role&apos;s trust policy; audience=sts.amazonaws.com" vertex="1">
+          <mxGeometry x="700" y="440" width="620" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="role" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;verticalAlign=top;fontStyle=1;fontSize=12;spacingTop=10;" value="IAM Role my-app-role" vertex="1">
+          <mxGeometry x="660" y="540" width="700" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="trust" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;spacingLeft=12;" value="Trust policy:&#10;  Principal.Federated: oidc-provider for the cluster issuer&#10;  Condition.StringEquals: &lt;issuer&gt;:sub = system:serviceaccount:dah-flink-uat:my-app-sa" vertex="1">
+          <mxGeometry x="700" y="590" width="620" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="perm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;spacingLeft=12;" value="Permission policy:&#10;  s3:GetObject, s3:PutObject on arn:aws:s3:::my-bucket/*&#10;  kms:Decrypt on arn:aws:kms:...:key/..." vertex="1">
+          <mxGeometry x="700" y="680" width="620" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="creds" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;fontStyle=1;" value="STS returns short-lived credentials (~1 hour TTL)&#10;AccessKey + SecretKey + SessionToken — held in SDK memory, NEVER on disk" vertex="1">
+          <mxGeometry x="80" y="500" width="500" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api_call" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="AWS API call (e.g. s3:GetObject) with those credentials&#10;Authorized by Role&apos;s permission policy" vertex="1">
+          <mxGeometry x="80" y="620" width="500" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="break_points" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;fontStyle=2;spacingLeft=12;" value="Where it breaks: SA annotation typo → SDK has no role to assume. Trust policy sub mismatch → STS InvalidIdentityToken. Permission policy missing action → AWS API AccessDenied. Cluster OIDC not registered in AWS → STS rejects the token entirely." vertex="1">
+          <mxGeometry x="80" y="800" width="1500" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_pod_sa" parent="1" edge="1" source="pod_spec" target="sa" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;fontSize=10;" value="runs AS"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sdk_sts" parent="1" edge="1" source="sdk_env" target="sts_call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d79b00;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sts_role" parent="1" edge="1" source="sts_validate" target="trust" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;fontSize=10;" value="checks trust"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sts_creds" parent="1" edge="1" source="sts_call" target="creds" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;fontSize=10;" value="returns creds"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_creds_call" parent="1" edge="1" source="creds" target="api_call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

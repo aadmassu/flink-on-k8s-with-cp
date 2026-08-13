@@ -1,0 +1,37 @@
+# Synthetic-event producer.
+# Emits `user-<0..9>|<action>|<epoch_seconds>` lines into events-in, one record
+# per 200 ms. Runs for 1 hour then exits.
+#
+# Format is intentionally plain text (not Avro) so no Schema Registry is needed
+# for this lab.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: event-generator
+  namespace: flink-lab
+  labels:
+    app: event-generator
+spec:
+  template:
+    metadata:
+      labels:
+        app: event-generator
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: producer
+          image: confluentinc/cp-kafka:7.7.0
+          command: ["sh", "-c"]
+          args:
+            - |
+              for i in $(seq 1 18000); do
+                USER="user-$((RANDOM % 10))"
+                ACTIONS="click view purchase scroll hover"
+                ACTION=$(echo $ACTIONS | tr ' ' '\n' | shuf -n 1)
+                TS=$(date +%s)
+                echo "${USER}|${ACTION}|${TS}"
+                sleep 0.2
+              done | kafka-console-producer \
+                --bootstrap-server kafka.flink-lab.svc.cluster.local:9092 \
+                --topic events-in

@@ -1,0 +1,38 @@
+# Zero-code Flink job — uses the StateMachineExample.jar bundled inside the
+# flink:1.18 image. Good for the very first "is my platform working?" check.
+#
+# What this demonstrates:
+#   Week 5 Mon — you'll see JM + TM Pods, slots, and (with MinIO wired up
+#                separately) checkpoints.
+#   Week 5 Tue — the Flink operator reconciles this CR into a Deployment,
+#                Service, and ConfigMap. Trace status.jobStatus.state.
+
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: example-statemachine
+  namespace: flink-lab
+  labels:
+    app: example-statemachine
+spec:
+  image: flink:1.18
+  flinkVersion: v1_18
+  serviceAccount: flink
+
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+
+  jobManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  taskManager:
+    replicas: 1
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+
+  job:
+    jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+    parallelism: 2
+    upgradeMode: stateless

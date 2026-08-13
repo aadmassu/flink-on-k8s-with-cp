@@ -1,0 +1,81 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="Storage Chain" id="storage-chain">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="Storage chain — Pod → PVC → PV → StorageClass → backing storage" vertex="1">
+          <mxGeometry x="80" y="20" width="1000" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sts" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;align=center;fontSize=12;" value="StatefulSet (e.g. Kafka)&#10;volumeClaimTemplates → one PVC per Pod" vertex="1">
+          <mxGeometry x="380" y="90" width="380" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pod0" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="Pod kafka-0" vertex="1">
+          <mxGeometry x="100" y="220" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="pod1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="Pod kafka-1" vertex="1">
+          <mxGeometry x="480" y="220" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="pod2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;" value="Pod kafka-2" vertex="1">
+          <mxGeometry x="860" y="220" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pvc0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PVC&#10;data-kafka-0&#10;1 Ti  RWO" vertex="1">
+          <mxGeometry x="100" y="320" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="pvc1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PVC&#10;data-kafka-1&#10;1 Ti  RWO" vertex="1">
+          <mxGeometry x="480" y="320" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="pvc2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PVC&#10;data-kafka-2&#10;1 Ti  RWO" vertex="1">
+          <mxGeometry x="860" y="320" width="160" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pv0" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PV pvc-uid0&#10;capacity 1 Ti&#10;reclaim Retain" vertex="1">
+          <mxGeometry x="100" y="450" width="160" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="pv1" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PV pvc-uid1&#10;capacity 1 Ti&#10;reclaim Retain" vertex="1">
+          <mxGeometry x="480" y="450" width="160" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="pv2" parent="1" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=15;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=11;" value="PV pvc-uid2&#10;capacity 1 Ti&#10;reclaim Retain" vertex="1">
+          <mxGeometry x="860" y="450" width="160" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=center;fontSize=12;fontStyle=1;" value="StorageClass: ceph-rbd-fast-ssd&#10;provisioner: rook-ceph.rbd.csi.ceph.com&#10;reclaimPolicy: Retain" vertex="1">
+          <mxGeometry x="380" y="610" width="380" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="backend" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="Ceph cluster (RBD images, replicated to 3 OSDs)" vertex="1">
+          <mxGeometry x="280" y="740" width="580" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_sts_pvc0" parent="1" edge="1" source="sts" target="pvc0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;fontSize=10;fontStyle=2;" value="creates"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sts_pvc1" parent="1" edge="1" source="sts" target="pvc1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sts_pvc2" parent="1" edge="1" source="sts" target="pvc2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e_pod0_pvc0" parent="1" edge="1" source="pod0" target="pvc0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;fontSize=10;" value="mounts"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pod1_pvc1" parent="1" edge="1" source="pod1" target="pvc1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pod2_pvc2" parent="1" edge="1" source="pod2" target="pvc2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e_pvc0_pv0" parent="1" edge="1" source="pvc0" target="pv0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;fontSize=10;" value="binds"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pvc1_pv1" parent="1" edge="1" source="pvc1" target="pv1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pvc2_pv2" parent="1" edge="1" source="pvc2" target="pv2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e_pv0_sc" parent="1" edge="1" source="pv0" target="sc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#9673a6;strokeWidth=2;fontSize=10;fontStyle=2;" value="provisioned by"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pv1_sc" parent="1" edge="1" source="pv1" target="sc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#9673a6;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_pv2_sc" parent="1" edge="1" source="pv2" target="sc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#9673a6;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e_sc_backend" parent="1" edge="1" source="sc" target="backend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#666666;strokeWidth=2;fontSize=10;fontStyle=2;" value="CSI driver creates RBD image"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="key_title" parent="1" style="text;html=1;align=left;fontStyle=1;fontSize=12;" value="Key takeaway — each Pod gets its own PVC, its own PV, its own RBD image. No sharing." vertex="1">
+          <mxGeometry x="80" y="860" width="1000" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="key_note" parent="1" style="text;html=1;align=left;fontSize=10;" value="On Pod restart: same Pod name → same PVC → same PV → same disk. The broker resumes with its log directory intact.&#10;If the PVC's PV is lost (reclaim Delete + GC): the broker can never come back with the same identity. Critical for Kafka." vertex="1">
+          <mxGeometry x="80" y="885" width="1000" height="50" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

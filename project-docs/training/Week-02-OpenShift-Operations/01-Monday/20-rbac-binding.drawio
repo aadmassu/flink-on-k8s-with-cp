@@ -1,0 +1,63 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="RBAC Binding" id="rbac-binding">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="K8s RBAC — Subject → RoleBinding → Role → Resource" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="subj_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;align=center;verticalAlign=top;fontSize=12;spacingTop=10;" value="Subject — WHO is asking" vertex="1">
+          <mxGeometry x="80" y="100" width="400" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="user" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="User&#10;(human via Okta/OAuth)" vertex="1">
+          <mxGeometry x="110" y="150" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="group" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;fontSize=11;" value="Group&#10;(collection of users)" vertex="1">
+          <mxGeometry x="290" y="150" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="sa" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=11;fontStyle=1;" value="ServiceAccount&#10;e.g. flink-operator in dah-flink-uat&#10;(Pods run AS this)" vertex="1">
+          <mxGeometry x="170" y="240" width="240" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rb" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;align=center;verticalAlign=middle;fontSize=12;" value="RoleBinding&#10;(namespace-scoped)&#10;binds Subjects → Role&#10;&quot;these subjects get those permissions IN this namespace&quot;" vertex="1">
+          <mxGeometry x="580" y="180" width="400" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="role" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;align=center;verticalAlign=top;fontSize=12;spacingTop=10;" value="Role&#10;(namespace-scoped — describes permissions)" vertex="1">
+          <mxGeometry x="1080" y="100" width="500" height="500" as="geometry"/>
+        </mxCell>
+        <mxCell id="rule1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="rules:&#10;  - apiGroups: [&quot;&quot;]&#10;    resources: [pods, services, configmaps, secrets]&#10;    verbs: [get, list, watch, create, update, patch, delete]" vertex="1">
+          <mxGeometry x="1100" y="150" width="460" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="rule2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="  - apiGroups: [apps]&#10;    resources: [deployments, replicasets, statefulsets]&#10;    verbs: [get, list, watch, create, update, patch, delete]" vertex="1">
+          <mxGeometry x="1100" y="270" width="460" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="rule3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;align=left;verticalAlign=middle;fontSize=11;spacingLeft=10;" value="  - apiGroups: [rbac.authorization.k8s.io]&#10;    resources: [roles, rolebindings]&#10;    verbs: [get, list, watch]" vertex="1">
+          <mxGeometry x="1100" y="370" width="460" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="rule_note" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="Each rule = (apiGroups, resources, verbs)&#10;Most engineer bugs: wrong apiGroup or missing verb" vertex="1">
+          <mxGeometry x="1100" y="470" width="460" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="apicall" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;" value="The decision&#10;Pod calls apiserver: kubectl get pods&#10;apiserver: SA token → bindings → Role → has &#39;get&#39; on pods? → ALLOW or 403 Forbidden" vertex="1">
+          <mxGeometry x="80" y="680" width="1500" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="diag" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;verticalAlign=top;fontSize=11;spacingLeft=12;spacingTop=10;fontStyle=1;" value="The diagnostic command engineers must memorize:&#10;&#10;  oc auth can-i &lt;verb&gt; &lt;resource&gt; --as=system:serviceaccount:&lt;ns&gt;:&lt;sa&gt; -n &lt;ns&gt;&#10;&#10;Impersonates the SA and asks the apiserver &quot;would this be allowed?&quot; — no side effects." vertex="1">
+          <mxGeometry x="80" y="820" width="1500" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="env_note" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="Environment context — the flink-operator SA in dah-flink-uat is pre-created by the platform-security ArgoCD chart (tracker 3.2). If that chart hasn&apos;t applied the SA + RoleBinding by the time CMF tries to install, the CMF Pod fails to schedule with &quot;serviceaccount &apos;flink-operator&apos; not found&quot;. The Role itself includes the verbs above plus the special &quot;serviceaccounts/get + roles+rolebindings/get,list,watch&quot; verbs added by tracker 3.5." vertex="1">
+          <mxGeometry x="80" y="990" width="1500" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_user_rb" parent="1" edge="1" source="user" target="rb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#9673a6;strokeWidth=2;fontSize=10;" value="subject"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_sa_rb" parent="1" edge="1" source="sa" target="rb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#9673a6;strokeWidth=2;fontSize=10;fontStyle=1;" value="subject (Pod-side)"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_rb_role" parent="1" edge="1" source="rb" target="role" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#6c8ebf;strokeWidth=2;fontSize=10;" value="roleRef"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

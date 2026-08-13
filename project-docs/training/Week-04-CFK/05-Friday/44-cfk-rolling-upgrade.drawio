@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" agent="manual">
+  <diagram name="CFK Rolling Upgrade" id="cfk-rolling-upgrade">
+    <mxGraphModel dx="1422" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=16;fontStyle=1;" value="CFK Rolling Upgrade — StatefulSet replaces brokers one at a time, PDB enforces safety" vertex="1">
+          <mxGeometry x="80" y="20" width="1500" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="t0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;verticalAlign=top;fontStyle=1;fontSize=12;spacingLeft=10;spacingTop=8;" value="T0 — engineer patches spec.image" vertex="1">
+          <mxGeometry x="80" y="100" width="1500" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="t0_cmd" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;align=left;verticalAlign=middle;fontSize=10;fontFamily=Courier New;spacingLeft=10;" value="oc patch kafka kafka --type=merge -p &#39;{&quot;spec&quot;:{&quot;image&quot;:{&quot;application&quot;:&quot;cp-server:7.7.1&quot;}}}&#39;" vertex="1">
+          <mxGeometry x="120" y="160" width="1400" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="t1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;fontStyle=1;fontSize=12;spacingLeft=10;spacingTop=8;" value="T1 — operator updates StatefulSet; K8s rolls Pods one at a time" vertex="1">
+          <mxGeometry x="80" y="290" width="1500" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="k2_old" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=10;" value="kafka-2&#10;cp-server:7.7.0&#10;Terminating" vertex="1">
+          <mxGeometry x="120" y="340" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="k1_old" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=10;" value="kafka-1&#10;cp-server:7.7.0&#10;Running" vertex="1">
+          <mxGeometry x="360" y="340" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="k0_old" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=10;" value="kafka-0&#10;cp-server:7.7.0&#10;Running" vertex="1">
+          <mxGeometry x="600" y="340" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pdb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;fontSize=10;fontStyle=1;" value="PDB&#10;maxUnavailable: 1&#10;blocks if &gt; 1 down" vertex="1">
+          <mxGeometry x="900" y="340" width="240" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="leadership" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Partition leadership held by&#10;kafka-2 elects new leader (still 2 ISR)&#10;Cluster keeps serving traffic" vertex="1">
+          <mxGeometry x="1200" y="340" width="320" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="t2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;fontStyle=1;fontSize=12;spacingLeft=10;spacingTop=8;" value="T2 — kafka-2 rejoins on new image; K8s proceeds to kafka-1" vertex="1">
+          <mxGeometry x="80" y="500" width="1500" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="k2_new" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=10;" value="kafka-2&#10;cp-server:7.7.1&#10;Ready · in-ISR" vertex="1">
+          <mxGeometry x="120" y="550" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="k1_term" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=center;fontSize=10;" value="kafka-1&#10;cp-server:7.7.0&#10;Terminating" vertex="1">
+          <mxGeometry x="360" y="550" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="k0_running" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;fontSize=10;" value="kafka-0&#10;cp-server:7.7.0&#10;Running" vertex="1">
+          <mxGeometry x="600" y="550" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="t3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;fontStyle=1;fontSize=12;spacingLeft=10;spacingTop=8;" value="T3 — all brokers on new image; cluster-ready=True" vertex="1">
+          <mxGeometry x="80" y="710" width="1500" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="k2_final" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=10;" value="kafka-2&#10;cp-server:7.7.1&#10;Ready" vertex="1">
+          <mxGeometry x="120" y="760" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="k1_final" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=10;" value="kafka-1&#10;cp-server:7.7.1&#10;Ready" vertex="1">
+          <mxGeometry x="360" y="760" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="k0_final" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=center;fontSize=10;" value="kafka-0&#10;cp-server:7.7.1&#10;Ready" vertex="1">
+          <mxGeometry x="600" y="760" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="failures" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=middle;fontSize=10;spacingLeft=10;" value="Failure modes (Week 4 Friday lab):&#10;  1. bad image tag → new Pod ImagePullBackOff&#10;  2. PDB too tight + drain → drain hangs&#10;  3. cert mismatch on new image → CrashLoopBackOff TLS error&#10;  4. PVC re-attach fails → new Pod Pending" vertex="1">
+          <mxGeometry x="900" y="760" width="660" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_t0_t1" parent="1" edge="1" source="t0" target="t1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d79b00;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_t1_t2" parent="1" edge="1" source="t1" target="t2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e_t2_t3" parent="1" edge="1" source="t2" target="t3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
