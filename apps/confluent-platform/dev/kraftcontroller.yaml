@@ -33,6 +33,17 @@ spec:
   storageClass:
     name: kafka
 
+  dependencies:
+    metricsClient:
+      url: https://controlcenter.dah-flink-dev.svc.cluster.local:9090
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-prometheus-basic-auth
+      tls:
+        enabled: true
+        secretRef: controlcenter-tls
+
   listeners:
     controller:
       tls:
@@ -44,17 +55,18 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahQa_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(QA)
 
   # superUser is the broker's own Okta client (peer principal during controller comms).
   authorization:
     type: rbac
     superUsers:
-      - User:0oa1owhtq2olDZWwf358
+      - User:0oa1yqr1h3fej4BCx358
+      - User:0oa1yqr0z4oGawRNe358
 
   tls:
     secretRef: kraftcontroller-tls
@@ -92,12 +104,14 @@ spec:
       - sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - sasl.oauthbearer.scope=11547.DAH(Dev)
+      - sasl.oauthbearer.scope=11547.DAH(QA)
       - controller.quorum.election.timeout.ms=5000
       - controller.quorum.fetch.timeout.ms=5000
       - default.replication.factor=3
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
+      - confluent.balancer.enable=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
       - confluent.license.topic.replication.factor=3
       - confluent.security.event.logger.enable=false
 

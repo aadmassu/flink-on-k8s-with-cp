@@ -35,8 +35,9 @@ spec:
   license:
     secretRef: cfk-license
 
-  # tls:
-  #   secretRef: connect-tls
+  # Like-for-like with the Ansible reference: Connect REST is TLS-enabled.
+  tls:
+    secretRef: connect-tls
 
   mountedVolumes:
     volumes:
@@ -69,11 +70,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahQa_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(QA)
       tls:
         enabled: true
         secretRef: kafka-tls
@@ -96,11 +97,11 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahQa_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
+            scope: 11547.DAH(QA)
     kafkaRestClassRef:
       name: default
       namespace: dah-flink-dev
@@ -116,7 +117,7 @@ spec:
       - confluent.metadata.ssl.truststore.password=changeit
       - confluent.metadata.ssl.truststore.type=JKS
 
-      - group.id=connect-cluster
+      - group.id=qa_connect_cluster
       - config.storage.topic=connect-cluster-configs
       - offset.storage.topic=connect-cluster-offsets
       - status.storage.topic=connect-cluster-status

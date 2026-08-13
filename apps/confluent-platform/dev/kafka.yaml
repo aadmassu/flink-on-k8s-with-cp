@@ -66,11 +66,12 @@ spec:
   authorization:
     type: rbac
     superUsers:
-      - User:0oa1owhtq2olDZWwf358   # broker (oauth-broker)
-      - User:0oa1owiage2MyoHdt358   # Schema Registry
-      - User:0oa1owi0yntGMBvPS358   # Connect
-      - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
-      - User:0oa1ov6h5mwmQTCKI358   # Control Center
+      - User:0oa1yqr1h3fej4BCx358   # MDS OAuth superuser (QA reference)
+      - User:0oa1yqr0z4oGawRNe358   # broker (oauth-broker)
+      - User:0oa1yqraigduz0LrF358   # Schema Registry
+      - User:0oa1yqqxys7lGJqRj358   # Connect
+      - User:0oa1yqquv75QZ7d3C358   # Kafka REST Proxy
+      - User:0oa1z6d5wjgBLvoKz358   # Control Center
 
   listeners:
     internal:
@@ -81,11 +82,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahQa_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(QA)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -101,11 +102,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahQa_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(QA)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -134,11 +135,11 @@ spec:
           configurations:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahQa_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
+            scope: 11547.DAH(QA)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -152,18 +153,19 @@ spec:
             authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
             tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahQa_groups
             subClaimName: email
             groupsClaimScope: openid profile email
             refreshToken: true
       # Client IDs the operator may act on-behalf-of when reconciling rolebindings (runbook A23).
       impersonation:
         admins:
-          - User:0oa1owhtq2olDZWwf358   # broker / kafka-rest embedded
-          - User:0oa1owiage2MyoHdt358   # Schema Registry
-          - User:0oa1owi0yntGMBvPS358   # Connect
-          - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
-          - User:0oa1ov6h5mwmQTCKI358   # Control Center
+          - User:0oa1yqr1h3fej4BCx358   # MDS OAuth superuser
+          - User:0oa1yqr0z4oGawRNe358   # broker / kafka-rest embedded
+          - User:0oa1yqraigduz0LrF358   # Schema Registry
+          - User:0oa1yqqxys7lGJqRj358   # Connect
+          - User:0oa1yqquv75QZ7d3C358   # Kafka REST Proxy
+          - User:0oa1z6d5wjgBLvoKz358   # Control Center
 
   dependencies:
     kRaftController:
@@ -177,11 +179,11 @@ spec:
           oauthSettings:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahQa_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
+            scope: 11547.DAH(QA)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -189,6 +191,15 @@ spec:
         tls:
           enabled: true
           secretRef: kafka-tls
+    metricsClient:
+      url: https://controlcenter.dah-flink-dev.svc.cluster.local:9090
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-prometheus-basic-auth
+      tls:
+        enabled: true
+        secretRef: controlcenter-tls
     # kafkaRest auth shape uses live-CRD flat form (type=oauth + jaasConfig + oauthSettings), NOT the vendored 3.1.x nested shape (runbook A22).
     kafkaRest:
       authentication:
@@ -198,11 +209,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahQa_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(QA)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -225,11 +236,11 @@ spec:
       oauthSettings:
         audience: "Confluent,account,api://default"
         expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-        groupsClaimName: dahDev_groups
+        groupsClaimName: dahQa_groups
         subClaimName: sub
         jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
         tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-        scope: 11547.DAH(Dev)
+        scope: 11547.DAH(QA)
         loginConnectTimeoutMs: 10000
         loginReadTimeoutMs: 30000
         loginRetryBackoffMaxMs: 5000
@@ -251,7 +262,7 @@ spec:
       - sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - sasl.oauthbearer.scope=11547.DAH(Dev)
+      - sasl.oauthbearer.scope=11547.DAH(QA)
 
       # License client (cp-server licensing to _confluent-command).
       - confluent.license.security.protocol=SASL_SSL
@@ -259,7 +270,7 @@ spec:
       - confluent.license.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.license.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.license.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.license.sasl.oauthbearer.scope=11547.DAH(Dev)
+      - confluent.license.sasl.oauthbearer.scope=11547.DAH(QA)
 
       # Embedded kafkaRest at :8090.
       - confluent.kafkarest.security.protocol=SASL_SSL
@@ -267,7 +278,7 @@ spec:
       - confluent.kafkarest.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.kafkarest.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.kafkarest.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(Dev)
+      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(QA)
 
       # ConfluentMetricsReporter client (spec.metricReporter block doesn't propagate all sub-keys into this prefix; runbook A26).
       - confluent.metrics.reporter.security.protocol=SASL_SSL
@@ -275,9 +286,11 @@ spec:
       - confluent.metrics.reporter.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.metrics.reporter.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.metrics.reporter.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.metrics.reporter.sasl.oauthbearer.scope=11547.DAH(Dev)
+      - confluent.metrics.reporter.sasl.oauthbearer.scope=11547.DAH(QA)
 
       # Broker defaults.
+      - confluent.telemetry.enabled=true
+      - confluent.reporters.telemetry.auto.enable=true
       - log.retention.hours=168
       - log.segment.bytes=1073741824
       - log.retention.check.interval.ms=300000
@@ -292,7 +305,9 @@ spec:
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
       - confluent.cluster.link.metadata.topic.replication.factor=3
-      - confluent.balancer.enable=false
+      - confluent.balancer.enable=true
+      - confluent.balancer.data.enabled=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
       - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
 
   podTemplate:

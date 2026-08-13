@@ -130,7 +130,7 @@ stages:
               inputs:
                 targetType: inline
                 script: |
-                  set -uo pipefail
+                  set -euo pipefail
 
                   # Abort with miss-list if any required variable is empty.
                   required_vars=(
@@ -142,6 +142,7 @@ stages:
                     OAUTH_REST_ID OAUTH_REST_SECRET
                     OAUTH_C3_ID OAUTH_C3_SECRET
                     OAUTH_MDS_REST_ID OAUTH_MDS_REST_SECRET
+                    OAUTH_MDS_SSO_ID OAUTH_MDS_SSO_SECRET
                     C3_PROM_USER C3_PROM_PWD
                     C3_ALERT_USER C3_ALERT_PWD
                   )
@@ -155,7 +156,7 @@ stages:
                   if [ "$missing" -gt 0 ]; then
                     echo ""
                     echo "ERROR: $missing required variable(s) above are empty. Populate them"
-                    echo "in variable group $TARGET_ENV-openshift-credentials before re-running."
+                    echo "in variable group kafka-openshift-credentials-$TARGET_ENV before re-running."
                     echo "Variable naming mapping: apps/confluent-platform/$TARGET_ENV/prereqs/README.md"
                     exit 1
                   fi
@@ -446,7 +447,7 @@ stages:
               inputs:
                 targetType: inline
                 script: |
-                  set -uo pipefail
+                  set -euo pipefail
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
@@ -682,6 +683,26 @@ stages:
                     return 1
                   }
 
+                  echo "=== Server-side validation of selected manifests ==="
+                  validate_manifest() {
+                    local file=$1
+                    if [ ! -f "$file" ]; then
+                      echo "ERROR: required manifest not found: $file"
+                      return 1
+                    fi
+                    echo "+ oc apply --dry-run=server -f $file"
+                    oc -n "$OC_NS" apply --dry-run=server -f "$file" >/dev/null
+                  }
+                  if is_true "$APPLY_KRAFT"; then validate_manifest "$ENV_DIR/kraftcontroller.yaml"; fi
+                  if is_true "$APPLY_KAFKA"; then
+                    validate_manifest "$ENV_DIR/kafkarestclass.yaml"
+                    validate_manifest "$ENV_DIR/kafka.yaml"
+                  fi
+                  if is_true "$APPLY_SR"; then validate_manifest "$ENV_DIR/schemaregistry.yaml"; fi
+                  if is_true "$APPLY_CONNECT"; then validate_manifest "$ENV_DIR/connect.yaml"; fi
+                  if is_true "$APPLY_KREST"; then validate_manifest "$ENV_DIR/kafkarest.yaml"; fi
+                  if is_true "$APPLY_C3"; then validate_manifest "$ENV_DIR/controlcenter.yaml"; fi
+
                   # Pre-Phase: NetworkPolicy for CFK-operator ingress (Jolokia :7777 probe).
                   # DEV: App team has RBAC permission to create NetworkPolicies in dev (auto-apply).
                   # Upper environments (qa, uat-p, uat-s, prd, dr): apply if file exists; if RBAC
@@ -715,8 +736,9 @@ stages:
                   # DISABLED for troubleshooting: KRaftController readiness gate.
                   # Normally waits for controller ready BEFORE kafka apply, but disabled temporarily
                   # to progress with installation while debugging controller readiness issues.
+                  # Re-enable when NetworkPolicy operator-ingress is fully implemented.
                   # if is_true "$APPLY_KRAFT" || is_true "$APPLY_KAFKA"; then
-                  #   wait_for_cr_ready kraftcontroller kraftcontroller 300
+                  #   wait_for_cr_ready kraftcontroller kraftcontroller 600
                   # fi
 
                   echo ""
@@ -743,10 +765,11 @@ stages:
                   # DISABLED for troubleshooting: Kafka readiness gate.
                   # Normally waits for kafka ready before dependent components, but disabled temporarily
                   # to progress with installation while debugging readiness issues.
+                  # Re-enable when NetworkPolicy operator-ingress is fully implemented.
                   # if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
                   #    || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
                   #    || is_true "$APPLY_C3"; then
-                  #   wait_for_cr_ready kafka kafka 300
+                  #   wait_for_cr_ready kafka kafka 900
                   # fi
 
                   echo ""
@@ -789,6 +812,13 @@ stages:
                   else
                     echo "(Control Center skipped — checkbox off)"
                   fi
+
+                  echo ""
+                  echo "=== Waiting for selected Phase 2 components ==="
+                  if is_true "$APPLY_SR"; then wait_for_cr_ready schemaregistry schemaregistry 600; fi
+                  if is_true "$APPLY_CONNECT"; then wait_for_cr_ready connect connect 900; fi
+                  if is_true "$APPLY_KREST"; then wait_for_cr_ready kafkarestproxy kafkarestproxy 600; fi
+                  if is_true "$APPLY_C3"; then wait_for_cr_ready controlcenter controlcenter 900; fi
 
                   echo ""
                   echo "=== Cluster status (immediate post-apply) ==="
@@ -1203,4 +1233,3 @@ stages:
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
-

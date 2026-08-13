@@ -36,8 +36,9 @@ spec:
   license:
     secretRef: cfk-license
 
-  # tls:
-  #   secretRef: kafkarest-tls
+  # Like-for-like with the Ansible reference: REST Proxy serves HTTPS.
+  tls:
+    secretRef: kafkarest-tls
 
   mountedVolumes:
     volumes:
@@ -70,11 +71,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahQa_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(QA)
       tls:
         enabled: true
         secretRef: kafka-tls
@@ -97,11 +98,11 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahQa_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
+            scope: 11547.DAH(QA)
 
   configOverrides:
     jvm:

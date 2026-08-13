@@ -42,8 +42,8 @@ spec:
   license:
     secretRef: cfk-license
 
-  # tls:
-  #   secretRef: controlcenter-tls
+  tls:
+    secretRef: controlcenter-tls
 
   # JVM outbound trust store (runbook A21).
   mountedVolumes:
@@ -78,6 +78,27 @@ spec:
     maxUnavailable: 1
 
   dependencies:
+    # Control Center Next Gen reads metrics and alerts from its bundled
+    # Prometheus/Alertmanager services. The same basic-auth Secrets are used
+    # by the corresponding server and client blocks.
+    prometheusClient:
+      url: https://controlcenter.dah-flink-dev.svc.cluster.local:9090
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-prometheus-basic-auth
+      tls:
+        enabled: true
+        secretRef: controlcenter-tls
+    alertManagerClient:
+      url: https://controlcenter.dah-flink-dev.svc.cluster.local:9093
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-alertmanager-basic-auth
+      tls:
+        enabled: true
+        secretRef: controlcenter-tls
     # Dep-to-Kafka: flat oauth+jaasConfig (runbook A22).
     kafka:
       bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
@@ -88,11 +109,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahQa_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(QA)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -114,11 +135,11 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahQa_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
+            scope: 11547.DAH(QA)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -137,11 +158,11 @@ spec:
             configuration:
               audience: "Confluent,account,api://default"
               expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-              groupsClaimName: dahDev_groups
+              groupsClaimName: dahQa_groups
               subClaimName: sub
               jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
               tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-              scope: 11547.DAH(Dev)
+              scope: 11547.DAH(QA)
               loginConnectTimeoutMs: 10000
               loginReadTimeoutMs: 30000
               loginRetryBackoffMaxMs: 5000
@@ -163,11 +184,11 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahQa_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
+            scope: 11547.DAH(QA)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -177,7 +198,27 @@ spec:
       name: default
       namespace: dah-flink-dev
 
-  # Prometheus + AlertManager bundle deferred; c3-*-basic-auth Secrets already exist.
+  # Control Center Next Gen bundled observability services. Confluent requires
+  # C3, Prometheus, and Alertmanager to use the same release tag.
+  services:
+    prometheus:
+      image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-prometheus:2.5.0
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-prometheus-basic-auth
+      tls:
+        secretRef: controlcenter-tls
+      pvc:
+        dataVolumeCapacity: 15Gi
+    alertmanager:
+      image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-alertmanager:2.5.0
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-alertmanager-basic-auth
+      tls:
+        secretRef: controlcenter-tls
 
   configOverrides:
     jvm:
@@ -199,7 +240,7 @@ spec:
       - confluent.controlcenter.streams.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.controlcenter.streams.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.controlcenter.streams.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(Dev)
+      - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(QA)
 
       # Explicit trustStore for C3's Armeria/Netty HTTP client to Okta -- JVM -Djavax.net.ssl.trustStore doesn't propagate to Netty SSL contexts (runbook A28).
       - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
@@ -215,7 +256,7 @@ spec:
       - confluent.monitoring.interceptor.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.monitoring.interceptor.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.monitoring.interceptor.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.monitoring.interceptor.sasl.oauthbearer.scope=11547.DAH(Dev)
+      - confluent.monitoring.interceptor.sasl.oauthbearer.scope=11547.DAH(QA)
 
   podTemplate:
     serviceAccountName: flink-operator
