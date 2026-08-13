@@ -1222,15 +1222,18 @@ stages:
                     local step=10
 
                     echo ""
-                    echo "=== Waiting up to ${timeout}s for $kind/$name to report cluster-ready ==="
+                    echo "=== Waiting up to ${timeout}s for $kind/$name to report cluster-ready and no rolling update ==="
                     while [ "$elapsed" -lt "$timeout" ]; do
                       # `|| true` so a transient NotFound in the first ~10s post-apply (API admitting, operator hasn't written status yet) doesn't trip `set -e` and abort the wait. Only exit via the explicit `return 1` on timeout.
-                      local status=""
-                      status=$(oc -n "$OC_NS" get "$kind" "$name" \
+                      local cluster_ready rolling
+                      cluster_ready=$(oc -n "$OC_NS" get "$kind" "$name" \
                         -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status}' \
                         2>/dev/null || echo "")
-                      if [ "$status" = "True" ]; then
-                        echo "  $kind/$name cluster-ready=True after ${elapsed}s."
+                      rolling=$(oc -n "$OC_NS" get "$kind" "$name" \
+                        -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/rolling")].status}' \
+                        2>/dev/null || echo "")
+                      if [ "$cluster_ready" = "True" ] && [ "$rolling" != "True" ]; then
+                        echo "  $kind/$name cluster-ready=True, rolling!=True after ${elapsed}s."
                         return 0
                       fi
 
@@ -1418,10 +1421,12 @@ stages:
                   cat > /tmp/ca-cert.pem << 'CERT_EOF'
                   $CA_CERT
                   CERT_EOF
-                  timeout 5 curl --fail --show-error \
+                  http_code=$(timeout 5 curl -s -w '%{http_code}' -o /dev/null \
                     --cacert /tmp/ca-cert.pem \
                     --resolve "kafka.$OC_NS.svc.cluster.local:8090:127.0.0.1" \
-                    "https://kafka.$OC_NS.svc.cluster.local:8090/health" >/dev/null 2>&1
+                    "https://kafka.$OC_NS.svc.cluster.local:8090/security/1.0/activenodes/https")
+                  # Accept 200 (ready), 401 (auth needed but accessible), 403 (forbidden but available)
+                  [[ "$http_code" =~ ^(200|401|403)$ ]]
                   CURL_EOF
                       then
                         echo "✅ MDS is ready at :8090 (attempt $i)"
@@ -1520,15 +1525,18 @@ stages:
                     local elapsed=0
                     local step=10
 
-                    echo "Waiting up to ${timeout}s for $kind/$name to report cluster-ready..."
+                    echo "Waiting up to ${timeout}s for $kind/$name to report cluster-ready and no rolling update..."
                     while [ "$elapsed" -lt "$timeout" ]; do
-                      local status=""
+                      local cluster_ready rolling
                       # Check for platform.confluent.io/cluster-ready condition (CFK 3.1+)
-                      status=$(oc -n "$OC_NS" get "$kind" "$name" \
+                      cluster_ready=$(oc -n "$OC_NS" get "$kind" "$name" \
                         -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status}' \
                         2>/dev/null || echo "")
-                      if [ "$status" = "True" ]; then
-                        echo "  $kind/$name cluster-ready=True after ${elapsed}s."
+                      rolling=$(oc -n "$OC_NS" get "$kind" "$name" \
+                        -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/rolling")].status}' \
+                        2>/dev/null || echo "")
+                      if [ "$cluster_ready" = "True" ] && [ "$rolling" != "True" ]; then
+                        echo "  $kind/$name cluster-ready=True, rolling!=True after ${elapsed}s."
                         return 0
                       fi
 
