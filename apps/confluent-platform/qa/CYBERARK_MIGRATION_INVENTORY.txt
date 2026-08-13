@@ -1,0 +1,25 @@
+Environment: qa
+Generated: 2026-08-12
+
+Secret Name | Azure Variable | CyberArk Path | Status
+------------|--------------------|-----------------|--------
+cfk-license | qa-confluent-license | qa-cfk-platform-credentials/confluent-license | Pipeline
+sasl-plain-internal | qa-sasl-plain-admin-pwd | qa-cfk-platform-credentials/sasl-plain-admin-password | Pipeline
+mds-token-keypair | qa-mds-token-keypair-pem | qa-cfk-mds-token-keypair/tokenKeypair.pem | Pipeline
+oauth-broker | qa-oauth-broker-{client-id,secret} | qa-cfk-oauth-broker/* | Pipeline
+oauth-schemaregistry | qa-oauth-schemaregistry-{client-id,secret} | qa-cfk-oauth-schemaregistry/* | Pipeline
+oauth-connect | qa-oauth-connect-{client-id,secret} | qa-cfk-oauth-connect/* | Pipeline
+oauth-kafkarest | qa-oauth-kafkarest-{client-id,secret} | qa-cfk-oauth-kafkarest/* | Pipeline
+oauth-controlcenter | qa-oauth-controlcenter-{client-id,secret} | qa-cfk-oauth-controlcenter/* | Pipeline
+oauth-mds-rest | qa-oauth-mds-rest-{client-id,secret} | qa-cfk-oauth-mds-rest/* | Pipeline
+oauth-mds-sso | qa-oauth-mds-sso-{client-id,secret} | qa-cfk-oauth-mds-sso-oidc/* | Pipeline
+c3-prometheus-server-basic-auth | qa-c3-prometheus-{username,password} | qa-cfk-c3-prometheus-server-basic/* | Pipeline
+c3-prometheus-client-basic-auth | qa-c3-prometheus-{username,password} | qa-cfk-c3-prometheus-client-basic/* | Pipeline
+c3-alertmanager-server-basic-auth | qa-c3-alertmanager-{username,password} | qa-cfk-c3-alertmanager-server-basic/* | Pipeline
+c3-alertmanager-client-basic-auth | qa-c3-alertmanager-{username,password} | qa-cfk-c3-alertmanager-client-basic/* | Pipeline
+
+NOTES:
+- All Secrets are currently provisioned by the pipeline from Azure variable groups.
+- Future migration path: Create ExternalSecret CRs targeting the CyberArk paths listed above.
+- ExternalSecret template files exist in this directory with ESO disabled (externalsecrets-all-disabled marker).
+- Enable ExternalSecrets one at a time and validate ESO sync before removing pipeline variable provisioning.

@@ -9,7 +9,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: schemaregistry-tls
-  namespace: dah-flink-prd
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/instance: schemaregistry-tls
@@ -23,11 +23,11 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: schemaregistry.dah-flink-prd.svc.cluster.local
+  commonName: schemaregistry.dah-flink-prod.svc.cluster.local
   dnsNames:
-    - schemaregistry.dah-flink-prd.svc
-    - schemaregistry.dah-flink-prd.svc.cluster.local
-    - schemaregistry-0.schemaregistry.dah-flink-prd.svc.cluster.local
+    - schemaregistry.dah-flink-prod.svc
+    - schemaregistry.dah-flink-prod.svc.cluster.local
+    - schemaregistry-0.schemaregistry.dah-flink-prod.svc.cluster.local
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:

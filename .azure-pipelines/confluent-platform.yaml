@@ -1,7 +1,31 @@
 # Pipeline: confluent-platform — install/uninstall CFK Confluent Platform
-# in dah-flink-<env>. Author: Ayu Admassu. Created 2026-05-12. Updated 2026-07-31.
+# in dah-flink-<env>. Author: Ayu Admassu. Created 2026-05-12. Updated 2026-08-12.
 # Variable group: kafka-openshift-credentials-<env>. Prereq Secrets +
 # Certificate CRs documented in apps/confluent-platform/<env>/prereqs/README.md.
+#
+# VALIDATION GATES
+# ================
+# 1. STATIC CHECKS (no cluster required):
+#    - YAML duplicate-key detection (run before any mutations)
+#    - Manual code review of script logic
+#    - Manifest schema validation (via oc apply --dry-run=server on cluster)
+#    - Placeholder verification: no REPLACE_WITH_* values left unresolved
+#    - OAuth scope isolation: each env's manifests use only that env's OAuth principals
+#
+# 2. COMPILE-TIME CHECKS (Azure DevOps):
+#    - Pipeline YAML syntax (validated when queued)
+#    - Template expansion (validated when queued)
+#    - Variable group references (validated when queued)
+#    - Expression evaluation (validated when queued)
+#
+# 3. LIVE CLUSTER CHECKS:
+#    - Certificate Ready=True condition (via cert-manager status)
+#    - oc apply --dry-run=server pre-flight (validated before mutations)
+#    - ExternalSecret synchronization (oc get externalsecret ... -o jsonpath)
+#    - Kafka cluster-ready condition (oc get kafka ... cluster-ready)
+#    - MDS connectivity and oauth-mds-sso validation
+#    - Component readiness gates
+#    - Listener port and auth type validation
 
 trigger: none
 
@@ -124,55 +148,263 @@ stages:
               OC_PWD: $(openshift-service-account-pwd)
               OC_NS: $(openshift-namespace)
 
+          - task: Bash@3
+            displayName: "Validate YAML: check for duplicate keys"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                echo "=== YAML Duplicate-Key Validation ==="
+                echo "Checking all manifests in apps/confluent-platform/$(TARGET_ENV) for duplicate keys..."
+                echo ""
+
+                # Create validation script to check for duplicate keys in YAML files
+                cat > /tmp/check_yaml_duplicates.py << 'PYTHON_EOF'
+                #!/usr/bin/env python3
+                import sys
+                import yaml
+                import pathlib
+                from collections import defaultdict
+
+                class DuplicateKeyDetector(yaml.SafeLoader):
+                    """Detect duplicate keys in YAML mappings."""
+                    pass
+
+                def constructor_with_dup_check(self, node):
+                    if isinstance(node, yaml.MappingNode):
+                        keys_seen = defaultdict(list)
+                        for key_node, value_node in node.value:
+                            # Extract key value
+                            key = self.construct_object(key_node)
+                            keys_seen[key].append(key_node)
+
+                        # Check for duplicates
+                        for key, nodes in keys_seen.items():
+                            if len(nodes) > 1:
+                                first_node = nodes[0]
+                                dup_node = nodes[1]
+                                raise yaml.error.YAMLError(
+                                    f"Duplicate key '{key}' at line {dup_node.start_mark.line+1}, "
+                                    f"column {dup_node.start_mark.column+1}; "
+                                    f"first occurrence at line {first_node.start_mark.line+1}"
+                                )
+                    return self.construct_mapping(node)
+
+                DuplicateKeyDetector.add_constructor(
+                    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+                    constructor_with_dup_check
+                )
+
+                errors = []
+                checked = 0
+                for yaml_file in sorted(pathlib.Path(sys.argv[1]).rglob('*.yaml')):
+                    try:
+                        with open(yaml_file) as f:
+                            yaml.load(f, Loader=DuplicateKeyDetector)
+                        checked += 1
+                    except yaml.YAMLError as e:
+                        errors.append((str(yaml_file), str(e)))
+
+                if errors:
+                    print(f"ERRORS: {len(errors)} file(s) have duplicate keys")
+                    for fpath, err in errors:
+                        print(f"\n  {fpath}")
+                        print(f"    {err}")
+                    sys.exit(1)
+                else:
+                    print(f"OK: checked {checked} YAML files, no duplicate keys found")
+                    sys.exit(0)
+                PYTHON_EOF
+
+                chmod +x /tmp/check_yaml_duplicates.py
+                python3 /tmp/check_yaml_duplicates.py "apps/confluent-platform/$(TARGET_ENV)" || {
+                  echo ""
+                  echo "FATAL: YAML validation failed. Fix duplicate keys above before retrying."
+                  exit 1
+                }
+              env:
+                TARGET_ENV: ${{ parameters.environment }}
+
+          - task: Bash@3
+            displayName: "Compute canonical namespace (all actions)"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                # PRD and DR both map to dah-flink-prod namespace. DEV/QA/UAT map 1:1.
+                case "$TARGET_ENV" in
+                  dev) FINAL_NS="dah-flink-dev" ;;
+                  qa) FINAL_NS="dah-flink-qa" ;;
+                  uat-p|uat-s) FINAL_NS="dah-flink-uat" ;;
+                  prd|dr) FINAL_NS="dah-flink-prod" ;;
+                  *) echo "ERROR: Unknown environment $TARGET_ENV"; exit 1 ;;
+                esac
+
+                echo "TARGET_ENV=$TARGET_ENV → Kubernetes namespace=$FINAL_NS"
+                echo "##vso[task.setvariable variable=RESOLVED_NS]$FINAL_NS"
+            env:
+              TARGET_ENV: ${{ parameters.environment }}
+
           - ${{ if eq(parameters.action, 'create-prereqs') }}:
+            - task: Bash@3
+              displayName: "Validate canonical namespace before create-prereqs (CORRECTION 7)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  OC_NS_VAR="$(openshift-namespace)"
+                  RESOLVED_NS_VAR="$(RESOLVED_NS)"
+
+                  echo "=== CORRECTION 7: Validating Canonical Namespace ==="
+                  echo "openshift-namespace variable: $OC_NS_VAR"
+                  echo "RESOLVED_NS (canonical):      $RESOLVED_NS_VAR"
+
+                  if [ "$OC_NS_VAR" != "$RESOLVED_NS_VAR" ]; then
+                    echo ""
+                    echo "FATAL: Namespace mismatch!"
+                    echo "  Variable group (openshift-namespace): $OC_NS_VAR"
+                    echo "  Canonical (RESOLVED_NS):              $RESOLVED_NS_VAR"
+                    echo ""
+                    echo "Fix the openshift-namespace value in the variable group for $TARGET_ENV"
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "✓ Namespace validation passed: using $RESOLVED_NS_VAR"
+              env:
+                TARGET_ENV: ${{ parameters.environment }}
+
             - task: Bash@3
               displayName: "Create prerequisite Opaque Secrets and describe"
               inputs:
                 targetType: inline
                 script: |
-                  set -uo pipefail
+                  set -euo pipefail
 
-                  # Abort with miss-list if any required variable is empty.
-                  required_vars=(
-                    CONFLUENT_LICENSE MDS_PEM
-                    SASL_ADMIN
-                    OAUTH_BROKER_ID OAUTH_BROKER_SECRET
-                    OAUTH_SR_ID OAUTH_SR_SECRET
-                    OAUTH_CONNECT_ID OAUTH_CONNECT_SECRET
-                    OAUTH_REST_ID OAUTH_REST_SECRET
-                    OAUTH_C3_ID OAUTH_C3_SECRET
-                    OAUTH_MDS_REST_ID OAUTH_MDS_REST_SECRET
-                    OAUTH_MDS_SSO_ID OAUTH_MDS_SSO_SECRET
-                    C3_PROM_USER C3_PROM_PWD
-                    C3_ALERT_USER C3_ALERT_PWD
-                  )
-                  missing=0
-                  for v in "${required_vars[@]}"; do
-                    if [ -z "${!v:-}" ]; then
-                      echo "MISS  $v"
-                      missing=$((missing+1))
-                    fi
-                  done
-                  if [ "$missing" -gt 0 ]; then
-                    echo ""
-                    echo "ERROR: $missing required variable(s) above are empty. Populate them"
-                    echo "in variable group $TARGET_ENV-openshift-credentials before re-running."
-                    echo "Variable naming mapping: apps/confluent-platform/$TARGET_ENV/prereqs/README.md"
+                  # STEP 1: Discover ExternalSecret-owned Secrets (CORRECTION 2: preserve both CR name and target name)
+                  echo "=== Discovering ExternalSecret-managed Secrets ==="
+                  declare -A ESO_CR_TO_TARGET  # Map: ExternalSecret CR name → target Secret name
+                  while IFS=$'\t' read -r cr_name target_name; do
+                    [ -z "$cr_name" ] && continue
+                    ESO_CR_TO_TARGET["$cr_name"]="$target_name"
+                  done < <(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.target.name}{"\n"}{end}' 2>/dev/null || echo "")
+
+                  # Extract just the target names for the quick lookup
+                  ESO_OWNED=$(printf '%s\n' "${ESO_CR_TO_TARGET[@]}" | sort -u || echo "")
+
+                  is_eso_managed() {
+                    local name=$1
+                    [ -n "$ESO_OWNED" ] && grep -qxF "$name" <<< "$ESO_OWNED" || return 1
+                  }
+
+                  # STEP 2: Verify ESO-managed Secrets are SecretSynced=True (CORRECTION 2: use CR name for status, target name for Secret validation)
+                  echo ""
+                  echo "=== Verifying ESO-managed Secrets ==="
+                  eso_failed=0
+                  if [ -n "${!ESO_CR_TO_TARGET[@]}" ]; then
+                    for es_cr_name in "${!ESO_CR_TO_TARGET[@]}"; do
+                      es_target_name="${ESO_CR_TO_TARGET[$es_cr_name]}"
+                      synced=$(oc -n "$OC_NS" get externalsecret "$es_cr_name" \
+                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+
+                      if [ "$synced" != "True" ]; then
+                        echo "ERROR: ExternalSecret CR $es_cr_name (targets Secret $es_target_name) not Ready=True"
+                        eso_failed=$((eso_failed+1))
+                      else
+                        echo "OK: $es_cr_name → $es_target_name (Ready)"
+                      fi
+                    done
+                  else
+                    echo "  (no ExternalSecrets discovered in namespace)"
+                  fi
+
+                  if [ "$eso_failed" -gt 0 ]; then
+                    echo "ERROR: $eso_failed ExternalSecret(s) not synchronized"
                     exit 1
                   fi
 
-                  # FCB Common Metadata standard requires these labels on every object.
-                  label_secret() {
-                    local name=$1
-                    oc label --local --overwrite -f - --dry-run=client -o yaml \
-                      app.kubernetes.io/name=confluent-platform \
-                      app.kubernetes.io/instance="$name" \
-                      app.kubernetes.io/component=cfk-prereq \
-                      app.kubernetes.io/part-of=confluent-platform \
-                      fcbint.net/app-id=11547
-                  }
+                  # STEP 3: Determine which Secrets are pipeline-owned (NOT ESO-managed)
+                  echo ""
+                  echo "=== Determining pipeline-owned Secrets ==="
+                  PIPELINE_OWNED_SECRETS=(
+                    "cfk-license"
+                    "sasl-plain-internal"
+                    "mds-token-keypair"
+                    "oauth-broker"
+                    "oauth-schemaregistry"
+                    "oauth-connect"
+                    "oauth-kafkarest"
+                    "oauth-controlcenter"
+                    "oauth-mds-rest"
+                    "oauth-mds-sso"
+                    "c3-prometheus-server-basic-auth"
+                    "c3-prometheus-client-basic-auth"
+                    "c3-alertmanager-server-basic-auth"
+                    "c3-alertmanager-client-basic-auth"
+                  )
 
-                  # ESO bypass: when a SecretStore is broken (e.g. CyberArk 403), delete the listed ExternalSecret CR + Secret so the snapshot below doesn't see them and apply_secret_from_literals below (re)provisions from the variable-group value. Set via bypassEsoForSecrets parameter; default "none" (or empty) means no bypass.
+                  REQUIRED_VARS_FOR_PIPELINE=()
+                  for secret in "${PIPELINE_OWNED_SECRETS[@]}"; do
+                    if is_eso_managed "$secret"; then
+                      echo "SKIP (ESO-managed): $secret"
+                    else
+                      echo "REQUIRE (pipeline): $secret"
+                      case "$secret" in
+                        cfk-license) REQUIRED_VARS_FOR_PIPELINE+=("CONFLUENT_LICENSE") ;;
+                        sasl-plain-internal) REQUIRED_VARS_FOR_PIPELINE+=("SASL_ADMIN") ;;
+                        mds-token-keypair) REQUIRED_VARS_FOR_PIPELINE+=("MDS_PEM") ;;
+                        oauth-broker) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_BROKER_ID" "OAUTH_BROKER_SECRET") ;;
+                        oauth-schemaregistry) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_SR_ID" "OAUTH_SR_SECRET") ;;
+                        oauth-connect) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_CONNECT_ID" "OAUTH_CONNECT_SECRET") ;;
+                        oauth-kafkarest) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_REST_ID" "OAUTH_REST_SECRET") ;;
+                        oauth-controlcenter) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_C3_ID" "OAUTH_C3_SECRET") ;;
+                        oauth-mds-rest) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_MDS_REST_ID" "OAUTH_MDS_REST_SECRET") ;;
+                        oauth-mds-sso) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_MDS_SSO_ID" "OAUTH_MDS_SSO_SECRET") ;;
+                        c3-prometheus-server-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_PROM_USER" "C3_PROM_PWD") ;;
+                        c3-prometheus-client-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_PROM_USER" "C3_PROM_PWD") ;;
+                        c3-alertmanager-server-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_ALERT_USER" "C3_ALERT_PWD") ;;
+                        c3-alertmanager-client-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_ALERT_USER" "C3_ALERT_PWD") ;;
+                      esac
+                    fi
+                  done
+
+                  # STEP 4: Validate only pipeline-owned variables with strict checks
+                  echo ""
+                  echo "=== Validating pipeline-owned Secret variables ==="
+                  required_vars=("${REQUIRED_VARS_FOR_PIPELINE[@]}")
+                  missing=0
+                  for v in "${required_vars[@]}"; do
+                    val="${!v:-}"
+
+                    # Strict validation: no empty, no whitespace, no $(..), no REPLACE_WITH_*
+                    if [ -z "$val" ]; then
+                      echo "MISS  $v (empty)"
+                      missing=$((missing+1))
+                    elif [ "$val" != "${val//[[:space:]]/}" ]; then
+                      echo "INVALID $v (whitespace)"
+                      missing=$((missing+1))
+                    elif [[ "$val" =~ ^\$\( ]]; then
+                      echo "INVALID $v (unresolved macro: $val)"
+                      missing=$((missing+1))
+                    elif [[ "$val" =~ ^REPLACE_WITH_ ]]; then
+                      echo "INVALID $v (placeholder: $val)"
+                      missing=$((missing+1))
+                    else
+                      echo "OK    $v"
+                    fi
+                  done
+
+                  if [ "$missing" -gt 0 ]; then
+                    echo ""
+                    echo "ERROR: $missing validation(s) failed"
+                    exit 1
+                  fi
+
+                  # STEP 5: Apply ESO bypass if configured (emergency workaround for broken SecretStore).
                   if [ -n "${BYPASS_ES_FOR:-}" ] && [ "${BYPASS_ES_FOR,,}" != "none" ]; then
                     echo ""
                     echo "=== ESO bypass: forcing variable-group provisioning for [$BYPASS_ES_FOR] ==="
@@ -186,23 +418,15 @@ stages:
                     done
                   fi
 
-                  # ESO-safety: skip create on Secret names owned by an ExternalSecret CR — otherwise we'd flap the value until ESO re-syncs from CyberArk. Snapshot the owned set from the live cluster so new ExternalSecrets are picked up automatically.
-                  echo ""
-                  echo "=== Snapshotting ESO-managed Secret names in $OC_NS ==="
-                  ESO_OWNED_NAMES=$(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
-                    -o jsonpath='{range .items[*]}{.spec.target.name}{"\n"}{end}' \
-                    2>/dev/null)
-                  if [ -z "$ESO_OWNED_NAMES" ]; then
-                    echo "  (no ExternalSecrets in namespace, or external-secrets CRD missing)"
-                  else
-                    echo "$ESO_OWNED_NAMES" | sed 's/^/  - /'
-                  fi
-
-                  # True (0) iff $1 is an ESO-managed Secret name. grep -qxF = exact line, fixed-string (no regex surprises).
-                  is_eso_managed() {
+                  # FCB Common Metadata standard requires these labels on every object.
+                  label_secret() {
                     local name=$1
-                    [ -n "$ESO_OWNED_NAMES" ] && \
-                      grep -qxF "$name" <<< "$ESO_OWNED_NAMES"
+                    oc label --local --overwrite -f - --dry-run=client -o yaml \
+                      app.kubernetes.io/name=confluent-platform \
+                      app.kubernetes.io/instance="$name" \
+                      app.kubernetes.io/component=cfk-prereq \
+                      app.kubernetes.io/part-of=confluent-platform \
+                      fcbint.net/app-id=11547
                   }
 
                   apply_secret_from_literals() {
@@ -424,11 +648,40 @@ stages:
 
           - ${{ if eq(parameters.action, 'install-or-update') }}:
             - task: Bash@3
+              displayName: "Validate OpenShift namespace matches canonical (RESOLVED_NS enforcement)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  OC_NS_VAR="$(openshift-namespace)"
+                  RESOLVED_NS_VAR="$(RESOLVED_NS)"
+
+                  echo "=== Namespace Validation ==="
+                  echo "openshift-namespace variable: $OC_NS_VAR"
+                  echo "RESOLVED_NS (canonical):      $RESOLVED_NS_VAR"
+
+                  if [ "$OC_NS_VAR" != "$RESOLVED_NS_VAR" ]; then
+                    echo ""
+                    echo "FATAL: Namespace mismatch!"
+                    echo "  Variable group (openshift-namespace): $OC_NS_VAR"
+                    echo "  Canonical (RESOLVED_NS):              $RESOLVED_NS_VAR"
+                    echo ""
+                    echo "Fix the openshift-namespace value in the variable group for $TARGET_ENV"
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "✓ Namespace validation passed: using $RESOLVED_NS_VAR"
+              env:
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
               displayName: "Pre-flight: verify env folder + prerequisite Secrets"
               inputs:
                 targetType: inline
                 script: |
-                  set -uo pipefail
+                  set -euo pipefail
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
@@ -544,11 +797,11 @@ stages:
                     exit 1
                   fi
               env:
-                OC_NS: $(openshift-namespace)
+                OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
-              displayName: "Apply cert-manager Certificates and wait for TLS Secrets"
+              displayName: "Pre-flight: validate OAuth principals and scopes per environment"
               inputs:
                 targetType: inline
                 script: |
@@ -556,17 +809,109 @@ stages:
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
-                  echo "=== Applying Certificate CRs ==="
+                  echo "=== Validating OAuth scope principals match environment ==="
+                  case "$TARGET_ENV" in
+                    dev)
+                      # DEV should have dahDev_groups and 11547.DAH(Dev)
+                      if grep -r "dahQA_groups\|dahUAT_groups\|dahProd_groups" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                        echo "ERROR: DEV manifests contain non-DEV OAuth groups (QA/UAT/Prod)"
+                        exit 1
+                      fi
+                      if grep -r "11547\.DAH(QA)\|11547\.DAH(UAT)\|11547\.DAH(Prod)" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                        echo "ERROR: DEV manifests contain non-DEV OAuth scopes"
+                        exit 1
+                      fi
+                      echo "✅ DEV manifests use dahDev_groups and 11547.DAH(Dev)"
+                      ;;
+                    qa)
+                      # QA should have dahQA_groups and 11547.DAH(QA)
+                      if grep -r "dahDev_groups\|dahUAT_groups\|dahProd_groups" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                        echo "ERROR: QA manifests contain non-QA OAuth groups"
+                        exit 1
+                      fi
+                      if grep -r "11547\.DAH(Dev)\|11547\.DAH(UAT)\|11547\.DAH(Prod)" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                        echo "ERROR: QA manifests contain non-QA OAuth scopes"
+                        exit 1
+                      fi
+                      echo "✅ QA manifests use dahQA_groups and 11547.DAH(QA)"
+                      ;;
+                    uat-p|uat-s)
+                      # UAT should have dahUAT_groups and 11547.DAH(UAT)
+                      if grep -r "dahDev_groups\|dahQA_groups\|dahProd_groups" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                        echo "ERROR: UAT manifests contain non-UAT OAuth groups"
+                        exit 1
+                      fi
+                      if grep -r "11547\.DAH(Dev)\|11547\.DAH(QA)\|11547\.DAH(Prod)" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                        echo "ERROR: UAT manifests contain non-UAT OAuth scopes"
+                        exit 1
+                      fi
+                      echo "✅ UAT manifests use dahUAT_groups and 11547.DAH(UAT)"
+                      ;;
+                    prd|dr)
+                      # PRD/DR should have dahProd_groups and 11547.DAH(Prod)
+                      if grep -r "dahDev_groups\|dahQA_groups\|dahUAT_groups" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                        echo "ERROR: PRD/DR manifests contain non-PRD OAuth groups"
+                        exit 1
+                      fi
+                      if grep -r "11547\.DAH(Dev)\|11547\.DAH(QA)\|11547\.DAH(UAT)" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                        echo "ERROR: PRD/DR manifests contain non-PRD OAuth scopes"
+                        exit 1
+                      fi
+                      echo "✅ PRD/DR manifests use dahProd_groups and 11547.DAH(Prod)"
+                      ;;
+                  esac
+
+                  # Final check for unresolved REPLACE_WITH_* placeholders
+                  echo ""
+                  echo "=== Checking for unresolved placeholder values ==="
+                  if grep -r "REPLACE_WITH_" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                    echo "FATAL: Manifests contain unresolved REPLACE_WITH_* placeholders"
+                    exit 1
+                  fi
+                  echo "✅ No unresolved placeholders"
+              env:
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
+              displayName: "Apply cert-manager Certificates and wait for TLS Secrets (CORRECTION 6: dry-run first, then apply, then wait)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+
+                  echo "=== PHASE 1: DRY-RUN Certificate CRs (before applying) ==="
+                  DRYRUN_FAILED=0
+                  for cert_file in "$ENV_DIR"/cert-manager/*-tls-certificate.yaml; do
+                    if [ ! -f "$cert_file" ]; then continue; fi
+
+                    echo "Dry-run: $(basename "$cert_file")"
+                    if ! oc apply --dry-run=server -f "$cert_file" 2>&1 | tee /tmp/cert_dryrun.log; then
+                      echo "ERROR: Certificate dry-run failed"
+                      DRYRUN_FAILED=$((DRYRUN_FAILED+1))
+                    fi
+                  done
+
+                  if [ "$DRYRUN_FAILED" -gt 0 ]; then
+                    echo ""
+                    echo "FATAL: $DRYRUN_FAILED certificate(s) failed dry-run validation"
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "=== PHASE 2: APPLY Certificate CRs (real) ==="
                   for cert in "$ENV_DIR"/cert-manager/*-tls-certificate.yaml; do
+                    if [ ! -f "$cert" ]; then continue; fi
                     echo ""
                     echo "+ oc apply -f $cert"
                     oc apply -f "$cert"
                   done
 
                   echo ""
-                  echo "=== Waiting for Keyfactor to issue all *-tls Secrets ==="
+                  echo "=== PHASE 3: WAIT for Certificate Ready ==="
                   # Backend serving certs (svc.cluster.local) + Ingress edge certs (apps.<cluster>.ocp.fcbint.net). 10 min cap per secret (approver-policy + Keyfactor RTT).
-                  TLS_SECRETS=(
+                  CERT_NAMES=(
                     kafka-tls
                     kraftcontroller-tls
                     schemaregistry-tls
@@ -579,27 +924,222 @@ stages:
                     kafkarest-ingress-tls
                     controlcenter-ingress-tls
                   )
-                  for s in "${TLS_SECRETS[@]}"; do
-                    echo ""
-                    echo "Waiting for secret/$s..."
-                    for i in $(seq 1 60); do
-                      if oc get secret "$s" -n "$OC_NS" >/dev/null 2>&1; then
-                        echo "  ready after $((i*10))s"
-                        break
+                  validate_certificate_secret() {
+                    local cert_name=$1
+                    local cert_tmp
+                    cert_tmp=$(mktemp -d)
+
+                    if ! oc -n "$OC_NS" get secret "$cert_name" \
+                        -o jsonpath='{.data.tls\.crt}' | base64 -d > "$cert_tmp/tls.crt" \
+                      || ! oc -n "$OC_NS" get secret "$cert_name" \
+                        -o jsonpath='{.data.tls\.key}' | base64 -d > "$cert_tmp/tls.key"; then
+                      echo "  ERROR: could not extract TLS material from Secret/$cert_name"
+                      rm -rf "$cert_tmp"
+                      return 1
+                    fi
+
+                    if ! openssl x509 -in "$cert_tmp/tls.crt" -noout -checkend 86400 >/dev/null; then
+                      echo "  ERROR: certificate is invalid or expires within 24 hours"
+                      rm -rf "$cert_tmp"
+                      return 1
+                    fi
+
+                    local cert_pub key_pub
+                    cert_pub=$(openssl x509 -in "$cert_tmp/tls.crt" -pubkey -noout \
+                      | openssl pkey -pubin -outform DER 2>/dev/null | sha256sum | awk '{print $1}')
+                    key_pub=$(openssl pkey -in "$cert_tmp/tls.key" -pubout -outform DER 2>/dev/null \
+                      | sha256sum | awk '{print $1}')
+                    if [ -z "$cert_pub" ] || [ "$cert_pub" != "$key_pub" ]; then
+                      echo "  ERROR: tls.crt and tls.key do not match"
+                      rm -rf "$cert_tmp"
+                      return 1
+                    fi
+
+                    local dns_name
+                    while IFS= read -r dns_name; do
+                      [ -z "$dns_name" ] && continue
+                      if ! openssl x509 -in "$cert_tmp/tls.crt" -noout \
+                          -checkhost "$dns_name" >/dev/null 2>&1; then
+                        echo "  ERROR: certificate SAN does not cover $dns_name"
+                        rm -rf "$cert_tmp"
+                        return 1
                       fi
+                    done < <(oc -n "$OC_NS" get certificate "$cert_name" \
+                      -o jsonpath='{range .spec.dnsNames[*]}{.}{"\n"}{end}')
+
+                    if [ "$cert_name" = kafka-tls ]; then
+                      if ! oc -n "$OC_NS" get secret "$cert_name" \
+                          -o jsonpath='{.data.ca\.crt}' | grep -q .; then
+                        echo "  ERROR: kafka-tls must contain ca.crt for verified MDS TLS"
+                        rm -rf "$cert_tmp"
+                        return 1
+                      fi
+                    fi
+
+                    rm -rf "$cert_tmp"
+                    return 0
+                  }
+
+                  cert_failed=0
+                  for cert_name in "${CERT_NAMES[@]}"; do
+                    echo ""
+                    echo "Waiting for certificate/$cert_name..."
+
+                    # Wait for Certificate Ready=True condition
+                    for i in $(seq 1 60); do
+                      ready=$(oc -n "$OC_NS" get certificate "$cert_name" \
+                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+
+                      if [ "$ready" = "True" ]; then
+                        # Certificate is ready, verify the Secret exists and has keys
+                        if oc -n "$OC_NS" get secret "$cert_name" >/dev/null 2>&1; then
+                          crt=$(oc -n "$OC_NS" get secret "$cert_name" \
+                            -o jsonpath='{.data.tls\.crt}' 2>/dev/null | wc -c)
+                          key=$(oc -n "$OC_NS" get secret "$cert_name" \
+                            -o jsonpath='{.data.tls\.key}' 2>/dev/null | wc -c)
+
+                          if [ "$crt" -ge 100 ] && [ "$key" -ge 100 ] \
+                             && validate_certificate_secret "$cert_name"; then
+                            echo "  ✅ ready after $((i*10))s (Ready, valid lifetime/SAN, matching key)"
+                            break
+                          fi
+                        fi
+                      fi
+
                       if [ "$i" -eq 60 ]; then
                         echo ""
-                        echo "ERROR: secret/$s not materialized after 10 min."
-                        echo "Investigate the Certificate / CertificateRequest:"
-                        oc describe certificate "$s" -n "$OC_NS" 2>&1 | tail -30 || true
+                        echo "ERROR: certificate/$cert_name not Ready=True after 10 min."
+                        echo "Final certificate conditions:"
+                        oc describe certificate "$cert_name" -n "$OC_NS" 2>&1 | tail -30 || true
+                        echo ""
+                        echo "CertificateRequests:"
                         oc get certificaterequest -n "$OC_NS" 2>&1 | tail -10 || true
-                        exit 1
+                        cert_failed=$((cert_failed+1))
+                        break
                       fi
                       sleep 10
                     done
                   done
+
+                  if [ "$cert_failed" -gt 0 ]; then
+                    echo ""
+                    echo "FATAL: $cert_failed certificate(s) not ready after waiting"
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "=== PHASE 4: DRY-RUN Dependent Resources (after certificates ready) ==="
+                  for manifest in kafkarestclass.yaml kraftcontroller.yaml kafka.yaml rolebindings.yaml; do
+                    path="$ENV_DIR/$manifest"
+                    [ -f "$path" ] || continue
+
+                    echo "Dry-run: $manifest"
+                    if ! oc apply --dry-run=server -f "$path" 2>&1 | tee /tmp/manifest_dryrun.log; then
+                      echo "ERROR: Dry-run failed for $manifest"
+                      exit 1
+                    fi
+                  done
+
+                  echo ""
+                  echo "✅ Certificate and dependent manifest validation complete"
               env:
-                OC_NS: $(openshift-namespace)
+                OC_NS: $(RESOLVED_NS)
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
+              displayName: "Pre-flight: Listener semantic validation (CORRECTION 5)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+
+                  echo "=== Validating hybrid listener contract ==="
+                  python3 .azure-pipelines/scripts/validate_listeners.py "$ENV_DIR"
+
+              env:
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
+              displayName: "Pre-flight: oc apply --dry-run=server validation"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+
+                  echo "=== Pre-Flight: Dry-Run Validation (Server-Side) ==="
+                  echo "Testing manifest admission against OpenShift API schema..."
+                  echo ""
+
+                  # Define manifests to validate with dry-run. Order: prerequisites before dependents.
+                  # Network policy first, then RBAC, then CRs. Certificates already applied in previous task.
+                  MANIFESTS_TO_VALIDATE=(
+                    "network-policy.yaml"
+                    "rolebindings.yaml"
+                    "kafkarestclass.yaml"
+                    "kraftcontroller.yaml"
+                    "kafka.yaml"
+                    "schemaregistry.yaml"
+                    "connect.yaml"
+                    "kafkarest.yaml"
+                    "controlcenter.yaml"
+                  )
+
+                  # Ingress and external-secrets are optional
+                  for ingress_file in "$ENV_DIR"/ingress/*.yaml; do
+                    if [ -f "$ingress_file" ]; then
+                      MANIFESTS_TO_VALIDATE+=("ingress/$(basename "$ingress_file")")
+                    fi
+                  done
+
+                  for extSecret_file in "$ENV_DIR"/externalsecrets/*.yaml; do
+                    if [ -f "$extSecret_file" ]; then
+                      MANIFESTS_TO_VALIDATE+=("externalsecrets/$(basename "$extSecret_file")")
+                    fi
+                  done
+
+                  DRY_RUN_FAILED=0
+                  DRY_RUN_PASSED=0
+
+                  for manifest in "${MANIFESTS_TO_VALIDATE[@]}"; do
+                    manifest_path="$ENV_DIR/$manifest"
+
+                    if [ ! -f "$manifest_path" ]; then
+                      echo "  SKIP (not found): $manifest"
+                      continue
+                    fi
+
+                    echo "  Testing: $manifest"
+
+                    if oc apply --dry-run=server -f "$manifest_path" -n "$OC_NS" >/dev/null 2>&1; then
+                      echo "    ✓ passes dry-run"
+                      DRY_RUN_PASSED=$((DRY_RUN_PASSED+1))
+                    else
+                      echo "    ✗ FAILED dry-run validation:"
+                      oc apply --dry-run=server -f "$manifest_path" -n "$OC_NS" 2>&1 | sed 's/^/      /'
+                      DRY_RUN_FAILED=$((DRY_RUN_FAILED+1))
+                    fi
+                  done
+
+                  echo ""
+                  echo "=== Dry-Run Summary ==="
+                  echo "  Passed: $DRY_RUN_PASSED"
+                  echo "  Failed: $DRY_RUN_FAILED"
+
+                  if [ "$DRY_RUN_FAILED" -gt 0 ]; then
+                    echo ""
+                    echo "FATAL: $DRY_RUN_FAILED manifest(s) failed dry-run validation."
+                    echo "Fix schema violations above before proceeding."
+                    exit 1
+                  else
+                    echo ""
+                    echo "OK: All manifests ready for application."
+                  fi
+              env:
+                OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
@@ -762,46 +1302,118 @@ stages:
                      || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
                      || is_true "$APPLY_C3"; then
                     echo ""
-                    echo "=== Verifying Kafka listener ports and OAuth endpoint ==="
+                    echo "=== Verifying Kafka Listeners ==="
 
-                    # Verify listener configuration exists (check :9071 PLAIN and :9092 OAuth).
-                    echo "Checking Kafka listeners..."
-                    if oc get kafka kafka -n "$OC_NS" >/dev/null 2>&1; then
-                      # Check the kafka.log.message.format.version and broker listeners in the CR status.
-                      kafka_listeners=$(oc -n "$OC_NS" get kafka kafka \
-                        -o jsonpath='{.spec.listeners[*].name}' 2>/dev/null || echo "")
-                      echo "  Kafka listeners in CR: $kafka_listeners"
+                    # 1. Check Kafka CR exists and is cluster-ready
+                    if ! oc get kafka kafka -n "$OC_NS" >/dev/null 2>&1; then
+                      echo "FATAL: Kafka CR not found"
+                      exit 1
+                    fi
 
-                      # Verify oauth-mds-sso Secret exists (required for MDS OIDC).
-                      if oc get secret oauth-mds-sso -n "$OC_NS" >/dev/null 2>&1; then
-                        echo "  OK: oauth-mds-sso Secret exists"
-                      else
-                        echo "  ERROR: oauth-mds-sso Secret not found. This is required for MDS OIDC SSO."
+                    kafka_ready=$(oc -n "$OC_NS" get kafka kafka \
+                      -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status}' 2>/dev/null || echo "")
+
+                    if [ "$kafka_ready" != "True" ]; then
+                      echo "FATAL: Kafka not cluster-ready"
+                      oc -n "$OC_NS" describe kafka kafka | grep -A 10 "Conditions:" || true
+                      exit 1
+                    fi
+
+                    # 2. Check Service exists and exposes ports 9071, 9092, 8090
+                    if ! oc get svc kafka -n "$OC_NS" >/dev/null 2>&1; then
+                      echo "FATAL: Kafka Service not found"
+                      exit 1
+                    fi
+
+                    svc_ports=$(oc -n "$OC_NS" get svc kafka -o jsonpath='{.spec.ports[*].port}' 2>/dev/null || echo "")
+
+                    for port in 9071 9092 8090; do
+                      if ! echo "$svc_ports" | grep -qw "$port"; then
+                        echo "FATAL: Kafka Service does not expose port $port"
+                        oc -n "$OC_NS" get svc kafka -o yaml | grep -A 20 "ports:" || true
                         exit 1
                       fi
+                    done
 
-                      # Check MDS readiness (kafka:8090).
-                      echo ""
-                      echo "Waiting for MDS to be ready at :8090..."
-                      mds_ready=0
-                      for i in {1..30}; do
-                        if oc -n "$OC_NS" exec kafka-0 -- \
-                            timeout 5 curl -sk https://localhost:8090/api/v1/metadata/brokers \
-                            >/dev/null 2>&1; then
-                          echo "  MDS is ready (attempt $i)"
-                          mds_ready=1
-                          break
-                        fi
-                        if [ "$i" -lt 30 ]; then
-                          sleep 5
-                        fi
-                      done
-                      if [ "$mds_ready" -eq 0 ]; then
-                        echo "  WARNING: MDS not responding at :8090 after 150s. Proceeding anyway."
-                        echo "  Check kafka-0 pod logs: oc logs -n $OC_NS kafka-0 --all-containers"
+                    # 3. Check EndpointSlices have ready addresses (CORRECTION 1: iterate all slices, check conditions.ready on each endpoint)
+                    if ! oc get endpointslices -l kubernetes.io/service-name=kafka -n "$OC_NS" >/dev/null 2>&1; then
+                      echo "FATAL: No EndpointSlices for Kafka Service"
+                      exit 1
+                    fi
+
+                    ready_addrs=$(oc -n "$OC_NS" get endpointslices \
+                      -l kubernetes.io/service-name=kafka \
+                      -o json | python3 .azure-pipelines/scripts/validate_endpointslices.py)
+
+                    if [ "$ready_addrs" -lt 1 ]; then
+                      echo "FATAL: No ready endpoints for Kafka"
+                      exit 1
+                    fi
+
+                    echo "✅ Kafka listener validation passed (cluster-ready + Service + EndpointSlices)"
+                  fi
+
+                  # MDS readiness validation (separate gate).
+                  if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
+                     || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
+                     || is_true "$APPLY_C3"; then
+                    echo ""
+                    echo "=== Validating MDS Readiness ==="
+
+                    # Check oauth-mds-sso Secret exists and has clientId + oidcClientSecret.txt
+                    if ! oc get secret oauth-mds-sso -n "$OC_NS" >/dev/null 2>&1; then
+                      echo "FATAL: oauth-mds-sso Secret missing"
+                      exit 1
+                    fi
+
+                    has_client_id=$(oc -n "$OC_NS" get secret oauth-mds-sso \
+                      -o jsonpath='{.data.clientId}' 2>/dev/null | wc -c)
+                    has_oidc_secret=$(oc -n "$OC_NS" get secret oauth-mds-sso \
+                      -o jsonpath='{.data.oidcClientSecret\.txt}' 2>/dev/null | wc -c)
+
+                    if [ "$has_client_id" -lt 10 ]; then
+                      echo "FATAL: oauth-mds-sso missing clientId"
+                      exit 1
+                    fi
+                    if [ "$has_oidc_secret" -lt 10 ]; then
+                      echo "FATAL: oauth-mds-sso missing oidcClientSecret.txt"
+                      exit 1
+                    fi
+
+                    # Test connectivity to MDS at :8090 (CORRECTION 3: use CA cert + SAN hostname, no -k)
+                    mds_ready=0
+                    # Extract CA cert from kafka-tls Secret
+                    CA_CERT_B64=$(oc -n "$OC_NS" get secret kafka-tls -o jsonpath='{.data.ca\.crt}' 2>/dev/null || echo "")
+                    if [ -z "$CA_CERT_B64" ]; then
+                      echo "ERROR: kafka-tls Secret missing ca.crt key"
+                      exit 1
+                    fi
+                    CA_CERT=$(echo "$CA_CERT_B64" | base64 -d)
+
+                    for i in {1..30}; do
+                      if oc -n "$OC_NS" exec -i kafka-0 -- bash -s << CURL_EOF >/dev/null 2>&1
+                  set -euo pipefail
+                  cat > /tmp/ca-cert.pem << 'CERT_EOF'
+                  $CA_CERT
+                  CERT_EOF
+                  timeout 5 curl --fail --show-error \
+                    --cacert /tmp/ca-cert.pem \
+                    --resolve "kafka.$OC_NS.svc.cluster.local:8090:127.0.0.1" \
+                    "https://kafka.$OC_NS.svc.cluster.local:8090/health" >/dev/null 2>&1
+                  CURL_EOF
+                      then
+                        echo "✅ MDS is ready at :8090 (attempt $i)"
+                        mds_ready=1
+                        break
                       fi
-                    else
-                      echo "  (kafka CR not found or not yet ready; skipping listener validation)"
+                      if [ "$i" -lt 30 ]; then
+                        sleep 5
+                      fi
+                    done
+                    if [ "$mds_ready" -eq 0 ]; then
+                      echo "FATAL: MDS not responding at :8090 after 150s"
+                      oc logs -n "$OC_NS" kafka-0 --all-containers | tail -50 || true
+                      exit 1
                     fi
                   fi
 
@@ -861,7 +1473,7 @@ stages:
                   echo "  oc -n $OC_NS get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter"
                   echo "  oc -n $OC_NS get pods -l app.kubernetes.io/part-of=confluent-platform"
               env:
-                OC_NS: $(openshift-namespace)
+                OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}
                 APPLY_ALL: ${{ parameters.applyAll }}
                 APPLY_KRAFT_CONTROLLER: ${{ parameters.applyKRaftController }}
@@ -878,7 +1490,7 @@ stages:
                 script: |
                   set -euo pipefail
 
-                  # Readiness check helper for managed components (SR / Connect / REST / C3).
+                  # Readiness check helper for managed components (SR / Connect / REST / C3) (CORRECTION 4: use correct CFK condition)
                   wait_component_ready() {
                     local kind=$1
                     local name=$2
@@ -886,14 +1498,15 @@ stages:
                     local elapsed=0
                     local step=10
 
-                    echo "Waiting up to ${timeout}s for $kind/$name to report ready..."
+                    echo "Waiting up to ${timeout}s for $kind/$name to report cluster-ready..."
                     while [ "$elapsed" -lt "$timeout" ]; do
                       local status=""
+                      # Check for platform.confluent.io/cluster-ready condition (CFK 3.1+)
                       status=$(oc -n "$OC_NS" get "$kind" "$name" \
-                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+                        -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status}' \
                         2>/dev/null || echo "")
                       if [ "$status" = "True" ]; then
-                        echo "  $kind/$name ready=True after ${elapsed}s."
+                        echo "  $kind/$name cluster-ready=True after ${elapsed}s."
                         return 0
                       fi
 
@@ -908,7 +1521,7 @@ stages:
                       elapsed=$((elapsed + step))
                     done
 
-                    echo "WARNING: $kind/$name did not reach ready=True within ${timeout}s."
+                    echo "ERROR: $kind/$name did not reach cluster-ready=True within ${timeout}s."
                     echo "Conditions:"
                     oc -n "$OC_NS" get "$kind" "$name" \
                       -o jsonpath='{range .status.conditions[*]}    {.type}={.status} ({.reason}){"\n"}{end}' \
@@ -962,11 +1575,13 @@ stages:
 
                   if [ "$any_failed" -ne 0 ]; then
                     echo ""
-                    echo "WARNING: One or more components not ready. Proceeding with Ingress anyway."
+                    echo "FATAL: One or more components not ready before Ingress"
                     echo "Check pod logs and CR conditions for details."
+                    echo "DO NOT apply Ingress rules until all components are cluster-ready=True"
+                    exit 1
                   fi
               env:
-                OC_NS: $(openshift-namespace)
+                OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}
                 APPLY_ALL: ${{ parameters.applyAll }}
                 APPLY_SCHEMA_REGISTRY: ${{ parameters.applySchemaRegistry }}
@@ -1036,7 +1651,7 @@ stages:
                   echo "DNS is automatic via the cluster wildcard for dev/qa;"
                   echo "UAT/PRD add Floating-DNS CNAMEs per the Confluence page."
               env:
-                OC_NS: $(openshift-namespace)
+                OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}
                 APPLY_ALL: ${{ parameters.applyAll }}
                 APPLY_KAFKA: ${{ parameters.applyKafka }}
@@ -1051,7 +1666,7 @@ stages:
               inputs:
                 targetType: inline
                 script: |
-                  set -uo pipefail
+                  set -euo pipefail
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
@@ -1220,7 +1835,7 @@ stages:
                     exit 1
                   fi
               env:
-                OC_NS: $(openshift-namespace)
+                OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}
                 WIPE_PVCS: ${{ parameters.wipePVCs }}
 
@@ -1230,7 +1845,7 @@ stages:
               inputs:
                 targetType: inline
                 script: |
-                  set -uo pipefail
+                  set -euo pipefail
 
                   # Clears CFK's `secret.finalizers.platform.confluent.io/*` finalizers from Secrets left Terminating after uninstall (runbook A13). ESO finalizers (external-secrets.io/*) are preserved — filter the finalizers array, drop only CFK-stamped entries, write back. Damaging ESO bookkeeping would break the CyberArk re-sync path.
 
@@ -1360,5 +1975,5 @@ stages:
                     exit 1
                   fi
               env:
-                OC_NS: $(openshift-namespace)
+                OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}

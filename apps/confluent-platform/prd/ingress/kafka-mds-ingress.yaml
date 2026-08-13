@@ -11,7 +11,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kafka-mds
-  namespace: dah-flink-prd
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/instance: kafka-mds

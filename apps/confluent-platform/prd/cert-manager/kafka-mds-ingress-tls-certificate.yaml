@@ -11,7 +11,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: kafka-mds-ingress-tls
-  namespace: dah-flink-prd
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/instance: kafka-mds-ingress-tls

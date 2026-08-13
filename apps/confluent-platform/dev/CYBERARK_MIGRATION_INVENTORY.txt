@@ -1,0 +1,25 @@
+Environment: dev
+Generated: 2026-08-12
+
+Secret Name | Azure Variable | CyberArk Path | Status
+------------|--------------------|-----------------|--------
+cfk-license | dev-confluent-license | dev-cfk-platform-credentials/confluent-license | Pipeline
+sasl-plain-internal | dev-sasl-plain-admin-pwd | dev-cfk-platform-credentials/sasl-plain-admin-password | Pipeline
+mds-token-keypair | dev-mds-token-keypair-pem | dev-cfk-mds-token-keypair/tokenKeypair.pem | Pipeline
+oauth-broker | dev-oauth-broker-{client-id,secret} | dev-cfk-oauth-broker/* | Pipeline
+oauth-schemaregistry | dev-oauth-schemaregistry-{client-id,secret} | dev-cfk-oauth-schemaregistry/* | Pipeline
+oauth-connect | dev-oauth-connect-{client-id,secret} | dev-cfk-oauth-connect/* | Pipeline
+oauth-kafkarest | dev-oauth-kafkarest-{client-id,secret} | dev-cfk-oauth-kafkarest/* | Pipeline
+oauth-controlcenter | dev-oauth-controlcenter-{client-id,secret} | dev-cfk-oauth-controlcenter/* | Pipeline
+oauth-mds-rest | dev-oauth-mds-rest-{client-id,secret} | dev-cfk-oauth-mds-rest/* | Pipeline
+oauth-mds-sso | dev-oauth-mds-sso-{client-id,secret} | dev-cfk-oauth-mds-sso-oidc/* | Pipeline
+c3-prometheus-server-basic-auth | dev-c3-prometheus-{username,password} | dev-cfk-c3-prometheus-server-basic/* | Pipeline
+c3-prometheus-client-basic-auth | dev-c3-prometheus-{username,password} | dev-cfk-c3-prometheus-client-basic/* | Pipeline
+c3-alertmanager-server-basic-auth | dev-c3-alertmanager-{username,password} | dev-cfk-c3-alertmanager-server-basic/* | Pipeline
+c3-alertmanager-client-basic-auth | dev-c3-alertmanager-{username,password} | dev-cfk-c3-alertmanager-client-basic/* | Pipeline
+
+NOTES:
+- All Secrets are currently provisioned by the pipeline from Azure variable groups.
+- Future migration path: Create ExternalSecret CRs targeting the CyberArk paths listed above.
+- ExternalSecret template files exist in this directory with ESO disabled (externalsecrets-all-disabled marker).
+- Enable ExternalSecrets one at a time and validate ESO sync before removing pipeline variable provisioning.

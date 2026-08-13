@@ -9,7 +9,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: connect-ingress-tls
-  namespace: dah-flink-prd
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: connect
     app.kubernetes.io/instance: connect-ingress-tls

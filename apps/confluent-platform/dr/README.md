@@ -11,13 +11,13 @@
 > - **OAuth scope `11547.DAH(Prod)`** — same Okta app as prd/; tokens issued to
 >   users must validate on either cluster during a failover.
 > - **Groups claim `dahProd_groups`** — same.
-> - **ESO SecretStore `11547-p-key-fp`** — DR's `dah-flink-dr` namespace can
+> - **ESO SecretStore `11547-p-key-fp`** — DR's `dah-flink-prod` namespace can
 >   share the Prod CyberArk safe since it's the same logical env.
 > - **Floating DNS `apps.pd.ocp.fcbint.net`** — same for the five REST/UI Ingresses.
 >
 > Distinct from `../prd/` (these are what make dr/ its own deploy target):
 >
-> - **Namespace `dah-flink-dr`** — separate namespace on the pd-s cluster.
+> - **Namespace `dah-flink-prod`** — separate namespace on the pd-s cluster.
 > - **Direct broker DNS `kafka.apps.pd-s.ocp.fcbint.net`** — DR-cluster-specific.
 > - **OpenShift API URL `api.pd-s.ocp.fcbint.net`** — DR-cluster-specific.
 > - **AZDO variable group `kafka-openshift-credentials-dr`** — 37 `dr-*` variables;
@@ -43,7 +43,7 @@ CFK Custom Resources that reproduce the existing prd VM Confluent Platform clust
 >
 > **1. Worker-node fit (2026-05-12)**: FCB worker nodes are **16 vCPU / 32 GiB**. VM brokers got 16 vCPU / 16 GiB and controllers 4 vCPU / 4 GiB at 2%/9% utilization — but carrying those request sizes into K8s leaves the broker pods stuck `Pending` (kubelet reserves ~1–2 vCPU, leaving ~14 allocatable).
 >
-> **2. Namespace ResourceQuota (2026-05-13)**: `dah-flink-dr` has a 10 GiB total `requests.storage` cap. Original VM-sized PVCs (3 × 1 TiB brokers + 3 × 64 GiB controllers + 300 GiB C3 = ~3.5 TiB) exceeded the cap 350×. Until Tom raises the quota, dev PVCs are tightly sized to fit exactly 10 GiB.
+> **2. Namespace ResourceQuota (2026-05-13)**: `dah-flink-prod` has a 10 GiB total `requests.storage` cap. Original VM-sized PVCs (3 × 1 TiB brokers + 3 × 64 GiB controllers + 300 GiB C3 = ~3.5 TiB) exceeded the cap 350×. Until Tom raises the quota, dev PVCs are tightly sized to fit exactly 10 GiB.
 >
 > | Component | Old (VM) | **CFK `request` / `limit`** | **PVC (TEMP, until quota raised)** |
 > |---|---|---|---|
@@ -59,7 +59,7 @@ CFK Custom Resources that reproduce the existing prd VM Confluent Platform clust
 
 - **Confluent Platform**: 8.1.x
 - **CFK operator**: latest version that supports CP 8.1.x. Operator install is owned by FCB's Container Platforms team; FCB will upgrade if a newer version is required.
-- **Namespace**: `dah-flink-dr` (CFK operator lives in its own namespace and watches `dah-flink-<env>`)
+- **Namespace**: `dah-flink-prod` (CFK operator lives in its own namespace and watches `dah-flink-<env>`)
 - **Mode**: KRaft (3 controllers, 3 brokers) — matching the dev VM cluster
 
 ## Topology mirrored from VM prd (shared with prd/)
@@ -198,7 +198,7 @@ KRaft controller (64 GB) and C3 (300 GB) volumes are under the 500 GB threshold 
 **Versions, accounts, and hostnames (set in this commit)**:
 
 - **CFK / init container**: `0.1351.59` (matches the vendored chart `charts/confluent-for-kubernetes/` `appVersion: 3.1.1`, operator image `confluentinc/confluent-operator:0.1351.59`). The same tag is used for `confluentinc/confluent-init-container`. If FCB's Container Platforms upgrades the operator, bump these in lockstep.
-- **Service account**: `flink-operator` — same SA the CMF and Flink Operator pods run under. RBAC is owned by FCB's `fcb-security` ArgoCD chart in `dah-flink-dr`.
+- **Service account**: `flink-operator` — same SA the CMF and Flink Operator pods run under. RBAC is owned by FCB's `fcb-security` ArgoCD chart in `dah-flink-prod`.
 - **External Kafka LB** (tentative — confirm with Tom; needs hostname under `*.ocp.fcbint.net` per Keyfactor approver-policy):
   - bootstrap: `bootstrap.kafka.dev.dah.fcbint.net`
   - brokers: `b0/b1/b2.kafka.dev.dah.fcbint.net`
@@ -209,11 +209,11 @@ KRaft controller (64 GB) and C3 (300 GB) volumes are under the 500 GB threshold 
 
 CFK's MDS uses a **raw RSA keypair PEM**, not an X.509 cert, so **cert-manager is the wrong tool** — its `tls.crt` + `tls.key` shape doesn't match what MDS expects in the Secret. Two options:
 
-1. **Reuse the VM keypair (recommended for migration)** — the VM brokers' `/var/ssl/private/tokenKeypair.pem` is the keypair MDS currently signs tokens with. Copy that file into a K8s Secret in `dah-flink-dr`:
+1. **Reuse the VM keypair (recommended for migration)** — the VM brokers' `/var/ssl/private/tokenKeypair.pem` is the keypair MDS currently signs tokens with. Copy that file into a K8s Secret in `dah-flink-prod`:
    ```
    oc create secret generic mds-token-keypair \
      --from-file=mdsTokenKeyPair.pem=tokenKeypair.pem \
-     -n dah-flink-dr
+     -n dah-flink-prod
    ```
    This keeps VM-issued tokens valid in the CFK cluster during the cluster-link migration window.
 

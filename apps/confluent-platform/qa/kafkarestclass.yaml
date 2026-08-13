@@ -30,11 +30,11 @@ spec:
         configuration:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahQA_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(QA)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000

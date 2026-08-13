@@ -1,0 +1,26 @@
+Environment: dr (Disaster Recovery, shares prd namespace)
+Generated: 2026-08-12
+
+Secret Name | Azure Variable | CyberArk Path | Status
+------------|--------------------|-----------------|--------
+cfk-license | dr-confluent-license | prd-cfk-platform-credentials/confluent-license | Pipeline
+sasl-plain-internal | dr-sasl-plain-admin-pwd | prd-cfk-platform-credentials/sasl-plain-admin-password | Pipeline
+mds-token-keypair | dr-mds-token-keypair-pem | prd-cfk-mds-token-keypair/tokenKeypair.pem | Pipeline
+oauth-broker | dr-oauth-broker-{client-id,secret} | prd-cfk-oauth-broker/* | Pipeline
+oauth-schemaregistry | dr-oauth-schemaregistry-{client-id,secret} | prd-cfk-oauth-schemaregistry/* | Pipeline
+oauth-connect | dr-oauth-connect-{client-id,secret} | prd-cfk-oauth-connect/* | Pipeline
+oauth-kafkarest | dr-oauth-kafkarest-{client-id,secret} | prd-cfk-oauth-kafkarest/* | Pipeline
+oauth-controlcenter | dr-oauth-controlcenter-{client-id,secret} | prd-cfk-oauth-controlcenter/* | Pipeline
+oauth-mds-rest | dr-oauth-mds-rest-{client-id,secret} | prd-cfk-oauth-mds-rest/* | Pipeline
+oauth-mds-sso | dr-oauth-mds-sso-{client-id,secret} | prd-cfk-oauth-mds-sso-oidc/* | Pipeline
+c3-prometheus-server-basic-auth | dr-c3-prometheus-{username,password} | prd-cfk-c3-prometheus-server-basic/* | Pipeline
+c3-prometheus-client-basic-auth | dr-c3-prometheus-{username,password} | prd-cfk-c3-prometheus-client-basic/* | Pipeline
+c3-alertmanager-server-basic-auth | dr-c3-alertmanager-{username,password} | prd-cfk-c3-alertmanager-server-basic/* | Pipeline
+c3-alertmanager-client-basic-auth | dr-c3-alertmanager-{username,password} | prd-cfk-c3-alertmanager-client-basic/* | Pipeline
+
+NOTES:
+- DR deploys to dah-flink-prod namespace (shared with PRD; see pipeline namespace normalization logic).
+- Azure variables use 'dr-' prefix but CyberArk paths use 'prd-' prefix (both DR and PRD share the same secrets in CyberArk).
+- Future migration path: Create ExternalSecret CRs targeting the CyberArk paths listed above (prefixed with 'prd-').
+- ExternalSecret template files exist in this directory with ESO disabled (externalsecrets-all-disabled marker).
+- Disaster recovery consideration: coordinate secret rotation and CyberArk sync with PRD team before enabling ESO.

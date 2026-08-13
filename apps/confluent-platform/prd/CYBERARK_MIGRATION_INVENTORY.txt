@@ -1,0 +1,26 @@
+Environment: prd (Production)
+Generated: 2026-08-12
+
+Secret Name | Azure Variable | CyberArk Path | Status
+------------|--------------------|-----------------|--------
+cfk-license | prd-confluent-license | prd-cfk-platform-credentials/confluent-license | Pipeline
+sasl-plain-internal | prd-sasl-plain-admin-pwd | prd-cfk-platform-credentials/sasl-plain-admin-password | Pipeline
+mds-token-keypair | prd-mds-token-keypair-pem | prd-cfk-mds-token-keypair/tokenKeypair.pem | Pipeline
+oauth-broker | prd-oauth-broker-{client-id,secret} | prd-cfk-oauth-broker/* | Pipeline
+oauth-schemaregistry | prd-oauth-schemaregistry-{client-id,secret} | prd-cfk-oauth-schemaregistry/* | Pipeline
+oauth-connect | prd-oauth-connect-{client-id,secret} | prd-cfk-oauth-connect/* | Pipeline
+oauth-kafkarest | prd-oauth-kafkarest-{client-id,secret} | prd-cfk-oauth-kafkarest/* | Pipeline
+oauth-controlcenter | prd-oauth-controlcenter-{client-id,secret} | prd-cfk-oauth-controlcenter/* | Pipeline
+oauth-mds-rest | prd-oauth-mds-rest-{client-id,secret} | prd-cfk-oauth-mds-rest/* | Pipeline
+oauth-mds-sso | prd-oauth-mds-sso-{client-id,secret} | prd-cfk-oauth-mds-sso-oidc/* | Pipeline
+c3-prometheus-server-basic-auth | prd-c3-prometheus-{username,password} | prd-cfk-c3-prometheus-server-basic/* | Pipeline
+c3-prometheus-client-basic-auth | prd-c3-prometheus-{username,password} | prd-cfk-c3-prometheus-client-basic/* | Pipeline
+c3-alertmanager-server-basic-auth | prd-c3-alertmanager-{username,password} | prd-cfk-c3-alertmanager-server-basic/* | Pipeline
+c3-alertmanager-client-basic-auth | prd-c3-alertmanager-{username,password} | prd-cfk-c3-alertmanager-client-basic/* | Pipeline
+
+NOTES:
+- All Secrets are currently provisioned by the pipeline from Azure variable groups.
+- Production environment: requires careful change management before ExternalSecret migration.
+- Future migration path: Create ExternalSecret CRs targeting the CyberArk paths listed above.
+- ExternalSecret template files exist in this directory with ESO disabled (externalsecrets-all-disabled marker).
+- Production checklist: validate ESO-managed Secret sync, obtain change board approval, phase migration per secret with rollback plan.

@@ -53,7 +53,7 @@ Reusing the VM keypair keeps VM-issued MDS tokens valid in the CFK cluster durin
 The pipeline **`oc describe`s** each Secret after creation (showing key names + sizes) but **never dumps values into the log**. To verify a value, pull the Secret directly outside the pipeline:
 
 ```
-oc -n dah-flink-prd get secret <name> -o jsonpath='{.data.<key>}' | base64 -d
+oc -n dah-flink-prod get secret <name> -o jsonpath='{.data.<key>}' | base64 -d
 ```
 
 ---

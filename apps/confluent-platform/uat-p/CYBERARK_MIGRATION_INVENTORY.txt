@@ -1,0 +1,33 @@
+Environment: uat-p
+Generated: 2026-08-12
+Shared Namespace: dah-flink-uat (UAT-P and UAT-S mirror sites)
+
+NOTES ON SHARED DEPLOYMENT:
+- UAT-P and UAT-S are two mirrored sites deployed to the SAME Kubernetes namespace (dah-flink-uat).
+- Both environments target the same CyberArk path hierarchy (uat-*).
+- CyberArk Secrets are idempotent: creating this inventory in both directories allows independent
+  deployment coordination without duplicating the Secret objects.
+- All 14 Secrets below are shared — no per-site variation.
+
+Secret Name | Azure Variable | CyberArk Path | Status
+------------|--------------------|-----------------|--------
+cfk-license | uat-confluent-license | uat-cfk-platform-credentials/confluent-license | Pipeline
+sasl-plain-internal | uat-sasl-plain-admin-pwd | uat-cfk-platform-credentials/sasl-plain-admin-password | Pipeline
+mds-token-keypair | uat-mds-token-keypair-pem | uat-cfk-mds-token-keypair/tokenKeypair.pem | Pipeline
+oauth-broker | uat-oauth-broker-{client-id,secret} | uat-cfk-oauth-broker/* | Pipeline
+oauth-schemaregistry | uat-oauth-schemaregistry-{client-id,secret} | uat-cfk-oauth-schemaregistry/* | Pipeline
+oauth-connect | uat-oauth-connect-{client-id,secret} | uat-cfk-oauth-connect/* | Pipeline
+oauth-kafkarest | uat-oauth-kafkarest-{client-id,secret} | uat-cfk-oauth-kafkarest/* | Pipeline
+oauth-controlcenter | uat-oauth-controlcenter-{client-id,secret} | uat-cfk-oauth-controlcenter/* | Pipeline
+oauth-mds-rest | uat-oauth-mds-rest-{client-id,secret} | uat-cfk-oauth-mds-rest/* | Pipeline
+oauth-mds-sso | uat-oauth-mds-sso-{client-id,secret} | uat-cfk-oauth-mds-sso-oidc/* | Pipeline
+c3-prometheus-server-basic-auth | uat-c3-prometheus-{username,password} | uat-cfk-c3-prometheus-server-basic/* | Pipeline
+c3-prometheus-client-basic-auth | uat-c3-prometheus-{username,password} | uat-cfk-c3-prometheus-client-basic/* | Pipeline
+c3-alertmanager-server-basic-auth | uat-c3-alertmanager-{username,password} | uat-cfk-c3-alertmanager-server-basic/* | Pipeline
+c3-alertmanager-client-basic-auth | uat-c3-alertmanager-{username,password} | uat-cfk-c3-alertmanager-client-basic/* | Pipeline
+
+NOTES:
+- All Secrets are currently provisioned by the pipeline from Azure variable groups.
+- Future migration path: Create ExternalSecret CRs targeting the CyberArk paths listed above.
+- ExternalSecret template files exist in this directory with ESO disabled (externalsecrets-all-disabled marker).
+- Enable ExternalSecrets one at a time and validate ESO sync before removing pipeline variable provisioning.

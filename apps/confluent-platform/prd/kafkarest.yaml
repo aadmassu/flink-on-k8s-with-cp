@@ -10,7 +10,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestProxy
 metadata:
   name: kafkarest
-  namespace: dah-flink-prd
+  namespace: dah-flink-prod
   annotations:
     platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-listeners-full-rewrite"
   labels:
@@ -62,7 +62,7 @@ spec:
   # Dep-to-Kafka: flat oauth+jaasConfig. Dep-to-SR/MDS: nested oauth+configuration (runbook A22).
   dependencies:
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-prd.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.dah-flink-prod.svc.cluster.local:9092
       authentication:
         type: oauth
         jaasConfig:
@@ -79,12 +79,12 @@ spec:
         enabled: true
         secretRef: kafka-tls
     schemaRegistry:
-      url: https://schemaregistry.dah-flink-prd.svc.cluster.local:8081
+      url: https://schemaregistry.dah-flink-prod.svc.cluster.local:8081
       tls:
         enabled: true
         secretRef: schemaregistry-tls
     mds:
-      endpoint: https://kafka.dah-flink-prd.svc.cluster.local:8090
+      endpoint: https://kafka.dah-flink-prod.svc.cluster.local:8090
       tls:
         enabled: true
         secretRef: kafka-tls

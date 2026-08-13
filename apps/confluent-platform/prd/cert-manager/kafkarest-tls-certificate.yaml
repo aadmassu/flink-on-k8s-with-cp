@@ -9,7 +9,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: kafkarest-tls
-  namespace: dah-flink-prd
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/instance: kafkarest-tls
@@ -23,11 +23,11 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: kafkarest.dah-flink-prd.svc.cluster.local
+  commonName: kafkarest.dah-flink-prod.svc.cluster.local
   dnsNames:
-    - kafkarest.dah-flink-prd.svc
-    - kafkarest.dah-flink-prd.svc.cluster.local
-    - kafkarest-0.kafkarest.dah-flink-prd.svc.cluster.local
+    - kafkarest.dah-flink-prod.svc
+    - kafkarest.dah-flink-prod.svc.cluster.local
+    - kafkarest-0.kafkarest.dah-flink-prod.svc.cluster.local
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:

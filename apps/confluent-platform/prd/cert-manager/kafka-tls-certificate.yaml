@@ -12,7 +12,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: kafka-tls
-  namespace: dah-flink-prd
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/instance: kafka-tls
@@ -39,13 +39,13 @@ spec:
   # strictly validate TLS hostname will fail against the LB; in-cluster
   # traffic (CMF, Flink jobs) uses the *.svc.cluster.local listener and is
   # unaffected.
-  commonName: kafka.dah-flink-prd.svc.cluster.local
+  commonName: kafka.dah-flink-prod.svc.cluster.local
   dnsNames:
-    - kafka.dah-flink-prd.svc
-    - kafka.dah-flink-prd.svc.cluster.local
-    - kafka-0.kafka.dah-flink-prd.svc.cluster.local
-    - kafka-1.kafka.dah-flink-prd.svc.cluster.local
-    - kafka-2.kafka.dah-flink-prd.svc.cluster.local
+    - kafka.dah-flink-prod.svc
+    - kafka.dah-flink-prod.svc.cluster.local
+    - kafka-0.kafka.dah-flink-prod.svc.cluster.local
+    - kafka-1.kafka.dah-flink-prod.svc.cluster.local
+    - kafka-2.kafka.dah-flink-prod.svc.cluster.local
     - kafka.apps.pd.ocp.fcbint.net
     - kafka.apps.pd-p.ocp.fcbint.net
     - kafka-0.kafka.apps.pd.ocp.fcbint.net
