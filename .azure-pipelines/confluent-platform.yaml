@@ -252,7 +252,7 @@ stages:
 
           - ${{ if eq(parameters.action, 'create-prereqs') }}:
             - task: Bash@3
-              displayName: "Validate canonical namespace before create-prereqs (CORRECTION 7)"
+              displayName: "Validate canonical namespace before create-prereqs"
               inputs:
                 targetType: inline
                 script: |
@@ -261,7 +261,7 @@ stages:
                   OC_NS_VAR="$(openshift-namespace)"
                   RESOLVED_NS_VAR="$(RESOLVED_NS)"
 
-                  echo "=== CORRECTION 7: Validating Canonical Namespace ==="
+                  echo "=== Validating canonical namespace ==="
                   echo "openshift-namespace variable: $OC_NS_VAR"
                   echo "RESOLVED_NS (canonical):      $RESOLVED_NS_VAR"
 
@@ -287,7 +287,7 @@ stages:
                 script: |
                   set -euo pipefail
 
-                  # STEP 1: Discover ExternalSecret-owned Secrets (CORRECTION 2: preserve both CR name and target name)
+                  # STEP 1: Discover ExternalSecret-owned Secrets and preserve CR/target names.
                   echo "=== Discovering ExternalSecret-managed Secrets ==="
                   declare -A ESO_CR_TO_TARGET  # Map: ExternalSecret CR name → target Secret name
                   ESO_COUNT=0
@@ -306,7 +306,7 @@ stages:
                     [ -n "$ESO_OWNED" ] && grep -qxF "$name" <<< "$ESO_OWNED" || return 1
                   }
 
-                  # STEP 2: Verify ESO-managed Secrets are SecretSynced=True (CORRECTION 2: use CR name for status, target name for Secret validation)
+                  # STEP 2: Verify ESO-managed Secrets using CR names and target Secret names.
                   echo ""
                   echo "=== Verifying ESO-managed Secrets ==="
                   eso_failed=0
@@ -878,7 +878,7 @@ stages:
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
-              displayName: "Apply cert-manager Certificates and wait for TLS Secrets (CORRECTION 6: dry-run first, then apply, then wait)"
+              displayName: "Validate and apply cert-manager Certificates"
               inputs:
                 targetType: inline
                 script: |
@@ -1052,7 +1052,7 @@ stages:
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
-              displayName: "Pre-flight: Listener semantic validation (CORRECTION 5)"
+              displayName: "Pre-flight: validate listener authentication and ports"
               inputs:
                 targetType: inline
                 script: |
@@ -1340,7 +1340,7 @@ stages:
                       fi
                     done
 
-                    # 3. Check EndpointSlices have ready addresses (CORRECTION 1: iterate all slices, check conditions.ready on each endpoint)
+                    # 3. Check every EndpointSlice for ready endpoint addresses.
                     if ! oc get endpointslices -l kubernetes.io/service-name=kafka -n "$OC_NS" >/dev/null 2>&1; then
                       echo "FATAL: No EndpointSlices for Kafka Service"
                       exit 1
@@ -1385,7 +1385,7 @@ stages:
                       exit 1
                     fi
 
-                    # Test connectivity to MDS at :8090 (CORRECTION 3: use CA cert + SAN hostname, no -k)
+                    # Test verified TLS connectivity to MDS at :8090.
                     mds_ready=0
                     # Extract CA cert from kafka-tls Secret
                     CA_CERT_B64=$(oc -n "$OC_NS" get secret kafka-tls -o jsonpath='{.data.ca\.crt}' 2>/dev/null || echo "")
@@ -1495,7 +1495,7 @@ stages:
                 script: |
                   set -euo pipefail
 
-                  # Readiness check helper for managed components (SR / Connect / REST / C3) (CORRECTION 4: use correct CFK condition)
+                  # Readiness check helper for managed components (SR / Connect / REST / C3).
                   wait_component_ready() {
                     local kind=$1
                     local name=$2
