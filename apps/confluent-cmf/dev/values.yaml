@@ -40,7 +40,7 @@ cmf:
       # trustServerCertificate=true because dev SQL Server uses a self-signed
       # cert today. Flip to false in uat/prd (production SQL has a CA-signed
       # cert).
-      options: "encrypt=true;trustServerCertificate=true;"
+      options: "encrypt=false;"
       password:
         kubernetesSecretName: cmf-db-credentials
         kubernetesSecretProperty: password
