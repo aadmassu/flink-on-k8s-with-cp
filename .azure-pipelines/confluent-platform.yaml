@@ -156,7 +156,7 @@ stages:
                 set -euo pipefail
 
                 echo "=== YAML Duplicate-Key Validation ==="
-                echo "Checking all manifests in apps/confluent-platform/$(TARGET_ENV) for duplicate keys..."
+                echo "Checking all manifests in apps/confluent-platform/$TARGET_ENV for duplicate keys..."
                 echo ""
 
                 # Create validation script to check for duplicate keys in YAML files
@@ -201,7 +201,10 @@ stages:
                 for yaml_file in sorted(pathlib.Path(sys.argv[1]).rglob('*.yaml')):
                     try:
                         with open(yaml_file) as f:
-                            yaml.load(f, Loader=DuplicateKeyDetector)
+                            # Exhaust every document so valid multi-document
+                            # manifests (for example rolebindings.yaml) are
+                            # checked rather than rejected at the second `---`.
+                            list(yaml.load_all(f, Loader=DuplicateKeyDetector))
                         checked += 1
                     except yaml.YAMLError as e:
                         errors.append((str(yaml_file), str(e)))
@@ -218,7 +221,7 @@ stages:
                 PYTHON_EOF
 
                 chmod +x /tmp/check_yaml_duplicates.py
-                python3 /tmp/check_yaml_duplicates.py "apps/confluent-platform/$(TARGET_ENV)" || {
+                python3 /tmp/check_yaml_duplicates.py "apps/confluent-platform/$TARGET_ENV" || {
                   echo ""
                   echo "FATAL: YAML validation failed. Fix duplicate keys above before retrying."
                   exit 1
