@@ -1540,12 +1540,75 @@ stages:
 
                   echo ""
                   echo "=== Phase 2 (pre-component): RBAC rolebindings ==="
-                  # Applied AFTER Kafka readiness so the operator can resolve them through KafkaRestClass -> Kafka MDS at :8090. Idempotent: re-applying merges existing rolebindings rather than recreating them. Operator retries internally if MDS isn't ready yet, so applying here is safe even if Kafka wasn't part of this run (rolebindings need an existing MDS, not necessarily one created this run).
+                  # ConfluentRolebinding reconciliation is asynchronous. Do not
+                  # start SR/Connect/REST/C3 merely because `oc apply` returned:
+                  # those components can authenticate before MDS has installed
+                  # their authorization grants and then crash with
+                  # TopicAuthorizationException/GroupAuthorizationException.
                   if [ -f "$ENV_DIR/rolebindings.yaml" ]; then
                     echo "+ oc apply -f $ENV_DIR/rolebindings.yaml"
-                    oc apply -f "$ENV_DIR/rolebindings.yaml"
+                    rolebinding_resources=$(oc apply -f "$ENV_DIR/rolebindings.yaml" -o name)
+
+                    echo "=== Waiting up to 300s for every applied ConfluentRolebinding ==="
+                    rb_deadline=$((SECONDS + 300))
+                    while true; do
+                      rb_pending=0
+
+                      while IFS= read -r rb_resource; do
+                        [ -n "$rb_resource" ] || continue
+
+                        rb_generation=$(oc -n "$OC_NS" get "$rb_resource" \
+                          -o jsonpath='{.metadata.generation}' 2>/dev/null || true)
+                        rb_observed=$(oc -n "$OC_NS" get "$rb_resource" \
+                          -o jsonpath='{.status.observedGeneration}' 2>/dev/null || true)
+                        rb_state=$(oc -n "$OC_NS" get "$rb_resource" \
+                          -o jsonpath='{.status.state}' 2>/dev/null || true)
+                        rb_ready=$(oc -n "$OC_NS" get "$rb_resource" \
+                          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+                          2>/dev/null || true)
+
+                        # CFK releases report successful reconciliation as
+                        # status.state=CREATED. Accept Ready=True as a forward-
+                        # compatible equivalent, but only after this generation
+                        # has been observed when observedGeneration is present.
+                        generation_current=false
+                        if [ -z "$rb_observed" ] || [ "$rb_observed" = "$rb_generation" ]; then
+                          generation_current=true
+                        fi
+
+                        if [ "$generation_current" = true ] \
+                           && { [ "$rb_state" = "CREATED" ] || [ "$rb_ready" = "True" ]; }; then
+                          printf '  READY   %-60s state=%s ready=%s\n' \
+                            "$rb_resource" "${rb_state:-n/a}" "${rb_ready:-n/a}"
+                        else
+                          printf '  PENDING %-60s generation=%s observed=%s state=%s ready=%s\n' \
+                            "$rb_resource" "${rb_generation:-n/a}" "${rb_observed:-n/a}" \
+                            "${rb_state:-n/a}" "${rb_ready:-n/a}"
+                          rb_pending=$((rb_pending + 1))
+                        fi
+                      done <<< "$rolebinding_resources"
+
+                      if [ "$rb_pending" -eq 0 ]; then
+                        echo "OK: all applied ConfluentRolebindings are active in MDS."
+                        break
+                      fi
+
+                      if [ "$SECONDS" -ge "$rb_deadline" ]; then
+                        echo "FATAL: $rb_pending ConfluentRolebinding(s) did not become active within 300s."
+                        echo "Rolebinding status:"
+                        oc -n "$OC_NS" get confluentrolebinding 2>&1 || true
+                        echo "Recent rolebinding/operator events:"
+                        oc -n "$OC_NS" get events --sort-by=.lastTimestamp 2>&1 \
+                          | grep -Ei 'rolebind|kafkarestclass|metadata|mds|oauth|error|fail' \
+                          | tail -80 || true
+                        exit 1
+                      fi
+
+                      sleep 10
+                    done
                   else
-                    echo "(rolebindings.yaml not found — skipped)"
+                    echo "FATAL: $ENV_DIR/rolebindings.yaml not found; managed components cannot be authorized."
+                    exit 1
                   fi
 
                   echo ""
