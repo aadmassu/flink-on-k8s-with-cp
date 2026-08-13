@@ -1261,6 +1261,84 @@ stages:
                     return 1
                   }
 
+                  # An existing CFK CR can retain cluster-ready=True briefly after
+                  # `oc apply` increments metadata.generation. Wait until the
+                  # operator has observed the new generation before trusting its
+                  # readiness conditions. Older CFK status schemas may omit
+                  # observedGeneration; in that case allow a reconciliation grace
+                  # period and rely on the StatefulSet rollout gate below.
+                  wait_for_cr_reconcile() {
+                    local kind=$1
+                    local name=$2
+                    local timeout=$3
+                    local desired observed elapsed=0 step=10
+
+                    desired=$(oc -n "$OC_NS" get "$kind" "$name" \
+                      -o jsonpath='{.metadata.generation}')
+                    echo "=== Waiting for $kind/$name generation $desired to be observed ==="
+
+                    while [ "$elapsed" -lt "$timeout" ]; do
+                      observed=$(oc -n "$OC_NS" get "$kind" "$name" \
+                        -o jsonpath='{.status.observedGeneration}' 2>/dev/null || true)
+
+                      if [[ "$observed" =~ ^[0-9]+$ ]] && [ "$observed" -ge "$desired" ]; then
+                        echo "  Operator observed generation $observed after ${elapsed}s."
+                        return 0
+                      fi
+
+                      if [ -z "$observed" ] && [ "$elapsed" -ge 120 ]; then
+                        echo "  status.observedGeneration is unavailable; reconciliation grace period completed."
+                        return 0
+                      fi
+
+                      sleep "$step"
+                      elapsed=$((elapsed + step))
+                    done
+
+                    echo "ERROR: operator did not observe $kind/$name generation $desired within ${timeout}s."
+                    return 1
+                  }
+
+                  wait_for_statefulset_rollout() {
+                    local name=$1
+                    local timeout=$2
+
+                    echo "=== Waiting for StatefulSet/$name rollout to complete ==="
+                    if ! oc -n "$OC_NS" rollout status "statefulset/$name" \
+                        --timeout="${timeout}s"; then
+                      echo "ERROR: StatefulSet/$name rollout did not complete within ${timeout}s."
+                      oc -n "$OC_NS" get statefulset "$name" -o wide || true
+                      oc -n "$OC_NS" get pods -l "app=$name" -o wide || true
+                      return 1
+                    fi
+
+                    # Require two consecutive fully-ready observations. This
+                    # prevents an old ready revision from being accepted while
+                    # CFK is beginning a new rollout.
+                    local stable=0 replicas ready updated current update
+                    while [ "$stable" -lt 2 ]; do
+                      replicas=$(oc -n "$OC_NS" get statefulset "$name" \
+                        -o jsonpath='{.spec.replicas}')
+                      ready=$(oc -n "$OC_NS" get statefulset "$name" \
+                        -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)
+                      updated=$(oc -n "$OC_NS" get statefulset "$name" \
+                        -o jsonpath='{.status.updatedReplicas}' 2>/dev/null || true)
+                      current=$(oc -n "$OC_NS" get statefulset "$name" \
+                        -o jsonpath='{.status.currentRevision}' 2>/dev/null || true)
+                      update=$(oc -n "$OC_NS" get statefulset "$name" \
+                        -o jsonpath='{.status.updateRevision}' 2>/dev/null || true)
+
+                      if [ "$ready" = "$replicas" ] && [ "$updated" = "$replicas" ] \
+                         && [ -n "$current" ] && [ "$current" = "$update" ]; then
+                        stable=$((stable + 1))
+                      else
+                        stable=0
+                      fi
+                      [ "$stable" -lt 2 ] && sleep 10
+                    done
+                    echo "  StatefulSet/$name is fully rolled out and stable."
+                  }
+
                   # Pre-Phase: NetworkPolicy for CFK-operator ingress (Jolokia :7777 probe).
                   # DEV: App team has RBAC permission to create NetworkPolicies in dev (auto-apply).
                   # Upper environments (qa, uat-p, uat-s, prd, dr): apply if file exists; if RBAC
@@ -1287,6 +1365,8 @@ stages:
                     echo ""
                     echo "+ oc apply -f $ENV_DIR/kraftcontroller.yaml"
                     oc apply -f "$ENV_DIR/kraftcontroller.yaml"
+                    wait_for_cr_reconcile kraftcontroller kraftcontroller 300
+                    wait_for_statefulset_rollout kraftcontroller 600
                   else
                     echo "(KRaft Controller skipped — checkbox off)"
                   fi
@@ -1312,6 +1392,8 @@ stages:
                     echo ""
                     echo "+ oc apply -f $KAFKA_YAML"
                     oc apply -f "$KAFKA_YAML"
+                    wait_for_cr_reconcile kafka kafka 300
+                    wait_for_statefulset_rollout kafka 900
                   else
                     echo "(Kafka Broker skipped — checkbox off; kafkarestclass.yaml also not applied)"
                   fi
@@ -1420,16 +1502,19 @@ stages:
                     # Any HTTP response below 500 proves that the TLS listener is
                     # reachable. A connection/TLS failure yields curl code 000;
                     # a 5xx response means MDS is not ready.
-                    for i in {1..30}; do
+                    # Kafka/MDS can take several minutes to initialize after a
+                    # broker rollout. Retry for up to ten minutes.
+                    for i in {1..60}; do
                       if oc -n "$OC_NS" exec -i kafka-0 -- bash -s << CURL_EOF >/dev/null 2>&1
                   set -euo pipefail
                   cat > /tmp/ca-cert.pem << 'CERT_EOF'
                   $CA_CERT
                   CERT_EOF
+                  http_code=000
                   http_code=$(timeout 5 curl --silent --show-error -w '%{http_code}' -o /dev/null \
                     --cacert /tmp/ca-cert.pem \
                     --resolve "kafka.$OC_NS.svc.cluster.local:8090:127.0.0.1" \
-                    "https://kafka.$OC_NS.svc.cluster.local:8090/")
+                    "https://kafka.$OC_NS.svc.cluster.local:8090/") || http_code=000
                   [[ "$http_code" =~ ^[1-4][0-9][0-9]$ ]]
                   CURL_EOF
                       then
@@ -1437,12 +1522,12 @@ stages:
                         mds_ready=1
                         break
                       fi
-                      if [ "$i" -lt 30 ]; then
-                        sleep 5
+                      if [ "$i" -lt 60 ]; then
+                        sleep 10
                       fi
                     done
                     if [ "$mds_ready" -eq 0 ]; then
-                      echo "FATAL: MDS TLS listener did not return an HTTP response below 500 at :8090 after 150s"
+                      echo "FATAL: MDS TLS listener did not return an HTTP response below 500 at :8090 after 600s"
                       oc logs -n "$OC_NS" kafka-0 --all-containers | tail -50 || true
                       exit 1
                     fi
