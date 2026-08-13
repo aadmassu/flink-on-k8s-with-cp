@@ -1,31 +1,92 @@
 trigger: none
 
 parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, uat-p, uat-s, prd, dr]
+
+  - name: executeAdHocCommand
+    displayName: "Execute ad hoc command"
+    type: boolean
+    default: false
+
   - name: adHocCommand
-    displayName: "Ad hoc command to execute (leave blank to skip)"
+    displayName: "Ad hoc command (multi-line, executed if checkbox above is checked)"
     type: string
     default: ""
-    # Example: oc apply --dry-run=server -f apps/confluent-platform/dev/kafkarestclass.yaml
+    # Examples:
+    #   oc apply --dry-run=server -f apps/confluent-platform/dev/kafkarestclass.yaml
+    #   oc get kafka -n dah-flink-dev
+    #   kubectl get namespaces
+
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: kafka-openshift-credentials-dev
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: kafka-openshift-credentials-qa
+  - ${{ if eq(parameters.environment, 'uat-p') }}:
+    - group: kafka-openshift-credentials-uat-p
+  - ${{ if eq(parameters.environment, 'uat-s') }}:
+    - group: kafka-openshift-credentials-uat-s
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
 
 pool:
   name: DevOpsLinux
 
 steps:
   - checkout: self
+    env:
+      GIT_SSL_NO_VERIFY: "true"
 
-  - ${{ if ne(parameters.adHocCommand, '') }}:
+  - template: templates/install-tools.yaml
+
+  - task: Bash@3
+    displayName: "Login to OpenShift"
+    inputs:
+      targetType: inline
+      script: |
+        set -euo pipefail
+        echo "Logging in to OpenShift at $OC_API..."
+        oc login "$OC_API" \
+          --username="$OC_USER" \
+          --password="$OC_PWD" \
+          --insecure-skip-tls-verify
+
+        echo ""
+        echo "=== Logged-in user ==="
+        oc whoami
+
+        echo ""
+        echo "=== Switching to namespace $OC_NS ==="
+        oc project "$OC_NS"
+    env:
+      OC_API: $(openshift-api)
+      OC_USER: $(openshift-service-account-name)
+      OC_PWD: $(openshift-service-account-pwd)
+      OC_NS: $(openshift-namespace)
+
+  - ${{ if and(eq(parameters.executeAdHocCommand, true), ne(parameters.adHocCommand, '')) }}:
     - task: Bash@3
       displayName: "Execute ad hoc command"
       inputs:
         targetType: inline
         script: |
           set -euo pipefail
-          echo "=== Executing ad hoc command ==="
-          echo "Command: $AD_HOC_CMD"
+          echo "=== Executing ad hoc command for environment: $TARGET_ENV ==="
           echo ""
+          echo "=== Command output ==="
           eval "$AD_HOC_CMD"
+          echo ""
+          echo "=== Command execution completed ==="
       env:
+        TARGET_ENV: ${{ parameters.environment }}
         AD_HOC_CMD: ${{ parameters.adHocCommand }}
+        OC_NS: $(openshift-namespace)
 
   - task: Bash@3
     displayName: "Verify validation prerequisites"
