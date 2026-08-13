@@ -1497,31 +1497,36 @@ stages:
                     fi
                     CA_CERT=$(echo "$CA_CERT_B64" | base64 -d)
 
+                    # Install the CA in the Kafka container once. Keep the probe
+                    # itself in a single-quoted remote shell so Azure's outer
+                    # shell cannot expand command substitutions or $http_code.
+                    printf '%s\n' "$CA_CERT" \
+                      | oc -n "$OC_NS" exec -i kafka-0 -- \
+                          sh -c 'umask 077; cat > /tmp/mds-ca-cert.pem'
+
                     # This endpoint can return 200, 401, 403, or 404 depending on
                     # the Confluent Platform/MDS version and authentication mode.
                     # Any HTTP response below 500 proves that the TLS listener is
                     # reachable. A connection/TLS failure yields curl code 000;
-                    # a 5xx response means MDS is not ready.
-                    # Kafka/MDS can take several minutes to initialize after a
-                    # broker rollout. Retry for up to ten minutes.
+                    # a 5xx response means MDS is not ready. Kafka/MDS can take
+                    # several minutes to initialize after a broker rollout.
                     for i in {1..60}; do
-                      if oc -n "$OC_NS" exec -i kafka-0 -- bash -s << CURL_EOF >/dev/null 2>&1
-                  set -euo pipefail
-                  cat > /tmp/ca-cert.pem << 'CERT_EOF'
-                  $CA_CERT
-                  CERT_EOF
-                  http_code=000
-                  http_code=$(timeout 5 curl --silent --show-error -w '%{http_code}' -o /dev/null \
-                    --cacert /tmp/ca-cert.pem \
-                    --resolve "kafka.$OC_NS.svc.cluster.local:8090:127.0.0.1" \
-                    "https://kafka.$OC_NS.svc.cluster.local:8090/") || http_code=000
-                  [[ "$http_code" =~ ^[1-4][0-9][0-9]$ ]]
-                  CURL_EOF
-                      then
-                        echo "✅ MDS TLS listener is responding at :8090 (attempt $i)"
+                      http_code=$(oc -n "$OC_NS" exec kafka-0 -- \
+                        sh -c 'timeout 5 curl --silent --show-error \
+                          --write-out "%{http_code}" --output /dev/null \
+                          --cacert /tmp/mds-ca-cert.pem \
+                          --resolve "kafka.'"$OC_NS"'.svc.cluster.local:8090:127.0.0.1" \
+                          "https://kafka.'"$OC_NS"'.svc.cluster.local:8090/" \
+                          2>/dev/null || true' \
+                        2>/dev/null | tr -cd '0-9')
+                      http_code=${http_code:-000}
+
+                      if [[ "$http_code" =~ ^[1-4][0-9][0-9]$ ]]; then
+                        echo "✅ MDS TLS listener is responding at :8090 with HTTP $http_code (attempt $i)"
                         mds_ready=1
                         break
                       fi
+                      echo "  MDS attempt $i/60 returned HTTP $http_code; retrying..."
                       if [ "$i" -lt 60 ]; then
                         sleep 10
                       fi
