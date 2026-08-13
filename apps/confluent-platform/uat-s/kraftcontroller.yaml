@@ -49,9 +49,21 @@ spec:
       tls:
         enabled: true
       authentication:
-        type: plain
+        type: oauth
         jaasConfig:
-          secretRef: sasl-plain-internal
+          secretRef: oauth-broker
+        oauthSettings:
+          audience: "Confluent,account,api://default"
+          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+          groupsClaimName: dahUAT_groups
+          subClaimName: sub
+          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+          scope: 11547.DAH(UAT)
+          loginConnectTimeoutMs: 10000
+          loginReadTimeoutMs: 30000
+          loginRetryBackoffMaxMs: 5000
+          loginRetryBackoffMs: 60000
 
   # superUser is the broker's own Okta client (peer principal during controller comms).
   authorization:
