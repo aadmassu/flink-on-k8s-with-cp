@@ -159,21 +159,9 @@ spec:
         name: kraftcontroller
       controllerListener:
         authentication:
-          type: oauth
+          type: plain
           jaasConfig:
-            secretRef: oauth-broker
-          oauthSettings:
-            audience: "Confluent,account,api://default"
-            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
-            subClaimName: sub
-            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
-            loginConnectTimeoutMs: 10000
-            loginReadTimeoutMs: 30000
-            loginRetryBackoffMaxMs: 5000
-            loginRetryBackoffMs: 60000
+            secretRef: sasl-plain-internal
         tls:
           enabled: true
           secretRef: kafka-tls
