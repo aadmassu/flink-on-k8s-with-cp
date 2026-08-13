@@ -290,9 +290,11 @@ stages:
                   # STEP 1: Discover ExternalSecret-owned Secrets (CORRECTION 2: preserve both CR name and target name)
                   echo "=== Discovering ExternalSecret-managed Secrets ==="
                   declare -A ESO_CR_TO_TARGET  # Map: ExternalSecret CR name → target Secret name
+                  ESO_COUNT=0
                   while IFS=$'\t' read -r cr_name target_name; do
                     [ -z "$cr_name" ] && continue
                     ESO_CR_TO_TARGET["$cr_name"]="$target_name"
+                    ESO_COUNT=$((ESO_COUNT + 1))
                   done < <(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
                     -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.target.name}{"\n"}{end}' 2>/dev/null || echo "")
 
@@ -308,7 +310,7 @@ stages:
                   echo ""
                   echo "=== Verifying ESO-managed Secrets ==="
                   eso_failed=0
-                  if [ -n "${!ESO_CR_TO_TARGET[@]}" ]; then
+                  if (( ESO_COUNT > 0 )); then
                     for es_cr_name in "${!ESO_CR_TO_TARGET[@]}"; do
                       es_target_name="${ESO_CR_TO_TARGET[$es_cr_name]}"
                       synced=$(oc -n "$OC_NS" get externalsecret "$es_cr_name" \
