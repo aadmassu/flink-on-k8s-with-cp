@@ -814,15 +814,24 @@ stages:
 
                   ENV_DIR="apps/confluent-platform/$TARGET_ENV"
 
+                  # Search deployable manifests only. Documentation and the
+                  # intentionally disabled CyberArk templates may describe
+                  # placeholders or other environments without being applied.
+                  active_yaml_contains() {
+                    local pattern=$1
+                    grep -rE --include='*.yaml' --exclude='*disabled*.yaml' \
+                      "$pattern" "$ENV_DIR" >/dev/null 2>&1
+                  }
+
                   echo "=== Validating OAuth scope principals match environment ==="
                   case "$TARGET_ENV" in
                     dev)
                       # DEV should have dahDev_groups and 11547.DAH(Dev)
-                      if grep -r "dahQA_groups\|dahUAT_groups\|dahProd_groups" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                      if active_yaml_contains 'dahQA_groups|dahUAT_groups|dahProd_groups'; then
                         echo "ERROR: DEV manifests contain non-DEV OAuth groups (QA/UAT/Prod)"
                         exit 1
                       fi
-                      if grep -r "11547\.DAH(QA)\|11547\.DAH(UAT)\|11547\.DAH(Prod)" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                      if active_yaml_contains '11547\.DAH\(QA\)|11547\.DAH\(UAT\)|11547\.DAH\(Prod\)'; then
                         echo "ERROR: DEV manifests contain non-DEV OAuth scopes"
                         exit 1
                       fi
@@ -830,11 +839,11 @@ stages:
                       ;;
                     qa)
                       # QA should have dahQA_groups and 11547.DAH(QA)
-                      if grep -r "dahDev_groups\|dahUAT_groups\|dahProd_groups" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                      if active_yaml_contains 'dahDev_groups|dahUAT_groups|dahProd_groups'; then
                         echo "ERROR: QA manifests contain non-QA OAuth groups"
                         exit 1
                       fi
-                      if grep -r "11547\.DAH(Dev)\|11547\.DAH(UAT)\|11547\.DAH(Prod)" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                      if active_yaml_contains '11547\.DAH\(Dev\)|11547\.DAH\(UAT\)|11547\.DAH\(Prod\)'; then
                         echo "ERROR: QA manifests contain non-QA OAuth scopes"
                         exit 1
                       fi
@@ -842,11 +851,11 @@ stages:
                       ;;
                     uat-p|uat-s)
                       # UAT should have dahUAT_groups and 11547.DAH(UAT)
-                      if grep -r "dahDev_groups\|dahQA_groups\|dahProd_groups" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                      if active_yaml_contains 'dahDev_groups|dahQA_groups|dahProd_groups'; then
                         echo "ERROR: UAT manifests contain non-UAT OAuth groups"
                         exit 1
                       fi
-                      if grep -r "11547\.DAH(Dev)\|11547\.DAH(QA)\|11547\.DAH(Prod)" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                      if active_yaml_contains '11547\.DAH\(Dev\)|11547\.DAH\(QA\)|11547\.DAH\(Prod\)'; then
                         echo "ERROR: UAT manifests contain non-UAT OAuth scopes"
                         exit 1
                       fi
@@ -854,11 +863,11 @@ stages:
                       ;;
                     prd|dr)
                       # PRD/DR should have dahProd_groups and 11547.DAH(Prod)
-                      if grep -r "dahDev_groups\|dahQA_groups\|dahUAT_groups" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                      if active_yaml_contains 'dahDev_groups|dahQA_groups|dahUAT_groups'; then
                         echo "ERROR: PRD/DR manifests contain non-PRD OAuth groups"
                         exit 1
                       fi
-                      if grep -r "11547\.DAH(Dev)\|11547\.DAH(QA)\|11547\.DAH(UAT)" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                      if active_yaml_contains '11547\.DAH\(Dev\)|11547\.DAH\(QA\)|11547\.DAH\(UAT\)'; then
                         echo "ERROR: PRD/DR manifests contain non-PRD OAuth scopes"
                         exit 1
                       fi
@@ -869,7 +878,7 @@ stages:
                   # Final check for unresolved REPLACE_WITH_* placeholders
                   echo ""
                   echo "=== Checking for unresolved placeholder values ==="
-                  if grep -r "REPLACE_WITH_" "$ENV_DIR" 2>/dev/null | grep -v "externalsecrets-all-disabled"; then
+                  if active_yaml_contains 'REPLACE_WITH_'; then
                     echo "FATAL: Manifests contain unresolved REPLACE_WITH_* placeholders"
                     exit 1
                   fi
