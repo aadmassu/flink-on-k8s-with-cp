@@ -1,7 +1,7 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-04-01 (created), 2026-08-12 (last-modified)
+# Date:        2026-04-01 (created), 2026-07-01 (last-modified)
 # Description: CFK Kafka CR — Phase 2. SASL/PLAIN+TLS for the internal
 #              infrastructure listener, OAuth+TLS externally, MDS/OIDC,
 #              and RBAC via ConfluentRolebindings.
@@ -68,7 +68,7 @@ spec:
   authorization:
     type: rbac
     superUsers:
-      - User:0oa1owhtq2olDZWwf358   # QA broker/MDS superuser
+      - User:0oa1owhtq2olDZWwf358   # DEV broker/MDS superuser
       - User:admin                   # internal SASL/PLAIN infrastructure user
 
   listeners:
@@ -146,11 +146,12 @@ spec:
       # Client IDs the operator may act on-behalf-of when reconciling rolebindings (runbook A23).
       impersonation:
         admins:
-          - User:REPLACE_WITH_PRD_BROKER_OAUTH_ID   # broker / kafka-rest embedded
-          - User:REPLACE_WITH_PRD_SR_OAUTH_ID   # Schema Registry
-          - User:REPLACE_WITH_PRD_CONNECT_OAUTH_ID   # Connect
-          - User:REPLACE_WITH_PRD_REST_OAUTH_ID   # Kafka REST Proxy
-          - User:REPLACE_WITH_PRD_C3_OAUTH_ID   # Control Center
+          - User:0oa1owhtq2olDZWwf358   # MDS OAuth superuser
+          - User:0oa1owhtq2olDZWwf358   # broker / kafka-rest embedded
+          - User:0oa1owiage2MyoHdt358   # Schema Registry
+          - User:0oa1owi0yntGMBvPS358   # Connect
+          - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
+          - User:0oa1ov6h5mwmQTCKI358   # Control Center
 
   dependencies:
     kRaftController:
@@ -158,9 +159,21 @@ spec:
         name: kraftcontroller
       controllerListener:
         authentication:
-          type: plain
+          type: oauth
           jaasConfig:
-            secretRef: sasl-plain-internal
+            secretRef: oauth-broker
+          oauthSettings:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahProd_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(Prod)
+            loginConnectTimeoutMs: 10000
+            loginReadTimeoutMs: 30000
+            loginRetryBackoffMaxMs: 5000
+            loginRetryBackoffMs: 60000
         tls:
           enabled: true
           secretRef: kafka-tls
@@ -224,9 +237,11 @@ spec:
       - confluent.kafkarest.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.kafkarest.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.kafkarest.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(Prod)
+      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(Dev)
 
       # Broker defaults.
+      - confluent.telemetry.enabled=true
+      - confluent.reporters.telemetry.auto.enable=true
       - log.retention.hours=168
       - log.segment.bytes=1073741824
       - log.retention.check.interval.ms=300000
@@ -241,8 +256,10 @@ spec:
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
       - confluent.cluster.link.metadata.topic.replication.factor=3
-      - confluent.balancer.enable=false
-      - ssl.principal.mapping.rules=RULE:^.*[Cc][Cn]=([^,]+).*$/$1/L,DEFAULT
+      - confluent.balancer.enable=true
+      - confluent.balancer.data.enabled=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
+      - ssl.principal.mapping.rules=RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L,DEFAULT
 
   podTemplate:
     serviceAccountName: flink-operator
