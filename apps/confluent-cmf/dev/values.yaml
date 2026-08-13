@@ -33,13 +33,11 @@ cmf:
     type: jdbc
     jdbc:
       engine: sqlserver
-      url: ""        # set at install time from dev-cmf-sql-server-jdbc-url (includes port)
+      url: ""
+      port: 3085
       database: DAHFLINK
-      user: ""       # set at install time from dev-cmf-sql-server-user
-      # trustServerCertificate=true because dev SQL Server uses a self-signed
-      # cert today. Flip to false in uat/prd (production SQL has a CA-signed
-      # cert).
-      options: "encrypt=true;trustServerCertificate=false;"
+      user: ""
+      options: "encrypt=true;trustServerCertificate=true;"
       password:
         kubernetesSecretName: cmf-db-credentials
         kubernetesSecretProperty: password
