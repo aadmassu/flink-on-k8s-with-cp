@@ -1092,7 +1092,7 @@ stages:
                   # Define manifests to validate with dry-run. Order: prerequisites before dependents.
                   # Network policy first, then RBAC, then CRs. Certificates already applied in previous task.
                   MANIFESTS_TO_VALIDATE=(
-                    "network-policy.yaml"
+                    "network-policy/network-policy.yaml"
                     "rolebindings.yaml"
                     "kafkarestclass.yaml"
                     "kraftcontroller.yaml"
@@ -1124,6 +1124,13 @@ stages:
 
                     if [ ! -f "$manifest_path" ]; then
                       echo "  SKIP (not found): $manifest"
+                      continue
+                    fi
+
+                    # Skip fully commented documentation/templates, but continue validating
+                    # every file that contains active YAML.
+                    if ! grep -Eq '^[[:space:]]*[^#[:space:]]' "$manifest_path"; then
+                      echo "  SKIP (comment-only template): $manifest"
                       continue
                     fi
 
