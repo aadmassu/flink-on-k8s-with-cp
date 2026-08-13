@@ -35,89 +35,96 @@ variables:
   - ${{ if eq(parameters.environment, 'dr') }}:
     - group: kafka-openshift-credentials-dr
 
-pool:
-  name: DevOpsLinux
+stages:
+  - stage: ValidateCFK
+    displayName: "Validate Confluent Platform (${{ parameters.environment }})"
+    pool:
+      name: DevOpsLinux
+    jobs:
+      - job: ValidateCFK
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
 
-steps:
-  - checkout: self
-    env:
-      GIT_SSL_NO_VERIFY: "true"
+          - template: templates/install-tools.yaml
 
-  - template: templates/install-tools.yaml
+          - task: Bash@3
+            displayName: "Login to OpenShift (${{ parameters.environment }})"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Logging in to OpenShift at $OC_API for environment: $TARGET_ENV..."
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
 
-  - task: Bash@3
-    displayName: "Login to OpenShift"
-    inputs:
-      targetType: inline
-      script: |
-        set -euo pipefail
-        echo "Logging in to OpenShift at $OC_API..."
-        oc login "$OC_API" \
-          --username="$OC_USER" \
-          --password="$OC_PWD" \
-          --insecure-skip-tls-verify
+                echo ""
+                echo "=== Logged-in user ==="
+                oc whoami
 
-        echo ""
-        echo "=== Logged-in user ==="
-        oc whoami
+                echo ""
+                echo "=== Switching to namespace $OC_NS ==="
+                oc project "$OC_NS"
+            env:
+              TARGET_ENV: ${{ parameters.environment }}
+              OC_API: $(openshift-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: $(openshift-namespace)
 
-        echo ""
-        echo "=== Switching to namespace $OC_NS ==="
-        oc project "$OC_NS"
-    env:
-      OC_API: $(openshift-api)
-      OC_USER: $(openshift-service-account-name)
-      OC_PWD: $(openshift-service-account-pwd)
-      OC_NS: $(openshift-namespace)
+          - ${{ if and(eq(parameters.executeAdHocCommand, true), ne(parameters.adHocCommand, '')) }}:
+            - task: Bash@3
+              displayName: "Execute ad hoc command (${{ parameters.environment }})"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  echo "=== Executing ad hoc command for environment: $TARGET_ENV ==="
+                  echo "=== OpenShift: $OC_API | Namespace: $OC_NS ==="
+                  echo ""
+                  echo "=== Command output ==="
+                  eval "$AD_HOC_CMD"
+                  echo ""
+                  echo "=== Command execution completed ==="
+              env:
+                TARGET_ENV: ${{ parameters.environment }}
+                AD_HOC_CMD: ${{ parameters.adHocCommand }}
+                OC_API: $(openshift-api)
+                OC_NS: $(openshift-namespace)
 
-  - ${{ if and(eq(parameters.executeAdHocCommand, true), ne(parameters.adHocCommand, '')) }}:
-    - task: Bash@3
-      displayName: "Execute ad hoc command"
-      inputs:
-        targetType: inline
-        script: |
-          set -euo pipefail
-          echo "=== Executing ad hoc command for environment: $TARGET_ENV ==="
-          echo ""
-          echo "=== Command output ==="
-          eval "$AD_HOC_CMD"
-          echo ""
-          echo "=== Command execution completed ==="
-      env:
-        TARGET_ENV: ${{ parameters.environment }}
-        AD_HOC_CMD: ${{ parameters.adHocCommand }}
-        OC_NS: $(openshift-namespace)
+          - task: Bash@3
+            displayName: "Verify validation prerequisites"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
 
-  - task: Bash@3
-    displayName: "Verify validation prerequisites"
-    inputs:
-      targetType: inline
-      script: |
-        set -euo pipefail
+                command -v python3
+                python3 --version
+                command -v bash
+                command -v sha256sum
 
-        command -v python3
-        python3 --version
-        command -v bash
-        command -v sha256sum
+                python3 - <<'PY'
+                try:
+                    import yaml
+                    print(f"PyYAML available: {yaml.__version__}")
+                except ImportError:
+                    raise SystemExit(
+                        "FATAL: PyYAML is unavailable on this build agent"
+                    )
+                PY
 
-        python3 - <<'PY'
-        try:
-            import yaml
-            print(f"PyYAML available: {yaml.__version__}")
-        except ImportError:
-            raise SystemExit(
-                "FATAL: PyYAML is unavailable on this build agent"
-            )
-        PY
+          - task: Bash@3
+            displayName: "Run CFK regression tests"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
 
-  - task: Bash@3
-    displayName: "Run CFK regression tests"
-    inputs:
-      targetType: inline
-      script: |
-        set -euo pipefail
+                chmod +x .azure-pipelines/test-pipeline-corrections.sh
+                chmod +x .azure-pipelines/scripts/*.py
 
-        chmod +x .azure-pipelines/test-pipeline-corrections.sh
-        chmod +x .azure-pipelines/scripts/*.py
-
-        ./.azure-pipelines/test-pipeline-corrections.sh
+                ./.azure-pipelines/test-pipeline-corrections.sh
