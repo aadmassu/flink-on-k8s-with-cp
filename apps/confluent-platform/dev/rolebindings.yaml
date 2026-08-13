@@ -184,24 +184,3 @@ spec:
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-dev
----
-
-# -- Human super-admins (MDS SSO uses email as sub claim) ------------------
-
-apiVersion: platform.confluent.io/v1beta1
-kind: ConfluentRolebinding
-metadata:
-  name: aadmassu-sys-admin
-  namespace: dah-flink-dev
-  labels:
-    app.kubernetes.io/component: rbac-user
-    app.kubernetes.io/part-of: confluent-platform
-    fcbint.net/app-id: "11547"
-spec:
-  principal:
-    type: user
-    name: aadmassu@psyncopate.com
-  role: SystemAdmin
-  kafkaRestClassRef:
-    name: default
-    namespace: dah-flink-dev
