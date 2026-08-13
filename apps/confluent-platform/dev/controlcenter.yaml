@@ -76,7 +76,7 @@ spec:
       authentication:
         type: basic
         basic:
-          secretRef: c3-prometheus-client-basic-auth
+          secretRef: c3-prom-client-basic-auth
       tls:
         enabled: true
         secretRef: controlcenter-tls
@@ -85,7 +85,7 @@ spec:
       authentication:
         type: basic
         basic:
-          secretRef: c3-alertmanager-client-basic-auth
+          secretRef: c3-alert-client-basic-auth
       tls:
         enabled: true
         secretRef: controlcenter-tls
@@ -196,7 +196,7 @@ spec:
       authentication:
         type: basic
         basic:
-          secretRef: c3-prometheus-server-basic-auth
+          secretRef: c3-prom-server-basic-auth
       tls:
         secretRef: controlcenter-tls
       pvc:
@@ -206,7 +206,7 @@ spec:
       authentication:
         type: basic
         basic:
-          secretRef: c3-alertmanager-server-basic-auth
+          secretRef: c3-alert-server-basic-auth
       tls:
         secretRef: controlcenter-tls
 

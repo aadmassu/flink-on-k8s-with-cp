@@ -13,10 +13,10 @@ oauth-kafkarest | dr-oauth-kafkarest-{client-id,secret} | prd-cfk-oauth-kafkares
 oauth-controlcenter | dr-oauth-controlcenter-{client-id,secret} | prd-cfk-oauth-controlcenter/* | Pipeline
 oauth-mds-rest | dr-oauth-mds-rest-{client-id,secret} | prd-cfk-oauth-mds-rest/* | Pipeline
 oauth-mds-sso | dr-oauth-mds-sso-{client-id,secret} | prd-cfk-oauth-mds-sso-oidc/* | Pipeline
-c3-prometheus-server-basic-auth | dr-c3-prometheus-{username,password} | prd-cfk-c3-prometheus-server-basic/* | Pipeline
-c3-prometheus-client-basic-auth | dr-c3-prometheus-{username,password} | prd-cfk-c3-prometheus-client-basic/* | Pipeline
-c3-alertmanager-server-basic-auth | dr-c3-alertmanager-{username,password} | prd-cfk-c3-alertmanager-server-basic/* | Pipeline
-c3-alertmanager-client-basic-auth | dr-c3-alertmanager-{username,password} | prd-cfk-c3-alertmanager-client-basic/* | Pipeline
+c3-prom-server-basic-auth | dr-c3-prometheus-{username,password} | prd-cfk-c3-prometheus-server-basic/* | Pipeline
+c3-prom-client-basic-auth | dr-c3-prometheus-{username,password} | prd-cfk-c3-prometheus-client-basic/* | Pipeline
+c3-alert-server-basic-auth | dr-c3-alertmanager-{username,password} | prd-cfk-c3-alertmanager-server-basic/* | Pipeline
+c3-alert-client-basic-auth | dr-c3-alertmanager-{username,password} | prd-cfk-c3-alertmanager-client-basic/* | Pipeline
 
 NOTES:
 - DR deploys to dah-flink-prod namespace (shared with PRD; see pipeline namespace normalization logic).

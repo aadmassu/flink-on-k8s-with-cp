@@ -13,10 +13,10 @@ oauth-kafkarest | qa-oauth-kafkarest-{client-id,secret} | qa-cfk-oauth-kafkarest
 oauth-controlcenter | qa-oauth-controlcenter-{client-id,secret} | qa-cfk-oauth-controlcenter/* | Pipeline
 oauth-mds-rest | qa-oauth-mds-rest-{client-id,secret} | qa-cfk-oauth-mds-rest/* | Pipeline
 oauth-mds-sso | qa-oauth-mds-sso-{client-id,secret} | qa-cfk-oauth-mds-sso-oidc/* | Pipeline
-c3-prometheus-server-basic-auth | qa-c3-prometheus-{username,password} | qa-cfk-c3-prometheus-server-basic/* | Pipeline
-c3-prometheus-client-basic-auth | qa-c3-prometheus-{username,password} | qa-cfk-c3-prometheus-client-basic/* | Pipeline
-c3-alertmanager-server-basic-auth | qa-c3-alertmanager-{username,password} | qa-cfk-c3-alertmanager-server-basic/* | Pipeline
-c3-alertmanager-client-basic-auth | qa-c3-alertmanager-{username,password} | qa-cfk-c3-alertmanager-client-basic/* | Pipeline
+c3-prom-server-basic-auth | qa-c3-prometheus-{username,password} | qa-cfk-c3-prometheus-server-basic/* | Pipeline
+c3-prom-client-basic-auth | qa-c3-prometheus-{username,password} | qa-cfk-c3-prometheus-client-basic/* | Pipeline
+c3-alert-server-basic-auth | qa-c3-alertmanager-{username,password} | qa-cfk-c3-alertmanager-server-basic/* | Pipeline
+c3-alert-client-basic-auth | qa-c3-alertmanager-{username,password} | qa-cfk-c3-alertmanager-client-basic/* | Pipeline
 
 NOTES:
 - All Secrets are currently provisioned by the pipeline from Azure variable groups.

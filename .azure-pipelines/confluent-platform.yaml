@@ -346,10 +346,10 @@ stages:
                     "oauth-controlcenter"
                     "oauth-mds-rest"
                     "oauth-mds-sso"
-                    "c3-prometheus-server-basic-auth"
-                    "c3-prometheus-client-basic-auth"
-                    "c3-alertmanager-server-basic-auth"
-                    "c3-alertmanager-client-basic-auth"
+                    "c3-prom-server-basic-auth"
+                    "c3-prom-client-basic-auth"
+                    "c3-alert-server-basic-auth"
+                    "c3-alert-client-basic-auth"
                   )
 
                   REQUIRED_VARS_FOR_PIPELINE=()
@@ -369,10 +369,10 @@ stages:
                         oauth-controlcenter) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_C3_ID" "OAUTH_C3_SECRET") ;;
                         oauth-mds-rest) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_MDS_REST_ID" "OAUTH_MDS_REST_SECRET") ;;
                         oauth-mds-sso) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_MDS_SSO_ID" "OAUTH_MDS_SSO_SECRET") ;;
-                        c3-prometheus-server-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_PROM_USER" "C3_PROM_PWD") ;;
-                        c3-prometheus-client-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_PROM_USER" "C3_PROM_PWD") ;;
-                        c3-alertmanager-server-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_ALERT_USER" "C3_ALERT_PWD") ;;
-                        c3-alertmanager-client-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_ALERT_USER" "C3_ALERT_PWD") ;;
+                        c3-prom-server-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_PROM_USER" "C3_PROM_PWD") ;;
+                        c3-prom-client-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_PROM_USER" "C3_PROM_PWD") ;;
+                        c3-alert-server-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_ALERT_USER" "C3_ALERT_PWD") ;;
+                        c3-alert-client-basic-auth) REQUIRED_VARS_FOR_PIPELINE+=("C3_ALERT_USER" "C3_ALERT_PWD") ;;
                       esac
                     fi
                   done
@@ -593,10 +593,10 @@ stages:
                   printf 'username=%s\npassword=%s\n' "$C3_PROM_USER" "$C3_PROM_PWD" > "$PROM_CLIENT_TMP"
                   printf '%s: %s\n' "$C3_ALERT_USER" "$C3_ALERT_PWD" > "$ALERT_SERVER_TMP"
                   printf 'username=%s\npassword=%s\n' "$C3_ALERT_USER" "$C3_ALERT_PWD" > "$ALERT_CLIENT_TMP"
-                  apply_secret_from_file c3-prometheus-server-basic-auth basic.txt "$PROM_SERVER_TMP"
-                  apply_secret_from_file c3-prometheus-client-basic-auth basic.txt "$PROM_CLIENT_TMP"
-                  apply_secret_from_file c3-alertmanager-server-basic-auth basic.txt "$ALERT_SERVER_TMP"
-                  apply_secret_from_file c3-alertmanager-client-basic-auth basic.txt "$ALERT_CLIENT_TMP"
+                  apply_secret_from_file c3-prom-server-basic-auth basic.txt "$PROM_SERVER_TMP"
+                  apply_secret_from_file c3-prom-client-basic-auth basic.txt "$PROM_CLIENT_TMP"
+                  apply_secret_from_file c3-alert-server-basic-auth basic.txt "$ALERT_SERVER_TMP"
+                  apply_secret_from_file c3-alert-client-basic-auth basic.txt "$ALERT_CLIENT_TMP"
                   rm -f "$PROM_SERVER_TMP" "$PROM_CLIENT_TMP" "$ALERT_SERVER_TMP" "$ALERT_CLIENT_TMP"
 
                   echo ""
@@ -608,8 +608,8 @@ stages:
                       sasl-plain-internal \
                       oauth-broker oauth-schemaregistry oauth-connect \
                       oauth-kafkarest oauth-controlcenter oauth-mds-rest oauth-mds-sso \
-                      c3-prometheus-server-basic-auth c3-prometheus-client-basic-auth \
-                      c3-alertmanager-server-basic-auth c3-alertmanager-client-basic-auth; do
+                      c3-prom-server-basic-auth c3-prom-client-basic-auth \
+                      c3-alert-server-basic-auth c3-alert-client-basic-auth; do
                     echo ""
                     echo "--- $s ---"
                     oc describe secret "$s" -n "$OC_NS"
@@ -623,8 +623,8 @@ stages:
                       sasl-plain-internal \
                       oauth-broker oauth-schemaregistry oauth-connect \
                       oauth-kafkarest oauth-controlcenter oauth-mds-rest oauth-mds-sso \
-                      c3-prometheus-server-basic-auth c3-prometheus-client-basic-auth \
-                      c3-alertmanager-server-basic-auth c3-alertmanager-client-basic-auth
+                      c3-prom-server-basic-auth c3-prom-client-basic-auth \
+                      c3-alert-server-basic-auth c3-alert-client-basic-auth
               env:
                 OC_NS: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
@@ -749,10 +749,10 @@ stages:
                     oauth-controlcenter
                     oauth-mds-rest
                     oauth-mds-sso
-                    c3-prometheus-server-basic-auth
-                    c3-prometheus-client-basic-auth
-                    c3-alertmanager-server-basic-auth
-                    c3-alertmanager-client-basic-auth
+                    c3-prom-server-basic-auth
+                    c3-prom-client-basic-auth
+                    c3-alert-server-basic-auth
+                    c3-alert-client-basic-auth
                   )
                   missing_secrets=0
                   for s in "${REQUIRED_SECRETS[@]}"; do
@@ -790,10 +790,10 @@ stages:
                     require_secret_key sasl-plain-internal "$key" || key_contract_failed=1
                   done
                   for secret_name in \
-                    c3-prometheus-server-basic-auth \
-                    c3-prometheus-client-basic-auth \
-                    c3-alertmanager-server-basic-auth \
-                    c3-alertmanager-client-basic-auth; do
+                    c3-prom-server-basic-auth \
+                    c3-prom-client-basic-auth \
+                    c3-alert-server-basic-auth \
+                    c3-alert-client-basic-auth; do
                     require_secret_key "$secret_name" basic.txt || key_contract_failed=1
                   done
                   if [ "$key_contract_failed" -ne 0 ]; then
