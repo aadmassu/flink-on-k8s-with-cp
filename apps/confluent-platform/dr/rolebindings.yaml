@@ -20,7 +20,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: schemaregistry-resourceowner-schemas
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -37,13 +37,13 @@ spec:
       patternType: LITERAL
   kafkaRestClassRef:
     name: default
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: schemaregistry-resourceowner-group
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -60,7 +60,7 @@ spec:
       patternType: LITERAL
   kafkaRestClassRef:
     name: default
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod
 ---
 
 # -- Kafka Connect (0oa1owi0yntGMBvPS358) ----------------------------------
@@ -69,7 +69,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: connect-resourceowner-config-topic
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: connect
     app.kubernetes.io/component: kafka-connect
@@ -92,13 +92,13 @@ spec:
       patternType: LITERAL
   kafkaRestClassRef:
     name: default
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: connect-resourceowner-group
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: connect
     app.kubernetes.io/component: kafka-connect
@@ -115,7 +115,7 @@ spec:
       patternType: LITERAL
   kafkaRestClassRef:
     name: default
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod
 ---
 
 # SystemAdmin cluster-scope for Connect -- fixes MDS "User Identity not found" 401s from RefreshActiveMetadataServerUrls once A27 discovery is resolved.
@@ -124,7 +124,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: connect-systemadmin
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: connect
     app.kubernetes.io/component: kafka-connect
@@ -137,7 +137,7 @@ spec:
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod
 ---
 
 # -- Kafka REST Proxy (0oa1owi3wkxJS3b3b358) -------------------------------
@@ -147,7 +147,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: kafkarest-systemadmin
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
@@ -160,7 +160,7 @@ spec:
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod
 ---
 
 # -- Control Center (0oa1ov6h5mwmQTCKI358) ---------------------------------
@@ -170,7 +170,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: controlcenter-systemadmin
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
@@ -183,7 +183,7 @@ spec:
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod
 ---
 
 # -- Human super-admins (MDS SSO uses email as sub claim) ------------------
@@ -192,7 +192,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
   name: aadmassu-sys-admin
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/component: rbac-user
     app.kubernetes.io/part-of: confluent-platform
@@ -204,4 +204,4 @@ spec:
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod

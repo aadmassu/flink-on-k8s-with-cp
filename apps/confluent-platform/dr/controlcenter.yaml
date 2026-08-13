@@ -11,7 +11,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter
 metadata:
   name: controlcenter
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   annotations:
     platform.confluent.io/force-reconcile: "2026-07-01-c3-basic-auth"
   labels:
@@ -69,7 +69,7 @@ spec:
   dependencies:
     # Dep-to-Kafka: flat oauth+jaasConfig (runbook A22).
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-dr.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.dah-flink-prod.svc.cluster.local:9092
       authentication:
         type: oauth
         jaasConfig:
@@ -92,7 +92,7 @@ spec:
 
     # Dep-to-SR (HTTP API): nested oauth+configuration.
     schemaRegistry:
-      url: https://schemaregistry.dah-flink-dr.svc.cluster.local:8081
+      url: https://schemaregistry.dah-flink-prod.svc.cluster.local:8081
       tls:
         enabled: true
         secretRef: schemaregistry-tls
@@ -115,7 +115,7 @@ spec:
 
     connect:
       - name: connect-cluster
-        url: https://connect.dah-flink-dr.svc.cluster.local:8083
+        url: https://connect.dah-flink-prod.svc.cluster.local:8083
         tls:
           enabled: true
           secretRef: connect-tls
@@ -138,7 +138,7 @@ spec:
 
     # OIDC SSO for the C3 UI is delivered through MDS.
     mds:
-      endpoint: https://kafka.dah-flink-dr.svc.cluster.local:8090
+      endpoint: https://kafka.dah-flink-prod.svc.cluster.local:8090
       ssoProtocol: oidc
       tls:
         enabled: true
@@ -164,7 +164,7 @@ spec:
 
     kafkaRestClassRef:
       name: default
-      namespace: dah-flink-dr
+      namespace: dah-flink-prod
 
   # Prometheus + AlertManager bundle deferred; c3-*-basic-auth Secrets already exist.
 

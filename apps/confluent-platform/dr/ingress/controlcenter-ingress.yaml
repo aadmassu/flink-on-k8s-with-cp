@@ -10,7 +10,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: controlcenter
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/instance: controlcenter

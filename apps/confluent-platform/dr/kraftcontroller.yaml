@@ -10,7 +10,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: KRaftController
 metadata:
   name: kraftcontroller
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: kraftcontroller
     app.kubernetes.io/component: kraft-controller
@@ -35,7 +35,7 @@ spec:
 
   dependencies:
     metricsClient:
-      url: https://controlcenter.dah-flink-dr.svc.cluster.local:9090
+      url: https://controlcenter.dah-flink-prod.svc.cluster.local:9090
       authentication:
         type: basic
         basic:

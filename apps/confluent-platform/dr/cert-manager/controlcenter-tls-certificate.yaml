@@ -10,7 +10,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: controlcenter-tls
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/instance: controlcenter-tls
@@ -32,11 +32,11 @@ spec:
   # When C3 needs external exposure, the OpenShift Route hostname will
   # follow the *.apps.<cluster>.ocp.fcbint.net pattern (per the FCB
   # cert-manager doc examples). Add that hostname here once allocated.
-  commonName: controlcenter.dah-flink-dr.svc.cluster.local
+  commonName: controlcenter.dah-flink-prod.svc.cluster.local
   dnsNames:
-    - controlcenter.dah-flink-dr.svc
-    - controlcenter.dah-flink-dr.svc.cluster.local
-    - controlcenter-0.controlcenter.dah-flink-dr.svc.cluster.local
+    - controlcenter.dah-flink-prod.svc
+    - controlcenter.dah-flink-prod.svc.cluster.local
+    - controlcenter-0.controlcenter.dah-flink-prod.svc.cluster.local
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:

@@ -9,7 +9,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: Connect
 metadata:
   name: connect
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   annotations:
     platform.confluent.io/force-reconcile: "2026-07-02-connect-metadata-truststore"
   labels:
@@ -61,7 +61,7 @@ spec:
   # Dep-to-Kafka: flat oauth+jaasConfig. Dep-to-SR/MDS: nested oauth+configuration (runbook A22).
   dependencies:
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-dr.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.dah-flink-prod.svc.cluster.local:9092
       authentication:
         type: oauth
         jaasConfig:
@@ -78,12 +78,12 @@ spec:
         enabled: true
         secretRef: kafka-tls
     schemaRegistry:
-      url: https://schemaregistry.dah-flink-dr.svc.cluster.local:8081
+      url: https://schemaregistry.dah-flink-prod.svc.cluster.local:8081
       tls:
         enabled: true
         secretRef: schemaregistry-tls
     mds:
-      endpoint: https://kafka.dah-flink-dr.svc.cluster.local:8090
+      endpoint: https://kafka.dah-flink-prod.svc.cluster.local:8090
       tls:
         enabled: true
         secretRef: kafka-tls
@@ -103,7 +103,7 @@ spec:
             scope: 11547.DAH(Prod)
     kafkaRestClassRef:
       name: default
-      namespace: dah-flink-dr
+      namespace: dah-flink-prod
 
   configOverrides:
     jvm:
@@ -127,9 +127,9 @@ spec:
       - connector.client.config.override.policy=All
       - plugin.path=/usr/share/java/connect_plugins
       - key.converter=io.confluent.connect.avro.AvroConverter
-      - key.converter.schema.registry.url=https://schemaregistry.dah-flink-dr.svc.cluster.local:8081
+      - key.converter.schema.registry.url=https://schemaregistry.dah-flink-prod.svc.cluster.local:8081
       - value.converter=io.confluent.connect.avro.AvroConverter
-      - value.converter.schema.registry.url=https://schemaregistry.dah-flink-dr.svc.cluster.local:8081
+      - value.converter.schema.registry.url=https://schemaregistry.dah-flink-prod.svc.cluster.local:8081
       - internal.key.converter=org.apache.kafka.connect.json.JsonConverter
       - internal.value.converter=org.apache.kafka.connect.json.JsonConverter
       - internal.key.converter.schemas.enable=false

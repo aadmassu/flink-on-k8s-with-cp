@@ -11,7 +11,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestClass
 metadata:
   name: default
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: kafkarestclass
     app.kubernetes.io/instance: default
@@ -21,7 +21,7 @@ metadata:
 spec:
   kafkaClusterRef:
     name: kafka
-    namespace: dah-flink-dr
+    namespace: dah-flink-prod
   kafkaRest:
     authentication:
       type: oauth

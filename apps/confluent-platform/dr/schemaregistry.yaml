@@ -11,7 +11,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry
 metadata:
   name: schemaregistry
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   annotations:
     platform.confluent.io/force-reconcile: "2026-07-02-sr-replicas-2"
   labels:
@@ -65,7 +65,7 @@ spec:
   dependencies:
     # Dep-to-Kafka: flat oauth+jaasConfig+oauthSettings (runbook A22).
     kafka:
-      bootstrapEndpoint: kafka.dah-flink-dr.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.dah-flink-prod.svc.cluster.local:9092
       authentication:
         type: oauth
         jaasConfig:
@@ -83,7 +83,7 @@ spec:
         secretRef: kafka-tls
     # Dep-to-MDS (HTTP API): nested oauth+configuration (runbook A22).
     mds:
-      endpoint: https://kafka.dah-flink-dr.svc.cluster.local:8090
+      endpoint: https://kafka.dah-flink-prod.svc.cluster.local:8090
       tls:
         enabled: true
         secretRef: kafka-tls

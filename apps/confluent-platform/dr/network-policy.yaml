@@ -7,7 +7,7 @@
 #              + Prometheus 7778 + JMX 7203 + KRaft 9074 + broker
 #              9071/9092/9094 + SR 8081 + REST 8082 + Connect 8083 +
 #              MDS 8090 + C3 9021). The three security-chart NPs in
-#              dah-flink-dr don't cover the operator namespace; without
+#              dah-flink-prod don't cover the operator namespace; without
 #              this the operator's Jolokia probe times out and KRaft
 #              sits ApplyFailed forever. Ingress-only.
 ########################################################################
@@ -15,7 +15,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-from-confluent-operator
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: confluent-platform
     app.kubernetes.io/component: network-policy

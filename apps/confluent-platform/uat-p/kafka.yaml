@@ -12,7 +12,7 @@ apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
 metadata:
   name: kafka
-  namespace: dah-flink-uat-p
+  namespace: dah-flink-uat
   annotations:
     platform.confluent.io/force-reconcile: "2026-07-01-brokers-all-components-superusers-workaround"
   labels:
@@ -88,11 +88,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahUAT_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(UAT)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -121,11 +121,11 @@ spec:
           configurations:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahUAT_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-            scope: 11547.DAH(Dev)
+            scope: 11547.DAH(UAT)
             loginConnectTimeoutMs: 10000
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
@@ -139,18 +139,18 @@ spec:
             authorizeBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/authorize
             tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-            groupsClaimName: dahDev_groups
+            groupsClaimName: dahUAT_groups
             subClaimName: email
             groupsClaimScope: openid profile email
             refreshToken: true
       # Client IDs the operator may act on-behalf-of when reconciling rolebindings (runbook A23).
       impersonation:
         admins:
-          - User:0oa1owhtq2olDZWwf358   # broker / kafka-rest embedded
-          - User:0oa1owiage2MyoHdt358   # Schema Registry
-          - User:0oa1owi0yntGMBvPS358   # Connect
-          - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
-          - User:0oa1ov6h5mwmQTCKI358   # Control Center
+          - User:REPLACE_WITH_UAT_BROKER_OAUTH_ID   # broker / kafka-rest embedded
+          - User:REPLACE_WITH_UAT_SR_OAUTH_ID   # Schema Registry
+          - User:REPLACE_WITH_UAT_CONNECT_OAUTH_ID   # Connect
+          - User:REPLACE_WITH_UAT_REST_OAUTH_ID   # Kafka REST Proxy
+          - User:REPLACE_WITH_UAT_C3_OAUTH_ID   # Control Center
 
   dependencies:
     kRaftController:
@@ -165,7 +165,7 @@ spec:
           enabled: true
           secretRef: kafka-tls
     metricsClient:
-      url: https://controlcenter.dah-flink-uat-p.svc.cluster.local:9090
+      url: https://controlcenter.dah-flink-uat.svc.cluster.local:9090
       authentication:
         type: basic
         basic:
@@ -182,11 +182,11 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
+          groupsClaimName: dahUAT_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
+          scope: 11547.DAH(UAT)
           loginConnectTimeoutMs: 10000
           loginReadTimeoutMs: 30000
           loginRetryBackoffMaxMs: 5000
@@ -198,7 +198,7 @@ spec:
   # First-class metricReporter (Psyncopate pattern, not configOverrides).
   metricReporter:
     enabled: true
-    bootstrapEndpoint: kafka.dah-flink-uat-p.svc.cluster.local:9071
+    bootstrapEndpoint: kafka.dah-flink-uat.svc.cluster.local:9071
     tls:
       enabled: true
       secretRef: kafka-tls
@@ -224,7 +224,7 @@ spec:
       - confluent.kafkarest.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
       - confluent.kafkarest.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
       - confluent.kafkarest.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(Dev)
+      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(UAT)
 
       # Broker defaults.
       - log.retention.hours=168

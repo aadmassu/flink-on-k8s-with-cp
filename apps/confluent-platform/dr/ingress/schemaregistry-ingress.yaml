@@ -10,7 +10,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: schemaregistry
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/instance: schemaregistry

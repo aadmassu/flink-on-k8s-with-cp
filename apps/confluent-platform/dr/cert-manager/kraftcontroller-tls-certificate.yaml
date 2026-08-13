@@ -11,7 +11,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: kraftcontroller-tls
-  namespace: dah-flink-dr
+  namespace: dah-flink-prod
   labels:
     app.kubernetes.io/name: kraftcontroller
     app.kubernetes.io/instance: kraftcontroller-tls
@@ -25,13 +25,13 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: kraftcontroller.dah-flink-dr.svc.cluster.local
+  commonName: kraftcontroller.dah-flink-prod.svc.cluster.local
   dnsNames:
-    - kraftcontroller.dah-flink-dr.svc
-    - kraftcontroller.dah-flink-dr.svc.cluster.local
-    - kraftcontroller-0.kraftcontroller.dah-flink-dr.svc.cluster.local
-    - kraftcontroller-1.kraftcontroller.dah-flink-dr.svc.cluster.local
-    - kraftcontroller-2.kraftcontroller.dah-flink-dr.svc.cluster.local
+    - kraftcontroller.dah-flink-prod.svc
+    - kraftcontroller.dah-flink-prod.svc.cluster.local
+    - kraftcontroller-0.kraftcontroller.dah-flink-prod.svc.cluster.local
+    - kraftcontroller-1.kraftcontroller.dah-flink-prod.svc.cluster.local
+    - kraftcontroller-2.kraftcontroller.dah-flink-prod.svc.cluster.local
   duration: 8760h0m0s
   renewBefore: 360h
   privateKey:
