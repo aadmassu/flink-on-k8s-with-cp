@@ -56,8 +56,8 @@ spec:
 Edit `apps/confluent-platform/dev/kafka.yaml` and make **both** changes in a single edit:
 
 1. **Remove** the entire `provider.mtls` block (lines 134–138)
-2. **Remove** `User:cfk-operator-rbac` from `authorization.superUsers` (line 73)
-3. **Remove** `User:cfk-operator-rbac` from `services.mds.impersonation.admins` (line 161)
+2. **Remove** `User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net` from `authorization.superUsers` (line 73)
+3. **Remove** `User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net` from `services.mds.impersonation.admins` (line 161)
 
 Apply the updated Kafka CR:
 ```bash
