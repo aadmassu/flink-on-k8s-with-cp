@@ -1616,42 +1616,31 @@ stages:
                     echo "+ oc apply -f $ENV_DIR/kafkarestclass.yaml"
                     oc apply -f "$ENV_DIR/kafkarestclass.yaml"
 
-                    # Wait for KafkaRestClass to be CREATED
+                    # Wait for KafkaRestClass discovery to complete
+                    # CFK 3.1.x does not populate status.state; check observedGeneration, kafkaClusterID, endpoint instead.
                     echo ""
-                    echo "=== Waiting for KafkaRestClass to reach CREATED state ==="
+                    echo "=== Waiting for KafkaRestClass discovery to complete ==="
                     KREST_CLASS_TIMEOUT=300
                     KREST_CLASS_ELAPSED=0
                     KREST_CLASS_STEP=10
                     krc_ready_success=false
 
                     while [ "$KREST_CLASS_ELAPSED" -lt "$KREST_CLASS_TIMEOUT" ]; do
-                      krc_state=$(oc -n "$OC_NS" get kafkarestclass default \
-                        -o jsonpath='{.status.state}' 2>/dev/null || echo "")
-                      krc_ready=$(oc -n "$OC_NS" get kafkarestclass default \
-                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+                      GEN=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.metadata.generation}' 2>/dev/null || echo "")
+                      OBSERVED=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.status.observedGeneration}' 2>/dev/null || echo "")
+                      CLUSTER_ID=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.status.kafkaClusterID}' 2>/dev/null || echo "")
+                      ENDPOINT=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.status.endpoint}' 2>/dev/null || echo "")
 
-                      if [ "$krc_state" = "ERROR" ]; then
-                        echo ""
-                        echo "ERROR: KafkaRestClass entered ERROR state!"
-                        echo "Full KafkaRestClass status:"
-                        oc -n "$OC_NS" get kafkarestclass default -o yaml || true
-                        echo ""
-                        echo "Related KafkaRestClass events:"
-                        oc -n "$OC_NS" get events --field-selector involvedObject.kind=KafkaRestClass --sort-by='.lastTimestamp' || true
-                        echo ""
-                        echo "CFK operator pod logs:"
-                        oc -n confluent-operator logs -l app.kubernetes.io/name=confluent-operator --tail=50 || true
-                        exit 1
-                      fi
-
-                      if [ "$krc_state" = "CREATED" ] || [ "$krc_ready" = "True" ]; then
-                        echo "  ✅ KafkaRestClass ready after ${KREST_CLASS_ELAPSED}s (state=$krc_state, Ready=$krc_ready)"
+                      if [[ "$OBSERVED" == "$GEN" && -n "$CLUSTER_ID" && -n "$ENDPOINT" ]]; then
+                        echo "  ✅ KafkaRestClass discovery succeeded after ${KREST_CLASS_ELAPSED}s"
+                        echo "      observedGeneration=$OBSERVED, kafkaClusterID=$CLUSTER_ID, endpoint=$ENDPOINT"
                         krc_ready_success=true
                         break
                       fi
 
                       if [ "$KREST_CLASS_ELAPSED" -gt 0 ] && [ $((KREST_CLASS_ELAPSED % 60)) -eq 0 ]; then
-                        echo "  ${KREST_CLASS_ELAPSED}s elapsed, KafkaRestClass not yet ready. Current state: $krc_state"
+                        echo "  ${KREST_CLASS_ELAPSED}s elapsed, KafkaRestClass discovery not complete."
+                        echo "      observedGeneration=$OBSERVED (expected $GEN), kafkaClusterID=$CLUSTER_ID, endpoint=$ENDPOINT"
                       fi
 
                       sleep "$KREST_CLASS_STEP" || true
@@ -1660,12 +1649,13 @@ stages:
 
                     if [ "$krc_ready_success" != true ]; then
                       echo ""
-                      echo "ERROR: KafkaRestClass did not reach CREATED state within ${KREST_CLASS_TIMEOUT}s."
+                      echo "ERROR: KafkaRestClass discovery did not complete within ${KREST_CLASS_TIMEOUT}s."
                       echo "Final KafkaRestClass status:"
                       oc -n "$OC_NS" get kafkarestclass default -o yaml || true
                       echo ""
-                      echo "Related KafkaRestClass events:"
-                      oc -n "$OC_NS" get events --field-selector involvedObject.kind=KafkaRestClass --sort-by='.lastTimestamp' || true
+                      echo "Related KafkaRestClass events (filtered by current object UID):"
+                      KRC_UID=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.metadata.uid}' 2>/dev/null || echo "")
+                      oc -n "$OC_NS" get events --field-selector involvedObject.uid="$KRC_UID" --sort-by='.lastTimestamp' || true
                       echo ""
                       echo "CFK operator pod logs (last 50 lines):"
                       oc -n confluent-operator logs -l app.kubernetes.io/name=confluent-operator --tail=50 || true
@@ -1817,6 +1807,7 @@ stages:
 
                   # Unconditional KafkaRestClass readiness gate before rolebindings
                   # (required whenever ANY managed component is selected)
+                  # CFK 3.1.x does not populate status.state; check observedGeneration, kafkaClusterID, endpoint instead.
                   if is_true "$APPLY_SR" || is_true "$APPLY_CONNECT" \
                      || is_true "$APPLY_KREST" || is_true "$APPLY_C3"; then
                     echo ""
@@ -1833,19 +1824,14 @@ stages:
                     krc_gate_timeout=$((SECONDS + 300))
 
                     while [ "$SECONDS" -lt "$krc_gate_timeout" ]; do
-                      krc_state=$(oc -n "$OC_NS" get kafkarestclass default \
-                        -o jsonpath='{.status.state}' 2>/dev/null || echo "")
-                      krc_ready=$(oc -n "$OC_NS" get kafkarestclass default \
-                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+                      GEN=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.metadata.generation}' 2>/dev/null || echo "")
+                      OBSERVED=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.status.observedGeneration}' 2>/dev/null || echo "")
+                      CLUSTER_ID=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.status.kafkaClusterID}' 2>/dev/null || echo "")
+                      ENDPOINT=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.status.endpoint}' 2>/dev/null || echo "")
 
-                      if [ "$krc_state" = "ERROR" ]; then
-                        echo "ERROR: KafkaRestClass/default is in ERROR state. Cannot proceed."
-                        oc -n "$OC_NS" get kafkarestclass default -o yaml || true
-                        exit 1
-                      fi
-
-                      if [ "$krc_state" = "CREATED" ] || [ "$krc_ready" = "True" ]; then
-                        echo "✅ KafkaRestClass/default is ready (state=$krc_state, Ready=$krc_ready)"
+                      if [[ "$OBSERVED" == "$GEN" && -n "$CLUSTER_ID" && -n "$ENDPOINT" ]]; then
+                        echo "✅ KafkaRestClass/default is ready"
+                        echo "      observedGeneration=$OBSERVED, kafkaClusterID=$CLUSTER_ID, endpoint=$ENDPOINT"
                         krc_ready_gate=true
                         break
                       fi
@@ -1854,8 +1840,12 @@ stages:
                     done
 
                     if [ "$krc_ready_gate" != true ]; then
-                      echo "ERROR: KafkaRestClass/default did not become ready within 300s."
+                      echo "ERROR: KafkaRestClass/default readiness gate failed after 300s."
                       oc -n "$OC_NS" get kafkarestclass default -o yaml || true
+                      echo ""
+                      echo "Related KafkaRestClass events (filtered by current object UID):"
+                      KRC_UID=$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.metadata.uid}' 2>/dev/null || echo "")
+                      oc -n "$OC_NS" get events --field-selector involvedObject.uid="$KRC_UID" --sort-by='.lastTimestamp' || true
                       exit 1
                     fi
                   fi
