@@ -1377,6 +1377,27 @@ stages:
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
+                    # Check kafka-tls has clientAuth EKU
+                    if [ "$TARGET_ENV" = "dev" ]; then
+                      if oc -n "$OC_NS" get secret kafka-tls -o go-template="{{ index .data \"tls.crt\" }}" 2>/dev/null | base64 -d | \
+                         openssl x509 -noout -text 2>/dev/null | grep -q "TLS Web Server Authentication"; then
+                        echo "  ✓ kafka-tls has TLS Web Server Authentication EKU"
+                        dev_contract_passed=$((dev_contract_passed+1))
+                      else
+                        echo "  ✗ kafka-tls missing TLS Web Server Authentication EKU"
+                        dev_contract_failed=$((dev_contract_failed+1))
+                      fi
+
+                      # Check kafka-tls CN is in MDS impersonation.admins
+                      if grep -q "User:kafka.dah-flink-dev.svc.cluster.local" "$ENV_DIR/kafka.yaml"; then
+                        echo "  ✓ kafka-tls CN (kafka.dah-flink-dev.svc.cluster.local) present in MDS impersonation.admins"
+                        dev_contract_passed=$((dev_contract_passed+1))
+                      else
+                        echo "  ✗ kafka-tls CN missing from MDS impersonation.admins"
+                        dev_contract_failed=$((dev_contract_failed+1))
+                      fi
+                    fi
+
                     echo ""
                     echo "Contract checks: $dev_contract_passed passed, $dev_contract_failed failed"
                     if [ "$dev_contract_failed" -gt 0 ]; then

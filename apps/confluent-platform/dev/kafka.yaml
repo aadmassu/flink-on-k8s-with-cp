@@ -159,6 +159,7 @@ spec:
           - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
           - User:0oa1ov6h5mwmQTCKI358   # Control Center
           - User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net  # CFK operator mTLS for KafkaRestClass reconciliation
+          - User:kafka.dah-flink-dev.svc.cluster.local  # Kafka brokers (embedded kafkaRest) mTLS to MDS
 
   dependencies:
     kRaftController:
@@ -181,24 +182,11 @@ spec:
       tls:
         enabled: true
         secretRef: controlcenter-tls
-    # kafkaRest auth shape uses live-CRD flat form (type=oauth + jaasConfig + oauthSettings), NOT the vendored 3.1.x nested shape (runbook A22).
+    # kafkaRest uses mTLS to authenticate to Kafka brokers + MDS (runbook A22).
     kafkaRest:
       authentication:
-        type: oauth
-        jaasConfig:
-          secretRef: oauth-broker
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
-          subClaimName: sub
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
-          loginConnectTimeoutMs: 10000
-          loginReadTimeoutMs: 30000
-          loginRetryBackoffMaxMs: 5000
-          loginRetryBackoffMs: 60000
+        type: mtls
+        sslClientAuthentication: true
       tls:
         enabled: true
         secretRef: kafka-tls
