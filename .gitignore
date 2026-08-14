@@ -42,14 +42,12 @@ Thumbs.db
 images-phase*.txt
 
 # project-docs/ is local-only; the exceptions below are tracked because they
-# carry team-shared content (training bootcamp, PDF guideline library, and scratch files).
+# carry team-shared content (training bootcamp + scratch files).
 project-docs/*
 !project-docs/pump.txt
 !project-docs/dump.txt
 !project-docs/training
 !project-docs/training/**
-!project-docs/pdf
-!project-docs/pdf/**
 # Re-exclude OS / archive / source-doc cruft under training/
 project-docs/training/**/.DS_Store
 project-docs/training/Archive.zip
