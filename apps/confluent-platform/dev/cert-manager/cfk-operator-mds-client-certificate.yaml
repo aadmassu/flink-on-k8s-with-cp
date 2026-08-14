@@ -27,13 +27,9 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: cfk-operator-rbac
+  commonName: cfk-operator-rbac.apps.dv.ocp.fcbint.net
   dnsNames:
-    - cfk-operator-rbac
-    - kafka.dah-flink-dev.svc.cluster.local
-    - kafka.dah-flink-dev.svc
-    - kafka.apps.dv.ocp.fcbint.net
-    - mds.dv.ocp.fcbint.net
+    - cfk-operator-rbac.apps.dv.ocp.fcbint.net
   secretName: cfk-operator-mds-client-tls
   duration: 8760h0m0s
   renewBefore: 1080h0m0s

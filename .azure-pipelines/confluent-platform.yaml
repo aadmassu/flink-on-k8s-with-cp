@@ -1366,17 +1366,26 @@ stages:
                       dev_contract_passed=$((dev_contract_passed+1))
                     fi
 
-                    # Validate actual issued certificate: CN and clientAuth EKU
+                    # Validate actual issued certificate: FQDN CN and clientAuth EKU
                     echo "  Validating actual issued cfk-operator-mds-client certificate..."
                     cert_cn_actual=$(oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
                       -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d 2>/dev/null | \
                       openssl x509 -noout -subject 2>/dev/null | sed 's/.*CN=//' | sed 's/,.*//')
 
-                    if [ "$cert_cn_actual" = "cfk-operator-rbac" ]; then
-                      echo "  ✓ Issued certificate CN is cfk-operator-rbac"
+                    if [ "$cert_cn_actual" = "cfk-operator-rbac.apps.dv.ocp.fcbint.net" ]; then
+                      echo "  ✓ Issued certificate CN is cfk-operator-rbac.apps.dv.ocp.fcbint.net"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
-                      echo "  ✗ Issued certificate CN is '$cert_cn_actual', expected cfk-operator-rbac"
+                      echo "  ✗ Issued certificate CN is '$cert_cn_actual', expected cfk-operator-rbac.apps.dv.ocp.fcbint.net"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Validate principal mapping: FQDN CN maps to short principal
+                    if grep -q "RULE:.*CN=cfk-operator-rbac\\\\.apps\\\\.dv\\\\.ocp\\\\.fcbint\\\\.net.*\$" "$ENV_DIR/kafka.yaml"; then
+                      echo "  ✓ principalMappingRules maps FQDN CN to cfk-operator-rbac"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ Missing principalMappingRule for cfk-operator-rbac.apps.dv.ocp.fcbint.net"
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
@@ -1391,11 +1400,11 @@ stages:
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
-                    # Check certificate commonName (structured YAML parsing handles quoted/unquoted values)
-                    certificate_cn_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); print("pass" if data.get("spec",{}).get("commonName") == "cfk-operator-rbac" else "fail")' "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml" 2>/dev/null || echo "error")
+                    # Check certificate commonName (approved FQDN that maps to short principal)
+                    certificate_cn_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); print("pass" if data.get("spec",{}).get("commonName") == "cfk-operator-rbac.apps.dv.ocp.fcbint.net" else "fail")' "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml" 2>/dev/null || echo "error")
 
                     if [ "$certificate_cn_check" = "pass" ]; then
-                      echo "  ✓ certificate commonName is cfk-operator-rbac"
+                      echo "  ✓ certificate commonName is cfk-operator-rbac.apps.dv.ocp.fcbint.net"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
                       echo "  ✗ certificate commonName is incorrect"

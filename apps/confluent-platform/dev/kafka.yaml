@@ -132,6 +132,7 @@ spec:
         mtls:
           sslClientAuthentication: requested
           principalMappingRules:
+            - "RULE:.*CN=cfk-operator-rbac\\.apps\\.dv\\.ocp\\.fcbint\\.net.*$/cfk-operator-rbac/"
             - "RULE:.*CN=([a-zA-Z0-9.-]*).*$/$1/"
             - "DEFAULT"
         sso:
