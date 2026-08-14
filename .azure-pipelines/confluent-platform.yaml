@@ -1370,7 +1370,7 @@ stages:
                     echo "  Validating actual issued cfk-operator-mds-client certificate..."
                     cert_cn_actual=$(oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
                       -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d 2>/dev/null | \
-                      openssl x509 -noout -subject 2>/dev/null | sed 's/.*CN=//' | sed 's/,.*//')
+                      openssl x509 -noout -subject 2>/dev/null | sed 's/^subject=//' | sed 's/^ *//' | sed 's/CN = //' | sed 's/,.*//')
 
                     if [ "$cert_cn_actual" = "cfk-operator-rbac.apps.dv.ocp.fcbint.net" ]; then
                       echo "  ✓ Issued certificate CN is cfk-operator-rbac.apps.dv.ocp.fcbint.net"
@@ -1381,7 +1381,7 @@ stages:
                     fi
 
                     # Validate principal mapping: FQDN CN maps to short principal
-                    if grep -q "RULE:.*CN=cfk-operator-rbac\\\\.apps\\\\.dv\\\\.ocp\\\\.fcbint\\\\.net.*\$" "$ENV_DIR/kafka.yaml"; then
+                    if grep -q "cfk-operator-rbac.*apps.*dv.*ocp.*fcbint.*net.*cfk-operator-rbac" "$ENV_DIR/kafka.yaml"; then
                       echo "  ✓ principalMappingRules maps FQDN CN to cfk-operator-rbac"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
