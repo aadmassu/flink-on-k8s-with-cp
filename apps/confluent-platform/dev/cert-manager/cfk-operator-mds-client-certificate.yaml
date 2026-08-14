@@ -28,6 +28,11 @@ metadata:
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
   commonName: cfk-operator-rbac
+  dnsNames:
+    - kafka.dah-flink-dev.svc.cluster.local
+    - kafka.dah-flink-dev.svc
+    - kafka.apps.dv.ocp.fcbint.net
+    - mds.dv.ocp.fcbint.net
   subject:
     organizations:
       - FCB
