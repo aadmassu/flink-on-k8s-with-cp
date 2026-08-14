@@ -27,9 +27,9 @@ metadata:
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: cfk-operator-mds-client.apps.dv.ocp.fcbint.net
+  commonName: cfk-operator-rbac
   dnsNames:
-    - cfk-operator-mds-client.apps.dv.ocp.fcbint.net
+    - cfk-operator-rbac
     - kafka.dah-flink-dev.svc.cluster.local
     - kafka.dah-flink-dev.svc
     - kafka.apps.dv.ocp.fcbint.net

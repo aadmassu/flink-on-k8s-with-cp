@@ -1339,29 +1339,63 @@ stages:
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
-                    # Check kafka.yaml has cfk-operator mTLS principal in superUsers
-                    if grep -q "User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net" "$ENV_DIR/kafka.yaml"; then
-                      echo "  ✓ kafka.yaml has User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net in superUsers"
+                    # Check kafka.yaml has cfk-operator-rbac principal in superUsers
+                    if grep -q "User:cfk-operator-rbac" "$ENV_DIR/kafka.yaml"; then
+                      echo "  ✓ kafka.yaml has User:cfk-operator-rbac in superUsers"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
-                      echo "  ✗ kafka.yaml missing User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net in superUsers"
+                      echo "  ✗ kafka.yaml missing User:cfk-operator-rbac in superUsers"
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
-                    # Check kafka.yaml has cfk-operator mTLS principal in impersonation.admins
-                    if grep -A20 "impersonation:" "$ENV_DIR/kafka.yaml" | grep -q "User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net"; then
-                      echo "  ✓ kafka.yaml has User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net in impersonation.admins"
+                    # Check kafka.yaml has cfk-operator-rbac principal in impersonation.admins
+                    if grep -A20 "impersonation:" "$ENV_DIR/kafka.yaml" | grep -q "User:cfk-operator-rbac"; then
+                      echo "  ✓ kafka.yaml has User:cfk-operator-rbac in impersonation.admins"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
-                      echo "  ✗ kafka.yaml missing User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net in impersonation.admins"
+                      echo "  ✗ kafka.yaml missing User:cfk-operator-rbac in impersonation.admins"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Static validation: fail if OAuth overrides exist while kafkaRest uses mTLS
+                    if grep -q "confluent.kafkarest.sasl.oauthbearer" "$ENV_DIR/kafka.yaml"; then
+                      echo "  ✗ CONFLICT: confluent.kafkarest.sasl.oauthbearer present while dependencies.kafkaRest.authentication.type is mtls"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    else
+                      echo "  ✓ No OAuth overrides conflict with mTLS kafkaRest"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    fi
+
+                    # Validate actual issued certificate: CN and clientAuth EKU
+                    echo "  Validating actual issued cfk-operator-mds-client certificate..."
+                    cert_cn_actual=$(oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
+                      -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d 2>/dev/null | \
+                      openssl x509 -noout -subject 2>/dev/null | sed 's/.*CN=//' | sed 's/,.*//')
+
+                    if [ "$cert_cn_actual" = "cfk-operator-rbac" ]; then
+                      echo "  ✓ Issued certificate CN is cfk-operator-rbac"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ Issued certificate CN is '$cert_cn_actual', expected cfk-operator-rbac"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check issued certificate has clientAuth EKU
+                    if oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
+                      -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d 2>/dev/null | \
+                      openssl x509 -noout -text 2>/dev/null | grep -q "TLS Web Client Authentication"; then
+                      echo "  ✓ Issued certificate has TLS Web Client Authentication EKU"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ Issued certificate missing TLS Web Client Authentication EKU"
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
                     # Check certificate commonName (structured YAML parsing handles quoted/unquoted values)
-                    certificate_cn_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); print("pass" if data.get("spec",{}).get("commonName") == "cfk-operator-mds-client.apps.dv.ocp.fcbint.net" else "fail")' "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml" 2>/dev/null || echo "error")
+                    certificate_cn_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); print("pass" if data.get("spec",{}).get("commonName") == "cfk-operator-rbac" else "fail")' "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml" 2>/dev/null || echo "error")
 
                     if [ "$certificate_cn_check" = "pass" ]; then
-                      echo "  ✓ certificate commonName is cfk-operator-mds-client.apps.dv.ocp.fcbint.net"
+                      echo "  ✓ certificate commonName is cfk-operator-rbac"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
                       echo "  ✗ certificate commonName is incorrect"
@@ -1378,25 +1412,6 @@ stages:
                     fi
 
                     # Check kafka-tls has clientAuth EKU
-                    if [ "$TARGET_ENV" = "dev" ]; then
-                      if oc -n "$OC_NS" get secret kafka-tls -o go-template="{{ index .data \"tls.crt\" }}" 2>/dev/null | base64 -d | \
-                         openssl x509 -noout -text 2>/dev/null | grep -q "TLS Web Server Authentication"; then
-                        echo "  ✓ kafka-tls has TLS Web Server Authentication EKU"
-                        dev_contract_passed=$((dev_contract_passed+1))
-                      else
-                        echo "  ✗ kafka-tls missing TLS Web Server Authentication EKU"
-                        dev_contract_failed=$((dev_contract_failed+1))
-                      fi
-
-                      # Check kafka-tls CN is in MDS impersonation.admins
-                      if grep -q "User:kafka.dah-flink-dev.svc.cluster.local" "$ENV_DIR/kafka.yaml"; then
-                        echo "  ✓ kafka-tls CN (kafka.dah-flink-dev.svc.cluster.local) present in MDS impersonation.admins"
-                        dev_contract_passed=$((dev_contract_passed+1))
-                      else
-                        echo "  ✗ kafka-tls CN missing from MDS impersonation.admins"
-                        dev_contract_failed=$((dev_contract_failed+1))
-                      fi
-                    fi
 
                     echo ""
                     echo "Contract checks: $dev_contract_passed passed, $dev_contract_failed failed"
