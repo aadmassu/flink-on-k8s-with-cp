@@ -70,7 +70,7 @@ spec:
     superUsers:
       - User:0oa1owhtq2olDZWwf358   # DEV broker/MDS superuser
       - User:admin                   # internal SASL/PLAIN infrastructure user
-      - User:cfk-operator-rbac       # CFK operator mTLS for KafkaRestClass reconciliation
+      - User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net  # CFK operator mTLS for KafkaRestClass reconciliation
 
   listeners:
     internal:
@@ -158,7 +158,7 @@ spec:
           - User:0oa1owi0yntGMBvPS358   # Connect
           - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
           - User:0oa1ov6h5mwmQTCKI358   # Control Center
-          - User:cfk-operator-rbac       # CFK operator mTLS for KafkaRestClass reconciliation
+          - User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net  # CFK operator mTLS for KafkaRestClass reconciliation
 
   dependencies:
     kRaftController:

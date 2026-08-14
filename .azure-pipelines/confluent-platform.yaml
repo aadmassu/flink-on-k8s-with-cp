@@ -1339,22 +1339,21 @@ stages:
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
-                    # Check kafka.yaml has User:cfk-operator-rbac in superUsers
-                    if grep -q "User:cfk-operator-rbac.*superUsers\|superUsers.*User:cfk-operator-rbac" "$ENV_DIR/kafka.yaml" || \
-                       (grep -A10 "superUsers:" "$ENV_DIR/kafka.yaml" | grep -q "User:cfk-operator-rbac"); then
-                      echo "  ✓ kafka.yaml has User:cfk-operator-rbac in superUsers"
+                    # Check kafka.yaml has cfk-operator mTLS principal in superUsers
+                    if grep -q "User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net" "$ENV_DIR/kafka.yaml"; then
+                      echo "  ✓ kafka.yaml has User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net in superUsers"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
-                      echo "  ✗ kafka.yaml missing User:cfk-operator-rbac in superUsers"
+                      echo "  ✗ kafka.yaml missing User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net in superUsers"
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
-                    # Check kafka.yaml has User:cfk-operator-rbac in impersonation.admins
-                    if grep -A20 "impersonation:" "$ENV_DIR/kafka.yaml" | grep -q "User:cfk-operator-rbac"; then
-                      echo "  ✓ kafka.yaml has User:cfk-operator-rbac in impersonation.admins"
+                    # Check kafka.yaml has cfk-operator mTLS principal in impersonation.admins
+                    if grep -A20 "impersonation:" "$ENV_DIR/kafka.yaml" | grep -q "User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net"; then
+                      echo "  ✓ kafka.yaml has User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net in impersonation.admins"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
-                      echo "  ✗ kafka.yaml missing User:cfk-operator-rbac in impersonation.admins"
+                      echo "  ✗ kafka.yaml missing User:cfk-operator-mds-client.apps.dv.ocp.fcbint.net in impersonation.admins"
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
