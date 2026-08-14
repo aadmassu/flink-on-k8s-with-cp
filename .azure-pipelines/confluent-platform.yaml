@@ -1358,9 +1358,11 @@ stages:
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
-                    # Check certificate commonName
-                    if grep -q "commonName: cfk-operator-rbac" "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml"; then
-                      echo "  ✓ certificate commonName is cfk-operator-rbac"
+                    # Check certificate commonName (structured YAML parsing handles quoted/unquoted values)
+                    certificate_cn_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); print("pass" if data.get("spec",{}).get("commonName") == "cfk-operator-mds-client.dah-flink-dev.svc.cluster.local" else "fail")' "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml" 2>/dev/null || echo "error")
+
+                    if [ "$certificate_cn_check" = "pass" ]; then
+                      echo "  ✓ certificate commonName is cfk-operator-mds-client.dah-flink-dev.svc.cluster.local"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
                       echo "  ✗ certificate commonName is incorrect"
