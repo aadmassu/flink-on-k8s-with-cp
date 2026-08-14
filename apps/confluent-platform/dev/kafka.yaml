@@ -158,6 +158,7 @@ spec:
           - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
           - User:0oa1ov6h5mwmQTCKI358   # Control Center
           - User:cfk-operator-rbac       # CFK operator mTLS for KafkaRestClass reconciliation
+          - User:kafka.dah-flink-dev.svc.cluster.local  # Kafka brokers embedded kafkaRest mTLS to MDS
 
   dependencies:
     kRaftController:
