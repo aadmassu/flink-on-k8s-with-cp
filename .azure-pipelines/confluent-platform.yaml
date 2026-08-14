@@ -710,6 +710,11 @@ stages:
                     cert-manager/kafkarest-tls-certificate.yaml
                     cert-manager/controlcenter-tls-certificate.yaml
                   )
+
+                  # DEV-only: include mTLS client certificate
+                  if [ "$TARGET_ENV" = "dev" ]; then
+                    REQUIRED_FILES+=(cert-manager/cfk-operator-mds-client-certificate.yaml)
+                  fi
                   missing_files=0
                   for f in "${REQUIRED_FILES[@]}"; do
                     if [ -f "$ENV_DIR/$f" ]; then
@@ -897,7 +902,7 @@ stages:
 
                   echo "=== PHASE 1: DRY-RUN Certificate CRs (before applying) ==="
                   DRYRUN_FAILED=0
-                  for cert_file in "$ENV_DIR"/cert-manager/*-tls-certificate.yaml; do
+                  for cert_file in "$ENV_DIR"/cert-manager/*-certificate.yaml; do
                     if [ ! -f "$cert_file" ]; then continue; fi
 
                     echo "Dry-run: $(basename "$cert_file")"
@@ -915,7 +920,7 @@ stages:
 
                   echo ""
                   echo "=== PHASE 2: APPLY Certificate CRs (real) ==="
-                  for cert in "$ENV_DIR"/cert-manager/*-tls-certificate.yaml; do
+                  for cert in "$ENV_DIR"/cert-manager/*-certificate.yaml; do
                     if [ ! -f "$cert" ]; then continue; fi
                     echo ""
                     echo "+ oc apply -f $cert"
@@ -938,35 +943,64 @@ stages:
                     kafkarest-ingress-tls
                     controlcenter-ingress-tls
                   )
+
+                  # DEV-specific: add mTLS client certificate for CFK operator KafkaRestClass reconciliation
+                  if [ "$TARGET_ENV" = "dev" ]; then
+                    CERT_NAMES+=(cfk-operator-mds-client)
+                  fi
                   validate_certificate_secret() {
                     local cert_name=$1
+                    local secret_name=$2
                     local cert_tmp
                     cert_tmp=$(mktemp -d)
 
-                    if ! oc -n "$OC_NS" get secret "$cert_name" \
-                        -o jsonpath='{.data.tls\.crt}' | base64 -d > "$cert_tmp/tls.crt" \
-                      || ! oc -n "$OC_NS" get secret "$cert_name" \
-                        -o jsonpath='{.data.tls\.key}' | base64 -d > "$cert_tmp/tls.key"; then
-                      echo "  ERROR: could not extract TLS material from Secret/$cert_name"
+                    # Extract tls.crt and tls.key using go-template for dot-safe lookups
+                    local crt_data key_data
+                    crt_data=$(oc -n "$OC_NS" get secret "$secret_name" \
+                      -o go-template="{{ index .data \"tls.crt\" }}" 2>/dev/null || true)
+                    key_data=$(oc -n "$OC_NS" get secret "$secret_name" \
+                      -o go-template="{{ index .data \"tls.key\" }}" 2>/dev/null || true)
+
+                    if [ -z "$crt_data" ] || [ -z "$key_data" ]; then
+                      echo "  ERROR: Certificate/$cert_name → Secret/$secret_name missing tls.crt or tls.key"
                       rm -rf "$cert_tmp"
                       return 1
                     fi
 
+                    # Decode and save to temp files for validation
+                    if ! printf '%s' "$crt_data" | base64 -d > "$cert_tmp/tls.crt" 2>/dev/null \
+                      || ! printf '%s' "$key_data" | base64 -d > "$cert_tmp/tls.key" 2>/dev/null; then
+                      echo "  ERROR: Certificate/$cert_name → Secret/$secret_name: base64 decode failed"
+                      rm -rf "$cert_tmp"
+                      return 1
+                    fi
+
+                    # Validate certificate is not expired
                     if ! openssl x509 -in "$cert_tmp/tls.crt" -noout -checkend 86400 >/dev/null; then
-                      echo "  ERROR: certificate is invalid or expires within 24 hours"
+                      echo "  ERROR: Certificate/$cert_name → Secret/$secret_name: certificate is invalid or expires within 24 hours"
                       rm -rf "$cert_tmp"
                       return 1
                     fi
 
+                    # Validate tls.crt and tls.key match
                     local cert_pub key_pub
                     cert_pub=$(openssl x509 -in "$cert_tmp/tls.crt" -pubkey -noout \
                       | openssl pkey -pubin -outform DER 2>/dev/null | sha256sum | awk '{print $1}')
                     key_pub=$(openssl pkey -in "$cert_tmp/tls.key" -pubout -outform DER 2>/dev/null \
                       | sha256sum | awk '{print $1}')
                     if [ -z "$cert_pub" ] || [ "$cert_pub" != "$key_pub" ]; then
-                      echo "  ERROR: tls.crt and tls.key do not match"
+                      echo "  ERROR: Certificate/$cert_name → Secret/$secret_name: tls.crt and tls.key do not match"
                       rm -rf "$cert_tmp"
                       return 1
+                    fi
+
+                    # For mTLS certificates, validate clientAuth EKU
+                    if [[ "$cert_name" == *"mds-client"* ]]; then
+                      if ! openssl x509 -in "$cert_tmp/tls.crt" -noout -text | grep -q "TLS Web Client Authentication"; then
+                        echo "  ERROR: Certificate/$cert_name → Secret/$secret_name: missing TLS Web Client Authentication EKU"
+                        rm -rf "$cert_tmp"
+                        return 1
+                      fi
                     fi
 
                     local dns_name
@@ -1005,16 +1039,26 @@ stages:
                         -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
 
                       if [ "$ready" = "True" ]; then
-                        # Certificate is ready, verify the Secret exists and has keys
-                        if oc -n "$OC_NS" get secret "$cert_name" >/dev/null 2>&1; then
-                          crt=$(oc -n "$OC_NS" get secret "$cert_name" \
-                            -o jsonpath='{.data.tls\.crt}' 2>/dev/null | wc -c)
-                          key=$(oc -n "$OC_NS" get secret "$cert_name" \
-                            -o jsonpath='{.data.tls\.key}' 2>/dev/null | wc -c)
+                        # Certificate is ready, retrieve its actual Secret name from spec.secretName
+                        secret_name=$(oc -n "$OC_NS" get certificate "$cert_name" \
+                          -o jsonpath='{.spec.secretName}' 2>/dev/null || echo "")
+
+                        if [ -z "$secret_name" ]; then
+                          echo "  ERROR: certificate/$cert_name has no spec.secretName"
+                          cert_failed=$((cert_failed+1))
+                          break
+                        fi
+
+                        # Verify the Secret exists and has keys
+                        if oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                          crt=$(oc -n "$OC_NS" get secret "$secret_name" \
+                            -o go-template="{{ index .data \"tls.crt\" }}" 2>/dev/null | wc -c)
+                          key=$(oc -n "$OC_NS" get secret "$secret_name" \
+                            -o go-template="{{ index .data \"tls.key\" }}" 2>/dev/null | wc -c)
 
                           if [ "$crt" -ge 100 ] && [ "$key" -ge 100 ] \
-                             && validate_certificate_secret "$cert_name"; then
-                            echo "  ✅ ready after $((i*10))s (Ready, valid lifetime/SAN, matching key)"
+                             && validate_certificate_secret "$cert_name" "$secret_name"; then
+                            echo "  ✅ ready after $((i*10))s (Certificate/$cert_name → Secret/$secret_name, valid lifetime/SAN/key/EKU)"
                             break
                           fi
                         fi
@@ -1039,6 +1083,35 @@ stages:
                     echo ""
                     echo "FATAL: $cert_failed certificate(s) not ready after waiting"
                     exit 1
+                  fi
+
+                  # DEV-only: validate mTLS client certificate secret contents
+                  if [ "$TARGET_ENV" = "dev" ]; then
+                    echo ""
+                    echo "=== PHASE 3b: Validating DEV mTLS client certificate secret ==="
+                    MTLS_SECRET="cfk-operator-mds-client-tls"
+                    echo "Verifying Secret/$MTLS_SECRET contains required keys with correct format..."
+
+                    # Validate tls.crt, tls.key, ca.crt exist and are nonempty using go-template
+                    for key in tls.crt tls.key ca.crt; do
+                      value=$(oc -n "$OC_NS" get secret "$MTLS_SECRET" \
+                        -o go-template="{{ index .data \"$key\" }}" 2>/dev/null || true)
+
+                      if [ -z "$value" ]; then
+                        echo "  ERROR: Secret/$MTLS_SECRET missing or empty key: $key"
+                        exit 1
+                      fi
+                      echo "  ✓ $key present and nonempty"
+                    done
+
+                    # Validate tls.crt has clientAuth EKU
+                    crt_data=$(oc -n "$OC_NS" get secret "$MTLS_SECRET" \
+                      -o go-template="{{ index .data \"tls.crt\" }}" 2>/dev/null | base64 -d)
+                    if ! printf '%s' "$crt_data" | openssl x509 -noout -text | grep -q "TLS Web Client Authentication"; then
+                      echo "  ERROR: Secret/$MTLS_SECRET tls.crt missing TLS Web Client Authentication EKU"
+                      exit 1
+                    fi
+                    echo "  ✓ tls.crt has TLS Web Client Authentication EKU"
                   fi
 
                   echo ""
@@ -1212,6 +1285,105 @@ stages:
                     exit 1
                   fi
 
+                  # DEV-only: static contract checks for mTLS KafkaRestClass
+                  if [ "$TARGET_ENV" = "dev" ]; then
+                    echo ""
+                    echo "=== DEV mTLS Static Contract Checks ==="
+                    dev_contract_passed=0
+                    dev_contract_failed=0
+
+                    # Check kafkarestclass.yaml endpoint
+                    if grep -q "https://kafka\.dah-flink-dev\.svc\.cluster\.local:8090" "$ENV_DIR/kafkarestclass.yaml"; then
+                      echo "  ✓ kafkarestclass endpoint correct"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ kafkarestclass endpoint incorrect"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check kafkarestclass authentication type is mtls
+                    if grep -q "type: mtls" "$ENV_DIR/kafkarestclass.yaml"; then
+                      echo "  ✓ kafkarestclass authentication type is mtls"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ kafkarestclass authentication type is not mtls"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check kafkarestclass sslClientAuthentication
+                    if grep -A5 "authentication:" "$ENV_DIR/kafkarestclass.yaml" | grep -q "sslClientAuthentication: true"; then
+                      echo "  ✓ kafkarestclass sslClientAuthentication is true"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ kafkarestclass sslClientAuthentication is not true"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check kafkarestclass tls.secretRef is correct
+                    if grep -q "secretRef: cfk-operator-mds-client-tls" "$ENV_DIR/kafkarestclass.yaml"; then
+                      echo "  ✓ kafkarestclass tls.secretRef is cfk-operator-mds-client-tls"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ kafkarestclass tls.secretRef is incorrect"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check kafka.yaml has provider.mtls with sslClientAuthentication: requested
+                    mtls_ssl_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); value=data.get("spec",{}).get("services",{}).get("mds",{}).get("provider",{}).get("mtls",{}).get("sslClientAuthentication"); print("pass" if value == "requested" else "fail")' "$ENV_DIR/kafka.yaml" 2>/dev/null || echo "error")
+
+                    if [ "$mtls_ssl_check" = "pass" ]; then
+                      echo "  ✓ kafka.yaml provider.mtls has sslClientAuthentication: requested"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ kafka.yaml provider.mtls configuration incorrect or missing"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check kafka.yaml has User:cfk-operator-rbac in superUsers
+                    if grep -q "User:cfk-operator-rbac.*superUsers\|superUsers.*User:cfk-operator-rbac" "$ENV_DIR/kafka.yaml" || \
+                       (grep -A10 "superUsers:" "$ENV_DIR/kafka.yaml" | grep -q "User:cfk-operator-rbac"); then
+                      echo "  ✓ kafka.yaml has User:cfk-operator-rbac in superUsers"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ kafka.yaml missing User:cfk-operator-rbac in superUsers"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check kafka.yaml has User:cfk-operator-rbac in impersonation.admins
+                    if grep -A20 "impersonation:" "$ENV_DIR/kafka.yaml" | grep -q "User:cfk-operator-rbac"; then
+                      echo "  ✓ kafka.yaml has User:cfk-operator-rbac in impersonation.admins"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ kafka.yaml missing User:cfk-operator-rbac in impersonation.admins"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check certificate commonName
+                    if grep -q "commonName: cfk-operator-rbac" "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml"; then
+                      echo "  ✓ certificate commonName is cfk-operator-rbac"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ certificate commonName is incorrect"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    # Check certificate secretName
+                    if grep -q "secretName: cfk-operator-mds-client-tls" "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml"; then
+                      echo "  ✓ certificate secretName is cfk-operator-mds-client-tls"
+                      dev_contract_passed=$((dev_contract_passed+1))
+                    else
+                      echo "  ✗ certificate secretName is incorrect"
+                      dev_contract_failed=$((dev_contract_failed+1))
+                    fi
+
+                    echo ""
+                    echo "Contract checks: $dev_contract_passed passed, $dev_contract_failed failed"
+                    if [ "$dev_contract_failed" -gt 0 ]; then
+                      echo "ERROR: DEV mTLS contract violations detected. Fix manifests before proceeding."
+                      exit 1
+                    fi
+                  fi
+
                   # Phased apply: controller + Kafka first, wait for cluster-ready, THEN apply Phase 2 (SR/Connect/REST/C3). Without this, SR crashes after kafkastore.init.timeout.ms and CrashLoopBackOffs (runbook A14). Poll status.conditions["platform.confluent.io/cluster-ready"]==True directly — `oc wait` mis-parses the slash in the condition type.
 
                   wait_for_cr_ready() {
@@ -1378,12 +1550,6 @@ stages:
                   echo ""
                   echo "=== Phase 1b: Kafka ==="
                   if is_true "$APPLY_KAFKA"; then
-                    # kafkarestclass.yaml is config-only (no pods), bundled
-                    # with Kafka because the Kafka CR advertises it.
-                    echo ""
-                    echo "+ oc apply -f $ENV_DIR/kafkarestclass.yaml"
-                    oc apply -f "$ENV_DIR/kafkarestclass.yaml"
-
                     KAFKA_YAML="$ENV_DIR/kafka.yaml"
                     if [ ! -f "$KAFKA_YAML" ]; then
                       echo "ABORT: $KAFKA_YAML not found in checkout."
@@ -1394,6 +1560,71 @@ stages:
                     oc apply -f "$KAFKA_YAML"
                     wait_for_cr_reconcile kafka kafka 300
                     wait_for_statefulset_rollout kafka 900
+                    wait_for_cr_ready kafka kafka 900
+
+                    # After Kafka is ready, apply KafkaRestClass
+                    # (must come after Kafka CR for mTLS principal validation)
+                    echo ""
+                    echo "=== Phase 1b (continued): KafkaRestClass (after Kafka ready) ==="
+                    echo ""
+                    echo "+ oc apply -f $ENV_DIR/kafkarestclass.yaml"
+                    oc apply -f "$ENV_DIR/kafkarestclass.yaml"
+
+                    # Wait for KafkaRestClass to be CREATED
+                    echo ""
+                    echo "=== Waiting for KafkaRestClass to reach CREATED state ==="
+                    KREST_CLASS_TIMEOUT=300
+                    KREST_CLASS_ELAPSED=0
+                    KREST_CLASS_STEP=10
+                    krc_ready_success=false
+
+                    while [ "$KREST_CLASS_ELAPSED" -lt "$KREST_CLASS_TIMEOUT" ]; do
+                      krc_state=$(oc -n "$OC_NS" get kafkarestclass default \
+                        -o jsonpath='{.status.state}' 2>/dev/null || echo "")
+                      krc_ready=$(oc -n "$OC_NS" get kafkarestclass default \
+                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+
+                      if [ "$krc_state" = "ERROR" ]; then
+                        echo ""
+                        echo "ERROR: KafkaRestClass entered ERROR state!"
+                        echo "Full KafkaRestClass status:"
+                        oc -n "$OC_NS" get kafkarestclass default -o yaml || true
+                        echo ""
+                        echo "Related KafkaRestClass events:"
+                        oc -n "$OC_NS" get events --field-selector involvedObject.kind=KafkaRestClass --sort-by='.lastTimestamp' || true
+                        echo ""
+                        echo "CFK operator pod logs:"
+                        oc -n confluent-operator logs -l app.kubernetes.io/name=confluent-operator --tail=50 || true
+                        exit 1
+                      fi
+
+                      if [ "$krc_state" = "CREATED" ] || [ "$krc_ready" = "True" ]; then
+                        echo "  ✅ KafkaRestClass ready after ${KREST_CLASS_ELAPSED}s (state=$krc_state, Ready=$krc_ready)"
+                        krc_ready_success=true
+                        break
+                      fi
+
+                      if [ "$KREST_CLASS_ELAPSED" -gt 0 ] && [ $((KREST_CLASS_ELAPSED % 60)) -eq 0 ]; then
+                        echo "  ${KREST_CLASS_ELAPSED}s elapsed, KafkaRestClass not yet ready. Current state: $krc_state"
+                      fi
+
+                      sleep "$KREST_CLASS_STEP" || true
+                      KREST_CLASS_ELAPSED=$((KREST_CLASS_ELAPSED + KREST_CLASS_STEP))
+                    done
+
+                    if [ "$krc_ready_success" != true ]; then
+                      echo ""
+                      echo "ERROR: KafkaRestClass did not reach CREATED state within ${KREST_CLASS_TIMEOUT}s."
+                      echo "Final KafkaRestClass status:"
+                      oc -n "$OC_NS" get kafkarestclass default -o yaml || true
+                      echo ""
+                      echo "Related KafkaRestClass events:"
+                      oc -n "$OC_NS" get events --field-selector involvedObject.kind=KafkaRestClass --sort-by='.lastTimestamp' || true
+                      echo ""
+                      echo "CFK operator pod logs (last 50 lines):"
+                      oc -n confluent-operator logs -l app.kubernetes.io/name=confluent-operator --tail=50 || true
+                      exit 1
+                    fi
                   else
                     echo "(Kafka Broker skipped — checkbox off; kafkarestclass.yaml also not applied)"
                   fi
@@ -1538,6 +1769,51 @@ stages:
                     fi
                   fi
 
+                  # Unconditional KafkaRestClass readiness gate before rolebindings
+                  # (required whenever ANY managed component is selected)
+                  if is_true "$APPLY_SR" || is_true "$APPLY_CONNECT" \
+                     || is_true "$APPLY_KREST" || is_true "$APPLY_C3"; then
+                    echo ""
+                    echo "=== Pre-RBAC: Verifying KafkaRestClass readiness ==="
+
+                    # Verify KafkaRestClass/default exists and is ready
+                    krc_present=$(oc -n "$OC_NS" get kafkarestclass default 2>/dev/null || true)
+                    if [ -z "$krc_present" ]; then
+                      echo "ERROR: KafkaRestClass/default not found. Cannot proceed with RBAC/components."
+                      exit 1
+                    fi
+
+                    krc_ready_gate=false
+                    krc_gate_timeout=$((SECONDS + 300))
+
+                    while [ "$SECONDS" -lt "$krc_gate_timeout" ]; do
+                      krc_state=$(oc -n "$OC_NS" get kafkarestclass default \
+                        -o jsonpath='{.status.state}' 2>/dev/null || echo "")
+                      krc_ready=$(oc -n "$OC_NS" get kafkarestclass default \
+                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+
+                      if [ "$krc_state" = "ERROR" ]; then
+                        echo "ERROR: KafkaRestClass/default is in ERROR state. Cannot proceed."
+                        oc -n "$OC_NS" get kafkarestclass default -o yaml || true
+                        exit 1
+                      fi
+
+                      if [ "$krc_state" = "CREATED" ] || [ "$krc_ready" = "True" ]; then
+                        echo "✅ KafkaRestClass/default is ready (state=$krc_state, Ready=$krc_ready)"
+                        krc_ready_gate=true
+                        break
+                      fi
+
+                      sleep 10
+                    done
+
+                    if [ "$krc_ready_gate" != true ]; then
+                      echo "ERROR: KafkaRestClass/default did not become ready within 300s."
+                      oc -n "$OC_NS" get kafkarestclass default -o yaml || true
+                      exit 1
+                    fi
+                  fi
+
                   echo ""
                   echo "=== Phase 2 (pre-component): RBAC rolebindings ==="
                   # ConfluentRolebinding reconciliation is asynchronous. Do not
@@ -1545,8 +1821,12 @@ stages:
                   # those components can authenticate before MDS has installed
                   # their authorization grants and then crash with
                   # TopicAuthorizationException/GroupAuthorizationException.
-                  if [ -f "$ENV_DIR/rolebindings.yaml" ]; then
-                    echo "+ oc apply -f $ENV_DIR/rolebindings.yaml"
+                  # Only apply rolebindings when Kafka or managed components are in scope.
+                  if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
+                     || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
+                     || is_true "$APPLY_C3"; then
+                    if [ -f "$ENV_DIR/rolebindings.yaml" ]; then
+                      echo "+ oc apply -f $ENV_DIR/rolebindings.yaml"
                     rolebinding_resources=$(oc apply -f "$ENV_DIR/rolebindings.yaml" -o name)
 
                     echo "=== Waiting up to 300s for every applied ConfluentRolebinding ==="
@@ -1606,9 +1886,12 @@ stages:
 
                       sleep 10
                     done
+                    else
+                      echo "FATAL: $ENV_DIR/rolebindings.yaml not found; managed components cannot be authorized."
+                      exit 1
+                    fi
                   else
-                    echo "FATAL: $ENV_DIR/rolebindings.yaml not found; managed components cannot be authorized."
-                    exit 1
+                    echo "(RBAC rolebindings skipped — no Kafka or managed component selected)"
                   fi
 
                   echo ""
@@ -1950,11 +2233,11 @@ stages:
                   fi
 
                   echo ""
-                  echo "=== Deleting cert-manager Certificates (cascades to *-tls Secrets) ==="
+                  echo "=== Deleting cert-manager Certificates (cascades to Secrets) ==="
                   # Certificates can be force-deleted — no webhook, no risk
                   # of data loss. Keep `|| true` here so a missing file or
                   # already-deleted resource doesn't fail the step.
-                  for cert in "$ENV_DIR"/cert-manager/*-tls-certificate.yaml; do
+                  for cert in "$ENV_DIR"/cert-manager/*-certificate.yaml; do
                     if [ -f "$cert" ]; then
                       echo "+ oc delete -f $cert --ignore-not-found"
                       oc delete -f "$cert" --ignore-not-found || true

@@ -24,21 +24,8 @@ spec:
     namespace: dah-flink-dev
   kafkaRest:
     endpoint: https://kafka.dah-flink-dev.svc.cluster.local:8090
-    tls:
-      secretRef: kafka-tls
     authentication:
-      type: oauth
-      oauth:
-        secretRef: oauth-broker
-        configuration:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
-          subClaimName: sub
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(Dev)
-          loginConnectTimeoutMs: 10000
-          loginReadTimeoutMs: 30000
-          loginRetryBackoffMaxMs: 5000
-          loginRetryBackoffMs: 60000
+      type: mtls
+      sslClientAuthentication: true
+    tls:
+      secretRef: cfk-operator-mds-client-tls
