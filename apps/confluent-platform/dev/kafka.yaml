@@ -105,6 +105,8 @@ spec:
   # MDS: OAuth for API, OIDC for C3 browser SSO. oauth-mds-rest = server-side; oauth-mds-sso = browser login.
   services:
     mds:
+      authentication:
+        type: bearer
       tls:
         enabled: true
         secretRef: kafka-tls
