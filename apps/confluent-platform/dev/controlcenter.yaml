@@ -193,6 +193,17 @@ spec:
   services:
     prometheus:
       image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-prometheus:2.5.0
+      # OpenShift ResourceQuota validates every generated container. These
+      # limits are for the bundled Prometheus container, not the main C3
+      # container covered by spec.podTemplate.resources.
+      containerTemplate:
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 2Gi
       authentication:
         type: basic
         basic:
@@ -203,6 +214,15 @@ spec:
         dataVolumeCapacity: 15Gi
     alertmanager:
       image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-alertmanager:2.5.0
+      # ResourceQuota also requires explicit resources for Alertmanager.
+      containerTemplate:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
       authentication:
         type: basic
         basic:

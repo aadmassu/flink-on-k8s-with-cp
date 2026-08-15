@@ -50,7 +50,7 @@ parameters:
     displayName: "Uninstall: also wipe orphaned CFK PVCs"
     type: boolean
     default: false
-    # Only honored when action=uninstall. Deletes data0-{kafka,kraftcontroller,controlcenter}-* PVCs after CR delete. Required for re-install (FCB Gatekeeper [ceph-storage] rejects CFK's vct-without-storageClassName when PVCs are reused).
+    # Only honored when action=uninstall. Deletes CFK data PVCs after all CRs are gone and verifies that none of the targeted PVCs remain. Required for a clean re-install (FCB Gatekeeper [ceph-storage] rejects CFK's vct-without-storageClassName when PVCs are reused).
 
   # install-or-update component selection. "All" checked = apply everything in dep order; "All" unchecked = apply only checked components (at least one required). Cluster-upgrade order: KRaft Controller -> Kafka Broker -> SR / Connect / REST / C3. Phased waits (kraftcontroller-ready before Kafka, kafka-ready before Phase 2) fire in either mode. Ignored when action != install-or-update.
 
@@ -2194,13 +2194,14 @@ stages:
                   echo "=== Deleting Confluent Platform CRs (reverse dependency order) ==="
                   # Reverse order so dependents shut down before backends. No `|| true` — we want the pipeline to fail loudly on a silent webhook-rejected delete (the operator would recreate any PVCs the later wipePVCs sub-step then tries to delete).
                   DELETE_ORDER=(
+                    rolebindings.yaml
                     controlcenter.yaml
                     kafkarest.yaml
                     connect.yaml
                     schemaregistry.yaml
+                    kafkarestclass.yaml
                     kafka.yaml
                     kraftcontroller.yaml
-                    kafkarestclass.yaml
                   )
                   FAIL=0
                   for f in "${DELETE_ORDER[@]}"; do
@@ -2219,7 +2220,7 @@ stages:
                     echo ""
                     echo "=== Uninstall didn't go clean — checking for CRs stuck in Terminating ==="
                     STUCK=$(oc -n "$OC_NS" get \
-                      kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
+                      kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass,confluentrolebinding \
                       -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.kind}{"/"}{.metadata.name}{"\n"}{end}' \
                       2>/dev/null)
 
@@ -2255,7 +2256,7 @@ stages:
 
                       # Re-check after the patch sweep.
                       STILL_STUCK=$(oc -n "$OC_NS" get \
-                        kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
+                        kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass,confluentrolebinding \
                         -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.kind}{"/"}{.metadata.name}{"\n"}{end}' \
                         2>/dev/null | grep -c . || true)
 
@@ -2282,7 +2283,7 @@ stages:
 
                   echo ""
                   echo "=== Remaining Confluent Platform objects ==="
-                  oc get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass \
+                  oc get kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass,confluentrolebinding \
                     -n "$OC_NS" 2>&1 || true
                   oc get pods -n "$OC_NS" -l app.kubernetes.io/part-of=confluent-platform 2>&1 || true
 
@@ -2290,16 +2291,14 @@ stages:
                   if [ "$WIPE_PVCS" = "True" ] || [ "$WIPE_PVCS" = "true" ]; then
                     echo ""
                     echo "=== wipePVCs=true — deleting orphaned CFK PVCs ==="
-                    # CFK PVC pattern: data<N>-<sts>-<ordinal>.
-                    PVC_PATTERNS=(
-                      'data[0-9]*-kafka-[0-9]*'
-                      'data[0-9]*-kraftcontroller-[0-9]*'
-                      'data[0-9]*-controlcenter-[0-9]*'
-                    )
+                    # CFK PVCs normally use data<N>-<statefulset>-<ordinal>.
+                    # Include the bundled C3 Prometheus naming variants used
+                    # across Control Center Next Gen releases.
+                    PVC_REGEX='^(data[0-9]+-(kafka|kraftcontroller|controlcenter)-[0-9]+|prometheus(-data)?-controlcenter-[0-9]+)$'
                     MATCHED=$(
                       oc -n "$OC_NS" get pvc \
                         -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
-                        | grep -E "^($(IFS='|'; echo "${PVC_PATTERNS[*]}"))$" \
+                        | grep -E "$PVC_REGEX" \
                         || true
                     )
                     if [ -z "$MATCHED" ]; then
@@ -2307,13 +2306,28 @@ stages:
                     else
                       echo "PVCs to delete:"
                       echo "$MATCHED" | sed 's/^/  - /'
+                      PVC_DELETE_FAILED=0
                       for pvc in $MATCHED; do
                         echo "+ oc delete pvc/$pvc -n $OC_NS --wait=true --timeout=2m"
-                        oc -n "$OC_NS" delete pvc "$pvc" --wait=true --timeout=2m || true
+                        if ! oc -n "$OC_NS" delete pvc "$pvc" --wait=true --timeout=2m; then
+                          echo "FAIL: PVC $pvc was not deleted cleanly"
+                          PVC_DELETE_FAILED=1
+                        fi
                       done
                       echo ""
                       echo "=== Remaining PVCs in $OC_NS ==="
                       oc -n "$OC_NS" get pvc 2>&1 || true
+
+                      REMAINING_TARGET_PVCS=$(
+                        oc -n "$OC_NS" get pvc \
+                          -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
+                          | grep -E "$PVC_REGEX" || true
+                      )
+                      if [ "$PVC_DELETE_FAILED" -ne 0 ] || [ -n "$REMAINING_TARGET_PVCS" ]; then
+                        echo "FATAL: clean uninstall requested, but targeted CFK PVCs remain:"
+                        printf '%s\n' "$REMAINING_TARGET_PVCS" | sed '/^$/d; s/^/  - /'
+                        FAIL=1
+                      fi
                     fi
                   else
                     echo ""
