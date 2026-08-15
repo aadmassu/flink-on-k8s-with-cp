@@ -2266,6 +2266,24 @@ stages:
                   )
                   FAIL=0
 
+                  # ConfluentRoleBindings may be created outside
+                  # rolebindings.yaml (for example bootstrap SystemAdmin and
+                  # component-internal bindings). Delete every binding in this
+                  # namespace before KafkaRestClass/Kafka disappear, otherwise
+                  # their finalizers can no longer complete MDS discovery.
+                  echo ""
+                  echo "=== Deleting all namespace ConfluentRoleBindings ==="
+                  while IFS= read -r rolebinding_name; do
+                    [ -z "$rolebinding_name" ] && continue
+                    echo "+ oc -n $OC_NS delete $rolebinding_name --wait=true --timeout=2m"
+                    if ! oc -n "$OC_NS" delete "$rolebinding_name" \
+                        --wait=true --timeout=2m; then
+                      echo "FAIL: deletion of $rolebinding_name did not complete cleanly"
+                      FAIL=1
+                    fi
+                  done < <(oc -n "$OC_NS" get confluentrolebinding \
+                    -o name 2>/dev/null || true)
+
                   # Browser-facing routes are dependents of the component
                   # Services. Remove them first so a clean uninstall does not
                   # leave routes pointing at Services that no longer exist.
@@ -2414,6 +2432,64 @@ stages:
                   [ "${#REMAINING_TLS_SECRETS[@]}" -eq 0 ] \
                     && echo "All generated TLS Secrets are absent; certificate recreation can start cleanly."
 
+                  # Remove only Confluent Platform prerequisite Secrets created
+                  # by this pipeline. Preserve the shared confluent-license
+                  # Secret because CMF consumes it. Also preserve every active
+                  # ExternalSecret target: ESO owns that lifecycle and may
+                  # recreate the Secret immediately if it is deleted here.
+                  echo ""
+                  echo "=== Deleting pipeline-owned Confluent Platform prerequisite Secrets ==="
+                  declare -A ESO_TARGETS=()
+                  while IFS= read -r eso_target; do
+                    [ -n "$eso_target" ] && ESO_TARGETS["$eso_target"]=1
+                  done < <(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
+                    -o jsonpath='{range .items[*]}{.spec.target.name}{"\n"}{end}' \
+                    2>/dev/null || true)
+
+                  CFK_PREREQ_SECRETS=(
+                    cfk-license
+                    mds-token-keypair
+                    sasl-plain-internal
+                    oauth-broker
+                    oauth-schemaregistry
+                    oauth-connect
+                    oauth-kafkarest
+                    oauth-controlcenter
+                    oauth-mds-rest
+                    oauth-mds-sso
+                    c3-prom-server-basic-auth
+                    c3-prom-client-basic-auth
+                    c3-alert-server-basic-auth
+                    c3-alert-client-basic-auth
+                  )
+                  DELETED_CFK_PREREQ_SECRETS=()
+                  for secret_name in "${CFK_PREREQ_SECRETS[@]}"; do
+                    if [ -n "${ESO_TARGETS[$secret_name]:-}" ]; then
+                      echo "PRESERVE  Secret/$secret_name (managed by ExternalSecret)"
+                      continue
+                    fi
+                    if ! oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                      echo "ABSENT    Secret/$secret_name"
+                      continue
+                    fi
+                    echo "+ oc -n $OC_NS delete secret/$secret_name --wait=true --timeout=2m"
+                    if oc -n "$OC_NS" delete secret "$secret_name" \
+                        --wait=true --timeout=2m; then
+                      DELETED_CFK_PREREQ_SECRETS+=("$secret_name")
+                    else
+                      echo "FAIL: deletion of Secret/$secret_name did not complete cleanly"
+                      FAIL=1
+                    fi
+                  done
+
+                  for secret_name in "${DELETED_CFK_PREREQ_SECRETS[@]}"; do
+                    if oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                      echo "FAIL: pipeline-owned Secret/$secret_name remains after uninstall"
+                      FAIL=1
+                    fi
+                  done
+                  echo "PRESERVE  Secret/confluent-license (shared with CMF)"
+
                   if [ -f "$ENV_DIR/network-policy/network-policy.yaml" ]; then
                     echo "+ oc delete -f $ENV_DIR/network-policy/network-policy.yaml --ignore-not-found --wait=true --timeout=2m"
                     if ! oc delete -f "$ENV_DIR/network-policy/network-policy.yaml" \
@@ -2483,8 +2559,8 @@ stages:
                   fi
 
                   echo ""
-                  echo "NOTE: prerequisite Secrets (confluent-license, oauth-*, mds-token-keypair,"
-                  echo "sasl-plain-internal, c3-*-basic-auth) are intentionally preserved."
+                  echo "NOTE: pipeline-owned CFK prerequisite Secrets were removed."
+                  echo "Shared Secret/confluent-license and active ExternalSecret targets were preserved."
 
                   if [ "$FAIL" -ne 0 ]; then
                     echo ""
