@@ -777,6 +777,30 @@ stages:
                   fi
 
                   echo ""
+                  echo "=== Refusing installation while a CFK prerequisite or TLS Secret is terminating ==="
+                  MANAGED_SECRET_NAMES=("${REQUIRED_SECRETS[@]}")
+                  for cert_manifest in "$ENV_DIR"/cert-manager/*-certificate.yaml; do
+                    [ -f "$cert_manifest" ] || continue
+                    cert_secret=$(awk '$1 == "secretName:" {print $2; exit}' "$cert_manifest")
+                    [ -n "$cert_secret" ] && MANAGED_SECRET_NAMES+=("$cert_secret")
+                  done
+                  terminating_secret_count=0
+                  for secret_name in "${MANAGED_SECRET_NAMES[@]}"; do
+                    deletion_timestamp=$(oc -n "$OC_NS" get secret "$secret_name" \
+                      -o jsonpath='{.metadata.deletionTimestamp}' 2>/dev/null || true)
+                    if [ -n "$deletion_timestamp" ]; then
+                      echo "TERMINATING  Secret/$secret_name since $deletion_timestamp"
+                      terminating_secret_count=$((terminating_secret_count + 1))
+                    fi
+                  done
+                  if [ "$terminating_secret_count" -gt 0 ]; then
+                    echo "FATAL: $terminating_secret_count required Secret(s) are still terminating."
+                    echo "Complete action=uninstall (or run clear-stuck-prereq-finalizers) before reinstalling."
+                    exit 1
+                  fi
+                  echo "OK: no required CFK Secret has a deletionTimestamp."
+
+                  echo ""
                   echo "=== Verifying prerequisite Secret key contracts ==="
                   require_secret_key() {
                     local secret_name=$1
@@ -1496,6 +1520,15 @@ stages:
                     echo "=== Waiting for $kind/$name generation $desired to be observed ==="
 
                     while [ "$elapsed" -lt "$timeout" ]; do
+                      apply_failed=$(oc -n "$OC_NS" get "$kind" "$name" \
+                        -o jsonpath='{range .status.conditions[?(@.reason=="ApplyFailed")]}{.message}{end}' \
+                        2>/dev/null || true)
+                      if [ -n "$apply_failed" ]; then
+                        echo "ERROR: $kind/$name reported ApplyFailed before creating its workload:"
+                        echo "  $apply_failed"
+                        return 1
+                      fi
+
                       observed=$(oc -n "$OC_NS" get "$kind" "$name" \
                         -o jsonpath='{.status.observedGeneration}' 2>/dev/null || true)
 
@@ -1520,10 +1553,33 @@ stages:
                   wait_for_statefulset_rollout() {
                     local name=$1
                     local timeout=$2
+                    local cr_kind=${3:-$name}
+                    local deadline=$((SECONDS + timeout))
+                    local remaining apply_failed
 
-                    echo "=== Waiting for StatefulSet/$name rollout to complete ==="
+                    echo "=== Waiting up to ${timeout}s for StatefulSet/$name to be created ==="
+                    while ! oc -n "$OC_NS" get statefulset "$name" >/dev/null 2>&1; do
+                      apply_failed=$(oc -n "$OC_NS" get "$cr_kind" "$name" \
+                        -o jsonpath='{range .status.conditions[?(@.reason=="ApplyFailed")]}{.message}{end}' \
+                        2>/dev/null || true)
+                      if [ -n "$apply_failed" ]; then
+                        echo "ERROR: $cr_kind/$name reported ApplyFailed; StatefulSet/$name cannot be created:"
+                        echo "  $apply_failed"
+                        return 1
+                      fi
+                      if [ "$SECONDS" -ge "$deadline" ]; then
+                        echo "ERROR: StatefulSet/$name was not created within ${timeout}s."
+                        oc -n "$OC_NS" get "$cr_kind" "$name" -o yaml || true
+                        return 1
+                      fi
+                      sleep 10
+                    done
+
+                    remaining=$((deadline - SECONDS))
+                    [ "$remaining" -gt 0 ] || remaining=1
+                    echo "=== Waiting for StatefulSet/$name rollout to complete (${remaining}s remaining) ==="
                     if ! oc -n "$OC_NS" rollout status "statefulset/$name" \
-                        --timeout="${timeout}s"; then
+                        --timeout="${remaining}s"; then
                       echo "ERROR: StatefulSet/$name rollout did not complete within ${timeout}s."
                       oc -n "$OC_NS" get statefulset "$name" -o wide || true
                       oc -n "$OC_NS" get pods -l "app=$name" -o wide || true
@@ -1534,7 +1590,7 @@ stages:
                     # prevents an old ready revision from being accepted while
                     # CFK is beginning a new rollout.
                     local stable=0 replicas ready updated current update
-                    while [ "$stable" -lt 2 ]; do
+                    while [ "$stable" -lt 2 ] && [ "$SECONDS" -lt "$deadline" ]; do
                       replicas=$(oc -n "$OC_NS" get statefulset "$name" \
                         -o jsonpath='{.spec.replicas}')
                       ready=$(oc -n "$OC_NS" get statefulset "$name" \
@@ -1554,6 +1610,11 @@ stages:
                       fi
                       [ "$stable" -lt 2 ] && sleep 10
                     done
+                    if [ "$stable" -lt 2 ]; then
+                      echo "ERROR: StatefulSet/$name did not remain fully ready for two consecutive observations."
+                      oc -n "$OC_NS" get statefulset "$name" -o wide || true
+                      return 1
+                    fi
                     echo "  StatefulSet/$name is fully rolled out and stable."
                   }
 
@@ -2204,6 +2265,19 @@ stages:
                     kraftcontroller.yaml
                   )
                   FAIL=0
+
+                  # Browser-facing routes are dependents of the component
+                  # Services. Remove them first so a clean uninstall does not
+                  # leave routes pointing at Services that no longer exist.
+                  for ingress in "$ENV_DIR"/ingress/*.yaml; do
+                    [ -f "$ingress" ] || continue
+                    echo "+ oc delete -f $ingress --ignore-not-found --wait=true --timeout=2m"
+                    if ! oc delete -f "$ingress" --ignore-not-found --wait=true --timeout=2m; then
+                      echo "FAIL: deletion of $ingress did not complete cleanly"
+                      FAIL=1
+                    fi
+                  done
+
                   for f in "${DELETE_ORDER[@]}"; do
                     if [ -f "$ENV_DIR/$f" ]; then
                       echo ""
@@ -2269,17 +2343,85 @@ stages:
                     fi
                   fi
 
+                  # Never delete TLS Secrets or PVCs while a CFK CR or Pod is
+                  # still alive. That can strand finalizers and recreate the
+                  # exact Kafka ApplyFailed condition this uninstall prevents.
+                  REMAINING_CFK_OBJECTS=$(oc -n "$OC_NS" get \
+                    kafka,kraftcontroller,schemaregistry,connect,kafkarestproxy,controlcenter,kafkarestclass,confluentrolebinding \
+                    -o name 2>/dev/null || true)
+                  REMAINING_CFK_PODS=$(oc -n "$OC_NS" get pods \
+                    -l app.kubernetes.io/part-of=confluent-platform \
+                    -o name 2>/dev/null || true)
+                  if [ -n "$REMAINING_CFK_OBJECTS" ] || [ -n "$REMAINING_CFK_PODS" ]; then
+                    echo "FATAL: CFK resources remain; refusing to delete TLS Secrets or PVCs."
+                    [ -n "$REMAINING_CFK_OBJECTS" ] && printf '%s\n' "$REMAINING_CFK_OBJECTS" | sed 's/^/  /'
+                    [ -n "$REMAINING_CFK_PODS" ] && printf '%s\n' "$REMAINING_CFK_PODS" | sed 's/^/  /'
+                    exit 1
+                  fi
+
                   echo ""
-                  echo "=== Deleting cert-manager Certificates (cascades to Secrets) ==="
-                  # Certificates can be force-deleted — no webhook, no risk
-                  # of data loss. Keep `|| true` here so a missing file or
-                  # already-deleted resource doesn't fail the step.
+                  echo "=== Deleting cert-manager Certificates and generated TLS Secrets ==="
+                  CERT_SECRET_NAMES=()
                   for cert in "$ENV_DIR"/cert-manager/*-certificate.yaml; do
                     if [ -f "$cert" ]; then
-                      echo "+ oc delete -f $cert --ignore-not-found"
-                      oc delete -f "$cert" --ignore-not-found || true
+                      cert_secret=$(awk '$1 == "secretName:" {print $2; exit}' "$cert")
+                      [ -n "$cert_secret" ] && CERT_SECRET_NAMES+=("$cert_secret")
+                      echo "+ oc delete -f $cert --ignore-not-found --wait=true --timeout=2m"
+                      if ! oc delete -f "$cert" --ignore-not-found --wait=true --timeout=2m; then
+                        echo "FAIL: Certificate deletion did not complete for $cert"
+                        FAIL=1
+                      fi
                     fi
                   done
+
+                  # A clean reinstall must not inherit cert-manager Secrets
+                  # carrying stale CFK finalizers. This was the root cause of
+                  # Kafka ApplyFailed on 2026-08-15. At this point all CFK CRs
+                  # and pods have already been removed, so it is safe to delete
+                  # these generated TLS Secrets and strip CFK-only finalizers.
+                  for secret_name in "${CERT_SECRET_NAMES[@]}"; do
+                    if ! oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                      continue
+                    fi
+                    echo "+ oc delete secret/$secret_name --wait=false"
+                    oc -n "$OC_NS" delete secret "$secret_name" --wait=false || true
+                    sleep 2
+                    if oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                      keep_finalizers=$(oc -n "$OC_NS" get secret "$secret_name" -o json \
+                        | python3 -c 'import json,sys; o=json.load(sys.stdin); f=o.get("metadata",{}).get("finalizers") or []; print(json.dumps([x for x in f if not x.startswith("secret.finalizers.platform.confluent.io/")]))')
+                      echo "  Secret/$secret_name is still present; preserving non-CFK finalizers and removing CFK finalizers."
+                      oc -n "$OC_NS" patch secret "$secret_name" --type=merge \
+                        -p "{\"metadata\":{\"finalizers\":$keep_finalizers}}" || FAIL=1
+                    fi
+                  done
+
+                  TLS_SECRET_DEADLINE=$((SECONDS + 120))
+                  while true; do
+                    REMAINING_TLS_SECRETS=()
+                    for secret_name in "${CERT_SECRET_NAMES[@]}"; do
+                      if oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                        REMAINING_TLS_SECRETS+=("$secret_name")
+                      fi
+                    done
+                    [ "${#REMAINING_TLS_SECRETS[@]}" -eq 0 ] && break
+                    if [ "$SECONDS" -ge "$TLS_SECRET_DEADLINE" ]; then
+                      echo "FATAL: generated TLS Secrets remain after uninstall: ${REMAINING_TLS_SECRETS[*]}"
+                      FAIL=1
+                      break
+                    fi
+                    sleep 5
+                  done
+                  [ "${#REMAINING_TLS_SECRETS[@]}" -eq 0 ] \
+                    && echo "All generated TLS Secrets are absent; certificate recreation can start cleanly."
+
+                  if [ -f "$ENV_DIR/network-policy/network-policy.yaml" ]; then
+                    echo "+ oc delete -f $ENV_DIR/network-policy/network-policy.yaml --ignore-not-found --wait=true --timeout=2m"
+                    if ! oc delete -f "$ENV_DIR/network-policy/network-policy.yaml" \
+                        --ignore-not-found --wait=true --timeout=2m; then
+                      echo "FAIL: NetworkPolicy deletion did not complete cleanly"
+                      FAIL=1
+                    fi
+                  fi
 
                   echo ""
                   echo "=== Remaining Confluent Platform objects ==="

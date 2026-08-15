@@ -1302,8 +1302,20 @@ stages:
                 if [ -n "$CMF_POD" ]; then
                   for path in /actuator/health /cmf/api/v1/environments /; do
                     echo "--- GET $path ---"
-                    oc -n "$OC_NS" exec "$CMF_POD" -- bash -c \
-                      "curl -sk --max-time 5 -o /tmp/r -w 'HTTP %{http_code} (%{size_download}B in %{time_total}s)\n' https://localhost:8080$path && head -c 400 /tmp/r ; echo" 2>&1 \
+                    oc -n "$OC_NS" exec "$CMF_POD" -- bash -c '
+                      path=$1
+                      if command -v curl >/dev/null 2>&1; then
+                        curl -sk --max-time 5 -o /tmp/r -w "HTTP %{http_code} (%{size_download}B in %{time_total}s)\n" "https://localhost:8080$path"
+                        head -c 400 /tmp/r; echo
+                      elif command -v wget >/dev/null 2>&1; then
+                        wget --no-check-certificate --timeout=5 -S -O - "https://localhost:8080$path" 2>&1 | head -8
+                      elif timeout 5 bash -c "</dev/tcp/127.0.0.1/8080" 2>/dev/null; then
+                        echo "TCP 8080 reachable; HTTP client unavailable in container"
+                      else
+                        echo "TCP 8080 unreachable; HTTP client unavailable in container"
+                        exit 1
+                      fi
+                    ' _ "$path" 2>&1 \
                       | head -8 \
                       || echo "  (probe failed)"
                     echo ""
