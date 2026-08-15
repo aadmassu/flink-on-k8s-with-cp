@@ -47,7 +47,7 @@ stages:
             env:
               GIT_SSL_NO_VERIFY: "true"
 
-          # - template: templates/install-tools.yaml
+          - template: templates/install-tools.yaml
 
           - task: Bash@3
             displayName: "Login to OpenShift (${{ parameters.environment }})"
