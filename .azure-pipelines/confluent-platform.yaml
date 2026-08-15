@@ -2461,6 +2461,15 @@ stages:
                     c3-prom-client-basic-auth
                     c3-alert-server-basic-auth
                     c3-alert-client-basic-auth
+                    # Legacy names from the earlier C3 secret contract. The
+                    # current manifests no longer reference these, but remove
+                    # them during a clean uninstall so an old deployment does
+                    # not leak credentials into the next installation.
+                    c3-prometheus-basic-auth
+                    c3-prometheus-client-basic-auth
+                    c3-prometheus-server-basic-auth
+                    c3-alertmanager-client-basic-auth
+                    c3-alertmanager-server-basic-auth
                   )
                   DELETED_CFK_PREREQ_SECRETS=()
                   for secret_name in "${CFK_PREREQ_SECRETS[@]}"; do
