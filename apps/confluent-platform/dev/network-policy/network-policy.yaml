@@ -49,11 +49,13 @@ spec:
         - { protocol: TCP, port: 8083 }
         - { protocol: TCP, port: 8090 }
         - { protocol: TCP, port: 9021 }
-    # OpenShift ingress routers — externally exposed HTTPS ports only
+    # OpenShift ingress routers — externally exposed HTTPS ports only.
+    # FCB's router namespace does not carry the optional policy-group label,
+    # so select the immutable namespace name label instead.
     - from:
         - namespaceSelector:
             matchLabels:
-              network.openshift.io/policy-group: ingress
+              kubernetes.io/metadata.name: openshift-ingress
       ports:
         - { protocol: TCP, port: 8081 }  # Schema Registry
         - { protocol: TCP, port: 8082 }  # Kafka REST Proxy
