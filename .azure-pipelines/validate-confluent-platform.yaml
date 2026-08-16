@@ -113,8 +113,8 @@ stages:
                   echo "=== Executing ad-hoc-oc-scripts.sh for environment: $TARGET_ENV ==="
                   echo "=== OpenShift: $OC_API | Namespace: $OC_NS ==="
                   echo ""
-                  chmod +x .azure-pipelines/ad-hoc-oc-scripts.sh
-                  .azure-pipelines/ad-hoc-oc-scripts.sh "$OC_NS"
+                  chmod +x .azure-pipelines/scripts/ad-hoc-oc-scripts.sh
+                  .azure-pipelines/scripts/ad-hoc-oc-scripts.sh "$OC_NS"
               env:
                 TARGET_ENV: ${{ parameters.environment }}
                 OC_API: $(openshift-api)
