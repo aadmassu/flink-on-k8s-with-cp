@@ -123,7 +123,6 @@ spec:
           configurations:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -155,7 +154,6 @@ spec:
       impersonation:
         admins:
           - User:0oa1owhtq2olDZWwf358   # MDS OAuth superuser
-          - User:0oa1owhtq2olDZWwf358   # broker / kafka-rest embedded
           - User:0oa1owiage2MyoHdt358   # Schema Registry
           - User:0oa1owi0yntGMBvPS358   # Connect
           - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy

@@ -71,7 +71,6 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahDev_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -98,7 +97,6 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahDev_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
