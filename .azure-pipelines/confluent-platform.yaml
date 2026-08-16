@@ -2388,35 +2388,46 @@ stages:
                   # Do not require cluster-scoped namespace-list permission
                   # from the Azure DevOps service account here.
 
-                  # 1. Validate reencrypt-bundle Secret exists with CA data.
-                  # FCB trust-manager publishes the bundle as tls.crt; retain
-                  # ca.crt compatibility for environments using that convention.
-                  echo ""
-                  echo "1. Validating reencrypt-bundle CA Secret..."
-                  if ! oc -n "$OC_NS" get secret reencrypt-bundle >/dev/null 2>&1; then
-                    echo "FATAL: Secret/reencrypt-bundle does not exist"
-                    exit 1
+                  # 1. Validate reencrypt-bundle Secret only if reencrypt Ingresses are selected.
+                  # C3 uses passthrough and does not require reencrypt-bundle.
+                  # SR, REST, Connect require reencrypt-bundle.
+                  # FCB trust-manager publishes the bundle as tls.crt; retain ca.crt compatibility.
+                  need_reencrypt_bundle=false
+                  is_true "$APPLY_SR" && need_reencrypt_bundle=true
+                  is_true "$APPLY_KREST" && need_reencrypt_bundle=true
+                  is_true "$APPLY_CONNECT" && need_reencrypt_bundle=true
+
+                  if [ "$need_reencrypt_bundle" = "true" ]; then
+                    echo ""
+                    echo "1. Validating reencrypt-bundle CA Secret..."
+                    if ! oc -n "$OC_NS" get secret reencrypt-bundle >/dev/null 2>&1; then
+                      echo "FATAL: Secret/reencrypt-bundle does not exist"
+                      exit 1
+                    fi
+                    ca_key="ca.crt"
+                    ca_b64="$(oc -n "$OC_NS" get secret reencrypt-bundle -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)"
+                    if [ -z "$ca_b64" ]; then
+                      ca_key="tls.crt"
+                      ca_b64="$(oc -n "$OC_NS" get secret reencrypt-bundle -o jsonpath='{.data.tls\.crt}' 2>/dev/null || true)"
+                    fi
+                    if [ -z "$ca_b64" ]; then
+                      echo "FATAL: Secret/reencrypt-bundle has no CA data (expected nonempty ca.crt or tls.crt)"
+                      exit 1
+                    fi
+                    if ! ca_pem="$(printf '%s' "$ca_b64" | base64 --decode 2>/dev/null)"; then
+                      echo "FATAL: Secret/reencrypt-bundle key $ca_key is not valid Base64"
+                      exit 1
+                    fi
+                    if ! grep -q -- '-----BEGIN CERTIFICATE-----' <<<"$ca_pem"; then
+                      echo "FATAL: Secret/reencrypt-bundle key $ca_key does not contain a PEM certificate"
+                      exit 1
+                    fi
+                    unset ca_b64 ca_pem
+                    echo "  ✓ reencrypt-bundle exists with valid PEM CA data in $ca_key"
+                  else
+                    echo ""
+                    echo "1. Skipping reencrypt-bundle validation (only Control Center selected)"
                   fi
-                  ca_key="ca.crt"
-                  ca_b64="$(oc -n "$OC_NS" get secret reencrypt-bundle -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)"
-                  if [ -z "$ca_b64" ]; then
-                    ca_key="tls.crt"
-                    ca_b64="$(oc -n "$OC_NS" get secret reencrypt-bundle -o jsonpath='{.data.tls\.crt}' 2>/dev/null || true)"
-                  fi
-                  if [ -z "$ca_b64" ]; then
-                    echo "FATAL: Secret/reencrypt-bundle has no CA data (expected nonempty ca.crt or tls.crt)"
-                    exit 1
-                  fi
-                  if ! ca_pem="$(printf '%s' "$ca_b64" | base64 --decode 2>/dev/null)"; then
-                    echo "FATAL: Secret/reencrypt-bundle key $ca_key is not valid Base64"
-                    exit 1
-                  fi
-                  if ! grep -q -- '-----BEGIN CERTIFICATE-----' <<<"$ca_pem"; then
-                    echo "FATAL: Secret/reencrypt-bundle key $ca_key does not contain a PEM certificate"
-                    exit 1
-                  fi
-                  unset ca_b64 ca_pem
-                  echo "  ✓ reencrypt-bundle exists with valid PEM CA data in $ca_key"
 
                   # 2. Validate backend Services and ports (scoped to selected components)
                   echo ""
@@ -2518,27 +2529,57 @@ stages:
                       exit 1
                     fi
 
-                    # Validate Ingress manifest requirements
-                    if ! grep -q "apps.dv.ocp.fcbint.net" "$ingress_file"; then
-                      echo "  FAIL: $svc Ingress missing floating apps.dv.ocp.fcbint.net hostname"
-                      exit 1
+                    # Control Center uses passthrough; other components use reencrypt
+                    if [ "$svc" = "controlcenter" ]; then
+                      # C3-specific validation: passthrough, empty path, ImplementationSpecific, port 9021, no destination-CA
+                      if ! grep -q "apps.dv.ocp.fcbint.net" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing floating apps.dv.ocp.fcbint.net hostname"
+                        exit 1
+                      fi
+                      if ! grep -q "openshift-core-zone" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing openshift-core-zone ingressClassName"
+                        exit 1
+                      fi
+                      if ! grep -q "route.openshift.io/termination.*passthrough" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing passthrough termination"
+                        exit 1
+                      fi
+                      if grep -q "destination-ca-certificate" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress must not have destination-ca-certificate annotation (passthrough does not use it)"
+                        exit 1
+                      fi
+                      if ! grep -q 'path: ""' "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress must have empty path for passthrough"
+                        exit 1
+                      fi
+                      if ! grep -q "pathType: ImplementationSpecific" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress must use ImplementationSpecific pathType for passthrough"
+                        exit 1
+                      fi
+                      python3 -c "import yaml,sys;d=yaml.safe_load(open('$ingress_file'));p=9021;found=any(int(path.get('backend',{}).get('service',{}).get('port',{}).get('number',0))==p for rule in d.get('spec',{}).get('rules',[])for path in rule.get('http',{}).get('paths',[]));sys.exit(0 if found else 1)" || exit 1
+                      echo "  ✓ $svc Ingress manifest valid (passthrough, port 9021)"
+                    else
+                      # Reencrypt validation for SR, REST, Connect
+                      if ! grep -q "apps.dv.ocp.fcbint.net" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing floating apps.dv.ocp.fcbint.net hostname"
+                        exit 1
+                      fi
+                      if ! grep -q "openshift-core-zone" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing openshift-core-zone ingressClassName"
+                        exit 1
+                      fi
+                      if ! grep -q "route.openshift.io/termination.*reencrypt" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing reencrypt termination"
+                        exit 1
+                      fi
+                      if ! grep -q "reencrypt-bundle" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing reencrypt-bundle destination CA"
+                        exit 1
+                      fi
+                      port="${svc_ports[$svc]}"
+                      python3 -c "import yaml,sys;d=yaml.safe_load(open('$ingress_file'));p=int('$port');found=any(int(path.get('backend',{}).get('service',{}).get('port',{}).get('number',0))==p for rule in d.get('spec',{}).get('rules',[])for path in rule.get('http',{}).get('paths',[]));sys.exit(0 if found else 1)" || exit 1
+                      echo "  ✓ $svc Ingress manifest valid (reencrypt, port $port)"
                     fi
-                    if ! grep -q "openshift-core-zone" "$ingress_file"; then
-                      echo "  FAIL: $svc Ingress missing openshift-core-zone ingressClassName"
-                      exit 1
-                    fi
-                    if ! grep -q "route.openshift.io/termination.*reencrypt" "$ingress_file"; then
-                      echo "  FAIL: $svc Ingress missing reencrypt termination"
-                      exit 1
-                    fi
-                    if ! grep -q "reencrypt-bundle" "$ingress_file"; then
-                      echo "  FAIL: $svc Ingress missing reencrypt-bundle destination CA"
-                      exit 1
-                    fi
-
-                    port="${svc_ports[$svc]}"
-                    python3 -c "import yaml,sys;d=yaml.safe_load(open('$ingress_file'));p=int('$port');found=any(int(path.get('backend',{}).get('service',{}).get('port',{}).get('number',0))==p for rule in d.get('spec',{}).get('rules',[])for path in rule.get('http',{}).get('paths',[]));sys.exit(0 if found else 1)" || exit 1
-                    echo "  ✓ $svc Ingress manifest valid"
                   done
 
                   echo ""

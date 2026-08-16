@@ -1,10 +1,13 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-08-07 (last-modified)
+# Date:        2026-08-16 (last-modified)
 # Description: Ingress exposing Control Center UI publicly (main
-#              browser-facing CP dashboard). Backend HTTPS on 9021
-#              (controlcenter-tls); edge termination reencrypt.
+#              browser-facing CP dashboard). TLS passthrough sends the
+#              encrypted connection directly to the HTTPS backend on 9021.
+#              Control Center serves controlcenter-tls, whose SAN includes
+#              the floating public hostname. The router does not terminate
+#              TLS and does not use an ingress or destination-CA certificate.
 ########################################################################
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -18,8 +21,7 @@ metadata:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
   annotations:
-    route.openshift.io/termination: reencrypt
-    route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle
+    route.openshift.io/termination: passthrough
     route.openshift.io/insecureEdgeTerminationPolicy: Redirect
     fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
 spec:
@@ -28,14 +30,13 @@ spec:
     - host: controlcenter.apps.dv.ocp.fcbint.net
       http:
         paths:
+          # Passthrough TLS cannot use HTTP path-based routing because the
+          # router does not decrypt the request. These values are required
+          # by OpenShift when generating the passthrough Route.
           - backend:
               service:
                 name: controlcenter
                 port:
                   number: 9021
-            path: /
-            pathType: Prefix
-  tls:
-    - hosts:
-        - controlcenter.apps.dv.ocp.fcbint.net
-      secretName: controlcenter-ingress-tls
+            path: ""
+            pathType: ImplementationSpecific
