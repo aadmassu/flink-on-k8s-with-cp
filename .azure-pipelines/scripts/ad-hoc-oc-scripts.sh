@@ -519,8 +519,8 @@ if ! oc -n "${NAMESPACE}" get pod "${C3_POD}" >/dev/null 2>&1; then
   echo "FAIL: Control Center pod ${C3_POD} does not exist"
   OVERALL_PASS=0
 else
-  C3_IP="$(oc -n "${NAMESPACE}" get pod "${C3_POD}" -o jsonpath='{.status.podIP}' 2>/dev/null || true)"
-  echo "Control Center pod IP: ${C3_IP:-<missing>}"
+  C3_POD_IP="$(oc -n "${NAMESPACE}" get pod "${C3_POD}" -o jsonpath='{.status.podIP}' 2>/dev/null || true)"
+  echo "Control Center pod IP: ${C3_POD_IP:-<missing>}"
 
   oc -n "${NAMESPACE}" logs "${C3_POD}" --all-containers=true --since="${LOG_SINCE}" --timestamps \
     >"${OUTPUT_DIR}/controlcenter.log" 2>&1 || true
@@ -533,28 +533,55 @@ else
     echo "PASS: No authentication errors in Control Center logs (last ${LOG_SINCE})"
   fi
 
-  # Broker-side correlation: Check if brokers rejected the current C3 pod IP
+  # Broker-side correlation: Check if brokers rejected the current C3 pod IP within the time window
   echo ""
-  echo "Broker-side MDS authentication correlation:"
-  if [[ -n "${C3_IP}" ]]; then
-    BROKER_REJECTION=0
-    for broker_pod in kafka-0 kafka-1 kafka-2; do
-      log_file="${OUTPUT_DIR}/${broker_pod}.log"
-      oc -n "${NAMESPACE}" logs "${broker_pod}" --all-containers=true \
-        --since="${LOG_SINCE}" --timestamps >"${log_file}" 2>&1 || true
+  echo "Broker-side MDS authentication correlation (last ${LOG_SINCE}):"
 
-      if [[ -f "${log_file}" ]] && grep -F "${C3_IP}" "${log_file}" 2>/dev/null | \
-         grep -Eq 'GET /security/1.0/authenticate HTTP/[0-9.]+" 401'; then
-        echo "  FAIL: ${broker_pod} returned 401 to Control Center IP ${C3_IP}"
-        BROKER_REJECTION=1
-        OVERALL_PASS=0
-      fi
-    done
-    if [[ $BROKER_REJECTION -eq 0 ]]; then
-      echo "  PASS: No 401 responses from brokers to current Control Center IP"
+  if [[ -n "${C3_POD_IP}" ]]; then
+    failures=0
+
+    # kafka-0
+    if oc -n "${NAMESPACE}" logs kafka-0 --all-containers=true \
+        --since="${LOG_SINCE}" 2>/dev/null | \
+       grep -F "${C3_POD_IP}" | \
+       grep -Eq 'GET /security/1\.0/authenticate HTTP/[0-9.]+" 401'; then
+      echo "  FAIL: kafka-0 returned a recent 401 to Control Center IP ${C3_POD_IP}"
+      failures=$((failures + 1))
+      OVERALL_PASS=0
+    else
+      echo "  PASS: kafka-0 — no recent MDS 401"
+    fi
+
+    # kafka-1
+    if oc -n "${NAMESPACE}" logs kafka-1 --all-containers=true \
+        --since="${LOG_SINCE}" 2>/dev/null | \
+       grep -F "${C3_POD_IP}" | \
+       grep -Eq 'GET /security/1\.0/authenticate HTTP/[0-9.]+" 401'; then
+      echo "  FAIL: kafka-1 returned a recent 401 to Control Center IP ${C3_POD_IP}"
+      failures=$((failures + 1))
+      OVERALL_PASS=0
+    else
+      echo "  PASS: kafka-1 — no recent MDS 401"
+    fi
+
+    # kafka-2
+    if oc -n "${NAMESPACE}" logs kafka-2 --all-containers=true \
+        --since="${LOG_SINCE}" 2>/dev/null | \
+       grep -F "${C3_POD_IP}" | \
+       grep -Eq 'GET /security/1\.0/authenticate HTTP/[0-9.]+" 401'; then
+      echo "  FAIL: kafka-2 returned a recent 401 to Control Center IP ${C3_POD_IP}"
+      failures=$((failures + 1))
+      OVERALL_PASS=0
+    else
+      echo "  PASS: kafka-2 — no recent MDS 401"
+    fi
+
+    if [[ $failures -eq 0 ]]; then
+      echo "  ✓ All brokers: No recent MDS 401 responses to Control Center IP"
     fi
   else
-    echo "  SKIP: Control Center pod IP could not be determined"
+    echo "  FAIL: Control Center pod IP could not be determined"
+    OVERALL_PASS=0
   fi
 fi
 
