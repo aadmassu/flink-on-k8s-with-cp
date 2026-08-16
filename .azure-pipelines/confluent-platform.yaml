@@ -1710,37 +1710,43 @@ stages:
                       exit 1
                     fi
 
-                    # Bootstrap gate: if Kafka already exists (upgrade scenario), apply rolebindings first
-                    if oc -n "$OC_NS" get kafka kafka >/dev/null 2>&1 && \
+                    # DEV-only bootstrap gate: if Kafka already exists (upgrade scenario), apply rolebindings first
+                    if [ "$TARGET_ENV" = "dev" ] && \
+                       oc -n "$OC_NS" get kafka kafka >/dev/null 2>&1 && \
                        oc -n "$OC_NS" get kafkarestclass default >/dev/null 2>&1; then
                       echo ""
-                      echo "=== Existing-cluster bootstrap: Kafka/KafkaRestClass detected ==="
+                      echo "=== DEV existing-cluster bootstrap: Kafka/KafkaRestClass detected ==="
                       echo "Applying rolebindings BEFORE kafka.yaml rolling update..."
-                      if [ -f "$ENV_DIR/rbac/rolebindings.yaml" ]; then
-                        echo "+ oc apply -f $ENV_DIR/rbac/rolebindings.yaml"
-                        oc apply -f "$ENV_DIR/rbac/rolebindings.yaml"
-                        echo ""
-                        echo "=== Waiting for kafka-embedded-rest-systemadmin to reach app-ready=True ==="
-                        rb_deadline=$((SECONDS + 300))
-                        while true; do
-                          rb_app_ready=$(oc -n "$OC_NS" get confluentrolebinding kafka-embedded-rest-systemadmin \
-                            -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/app-ready")].status}' \
-                            2>/dev/null || true)
-                          rb_state=$(oc -n "$OC_NS" get confluentrolebinding kafka-embedded-rest-systemadmin \
-                            -o jsonpath='{.status.state}' 2>/dev/null || true)
-                          if [ "$rb_app_ready" = "True" ]; then
-                            echo "✅ kafka-embedded-rest-systemadmin app-ready=True (state=$rb_state)"
-                            break
-                          fi
-                          if [ "$SECONDS" -ge "$rb_deadline" ]; then
-                            echo "FATAL: kafka-embedded-rest-systemadmin did not reach app-ready=True within 300s"
-                            oc -n "$OC_NS" describe confluentrolebinding kafka-embedded-rest-systemadmin || true
-                            exit 1
-                          fi
-                          echo "  Waiting... app-ready=$rb_app_ready state=$rb_state"
-                          sleep 10
-                        done
+
+                      # Require rolebindings.yaml for DEV bootstrap
+                      if [ ! -f "$ENV_DIR/rbac/rolebindings.yaml" ]; then
+                        echo "FATAL: $ENV_DIR/rbac/rolebindings.yaml required for DEV bootstrap but not found."
+                        exit 1
                       fi
+
+                      echo "+ oc apply -f $ENV_DIR/rbac/rolebindings.yaml"
+                      oc apply -f "$ENV_DIR/rbac/rolebindings.yaml"
+                      echo ""
+                      echo "=== Waiting for kafka-embedded-rest-systemadmin to reach app-ready=True ==="
+                      rb_deadline=$((SECONDS + 300))
+                      while true; do
+                        rb_app_ready=$(oc -n "$OC_NS" get confluentrolebinding kafka-embedded-rest-systemadmin \
+                          -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/app-ready")].status}' \
+                          2>/dev/null || true)
+                        rb_state=$(oc -n "$OC_NS" get confluentrolebinding kafka-embedded-rest-systemadmin \
+                          -o jsonpath='{.status.state}' 2>/dev/null || true)
+                        if [ "$rb_app_ready" = "True" ]; then
+                          echo "✅ kafka-embedded-rest-systemadmin app-ready=True (state=$rb_state)"
+                          break
+                        fi
+                        if [ "$SECONDS" -ge "$rb_deadline" ]; then
+                          echo "FATAL: kafka-embedded-rest-systemadmin did not reach app-ready=True within 300s"
+                          oc -n "$OC_NS" describe confluentrolebinding kafka-embedded-rest-systemadmin || true
+                          exit 1
+                        fi
+                        echo "  Waiting... app-ready=$rb_app_ready state=$rb_state"
+                        sleep 10
+                      done
                     fi
 
                     echo ""
