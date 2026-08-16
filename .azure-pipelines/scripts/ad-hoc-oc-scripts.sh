@@ -211,6 +211,38 @@ echo "MDS endpoint:     ${RB_MDS_ENDPOINT:-<missing>}"
 echo "PASS: Control Center SystemAdmin binding is reconciled."
 
 ###############################################################################
+# 2b. Validate Kafka embedded REST role binding (DEV-specific)
+###############################################################################
+
+echo
+echo "=== 2b. Validating Kafka embedded REST role binding ==="
+
+EMBEDDED_RB="kafka-embedded-rest-systemadmin"
+
+EMBEDDED_READY="$(
+  oc -n "${NAMESPACE}" get confluentrolebinding "${EMBEDDED_RB}" \
+    -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/app-ready")].status}' \
+    2>/dev/null || true
+)"
+
+EMBEDDED_PRINCIPAL="$(
+  oc -n "${NAMESPACE}" get confluentrolebinding "${EMBEDDED_RB}" \
+    -o jsonpath='{.status.principal}' 2>/dev/null || true
+)"
+
+echo "Principal: ${EMBEDDED_PRINCIPAL:-<missing>}"
+echo "Ready:     ${EMBEDDED_READY:-<missing>}"
+
+[[ "${EMBEDDED_PRINCIPAL}" == \
+   "User:kafka.dah-flink-dev.svc.cluster.local" ]] ||
+  fatal "${EMBEDDED_RB} has the wrong or missing principal."
+
+[[ "${EMBEDDED_READY}" == "True" ]] ||
+  fatal "${EMBEDDED_RB} is not app-ready=True."
+
+echo "PASS: Kafka embedded REST binding is reconciled."
+
+###############################################################################
 # 3. Validate Kafka cluster and C3 resources
 ###############################################################################
 
