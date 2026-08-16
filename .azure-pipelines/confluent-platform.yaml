@@ -711,10 +711,10 @@ stages:
                     cert-manager/controlcenter-tls-certificate.yaml
                   )
 
-                  # DEV-only: include mTLS client certificate
+                  # DEV-only: include mTLS client certificate and storage
                   if [ "$TARGET_ENV" = "dev" ]; then
                     REQUIRED_FILES+=(
-                      controlcenter-prometheus-pvc.yaml
+                      storage/controlcenter-prometheus-pvc.yaml
                       cert-manager/cfk-operator-mds-client-certificate.yaml
                     )
                   fi
@@ -1186,7 +1186,7 @@ stages:
 
                   echo ""
                   echo "=== PHASE 4: DRY-RUN Dependent Resources (after certificates ready) ==="
-                  for manifest in kafkarestclass.yaml kraftcontroller.yaml kafka.yaml rolebindings.yaml; do
+                  for manifest in kafkarestclass.yaml kraftcontroller.yaml kafka.yaml rbac/rolebindings.yaml; do
                     path="$ENV_DIR/$manifest"
                     [ -f "$path" ] || continue
 
@@ -1233,11 +1233,11 @@ stages:
                   echo ""
 
                   # Define manifests to validate with dry-run. Order: prerequisites before dependents.
-                  # Network policy first, then RBAC, then CRs. Certificates already applied in previous task.
+                  # Network policy, storage, RBAC first, then CRs. Certificates already applied in previous task.
                   MANIFESTS_TO_VALIDATE=(
                     "network-policy/network-policy.yaml"
-                    "controlcenter-prometheus-pvc.yaml"
-                    "rolebindings.yaml"
+                    "storage/controlcenter-prometheus-pvc.yaml"
+                    "rbac/rolebindings.yaml"
                     "kafkarestclass.yaml"
                     "kraftcontroller.yaml"
                     "kafka.yaml"
@@ -1969,9 +1969,9 @@ stages:
                   if is_true "$APPLY_KAFKA" || is_true "$APPLY_SR" \
                      || is_true "$APPLY_CONNECT" || is_true "$APPLY_KREST" \
                      || is_true "$APPLY_C3"; then
-                    if [ -f "$ENV_DIR/rolebindings.yaml" ]; then
-                      echo "+ oc apply -f $ENV_DIR/rolebindings.yaml"
-                    rolebinding_resources=$(oc apply -f "$ENV_DIR/rolebindings.yaml" -o name)
+                    if [ -f "$ENV_DIR/rbac/rolebindings.yaml" ]; then
+                      echo "+ oc apply -f $ENV_DIR/rbac/rolebindings.yaml"
+                    rolebinding_resources=$(oc apply -f "$ENV_DIR/rbac/rolebindings.yaml" -o name)
 
                     echo "=== Waiting up to 300s for every applied ConfluentRolebinding ==="
                     rb_deadline=$((SECONDS + 300))
@@ -2031,7 +2031,7 @@ stages:
                       sleep 10
                     done
                     else
-                      echo "FATAL: $ENV_DIR/rolebindings.yaml not found; managed components cannot be authorized."
+                      echo "FATAL: $ENV_DIR/rbac/rolebindings.yaml not found; managed components cannot be authorized."
                       exit 1
                     fi
                   else
@@ -2064,7 +2064,7 @@ stages:
                   if is_true "$APPLY_C3"; then
                     echo ""
                     if [ "$TARGET_ENV" = "dev" ]; then
-                      C3_PROM_PVC="$ENV_DIR/controlcenter-prometheus-pvc.yaml"
+                      C3_PROM_PVC="$ENV_DIR/storage/controlcenter-prometheus-pvc.yaml"
                       C3_PROM_PVC_NAME=prometheus-data-controlcenter-0
                       echo "=== Preparing Control Center Prometheus storage ==="
                       if [ ! -f "$C3_PROM_PVC" ]; then
@@ -2338,11 +2338,12 @@ stages:
                   echo "=== Deleting Confluent Platform CRs (reverse dependency order) ==="
                   # Reverse order so dependents shut down before backends. No `|| true` — we want the pipeline to fail loudly on a silent webhook-rejected delete (the operator would recreate any PVCs the later wipePVCs sub-step then tries to delete).
                   DELETE_ORDER=(
-                    rolebindings.yaml
+                    rbac/rolebindings.yaml
                     controlcenter.yaml
                     kafkarest.yaml
                     connect.yaml
                     schemaregistry.yaml
+                    storage/controlcenter-prometheus-pvc.yaml
                     kafkarestclass.yaml
                     kafka.yaml
                     kraftcontroller.yaml
