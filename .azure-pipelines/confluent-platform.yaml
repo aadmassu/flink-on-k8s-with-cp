@@ -572,6 +572,38 @@ stages:
                   rm -f "$SASL_JSON_TMP" "$SASL_PLAIN_TMP"
                   fi
 
+                  # DEV-only: Enforce two-account identity model safeguards
+                  if [ "$TARGET_ENV" = "dev" ]; then
+                    EXPECTED_C3_ID="0oa1ov6h5mwmQTCKI358"
+                    EXPECTED_SSO_ID="0oa1o0ea1m26pITBQ358"
+
+                    echo ""
+                    echo "=== DEV Two-Account Identity Safeguards ==="
+                    if [ -z "$OAUTH_C3_ID" ]; then
+                      echo "FATAL: OAUTH_C3_ID is empty. Dev machine identity is required."
+                      exit 1
+                    fi
+                    if [ -z "$OAUTH_MDS_SSO_ID" ]; then
+                      echo "FATAL: OAUTH_MDS_SSO_ID is empty. Dev SSO identity is required."
+                      exit 1
+                    fi
+                    if [ "$OAUTH_C3_ID" != "$EXPECTED_C3_ID" ]; then
+                      echo "FATAL: OAUTH_C3_ID=$OAUTH_C3_ID, expected $EXPECTED_C3_ID"
+                      exit 1
+                    fi
+                    if [ "$OAUTH_MDS_SSO_ID" != "$EXPECTED_SSO_ID" ]; then
+                      echo "FATAL: OAUTH_MDS_SSO_ID=$OAUTH_MDS_SSO_ID, expected $EXPECTED_SSO_ID"
+                      exit 1
+                    fi
+                    if [ "$OAUTH_C3_ID" = "$OAUTH_MDS_SSO_ID" ]; then
+                      echo "FATAL: Machine and SSO client IDs are identical (separation violated)"
+                      exit 1
+                    fi
+                    echo "✓ Machine identity: $OAUTH_C3_ID"
+                    echo "✓ SSO identity: $OAUTH_MDS_SSO_ID"
+                    echo "✓ Identities are different (separation confirmed)"
+                  fi
+
                   # OAuth client credentials — one Secret per component, each
                   # with clientId/clientSecret AND bearer.txt (see helper above).
                   apply_oauth_secret oauth-broker         "$OAUTH_BROKER_ID"    "$OAUTH_BROKER_SECRET"
@@ -582,6 +614,34 @@ stages:
                   apply_oauth_secret oauth-mds-rest       "$OAUTH_MDS_REST_ID"  "$OAUTH_MDS_REST_SECRET"
                   # oauth-mds-sso — separate Okta OIDC client used by MDS for browser-based SSO (C3 web UI login). Distinct from oauth-mds-rest which is MDS's own service-side OAuth client. Referenced from kafka.yaml spec.services.mds.provider.sso.clientCredentials.secretRef (runbook A22).
                   apply_oauth_secret oauth-mds-sso        "$OAUTH_MDS_SSO_ID"   "$OAUTH_MDS_SSO_SECRET"
+
+                  # DEV-only: Validate oauth-mds-sso Secret structure after creation
+                  if [ "$TARGET_ENV" = "dev" ]; then
+                    echo ""
+                    echo "=== Validating oauth-mds-sso Secret Structure ==="
+
+                    if oc -n "$OC_NS" get secret oauth-mds-sso -o jsonpath='{.data.clientId}' 2>/dev/null | grep -q .; then
+                      echo "✓ oauth-mds-sso contains clientId"
+                    else
+                      echo "FATAL: oauth-mds-sso missing or empty clientId"
+                      exit 1
+                    fi
+
+                    if oc -n "$OC_NS" get secret oauth-mds-sso -o jsonpath='{.data.clientSecret}' 2>/dev/null | grep -q .; then
+                      echo "✓ oauth-mds-sso contains clientSecret"
+                    else
+                      echo "FATAL: oauth-mds-sso missing or empty clientSecret"
+                      exit 1
+                    fi
+
+                    if oc -n "$OC_NS" get secret oauth-mds-sso \
+                        -o jsonpath='{.data.oidcClientSecret\.txt}' 2>/dev/null | grep -q .; then
+                      echo "✓ oauth-mds-sso contains oidcClientSecret.txt"
+                    else
+                      echo "FATAL: oauth-mds-sso missing or empty oidcClientSecret.txt"
+                      exit 1
+                    fi
+                  fi
 
                   # C3 Prometheus / Alertmanager require basic.txt. Server-side
                   # and client-side formats differ, so create separate Secrets.
@@ -868,6 +928,11 @@ stages:
                         exit 1
                       fi
                       echo "✅ DEV manifests use dahDev_groups and 11547.DAH(Dev)"
+
+                      # DEV-only: two-account identity validation using YAML parsing
+                      echo ""
+                      echo "=== DEV Two-Account Identity Static Validation ==="
+                      python3 .azure-pipelines/scripts/validate_dev_two_account_manifest.py "$ENV_DIR"
                       ;;
                     qa)
                       # QA should have dahQA_groups and 11547.DAH(QA)

@@ -1,0 +1,323 @@
+==============================================================
+DEV Two-Account Control Center Identity — Machine-Executed Validation
+==============================================================
+
+VALIDATION DATE: 2026-08-15
+SCOPE: Local machine validation (no live cluster testing)
+
+==============================================================
+1. BASH SCRIPT SYNTAX VALIDATION
+==============================================================
+
+Command: bash -n ./.azure-pipelines/scripts/ad-hoc-oc-scripts.sh
+Result: ✓ PASS
+
+Command: python3 -m py_compile ./.azure-pipelines/scripts/validate_dev_two_account_manifest.py
+Result: ✓ PASS
+
+==============================================================
+2. YAML SYNTAX VALIDATION
+==============================================================
+
+File: .azure-pipelines/confluent-platform.yaml
+  - Documents parsed: 1
+  - Syntax: ✓ VALID
+
+File: .azure-pipelines/validate-confluent-platform.yaml
+  - Documents parsed: 1
+  - Syntax: ✓ VALID
+
+File: apps/confluent-platform/dev/kafka.yaml
+  - Documents parsed: 1
+  - Syntax: ✓ VALID
+
+File: apps/confluent-platform/dev/controlcenter.yaml
+  - Documents parsed: 1
+  - Syntax: ✓ VALID
+
+File: apps/confluent-platform/dev/rbac/rolebindings.yaml
+  - Documents parsed: 8
+  - Syntax: ✓ VALID
+
+SUMMARY: All YAML files valid (multi-document support verified)
+
+==============================================================
+3. STATIC MANIFEST VALIDATION (PYTHON YAML PARSER)
+==============================================================
+
+Script: validate_dev_two_account_manifest.py
+Command: python3 .azure-pipelines/scripts/validate_dev_two_account_manifest.py apps/confluent-platform/dev
+
+Output:
+  ✓ kafka.yaml uses oauth-mds-sso for provider.sso
+  ✓ kafka.yaml SSO has subClaimName: sub
+  ✓ kafka.yaml SSO has groupsClaimName: dahDev_groups
+  ✓ kafka.yaml SSO has groupsClaimScope: 11547.DAH(Dev)
+  ✓ kafka.yaml SSO has refreshToken: true
+  ✓ controlcenter.yaml Kafka dependency uses oauth-controlcenter
+  ✓ controlcenter.yaml MDS dependency uses oauth-controlcenter
+  ✓ controlcenter.yaml Schema Registry dependency uses oauth-controlcenter
+  ✓ controlcenter.yaml Connect[connect-cluster] uses oauth-controlcenter
+  ✓ controlcenter.yaml MDS ssoProtocol: oidc
+  ✓ No MDS basic-auth configuration in controlcenter.yaml
+  ✓ rolebindings.yaml controlcenter-systemadmin uses 0oa1ov6h5mwmQTCKI358
+
+Result: ✅ DEV two-account identity manifest validation passed
+
+VALIDATION METHOD: YAML parser (exact path validation, not grep)
+
+==============================================================
+4. MANIFEST CONTENT VERIFICATION
+==============================================================
+
+Kafka MDS SSO Configuration:
+  subClaimName: sub ✓
+  groupsClaimName: dahDev_groups ✓
+  groupsClaimScope: 11547.DAH(Dev) ✓
+  clientCredentials.secretRef: oauth-mds-sso ✓
+  refreshToken: true ✓
+
+Control Center Dependencies:
+  OAuth-controlcenter references: 4 ✓
+    - Kafka: oauth-controlcenter ✓
+    - MDS: oauth-controlcenter ✓
+    - Schema Registry: oauth-controlcenter ✓
+    - Connect: oauth-controlcenter ✓
+  ssoProtocol: oidc ✓
+  Basic-auth on MDS: absent ✓
+
+RBAC Rolebindings:
+  controlcenter-systemadmin principal: 0oa1ov6h5mwmQTCKI358 ✓
+  principal.type: user ✓
+  role: SystemAdmin ✓
+
+==============================================================
+5. SECRET VALIDATION SYNTAX CHECKS
+==============================================================
+
+Dotted Key Escaping (oidcClientSecret.txt):
+  Pipeline validation syntax: oc ... -o jsonpath='{.data.oidcClientSecret\.txt}' ✓
+  Escaping: Correct (backslash before dot) ✓
+  Three-key validation pattern (clientId, clientSecret, oidcClientSecret.txt): ✓
+
+==============================================================
+6. PIPELINE SAFEGUARD CHECKS
+==============================================================
+
+Client ID Validation (create-prereqs):
+  Pattern: EXPECTED_C3_ID=0oa1ov6h5mwmQTCKI358 ✓
+  Pattern: EXPECTED_SSO_ID=0oa1o0ea1m26pITBQ358 ✓
+  Separation check: [ "$OAUTH_C3_ID" != "$OAUTH_MDS_SSO_ID" ] ✓
+
+oauth-mds-sso Structure Validation (create-prereqs):
+  Validation includes clientId ✓
+  Validation includes clientSecret ✓
+  Validation includes oidcClientSecret\.txt (escaped) ✓
+
+DEV Static Validation (pre-flight):
+  Calls validate_dev_two_account_manifest.py ✓
+  Python 3.6 compatible ✓
+  Uses PyYAML parser (not grep) ✓
+
+==============================================================
+7. AD-HOC SCRIPT VALIDATION CAPABILITIES
+==============================================================
+
+Script: ad-hoc-oc-scripts.sh
+
+Section A - Kubernetes Secrets:
+  - Both oauth secrets: ✓
+  - ClientId validation: ✓
+  - No secret values printed: ✓
+
+Section B - Live Kafka MDS SSO:
+  - provider.sso.clientCredentials.secretRef: ✓
+  - groupsClaimName, subClaimName, groupsClaimScope, refreshToken: ✓
+
+Section C - Live Control Center Dependencies:
+  - Kafka, MDS, SR, Connect auth validation: ✓
+  - ssoProtocol == oidc: ✓
+  - No basic-auth on MDS: ✓
+
+Section D - Rolebinding Status:
+  - spec.principal.name validation: ✓
+  - status.principal validation: ✓
+  - role == SystemAdmin: ✓
+  - app-ready condition validation: ✓
+
+Section E - Machine-Token Validation (COMPLETE):
+  - Token request (oauth-controlcenter): ✓
+  - JWT decode (Python 3.6 stdlib): ✓
+  - Claim validation: sub, cid/client_id, iss, scp/scope: ✓
+  - Expiration validation (exp): ✓
+  - dahDev_groups reporting (present/absent/empty): ✓
+  - No token/secret values in output: ✓
+
+Section F - Runtime Evidence + Broker Correlation:
+  - Control Center pod existence check: ✓ (FAIL if missing)
+  - Pod IP extraction: ✓
+  - C3 log search for auth errors: ✓
+  - Broker log correlation: ✓
+    - kafka-0, kafka-1, kafka-2 MDS 401 detection: ✓
+    - Pod IP + GET /security/1.0/authenticate + 401 pattern: ✓
+
+==============================================================
+8. FILE INVENTORY
+==============================================================
+
+Pipeline Files:
+  .azure-pipelines/confluent-platform.yaml (158 KB, 2840+ lines)
+    - With safeguards + static validation
+  .azure-pipelines/validate-confluent-platform.yaml (5.9 KB)
+    - Preserved unchanged
+  .azure-pipelines/scripts/ad-hoc-oc-scripts.sh (18 KB)
+    - Extended with sections A-F
+  .azure-pipelines/scripts/validate_dev_two_account_manifest.py (5.2 KB)
+    - New YAML-aware validation script
+
+Manifest Files:
+  apps/confluent-platform/dev/kafka.yaml (10 KB)
+    - Corrected SSO configurations
+  apps/confluent-platform/dev/controlcenter.yaml (11 KB)
+    - Verified correct
+  apps/confluent-platform/dev/rbac/rolebindings.yaml (5.9 KB)
+    - Verified correct
+
+Documentation Files:
+  CHANGES.md (12 KB)
+  VALIDATION_RESULTS.txt (this file)
+
+==============================================================
+9. CRITICAL VALIDATION NOTES
+==============================================================
+
+1. No Secret Values Exposed
+   ✓ All validation uses jsonpath queries and CLI lookups
+   ✓ No client-secret values in scripts or logs
+   ✓ No bearer tokens or access tokens printed
+   ✓ oidcClientSecret.txt only validated for existence
+
+2. Deterministic Validation (No Grep Guessing)
+   ✓ Python YAML parser validates exact paths
+   ✓ Explicit jsonpath queries with escaping for dotted keys
+   ✓ go-template used for array counting (not grep)
+
+3. Fail-Fast on Missing Resources
+   ✓ Missing oauth secrets: FAIL (not SKIP)
+   ✓ Missing Control Center pod: FAIL (not SKIP)
+   ✓ Missing Kafka/ControlCenter CRs: FAIL (not SKIP)
+   ✓ Missing rolebinding: FAIL (not SKIP)
+
+4. Complete JWT Validation
+   ✓ Sub claim matches machine identity
+   ✓ Client ID claim matches machine identity
+   ✓ Issuer matches Okta instance
+   ✓ Scope contains required value
+   ✓ Expiration is in the future
+   ✓ Fails pipeline if any claim invalid
+
+5. Broker-Side Correlation
+   ✓ Extracts Control Center pod IP
+   ✓ Collects broker logs (kafka-0, kafka-1, kafka-2)
+   ✓ Detects MDS 401 responses to current C3 IP
+   ✓ Fails if correlation detects rejection
+
+6. Pipeline Separation Preserved
+   ✓ confluent-platform.yaml does NOT call ad-hoc script
+   ✓ validate-confluent-platform.yaml preserves executeAdHocScript
+   ✓ Ad-hoc script is non-mutating (read-only)
+
+==============================================================
+10. PRE-DEPLOYMENT CHECKLIST
+==============================================================
+
+Before go/no-go decision, verify:
+
+Local Machine Validation (COMPLETED):
+  ✓ bash -n on all scripts
+  ✓ YAML parsing on all manifests
+  ✓ Python YAML validation script tests
+  ✓ No secret values embedded
+  ✓ Pipeline safeguard syntax correct
+  ✓ Ad-hoc script sections A-F present
+
+Live Cluster Validation (MANUAL POST-DEPLOYMENT):
+  [ ] Run pipeline create-prereqs for DEV
+  [ ] Verify Client ID safeguards pass
+  [ ] Verify oauth-mds-sso structure validated
+  [ ] Run pre-flight static validation
+  [ ] Verify Python script validation passes
+  [ ] Proceed with Phase 1-2 deployment
+  [ ] Post-deployment: Run ad-hoc script with executeAdHocScript=true
+  [ ] Verify all 6 sections (A-F) pass
+  [ ] Verify no 401 responses in broker logs
+  [ ] Verify Control Center web UI loads
+  [ ] Verify OIDC login works
+
+==============================================================
+11. IMPLEMENTATION CORRECTNESS SUMMARY
+==============================================================
+
+SAFEGUARDS:
+  ✓ Client IDs validated before secret creation
+  ✓ Identity separation enforced (two IDs must differ)
+  ✓ oauth-mds-sso structure validated (includes oidcClientSecret.txt)
+  ✓ Dotted key escaping correct in pipeline
+
+VALIDATION:
+  ✓ YAML parser used (not grep)
+  ✓ Exact path validation (not line proximity)
+  ✓ Complete JWT claim validation (6 claims)
+  ✓ Broker-side correlation implemented
+  ✓ Missing resources fail (not skip)
+
+ARCHITECTURE:
+  ✓ Machine identity separated from interactive identity
+  ✓ SSO configurations match VM deployment
+  ✓ No basic-auth fallback (SSO-only)
+  ✓ All service dependencies use oauth-controlcenter
+
+PIPELINE:
+  ✓ confluent-platform.yaml: Safeguards + validation
+  ✓ validate-confluent-platform.yaml: Preserved
+  ✓ ad-hoc-oc-scripts.sh: Extended with A-F sections
+  ✓ No automatic validation from install pipeline
+
+==============================================================
+12. KNOWN LIMITATIONS
+==============================================================
+
+1. Live Cluster Testing (Not Performed)
+   This validation was performed on local files only.
+   Actual deployment requires running against a live cluster.
+
+2. Okta Token Request (Not Performed)
+   JWT claim validation is scripted in ad-hoc-oc-scripts.sh
+   but requires valid Okta credentials and network access.
+
+3. Broker Log Correlation (Not Verified)
+   The pattern matching for MDS 401 responses is implemented
+   but requires actual broker logs to validate.
+
+These are expected limitations of pre-deployment validation.
+All checks execute deterministically on actual cluster resources
+when the ad-hoc script runs post-deployment.
+
+==============================================================
+CONCLUSION
+==============================================================
+
+✅ LOCAL MACHINE VALIDATION: PASS
+
+All executable validation has been implemented:
+  - Pipeline safeguards enforce identity model
+  - Static validation uses YAML parser (not grep)
+  - Ad-hoc script validates all 6 sections (A-F)
+  - JWT validation complete and deterministic
+  - Broker correlation implemented
+  - Missing resources fail-fast
+
+The implementation is ready for live cluster testing via:
+  validate-confluent-platform.yaml with executeAdHocScript=true
+
+==============================================================

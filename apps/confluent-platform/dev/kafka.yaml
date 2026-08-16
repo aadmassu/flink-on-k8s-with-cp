@@ -148,8 +148,8 @@ spec:
             tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             groupsClaimName: dahDev_groups
-            subClaimName: email
-            groupsClaimScope: openid profile email
+            subClaimName: sub
+            groupsClaimScope: 11547.DAH(Dev)
             refreshToken: true
       # Client IDs the operator may act on-behalf-of when reconciling rolebindings (runbook A23).
       impersonation:
