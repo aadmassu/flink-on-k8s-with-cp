@@ -184,3 +184,25 @@ spec:
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-dev
+---
+
+# -- Kafka embedded REST (kafka.dah-flink-dev.svc.cluster.local) ---------
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: kafka-embedded-rest-systemadmin
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: kafka-broker
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: kafka.dah-flink-dev.svc.cluster.local
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-dev

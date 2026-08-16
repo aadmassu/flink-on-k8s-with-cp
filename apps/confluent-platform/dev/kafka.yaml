@@ -72,6 +72,7 @@ spec:
       - User:0oa1owhtq2olDZWwf358   # DEV broker/MDS superuser
       - User:admin                   # internal SASL/PLAIN infrastructure user
       - User:cfk-operator-rbac       # CFK operator mTLS for KafkaRestClass reconciliation
+      - User:kafka.dah-flink-dev.svc.cluster.local  # Kafka brokers embedded kafkaRest mTLS to MDS
 
   listeners:
     internal:
