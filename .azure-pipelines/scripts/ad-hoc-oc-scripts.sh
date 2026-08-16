@@ -1,434 +1,367 @@
 #!/usr/bin/env bash
 set -euo pipefail
-umask 077
 
-NS="${OC_NS:-dah-flink-dev}"
-TOKEN_URL="https://myapps.firstcitizens.com/oauth2/default/v1/token"
-EXPECTED_ISSUER="https://myapps.firstcitizens.com/oauth2/default"
-EXPECTED_SCOPE="11547.DAH(Dev)"
+NAMESPACE="${1:-dah-flink-dev}"
+C3_CR="${C3_CR:-controlcenter}"
+ROLEBINDING="${ROLEBINDING:-controlcenter-systemadmin}"
+EXPECTED_CLIENT_ID="${EXPECTED_CLIENT_ID:-0oa1ov6h5mwmQTCKI358}"
+WAIT_SECONDS="${WAIT_SECONDS:-600}"
+LOG_SINCE="${LOG_SINCE:-20m}"
 
-COMPONENTS=(
-  "schemaregistry:oauth-schemaregistry"
-  "connect:oauth-connect"
-  "kafkarest:oauth-kafkarest"
-  "controlcenter:oauth-controlcenter"
-  "mds-rest:oauth-mds-rest"
-)
+echo "============================================================"
+echo "Control Center OAuth/MDS diagnostic and restart"
+echo "Namespace:       ${NAMESPACE}"
+echo "Role binding:    ${ROLEBINDING}"
+echo "Expected client: ${EXPECTED_CLIENT_ID}"
+echo "============================================================"
 
-WORK_DIR=$(mktemp -d)
-trap 'rm -rf "$WORK_DIR"' EXIT
-
-echo "=== Runtime validation ==="
-
-python3 - <<'PY'
-import sys
-
-if sys.version_info < (3, 6):
-    raise SystemExit(
-        "FATAL: Python 3.6 or newer is required; found "
-        + sys.version.split()[0]
-    )
-
-print("Python: {}".format(sys.version.split()[0]))
-PY
-
-failures=0
-
-echo
-echo "=== Managed-component OAuth identity audit ==="
-
-for item in "${COMPONENTS[@]}"; do
-  component=${item%%:*}
-  secret=${item#*:}
-
-  response_file="$WORK_DIR/${component}-response.json"
-  claims_file="$WORK_DIR/${component}-claims.json"
-  bindings_file="$WORK_DIR/${component}-bindings.txt"
-
-  echo
-  echo "------------------------------------------------------------"
-  echo "Component: $component"
-  echo "Secret:    $secret"
-
-  if ! oc -n "$NS" get secret "$secret" >/dev/null 2>&1; then
-    echo "FAIL: Secret/$secret does not exist"
-    failures=$((failures + 1))
-    continue
-  fi
-
-  cid=$(
-    oc -n "$NS" get secret "$secret" \
-      -o jsonpath='{.data.clientId}' |
-      base64 -d
-  )
-
-  csecret=$(
-    oc -n "$NS" get secret "$secret" \
-      -o jsonpath='{.data.clientSecret}' |
-      base64 -d
-  )
-
-  if [ -z "$cid" ] || [ -z "$csecret" ]; then
-    echo "FAIL: Secret/$secret has an empty clientId or clientSecret"
-    failures=$((failures + 1))
-    unset csecret
-    continue
-  fi
-
-  echo "Secret clientId: $cid"
-
-  http_code=$(
-    curl --silent --show-error \
-      --output "$response_file" \
-      --write-out '%{http_code}' \
-      -X POST "$TOKEN_URL" \
-      -H 'Content-Type: application/x-www-form-urlencoded' \
-      --data-urlencode "client_id=$cid" \
-      --data-urlencode "client_secret=$csecret" \
-      --data-urlencode 'grant_type=client_credentials' \
-      --data-urlencode "scope=$EXPECTED_SCOPE" ||
-      true
-  )
-
-  unset csecret
-
-  if [ "$http_code" != "200" ]; then
-    echo "FAIL: Okta token request returned HTTP $http_code"
-
-    RESPONSE_FILE="$response_file" python3 - <<'PY'
-import json
-import os
-
-path = os.environ["RESPONSE_FILE"]
-
-try:
-    with open(path, encoding="utf-8") as stream:
-        response = json.load(stream)
-except Exception:
-    print("Unable to parse the Okta error response.")
-else:
-    safe_error = {
-        "error": response.get("error"),
-        "error_description": response.get("error_description"),
-    }
-    print(json.dumps(safe_error, indent=2))
-PY
-
-    failures=$((failures + 1))
-    continue
-  fi
-
-  token=$(
-    RESPONSE_FILE="$response_file" python3 - <<'PY'
-import json
-import os
-
-with open(os.environ["RESPONSE_FILE"], encoding="utf-8") as stream:
-    response = json.load(stream)
-
-token = response.get("access_token")
-
-if not isinstance(token, str) or not token:
-    raise SystemExit(
-        "FATAL: Okta response did not contain access_token"
-    )
-
-print(token)
-PY
-  )
-
-  TOKEN="$token" CLAIMS_FILE="$claims_file" python3 - <<'PY'
-import base64
-import json
-import os
-
-token = os.environ["TOKEN"]
-claims_file = os.environ["CLAIMS_FILE"]
-
-parts = token.split(".")
-
-if len(parts) != 3:
-    raise SystemExit(
-        "FATAL: access token is not a three-part JWT"
-    )
-
-payload = parts[1]
-payload += "=" * (-len(payload) % 4)
-
-try:
-    decoded = base64.urlsafe_b64decode(
-        payload.encode("ascii")
-    )
-    claims = json.loads(decoded.decode("utf-8"))
-except Exception as exc:
-    raise SystemExit(
-        "FATAL: unable to decode JWT payload: {}".format(exc)
-    )
-
-with open(claims_file, "w", encoding="utf-8") as stream:
-    json.dump(claims, stream)
-PY
-
-  unset token
-
-  echo "Token claims:"
-
-  CLAIMS_FILE="$claims_file" python3 - <<'PY'
-import json
-import os
-
-with open(os.environ["CLAIMS_FILE"], encoding="utf-8") as stream:
-    claims = json.load(stream)
-
-safe_claims = {
-    "sub": claims.get("sub"),
-    "client_id": claims.get("client_id"),
-    "iss": claims.get("iss"),
-    "aud": claims.get("aud"),
-    "scp": claims.get("scp"),
-    "scope": claims.get("scope"),
-    "dahDev_groups": claims.get("dahDev_groups"),
+command -v oc >/dev/null 2>&1 || {
+  echo "FATAL: oc is not installed or not in PATH."
+  exit 1
 }
 
-print(json.dumps(safe_claims, indent=2))
-PY
+oc whoami >/dev/null 2>&1 || {
+  echo "FATAL: The current session is not logged into OpenShift."
+  exit 1
+}
 
-  echo "Claim validation:"
-
-  if ! CLAIMS_FILE="$claims_file" \
-       EXPECTED_CLIENT_ID="$cid" \
-       EXPECTED_ISSUER="$EXPECTED_ISSUER" \
-       EXPECTED_SCOPE="$EXPECTED_SCOPE" \
-       python3 - <<'PY'
-import json
-import os
-import sys
-
-with open(os.environ["CLAIMS_FILE"], encoding="utf-8") as stream:
-    claims = json.load(stream)
-
-expected_client_id = os.environ["EXPECTED_CLIENT_ID"]
-expected_issuer = os.environ["EXPECTED_ISSUER"]
-expected_scope = os.environ["EXPECTED_SCOPE"]
-
-failed = False
-
-subject = claims.get("sub")
-
-if subject == expected_client_id:
-    print("PASS: sub matches clientId")
-else:
-    print(
-        "FAIL: token sub {!r} does not equal clientId {!r}".format(
-            subject,
-            expected_client_id,
-        )
-    )
-    failed = True
-
-issuer = claims.get("iss")
-
-if issuer == expected_issuer:
-    print("PASS: issuer")
-else:
-    print(
-        "FAIL: issuer {!r}; expected {!r}".format(
-            issuer,
-            expected_issuer,
-        )
-    )
-    failed = True
-
-scope_value = claims.get(
-    "scp",
-    claims.get("scope", []),
-)
-
-if isinstance(scope_value, str):
-    scopes = scope_value.split()
-elif isinstance(scope_value, list):
-    scopes = [
-        str(value)
-        for value in scope_value
-    ]
-else:
-    scopes = []
-
-if expected_scope in scopes:
-    print("PASS: required scope exists")
-else:
-    print(
-        "FAIL: required scope {!r} is absent; "
-        "token scopes={!r}".format(
-            expected_scope,
-            scopes,
-        )
-    )
-    failed = True
-
-groups = claims.get("dahDev_groups")
-
-if isinstance(groups, list) and groups:
-    print(
-        "PASS: dahDev_groups claim exists and is nonempty"
-    )
-elif isinstance(groups, str) and groups.strip():
-    print(
-        "PASS: dahDev_groups claim exists and is nonempty"
-    )
-else:
-    print(
-        "FAIL: dahDev_groups claim is absent or empty"
-    )
-    failed = True
-
-audience = claims.get("aud")
-
-if audience:
-    print("PASS: audience claim exists")
-else:
-    print("FAIL: audience claim is absent")
-    failed = True
-
-sys.exit(1 if failed else 0)
-PY
-  then
-    failures=$((failures + 1))
-  fi
-
-  echo "RBAC bindings:"
-
-  binding_rc=0
-
-  oc -n "$NS" get confluentrolebinding -o json |
-    EXPECTED_CLIENT_ID="$cid" python3 -c '
-import json
-import os
-import sys
-
-document = json.load(sys.stdin)
-expected = os.environ["EXPECTED_CLIENT_ID"]
-matches = []
-
-for item in document.get("items", []):
-    spec = item.get("spec", {})
-    principal = spec.get("principal", {})
-
-    if principal.get("name") != expected:
-        continue
-
-    metadata = item.get("metadata", {})
-    status = item.get("status", {})
-
-    matches.append(
-        "{}: role={}, state={}".format(
-            metadata.get("name", "<unknown>"),
-            spec.get("role", "<unknown>"),
-            status.get("state", "unknown"),
-        )
-    )
-
-if matches:
-    print("\n".join(matches))
-else:
-    print("NONE")
-
-sys.exit(0 if matches else 3)
-' >"$bindings_file" || binding_rc=$?
-
-  cat "$bindings_file"
-
-  if [ "$binding_rc" -ne 0 ] &&
-     [ "$component" != "mds-rest" ]; then
-    echo "FAIL: no ConfluentRolebinding matches clientId $cid"
-    failures=$((failures + 1))
-  fi
-done
+###############################################################################
+# 1. Validate namespace and Control Center CR
+###############################################################################
 
 echo
-echo "=== Kafka MDS impersonation administrators ==="
+echo "=== 1. Validating namespace and Control Center CR ==="
 
-oc -n "$NS" get kafka kafka -o json |
-  python3 -c '
-import json
-import sys
+oc get namespace "${NAMESPACE}" >/dev/null
 
-document = json.load(sys.stdin)
-
-admins = (
-    document.get("spec", {})
-    .get("services", {})
-    .get("mds", {})
-    .get("impersonation", {})
-    .get("admins", [])
-)
-
-if not admins:
-    print("NONE")
-else:
-    for admin in admins:
-        print(admin)
-'
-
-echo
-echo "=== ConfluentRolebinding states ==="
-
-oc -n "$NS" get confluentrolebinding -o json |
-  python3 -c '
-import json
-import sys
-
-document = json.load(sys.stdin)
-
-header = "{:<48} {:<28} {:<18} {}".format(
-    "NAME",
-    "PRINCIPAL",
-    "ROLE",
-    "STATE",
-)
-
-print(header)
-print("-" * len(header))
-
-items = sorted(
-    document.get("items", []),
-    key=lambda item: (
-        item.get("metadata", {}).get("name", "")
-    ),
-)
-
-for item in items:
-    metadata = item.get("metadata", {})
-    spec = item.get("spec", {})
-    status = item.get("status", {})
-    principal = spec.get("principal", {})
-
-    print(
-        "{:<48} {:<28} {:<18} {}".format(
-            metadata.get("name", "<unknown>"),
-            principal.get("name", "<unknown>"),
-            spec.get("role", "<unknown>"),
-            status.get("state", "unknown"),
-        )
-    )
-
-    for condition in status.get("conditions", []):
-        if condition.get("status") != "True":
-            print(
-                "  condition: {}={} reason={} message={}".format(
-                    condition.get("type", ""),
-                    condition.get("status", ""),
-                    condition.get("reason", ""),
-                    condition.get("message", ""),
-                )
-            )
-'
-
-echo
-
-if [ "$failures" -ne 0 ]; then
-  echo "RESULT: FAIL — $failures OAuth/RBAC identity checks failed"
+if ! oc -n "${NAMESPACE}" get controlcenter "${C3_CR}" >/dev/null 2>&1; then
+  echo "FATAL: ControlCenter/${C3_CR} does not exist in ${NAMESPACE}."
   exit 1
 fi
 
-echo "RESULT: PASS — managed-component token identities align"
+###############################################################################
+# 2. Validate Control Center role binding
+###############################################################################
+
+echo
+echo "=== 2. Validating Control Center SystemAdmin role binding ==="
+
+if ! oc -n "${NAMESPACE}" get confluentrolebinding "${ROLEBINDING}" \
+  >/dev/null 2>&1; then
+  echo "FATAL: ConfluentRolebinding/${ROLEBINDING} does not exist."
+  exit 1
+fi
+
+RB_PRINCIPAL="$(
+  oc -n "${NAMESPACE}" get confluentrolebinding "${ROLEBINDING}" \
+    -o jsonpath='{.status.principal}'
+)"
+
+RB_ROLE="$(
+  oc -n "${NAMESPACE}" get confluentrolebinding "${ROLEBINDING}" \
+    -o jsonpath='{.status.role}'
+)"
+
+RB_STATE="$(
+  oc -n "${NAMESPACE}" get confluentrolebinding "${ROLEBINDING}" \
+    -o jsonpath='{.status.state}'
+)"
+
+RB_READY="$(
+  oc -n "${NAMESPACE}" get confluentrolebinding "${ROLEBINDING}" \
+    -o jsonpath='{range .status.conditions[?(@.type=="platform.confluent.io/app-ready")]}{.status}{end}'
+)"
+
+RB_CLUSTER_ID="$(
+  oc -n "${NAMESPACE}" get confluentrolebinding "${ROLEBINDING}" \
+    -o jsonpath='{.status.kafkaClusterID}'
+)"
+
+echo "Principal:       ${RB_PRINCIPAL:-<missing>}"
+echo "Role:            ${RB_ROLE:-<missing>}"
+echo "State:           ${RB_STATE:-<missing>}"
+echo "ApplicationReady:${RB_READY:-<missing>}"
+echo "Kafka cluster ID:${RB_CLUSTER_ID:-<missing>}"
+
+if [[ "${RB_PRINCIPAL}" != "User:${EXPECTED_CLIENT_ID}" ]]; then
+  echo "FATAL: Role-binding principal does not match the expected client ID."
+  exit 1
+fi
+
+if [[ "${RB_ROLE}" != "SystemAdmin" ]]; then
+  echo "FATAL: Expected role SystemAdmin; found '${RB_ROLE:-missing}'."
+  exit 1
+fi
+
+if [[ "${RB_STATE^^}" != "CREATED" ]]; then
+  echo "FATAL: Role binding is not in CREATED state."
+  oc -n "${NAMESPACE}" describe confluentrolebinding "${ROLEBINDING}" || true
+  exit 1
+fi
+
+if [[ "${RB_READY}" != "True" ]]; then
+  echo "FATAL: Role binding does not report app-ready=True."
+  oc -n "${NAMESPACE}" describe confluentrolebinding "${ROLEBINDING}" || true
+  exit 1
+fi
+
+echo "PASS: Control Center SystemAdmin role binding is reconciled."
+
+###############################################################################
+# 3. Discover and validate Kafka broker pods
+###############################################################################
+
+echo
+echo "=== 3. Validating Kafka broker readiness ==="
+
+mapfile -t KAFKA_PODS < <(
+  oc -n "${NAMESPACE}" get pods \
+    -o custom-columns='NAME:.metadata.name' \
+    --no-headers |
+    grep -E '^kafka-[0-9]+$' |
+    sort
+)
+
+if [[ "${#KAFKA_PODS[@]}" -eq 0 ]]; then
+  echo "FATAL: No Kafka broker pods were found."
+  exit 1
+fi
+
+echo "Kafka pods discovered: ${KAFKA_PODS[*]}"
+
+KAFKA_NOT_READY=0
+
+for POD in "${KAFKA_PODS[@]}"; do
+  PHASE="$(
+    oc -n "${NAMESPACE}" get pod "${POD}" \
+      -o jsonpath='{.status.phase}'
+  )"
+
+  READY="$(
+    oc -n "${NAMESPACE}" get pod "${POD}" \
+      -o jsonpath='{range .status.conditions[?(@.type=="Ready")]}{.status}{end}'
+  )"
+
+  RESTARTS="$(
+    oc -n "${NAMESPACE}" get pod "${POD}" \
+      -o jsonpath='{range .status.containerStatuses[*]}{.restartCount}{" "}{end}'
+  )"
+
+  echo "${POD}: phase=${PHASE:-unknown}, ready=${READY:-unknown}, restarts=${RESTARTS:-unknown}"
+
+  if [[ "${PHASE}" != "Running" || "${READY}" != "True" ]]; then
+    KAFKA_NOT_READY=1
+  fi
+done
+
+if [[ "${KAFKA_NOT_READY}" -ne 0 ]]; then
+  echo "FATAL: One or more Kafka brokers are not Ready."
+  oc -n "${NAMESPACE}" get pods -o wide
+  exit 1
+fi
+
+echo "PASS: All Kafka broker pods are Running and Ready."
+
+###############################################################################
+# 4. Inspect recent MDS authentication events on every broker
+###############################################################################
+
+echo
+echo "=== 4. Existing MDS events for the Control Center identity ==="
+
+for POD in "${KAFKA_PODS[@]}"; do
+  echo
+  echo "----- ${POD} -----"
+
+  MATCHES="$(
+    oc -n "${NAMESPACE}" logs "${POD}" --since="${LOG_SINCE}" 2>&1 |
+      grep -Ei \
+        "${EXPECTED_CLIENT_ID}|Invalid Token|User Identity not found|Failed to authenticate|/security/1.0/authenticate" ||
+      true
+  )"
+
+  if [[ -n "${MATCHES}" ]]; then
+    printf '%s\n' "${MATCHES}" | tail -100
+  else
+    echo "No matching recent events."
+  fi
+done
+
+###############################################################################
+# 5. Locate the Control Center pod
+###############################################################################
+
+echo
+echo "=== 5. Locating Control Center pod ==="
+
+C3_POD="$(
+  oc -n "${NAMESPACE}" get pods \
+    -o custom-columns='NAME:.metadata.name' \
+    --no-headers |
+    grep -E '^controlcenter-[0-9]+$' |
+    head -1 ||
+  true
+)"
+
+if [[ -z "${C3_POD}" ]]; then
+  echo "FATAL: No Control Center pod was found."
+  oc -n "${NAMESPACE}" get pods
+  exit 1
+fi
+
+echo "Control Center pod: ${C3_POD}"
+
+###############################################################################
+# 6. Save the current C3 log and restart the pod
+###############################################################################
+
+echo
+echo "=== 6. Capturing current C3 log before restart ==="
+
+PRE_RESTART_LOG="${AGENT_TEMPDIRECTORY:-/tmp}/${C3_POD}-before-restart.log"
+
+oc -n "${NAMESPACE}" logs "${C3_POD}" \
+  --all-containers=true \
+  --timestamps >"${PRE_RESTART_LOG}" 2>&1 || true
+
+echo "Pre-restart log: ${PRE_RESTART_LOG}"
+
+echo
+echo "=== 7. Restarting Control Center ==="
+
+OLD_UID="$(
+  oc -n "${NAMESPACE}" get pod "${C3_POD}" \
+    -o jsonpath='{.metadata.uid}'
+)"
+
+oc -n "${NAMESPACE}" delete pod "${C3_POD}" --wait=false
+
+echo "Waiting for the existing pod instance to terminate..."
+
+ELAPSED=0
+while (( ELAPSED < WAIT_SECONDS )); do
+  CURRENT_UID="$(
+    oc -n "${NAMESPACE}" get pod "${C3_POD}" \
+      -o jsonpath='{.metadata.uid}' 2>/dev/null ||
+    true
+  )"
+
+  if [[ -n "${CURRENT_UID}" && "${CURRENT_UID}" != "${OLD_UID}" ]]; then
+    echo "Replacement pod detected with UID ${CURRENT_UID}."
+    break
+  fi
+
+  sleep 5
+  ELAPSED=$((ELAPSED + 5))
+done
+
+if (( ELAPSED >= WAIT_SECONDS )); then
+  echo "FATAL: Replacement Control Center pod was not created within ${WAIT_SECONDS}s."
+  oc -n "${NAMESPACE}" get pods -o wide
+  exit 1
+fi
+
+###############################################################################
+# 8. Wait for the replacement pod to become Ready
+###############################################################################
+
+echo
+echo "=== 8. Waiting for replacement Control Center pod readiness ==="
+
+if ! oc -n "${NAMESPACE}" wait \
+  --for=condition=Ready \
+  "pod/${C3_POD}" \
+  --timeout="${WAIT_SECONDS}s"; then
+
+  echo "FATAL: ${C3_POD} did not become Ready."
+
+  oc -n "${NAMESPACE}" get pod "${C3_POD}" -o wide || true
+  oc -n "${NAMESPACE}" describe pod "${C3_POD}" || true
+
+  echo
+  echo "----- Replacement C3 log -----"
+  oc -n "${NAMESPACE}" logs "${C3_POD}" \
+    --all-containers=true \
+    --timestamps \
+    --tail=500 || true
+
+  exit 1
+fi
+
+echo "PASS: ${C3_POD} is Ready."
+
+###############################################################################
+# 9. Check the replacement C3 log
+###############################################################################
+
+echo
+echo "=== 9. Evaluating replacement Control Center log ==="
+
+POST_RESTART_LOG="${AGENT_TEMPDIRECTORY:-/tmp}/${C3_POD}-after-restart.log"
+
+oc -n "${NAMESPACE}" logs "${C3_POD}" \
+  --all-containers=true \
+  --timestamps >"${POST_RESTART_LOG}" 2>&1
+
+echo "Post-restart log: ${POST_RESTART_LOG}"
+
+echo
+echo "----- Significant Control Center messages -----"
+
+grep -Ei \
+  'Invalid Token|User Identity not found|Failed to authenticate|health check|Started NetworkTraffic|License for control-center|License\(s\) found|PKIX|SSLHandshakeException|Connection refused' \
+  "${POST_RESTART_LOG}" |
+  tail -200 ||
+true
+
+if grep -Eqi \
+  'Invalid Token : User Identity not found|Failed to authenticate' \
+  "${POST_RESTART_LOG}"; then
+
+  echo
+  echo "FATAL: Control Center still has an MDS identity/authentication failure."
+
+  echo
+  echo "=== Broker-side evidence after restart ==="
+
+  for POD in "${KAFKA_PODS[@]}"; do
+    echo
+    echo "----- ${POD} -----"
+
+    oc -n "${NAMESPACE}" logs "${POD}" --since="${LOG_SINCE}" 2>&1 |
+      grep -Ei \
+        "${EXPECTED_CLIENT_ID}|Invalid Token|User Identity not found|Failed to authenticate|/security/1.0/authenticate" |
+      tail -150 ||
+    true
+  done
+
+  exit 1
+fi
+
+###############################################################################
+# 10. Final status
+###############################################################################
+
+echo
+echo "=== 10. Final Control Center status ==="
+
+oc -n "${NAMESPACE}" get controlcenter "${C3_CR}" \
+  -o custom-columns='NAME:.metadata.name,STATE:.status.state,READY:.status.readyReplicas,REPLICAS:.status.replicas' ||
+true
+
+oc -n "${NAMESPACE}" get pod "${C3_POD}" -o wide
+
+if ! grep -q 'Started NetworkTrafficServerConnector.*9021' "${POST_RESTART_LOG}"; then
+  echo "WARNING: Port 9021 startup was not found in the captured log."
+else
+  echo "PASS: Control Center HTTPS listener started on port 9021."
+fi
+
+if grep -q 'License for control-center expires' "${POST_RESTART_LOG}"; then
+  echo "PASS: Control Center loaded its enterprise license."
+else
+  echo "WARNING: No explicit Control Center license confirmation was found."
+fi
+
+echo
+echo "SUCCESS: Control Center restarted without the known MDS identity error."
