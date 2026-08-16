@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Ad-hoc OpenShift cluster scripts for debugging and inspection
-# User can edit this file locally, commit, and run via the validate-confluent-platform pipeline
-# when executeAdHocScript=true
-# Environment: OC_NS (default: dah-flink-dev)
-
 set -euo pipefail
 umask 077
 
@@ -28,13 +23,13 @@ echo "=== Runtime validation ==="
 python3 - <<'PY'
 import sys
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 6):
     raise SystemExit(
-        "FATAL: Python 3.9 or newer is required; found "
+        "FATAL: Python 3.6 or newer is required; found "
         + sys.version.split()[0]
     )
 
-print("Python:", sys.version.split()[0])
+print("Python: {}".format(sys.version.split()[0]))
 PY
 
 failures=0
@@ -134,7 +129,9 @@ with open(os.environ["RESPONSE_FILE"], encoding="utf-8") as stream:
 token = response.get("access_token")
 
 if not isinstance(token, str) or not token:
-    raise SystemExit("FATAL: Okta response did not contain access_token")
+    raise SystemExit(
+        "FATAL: Okta response did not contain access_token"
+    )
 
 print(token)
 PY
@@ -151,16 +148,22 @@ claims_file = os.environ["CLAIMS_FILE"]
 parts = token.split(".")
 
 if len(parts) != 3:
-    raise SystemExit("FATAL: access token is not a three-part JWT")
+    raise SystemExit(
+        "FATAL: access token is not a three-part JWT"
+    )
 
 payload = parts[1]
 payload += "=" * (-len(payload) % 4)
 
 try:
-    decoded = base64.urlsafe_b64decode(payload.encode("ascii"))
+    decoded = base64.urlsafe_b64decode(
+        payload.encode("ascii")
+    )
     claims = json.loads(decoded.decode("utf-8"))
 except Exception as exc:
-    raise SystemExit(f"FATAL: unable to decode JWT payload: {exc}")
+    raise SystemExit(
+        "FATAL: unable to decode JWT payload: {}".format(exc)
+    )
 
 with open(claims_file, "w", encoding="utf-8") as stream:
     json.dump(claims, stream)
@@ -236,12 +239,18 @@ else:
     )
     failed = True
 
-scope_value = claims.get("scp", claims.get("scope", []))
+scope_value = claims.get(
+    "scp",
+    claims.get("scope", []),
+)
 
 if isinstance(scope_value, str):
     scopes = scope_value.split()
 elif isinstance(scope_value, list):
-    scopes = [str(value) for value in scope_value]
+    scopes = [
+        str(value)
+        for value in scope_value
+    ]
 else:
     scopes = []
 
@@ -249,7 +258,8 @@ if expected_scope in scopes:
     print("PASS: required scope exists")
 else:
     print(
-        "FAIL: required scope {!r} is absent; token scopes={!r}".format(
+        "FAIL: required scope {!r} is absent; "
+        "token scopes={!r}".format(
             expected_scope,
             scopes,
         )
@@ -259,11 +269,17 @@ else:
 groups = claims.get("dahDev_groups")
 
 if isinstance(groups, list) and groups:
-    print("PASS: dahDev_groups claim exists and is nonempty")
+    print(
+        "PASS: dahDev_groups claim exists and is nonempty"
+    )
 elif isinstance(groups, str) and groups.strip():
-    print("PASS: dahDev_groups claim exists and is nonempty")
+    print(
+        "PASS: dahDev_groups claim exists and is nonempty"
+    )
 else:
-    print("FAIL: dahDev_groups claim is absent or empty")
+    print(
+        "FAIL: dahDev_groups claim is absent or empty"
+    )
     failed = True
 
 audience = claims.get("aud")
@@ -281,6 +297,8 @@ PY
   fi
 
   echo "RBAC bindings:"
+
+  binding_rc=0
 
   oc -n "$NS" get confluentrolebinding -o json |
     EXPECTED_CLIENT_ID="$cid" python3 -c '
@@ -318,15 +336,13 @@ else:
 sys.exit(0 if matches else 3)
 ' >"$bindings_file" || binding_rc=$?
 
-  binding_rc=${binding_rc:-0}
   cat "$bindings_file"
 
-  if [ "$binding_rc" -ne 0 ] && [ "$component" != "mds-rest" ]; then
+  if [ "$binding_rc" -ne 0 ] &&
+     [ "$component" != "mds-rest" ]; then
     echo "FAIL: no ConfluentRolebinding matches clientId $cid"
     failures=$((failures + 1))
   fi
-
-  unset binding_rc
 done
 
 echo
@@ -370,12 +386,15 @@ header = "{:<48} {:<28} {:<18} {}".format(
     "ROLE",
     "STATE",
 )
+
 print(header)
 print("-" * len(header))
 
 items = sorted(
     document.get("items", []),
-    key=lambda item: item.get("metadata", {}).get("name", ""),
+    key=lambda item: (
+        item.get("metadata", {}).get("name", "")
+    ),
 )
 
 for item in items:
@@ -406,6 +425,7 @@ for item in items:
 '
 
 echo
+
 if [ "$failures" -ne 0 ]; then
   echo "RESULT: FAIL — $failures OAuth/RBAC identity checks failed"
   exit 1
