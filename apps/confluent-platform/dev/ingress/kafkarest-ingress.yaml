@@ -18,8 +18,8 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     route.openshift.io/termination: reencrypt
-    route.openshift.io/destination-ca-certificate-secret: kafkarest-tls
-    route.openshift.io/insecureEdgeTerminationPolicy: Redirect   # Redirect HTTP to HTTPS
+    route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle
+    route.openshift.io/insecureEdgeTerminationPolicy: Redirect
     fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
 spec:
   ingressClassName: openshift-core-zone

@@ -30,6 +30,7 @@ spec:
   podSelector: {}
   policyTypes: [Ingress]
   ingress:
+    # Operator management and readiness probe ports
     - from:
         - namespaceSelector:
             matchLabels:
@@ -48,3 +49,14 @@ spec:
         - { protocol: TCP, port: 8083 }
         - { protocol: TCP, port: 8090 }
         - { protocol: TCP, port: 9021 }
+    # OpenShift ingress routers — externally exposed HTTPS ports only
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+      ports:
+        - { protocol: TCP, port: 8081 }  # Schema Registry
+        - { protocol: TCP, port: 8082 }  # Kafka REST Proxy
+        - { protocol: TCP, port: 8083 }  # Kafka Connect
+        - { protocol: TCP, port: 8090 }  # Kafka MDS (C3 SSO)
+        - { protocol: TCP, port: 9021 }  # Control Center
