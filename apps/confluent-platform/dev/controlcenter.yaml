@@ -34,8 +34,8 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  # 15 Gi dev; VM target 300 Gi.
-  dataVolumeCapacity: 15Gi
+  # Control Center working/RocksDB state. Prometheus has a separate 100 Gi PVC.
+  dataVolumeCapacity: 100Gi
   storageClass:
     name: kafka
 
@@ -199,11 +199,11 @@ spec:
       containerTemplate:
         resources:
           requests:
-            cpu: 250m
-            memory: 512Mi
+            cpu: 375m
+            memory: 1Gi
           limits:
-            cpu: "1"
-            memory: 2Gi
+            cpu: "1250m"
+            memory: 3Gi
       authentication:
         type: basic
         basic:
@@ -211,7 +211,10 @@ spec:
       tls:
         secretRef: controlcenter-tls
       pvc:
-        dataVolumeCapacity: 15Gi
+        # CFK 3.2 does not propagate spec.storageClass to this nested PVC.
+        # The pipeline pre-creates prometheus-data-controlcenter-0 from
+        # controlcenter-prometheus-pvc.yaml with storageClassName: kafka.
+        dataVolumeCapacity: 100Gi
     alertmanager:
       image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-alertmanager:2.5.0
       # ResourceQuota also requires explicit resources for Alertmanager.
@@ -219,10 +222,10 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 256Mi
+            memory: 512Mi
           limits:
             cpu: 500m
-            memory: 512Mi
+            memory: 1Gi
       authentication:
         type: basic
         basic:
@@ -270,14 +273,14 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # Dev-smoke sizing (runbook F2). VM/UAT target 12/16.
+    # DEV migration sizing within the namespace quota.
     resources:
       requests:
-        cpu: "1"
-        memory: 2Gi
+        cpu: "1250m"
+        memory: 3Gi
       limits:
-        cpu: "2"
-        memory: 4Gi
+        cpu: "2500m"
+        memory: 6Gi
     # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
     labels:

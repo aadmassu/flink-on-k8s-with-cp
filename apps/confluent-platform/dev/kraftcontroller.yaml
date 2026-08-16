@@ -29,7 +29,8 @@ spec:
     app.kubernetes.io/component: kraft-controller
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  dataVolumeCapacity: 1Gi
+  # Quorum headroom for migration and metadata growth: 25 Gi per controller.
+  dataVolumeCapacity: 25Gi
   storageClass:
     name: kafka
 
@@ -112,7 +113,7 @@ spec:
         memory: 2Gi
       limits:
         cpu: "2"
-        memory: 2Gi
+        memory: 3Gi
     probe:
       liveness:
         initialDelaySeconds: 60

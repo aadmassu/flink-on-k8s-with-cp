@@ -713,7 +713,10 @@ stages:
 
                   # DEV-only: include mTLS client certificate
                   if [ "$TARGET_ENV" = "dev" ]; then
-                    REQUIRED_FILES+=(cert-manager/cfk-operator-mds-client-certificate.yaml)
+                    REQUIRED_FILES+=(
+                      controlcenter-prometheus-pvc.yaml
+                      cert-manager/cfk-operator-mds-client-certificate.yaml
+                    )
                   fi
                   missing_files=0
                   for f in "${REQUIRED_FILES[@]}"; do
@@ -913,6 +916,49 @@ stages:
                   fi
                   echo "✅ No unresolved placeholders"
               env:
+                TARGET_ENV: ${{ parameters.environment }}
+
+            - task: Bash@3
+              displayName: "Pre-flight: validate DEV quota and migration capacity"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  if [ "$TARGET_ENV" != "dev" ]; then
+                    echo "Resource budget in this package is DEV-specific; skipping for $TARGET_ENV."
+                    exit 0
+                  fi
+
+                  echo "=== Validating DEV namespace capacity before mutation ==="
+                  if ! oc get storageclass kafka >/dev/null 2>&1; then
+                    echo "FATAL: required StorageClass/kafka does not exist."
+                    exit 1
+                  fi
+                  sc_provisioner=$(oc get storageclass kafka -o jsonpath='{.provisioner}')
+                  sc_reclaim=$(oc get storageclass kafka -o jsonpath='{.reclaimPolicy}')
+                  sc_expand=$(oc get storageclass kafka -o jsonpath='{.allowVolumeExpansion}')
+                  echo "StorageClass/kafka: provisioner=$sc_provisioner reclaimPolicy=$sc_reclaim expansion=$sc_expand"
+                  if [ "$sc_provisioner" != "csi.vsphere.vmware.com" ] \
+                     || [ "$sc_reclaim" != "Retain" ] \
+                     || [ "$sc_expand" != "true" ]; then
+                    echo "FATAL: StorageClass/kafka no longer matches the approved DEV contract."
+                    exit 1
+                  fi
+
+                  quota_json=$(mktemp)
+                  pods_json=$(mktemp)
+                  pvcs_json=$(mktemp)
+                  trap 'rm -f "$quota_json" "$pods_json" "$pvcs_json"' EXIT
+
+                  oc -n "$OC_NS" get resourcequota compute-resources -o json > "$quota_json"
+                  oc -n "$OC_NS" get pods -o json > "$pods_json"
+                  oc -n "$OC_NS" get pvc -o json > "$pvcs_json"
+
+                  python3 .azure-pipelines/scripts/validate_dev_resource_budget.py \
+                    --quota "$quota_json" --pods "$pods_json" --pvcs "$pvcs_json"
+              env:
+                OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
@@ -1190,6 +1236,7 @@ stages:
                   # Network policy first, then RBAC, then CRs. Certificates already applied in previous task.
                   MANIFESTS_TO_VALIDATE=(
                     "network-policy/network-policy.yaml"
+                    "controlcenter-prometheus-pvc.yaml"
                     "rolebindings.yaml"
                     "kafkarestclass.yaml"
                     "kraftcontroller.yaml"
@@ -2016,6 +2063,42 @@ stages:
                   fi
                   if is_true "$APPLY_C3"; then
                     echo ""
+                    if [ "$TARGET_ENV" = "dev" ]; then
+                      C3_PROM_PVC="$ENV_DIR/controlcenter-prometheus-pvc.yaml"
+                      C3_PROM_PVC_NAME=prometheus-data-controlcenter-0
+                      echo "=== Preparing Control Center Prometheus storage ==="
+                      if [ ! -f "$C3_PROM_PVC" ]; then
+                        echo "FATAL: $C3_PROM_PVC is required before Control Center."
+                        exit 1
+                      fi
+
+                      # A PVC's StorageClass is immutable. Fail with a precise
+                      # recovery instruction instead of repeatedly applying a
+                      # correct manifest to an old classless Pending claim.
+                      if oc -n "$OC_NS" get pvc "$C3_PROM_PVC_NAME" >/dev/null 2>&1; then
+                        existing_sc=$(oc -n "$OC_NS" get pvc "$C3_PROM_PVC_NAME" \
+                          -o jsonpath='{.spec.storageClassName}')
+                        existing_size=$(oc -n "$OC_NS" get pvc "$C3_PROM_PVC_NAME" \
+                          -o jsonpath='{.spec.resources.requests.storage}')
+                        if [ "$existing_sc" != "kafka" ]; then
+                          echo "FATAL: PVC/$C3_PROM_PVC_NAME uses StorageClass '${existing_sc:-<none>}', expected kafka."
+                          echo "Run action=uninstall with wipePVCs=true, then reinstall."
+                          exit 1
+                        fi
+                        echo "Existing PVC/$C3_PROM_PVC_NAME uses kafka ($existing_size); applying desired expansion."
+                      fi
+
+                      echo "+ oc apply -f $C3_PROM_PVC"
+                      oc apply -f "$C3_PROM_PVC"
+                      echo "=== Waiting up to 300s for PVC/$C3_PROM_PVC_NAME to bind ==="
+                      if ! oc -n "$OC_NS" wait --for=jsonpath='{.status.phase}'=Bound \
+                          "pvc/$C3_PROM_PVC_NAME" --timeout=300s; then
+                        echo "FATAL: PVC/$C3_PROM_PVC_NAME did not bind."
+                        oc -n "$OC_NS" describe pvc "$C3_PROM_PVC_NAME" || true
+                        exit 1
+                      fi
+                    fi
+
                     echo "+ oc apply -f $ENV_DIR/controlcenter.yaml"
                     oc apply -f "$ENV_DIR/controlcenter.yaml"
                   else

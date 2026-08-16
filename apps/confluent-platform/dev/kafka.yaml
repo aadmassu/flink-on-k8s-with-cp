@@ -35,7 +35,8 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  dataVolumeCapacity: 15Gi
+  # Migration capacity: 300 Gi per broker (3 x 300 Gi = 900 Gi).
+  dataVolumeCapacity: 300Gi
   storageClass:
     name: kafka
 
@@ -241,11 +242,11 @@ spec:
     serviceAccountName: flink-operator
     resources:
       requests:
-        cpu: "1"
-        memory: 2Gi
+        cpu: "1250m"
+        memory: 3Gi
       limits:
-        cpu: "2"
-        memory: 4Gi
+        cpu: "2500m"
+        memory: 6Gi
     probe:
       liveness:
         initialDelaySeconds: 90
