@@ -7,27 +7,31 @@ parameters:
     default: dev
     values: [dev, qa, uat-p, uat-s, prd, dr]
 
+  - name: executeAdHocScript
+    displayName: "Execute ad-hoc-oc-scripts.sh (OAuth/RBAC audit)"
+    type: boolean
+    default: false
+    # When checked: runs .azure-pipelines/scripts/ad-hoc-oc-scripts.sh against the target environment
+    # Audits all managed-component OAuth identities and RBAC bindings
+    # Edit the script locally to modify audit logic, commit, and re-run the pipeline
+    # Useful for debugging OAuth/RBAC issues without local oc access (e.g., Zscaler-blocked laptops)
+
   - name: executeAdHocCommand
     displayName: "Execute ad hoc command"
     type: boolean
     default: false
+    # When checked: runs the command below against the target environment
+    # Useful for one-off debugging queries
 
   - name: adHocCommand
-    displayName: "Ad hoc command (multi-line, executed if checkbox above is checked)"
+    displayName: "Ad hoc command (optional — only used if checkbox above is checked)"
     type: string
-    default: ""
+    default: "oc status"
     # Examples:
     #   oc apply --dry-run=server -f apps/confluent-platform/dev/kafkarestclass.yaml
     #   oc get kafka -n dah-flink-dev
+    #   oc get pod -n dah-flink-dev
     #   kubectl get namespaces
-
-  - name: executeAdHocScript
-    displayName: "Execute ad-hoc-oc-scripts.sh"
-    type: boolean
-    default: false
-    # When checked: runs .azure-pipelines/ad-hoc-oc-scripts.sh against the target environment
-    # Edit the script locally to add/modify cluster inspection commands, commit, and re-run the pipeline with this checkbox enabled.
-    # Useful for debugging without local oc access (e.g., Zscaler-blocked laptops).
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
