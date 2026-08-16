@@ -8,7 +8,7 @@ parameters:
     values: [dev, qa, uat-p, uat-s, prd, dr]
 
   - name: executeAdHocScript
-    displayName: "Execute ad-hoc-oc-scripts.sh (OAuth/RBAC audit)"
+    displayName: "Execute ad-hoc-oc-scripts.sh"
     type: boolean
     default: false
     # When checked: runs .azure-pipelines/scripts/ad-hoc-oc-scripts.sh against the target environment
