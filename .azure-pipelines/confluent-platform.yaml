@@ -109,6 +109,9 @@ variables:
     - group: kafka-openshift-credentials-prd
   - ${{ if eq(parameters.environment, 'dr') }}:
     - group: kafka-openshift-credentials-dr
+  # Control Center truststore password (default: truststorepass from QA reference)
+  - name: c3TruststorePassword
+    value: $(c3-truststore-password)
 
 stages:
   - stage: ManageCFK
@@ -720,6 +723,7 @@ stages:
               env:
                 TARGET_ENV: ${{ parameters.environment }}
                 OC_NS: $(openshift-namespace)
+                TRUSTSTORE_PASSWORD: $(c3TruststorePassword)
 
           - ${{ if eq(parameters.action, 'install-or-update') }}:
             - task: Bash@3

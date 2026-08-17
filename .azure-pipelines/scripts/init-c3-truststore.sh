@@ -11,6 +11,7 @@ TARGET_NS="${1:-}"
 REFERENCE_JKS="${2:-}"
 CONFIGMAP_NAME="c3-trust-bundle"
 TRUSTSTORE_KEY="bundle.jks"
+TRUSTSTORE_PASSWORD="${TRUSTSTORE_PASSWORD:-truststorepass}"
 
 if [ -z "$TARGET_NS" ]; then
   echo "Usage: $0 <target-namespace> [reference-jks-file]" >&2

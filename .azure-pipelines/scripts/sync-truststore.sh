@@ -9,6 +9,7 @@ SOURCE_JKS="${1:-}"
 TARGET_NS="${2:-}"
 TRUST_CONFIGMAP="${3:-c3-trust-bundle}"
 TRUSTSTORE_KEY="bundle.jks"
+TRUSTSTORE_PASSWORD="${TRUSTSTORE_PASSWORD:-truststorepass}"
 
 if [ -z "$SOURCE_JKS" ] || [ -z "$TARGET_NS" ]; then
   echo "Usage: $0 <source-jks-file> <target-namespace> [configmap-name]" >&2
