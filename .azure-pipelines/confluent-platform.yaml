@@ -109,9 +109,25 @@ variables:
     - group: kafka-openshift-credentials-prd
   - ${{ if eq(parameters.environment, 'dr') }}:
     - group: kafka-openshift-credentials-dr
-  # Control Center truststore password (default: truststorepass from QA reference)
-  - name: c3TruststorePassword
-    value: $(c3-truststore-password)
+  # Control Center truststore password (env-specific: {env}-c3-truststore-bundle-password)
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - name: c3TruststorePassword
+      value: $(dev-c3-truststore-bundle-password)
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - name: c3TruststorePassword
+      value: $(qa-c3-truststore-bundle-password)
+  - ${{ if eq(parameters.environment, 'uat-p') }}:
+    - name: c3TruststorePassword
+      value: $(uat-p-c3-truststore-bundle-password)
+  - ${{ if eq(parameters.environment, 'uat-s') }}:
+    - name: c3TruststorePassword
+      value: $(uat-s-c3-truststore-bundle-password)
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - name: c3TruststorePassword
+      value: $(prd-c3-truststore-bundle-password)
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - name: c3TruststorePassword
+      value: $(dr-c3-truststore-bundle-password)
 
 stages:
   - stage: ManageCFK
