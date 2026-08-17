@@ -8,13 +8,23 @@ set -uo pipefail
 # Usage: init-c3-truststore.sh <target-namespace> [reference-jks-file]
 
 TARGET_NS="${1:-}"
-REFERENCE_JKS="${2:-.azure-pipelines/truststore-references/qa-reference.jks}"
+REFERENCE_JKS="${2:-}"
 CONFIGMAP_NAME="c3-trust-bundle"
 TRUSTSTORE_KEY="bundle.jks"
 
 if [ -z "$TARGET_NS" ]; then
   echo "Usage: $0 <target-namespace> [reference-jks-file]" >&2
   exit 1
+fi
+
+# If REFERENCE_JKS not provided, use default
+if [ -z "$REFERENCE_JKS" ]; then
+  REFERENCE_JKS=".azure-pipelines/truststore-references/qa-reference.jks"
+fi
+
+# Convert to absolute path if relative
+if [[ ! "$REFERENCE_JKS" = /* ]]; then
+  REFERENCE_JKS="$(cd "$(dirname "$REFERENCE_JKS")" && pwd)/$(basename "$REFERENCE_JKS")"
 fi
 
 command -v oc >/dev/null 2>&1 || { echo "FATAL: oc is unavailable" >&2; exit 1; }

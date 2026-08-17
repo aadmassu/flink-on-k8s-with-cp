@@ -711,6 +711,16 @@ stages:
                 C3_ALERT_USER: $(${{ parameters.environment }}-c3-alertmanager-username)
                 C3_ALERT_PWD: $(${{ parameters.environment }}-c3-alertmanager-password)
 
+            - task: Bash@3
+              displayName: "Initialize Control Center-specific truststore (c3-trust-bundle)"
+              inputs:
+                targetType: filePath
+                filePath: '.azure-pipelines/scripts/init-c3-truststore.sh'
+                arguments: '$(openshift-namespace) $(Build.SourcesDirectory)/.azure-pipelines/truststore-references/qa-reference.jks'
+              env:
+                TARGET_ENV: ${{ parameters.environment }}
+                OC_NS: $(openshift-namespace)
+
           - ${{ if eq(parameters.action, 'install-or-update') }}:
             - task: Bash@3
               displayName: "Validate OpenShift namespace matches canonical (RESOLVED_NS enforcement)"
