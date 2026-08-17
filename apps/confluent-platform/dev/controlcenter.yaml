@@ -13,7 +13,7 @@ metadata:
   name: controlcenter
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-c3-basic-auth"
+    platform.confluent.io/force-reconcile: "2026-08-17-oidc-pkix-truststore"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
@@ -45,7 +45,7 @@ spec:
   tls:
     secretRef: controlcenter-tls
 
-  # Control Center-specific trust store (includes org fcb-trust-bundle + OIDC/SSO certs). Created by create-prereqs.
+  # JVM-wide outbound trust store for Okta/OIDC and FCB endpoints. Created by create-prereqs.
   mountedVolumes:
     volumes:
       - name: c3-trust-bundle

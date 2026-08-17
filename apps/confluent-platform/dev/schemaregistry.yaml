@@ -13,7 +13,7 @@ metadata:
   name: schemaregistry
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-02-sr-replicas-2"
+    platform.confluent.io/force-reconcile: "2026-08-17-oidc-pkix-truststore"
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -42,17 +42,17 @@ spec:
   tls:
     secretRef: schemaregistry-tls
 
-  # JVM outbound trust store (kafka-tls signed by FCB CA in this bundle; runbook A21).
+  # JVM-wide outbound trust store for OAuth token retrieval and FCB endpoints.
   mountedVolumes:
     volumes:
-      - name: fcb-trust-bundle
+      - name: oidc-trust-bundle
         configMap:
-          name: fcb-trust-bundle
+          name: c3-trust-bundle
           items:
             - key: bundle.jks
               path: bundle.jks
     volumeMounts:
-      - name: fcb-trust-bundle
+      - name: oidc-trust-bundle
         mountPath: /var/ssl/truststore
         readOnly: true
 
@@ -105,9 +105,12 @@ spec:
   configOverrides:
     jvm:
       - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
-      - "-Djavax.net.ssl.trustStorePassword=changeit"
-      - "-Djavax.net.ssl.trustStoreType=JKS"
+      - "-Djavax.net.ssl.trustStorePassword=truststorepass"
+      - "-Djavax.net.ssl.trustStoreType=PKCS12"
     server:
+      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
+      - confluent.metadata.ssl.truststore.password=truststorepass
+      - confluent.metadata.ssl.truststore.type=PKCS12
       - schema.registry.group.id=schema-registry
       - kafkastore.topic=_schemas
       - kafkastore.topic.replication.factor=3
