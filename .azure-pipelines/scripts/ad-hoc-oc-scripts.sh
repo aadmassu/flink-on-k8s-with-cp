@@ -1,270 +1,169 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
-# DEV Control Center ingress repair and verification.
-# Run from the repository root through validate-confluent-platform.yaml.
-# No jq dependency. Python 3.6+ stdlib only.
+# Read-only Control Center OIDC/PKIX diagnostic.
+# Called by validate-confluent-platform.yaml with the namespace as argument.
+# No jq/PyYAML. Does not print Secret values, tokens, IDs, or passwords.
 
-NAMESPACE="${1:-dah-flink-dev}"
-NP_FILE="${NP_FILE:-apps/confluent-platform/dev/network-policy/network-policy.yaml}"
-NP_NAME="${NP_NAME:-allow-from-confluent-operator}"
-C3_HOST="${C3_HOST:-controlcenter.apps.dv.ocp.fcbint.net}"
-C3_SERVICE="${C3_SERVICE:-controlcenter}"
-C3_PORT="${C3_PORT:-9021}"
-ROUTE_NAME="${ROUTE_NAME:-controlcenter-ggdn9}"
-
-fatal() { echo "FATAL: $*" >&2; exit 1; }
-pass() { echo "PASS: $*"; }
-
-find_python() {
-  local candidate
-  for candidate in python3 python; do
-    if command -v "$candidate" >/dev/null 2>&1 && \
-       "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3,6) else 1)' 2>/dev/null; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-  return 1
-}
-
-command -v oc >/dev/null 2>&1 || fatal "oc is not available"
-command -v curl >/dev/null 2>&1 || fatal "curl is not available"
-command -v openssl >/dev/null 2>&1 || fatal "openssl is not available"
-command -v base64 >/dev/null 2>&1 || fatal "base64 is not available"
-PYTHON_BIN="$(find_python)" || fatal "Python 3.6 or newer is required"
-WORK_DIR="$(mktemp -d "${AGENT_TEMPDIRECTORY:-/tmp}/c3-ingress-check.XXXXXX")"
+NAMESPACE="${1:-${OC_NS:-dah-flink-dev}}"
+OKTA_HOST="${OKTA_HOST:-myapps.firstcitizens.com}"
+OKTA_PORT="${OKTA_PORT:-443}"
+C3_POD="${C3_POD:-controlcenter-0}"
+TRUST_CONFIGMAP="${TRUST_CONFIGMAP:-fcb-trust-bundle}"
+TRUSTSTORE_KEY="${TRUSTSTORE_KEY:-bundle.jks}"
+TRUSTSTORE_PASSWORD="${TRUSTSTORE_PASSWORD:-changeit}"
+FAILED=0
+WORK_DIR="$(mktemp -d "${AGENT_TEMPDIRECTORY:-/tmp}/c3-pkix.XXXXXX")"
 cleanup() { rm -rf "$WORK_DIR"; }
 trap cleanup EXIT
-oc whoami >/dev/null 2>&1 || fatal "not logged into OpenShift"
-oc -n "$NAMESPACE" get namespace "$NAMESPACE" >/dev/null 2>&1 || fatal "namespace $NAMESPACE is inaccessible"
 
-echo "============================================================"
-echo "DEV Control Center ingress repair and verification"
+section() { printf '\n============================================================\n%s\n============================================================\n' "$*"; }
+pass() { echo "PASS: $*"; }
+warn() { echo "WARN: $*"; }
+fail() { echo "FAIL: $*" >&2; FAILED=1; }
+
+command -v oc >/dev/null 2>&1 || { echo "FATAL: oc is unavailable" >&2; exit 1; }
+command -v base64 >/dev/null 2>&1 || { echo "FATAL: base64 is unavailable" >&2; exit 1; }
+oc whoami >/dev/null 2>&1 || { echo "FATAL: not logged into OpenShift" >&2; exit 1; }
+oc get namespace "$NAMESPACE" >/dev/null 2>&1 || { echo "FATAL: namespace $NAMESPACE is inaccessible" >&2; exit 1; }
+
+section "1. Workload and route state"
 echo "Namespace: $NAMESPACE"
-echo "Host:      $C3_HOST"
-echo "============================================================"
-
+echo "OIDC host: $OKTA_HOST:$OKTA_PORT"
+oc -n "$NAMESPACE" get pods -o wide
 echo
-echo "=== 1. Apply repository-managed NetworkPolicy ==="
-[ -f "$NP_FILE" ] || fatal "NetworkPolicy manifest not found: $NP_FILE (run from repository root)"
-oc apply -f "$NP_FILE"
-
+oc -n "$NAMESPACE" get controlcenter controlcenter -o custom-columns='NAME:.metadata.name,READY:.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status,REASON:.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].reason' 2>/dev/null || true
+oc -n "$NAMESPACE" get kafka kafka -o custom-columns='NAME:.metadata.name,READY:.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status,REASON:.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].reason' 2>/dev/null || true
 echo
-echo "=== 2. Verify router selector and required ports ==="
-oc -n "$NAMESPACE" get networkpolicy "$NP_NAME" -o json >"$WORK_DIR/networkpolicy.json"
-"$PYTHON_BIN" - "$WORK_DIR/networkpolicy.json" "$C3_PORT" <<'PY'
-import json, sys
-required_port = int(sys.argv[2])
-with open(sys.argv[1]) as stream:
-    doc = json.load(stream)
-matched = False
-ports = set()
-for rule in doc.get("spec", {}).get("ingress", []):
-    for source in rule.get("from", []):
-        labels = source.get("namespaceSelector", {}).get("matchLabels", {})
-        if labels.get("kubernetes.io/metadata.name") == "openshift-ingress":
-            matched = True
-            for entry in rule.get("ports", []):
-                try:
-                    ports.add(int(entry.get("port")))
-                except (TypeError, ValueError):
-                    pass
-if not matched:
-    print("FATAL: policy has no openshift-ingress namespace-name selector", file=sys.stderr)
-    raise SystemExit(1)
-if required_port not in ports:
-    print("FATAL: router rule does not permit TCP port %s" % required_port, file=sys.stderr)
-    raise SystemExit(1)
-print("PASS: router selector is kubernetes.io/metadata.name=openshift-ingress")
-print("PASS: router rule permits ports: %s" % ", ".join(str(x) for x in sorted(ports)))
-PY
+oc -n "$NAMESPACE" get route -o custom-columns='NAME:.metadata.name,HOST:.spec.host,TERMINATION:.spec.tls.termination,TARGET:.spec.to.name,PORT:.spec.port.targetPort,ADMITTED:.status.ingress[0].conditions[?(@.type=="Admitted")].status' 2>/dev/null || true
+oc -n "$NAMESPACE" get pod "$C3_POD" >/dev/null 2>&1 || fail "Pod/$C3_POD does not exist"
 
-echo
-echo "=== 3. Verify Control Center pod and Service ==="
-oc -n "$NAMESPACE" get pod controlcenter-0 >/dev/null 2>&1 || fatal "Pod/controlcenter-0 does not exist"
-C3_READY="$(oc -n "$NAMESPACE" get pod controlcenter-0 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')"
-[ "$C3_READY" = "True" ] || fatal "Pod/controlcenter-0 is not Ready (Ready=$C3_READY)"
-pass "Pod/controlcenter-0 is Ready"
-
-SERVICE_PORT="$(oc -n "$NAMESPACE" get service "$C3_SERVICE" -o jsonpath='{.spec.ports[?(@.name=="external")].port}')"
-[ "$SERVICE_PORT" = "$C3_PORT" ] || fatal "Service/$C3_SERVICE external port is ${SERVICE_PORT:-missing}; expected $C3_PORT"
-pass "Service/$C3_SERVICE exposes external port $C3_PORT"
-
-echo
-echo "=== 4. Verify ready EndpointSlices across all slices ==="
-oc -n "$NAMESPACE" get endpointslices.discovery.k8s.io \
-  -l "kubernetes.io/service-name=$C3_SERVICE" -o json >"$WORK_DIR/endpointslices.json"
-"$PYTHON_BIN" - "$WORK_DIR/endpointslices.json" <<'PY'
-import json, sys
-with open(sys.argv[1]) as stream:
-    doc = json.load(stream)
-ready = []
-for item in doc.get("items", []):
-    for endpoint in item.get("endpoints", []):
-        condition = endpoint.get("conditions", {}).get("ready")
-        addresses = endpoint.get("addresses") or []
-        if addresses and condition is not False:
-            ready.extend(addresses)
-if not ready:
-    print("FATAL: no ready Control Center endpoint exists", file=sys.stderr)
-    raise SystemExit(1)
-print("PASS: ready Control Center endpoint(s): %s" % ", ".join(ready))
-PY
-
-echo
-echo "=== 5. Verify generated Route ==="
-if ! oc -n "$NAMESPACE" get route "$ROUTE_NAME" >/dev/null 2>&1; then
-  ROUTE_NAME="$(oc -n "$NAMESPACE" get route -l app.kubernetes.io/instance=controlcenter -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
-fi
-[ -n "$ROUTE_NAME" ] || fatal "no generated Control Center Route found"
-
-ADMITTED="$(oc -n "$NAMESPACE" get route "$ROUTE_NAME" -o jsonpath='{.status.ingress[0].conditions[?(@.type=="Admitted")].status}')"
-[ "$ADMITTED" = "True" ] || fatal "Route/$ROUTE_NAME is not admitted (Admitted=$ADMITTED)"
-TERMINATION="$(oc -n "$NAMESPACE" get route "$ROUTE_NAME" -o jsonpath='{.spec.tls.termination}')"
-[ "$TERMINATION" = "reencrypt" ] || fatal "Route/$ROUTE_NAME termination is ${TERMINATION:-missing}; expected reencrypt"
-DEST_CA="$(oc -n "$NAMESPACE" get route "$ROUTE_NAME" -o jsonpath='{.spec.tls.destinationCACertificate}')"
-[ -n "$DEST_CA" ] || fatal "Route/$ROUTE_NAME has no destination CA certificate"
-TARGET_PORT="$(oc -n "$NAMESPACE" get route "$ROUTE_NAME" -o jsonpath='{.spec.port.targetPort}')"
-[ "$TARGET_PORT" = "external" ] || fatal "Route/$ROUTE_NAME targetPort is ${TARGET_PORT:-missing}; expected external"
-pass "Route/$ROUTE_NAME is admitted with reencrypt TLS, destination CA, and targetPort=external"
-
-echo
-echo "=== 6. Inspect and verify Control Center certificate chain ==="
-
-extract_public_cert_key() {
-  local secret_name="$1"
-  local key_name="$2"
-  local output_file="$3"
-  local encoded
-  case "$key_name" in
-    tls.crt)
-      encoded="$(oc -n "$NAMESPACE" get secret "$secret_name" \
-        -o jsonpath='{.data.tls\.crt}' 2>/dev/null || true)"
-      ;;
-    ca.crt)
-      encoded="$(oc -n "$NAMESPACE" get secret "$secret_name" \
-        -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)"
-      ;;
-    *)
-      fatal "unsupported public certificate key requested: $key_name"
-      ;;
-  esac
-  [ -n "$encoded" ] || return 1
-  printf '%s' "$encoded" | base64 --decode >"$output_file" 2>/dev/null || return 1
-  grep -q -- '-----BEGIN CERTIFICATE-----' "$output_file"
-}
-
-print_cert_metadata() {
-  local label="$1"
-  local cert_file="$2"
-  echo "--- $label ---"
-  openssl x509 -in "$cert_file" -noout \
-    -subject -issuer -serial -dates -fingerprint -sha256
-  openssl x509 -in "$cert_file" -noout -ext subjectAltName 2>/dev/null || \
-    echo "subjectAltName: <not present>"
-}
-
-C3_LEAF="$WORK_DIR/controlcenter-tls.crt"
-C3_CA="$WORK_DIR/controlcenter-ca.crt"
-REENCRYPT_CA="$WORK_DIR/reencrypt-bundle.crt"
-INGRESS_LEAF="$WORK_DIR/controlcenter-ingress-tls.crt"
-ROUTE_CA="$WORK_DIR/route-destination-ca.crt"
-LIVE_LEAF="$WORK_DIR/controlcenter-live-9021.crt"
-
-extract_public_cert_key controlcenter-tls tls.crt "$C3_LEAF" || \
-  fatal "Secret/controlcenter-tls key tls.crt is missing or is not PEM certificate data"
-print_cert_metadata "Secret/controlcenter-tls tls.crt (C3 backend)" "$C3_LEAF"
-
-if extract_public_cert_key controlcenter-tls ca.crt "$C3_CA"; then
-  print_cert_metadata "Secret/controlcenter-tls ca.crt" "$C3_CA"
-else
-  echo "NOTE: Secret/controlcenter-tls has no ca.crt key"
-fi
-
-extract_public_cert_key reencrypt-bundle tls.crt "$REENCRYPT_CA" || \
-  fatal "Secret/reencrypt-bundle key tls.crt is missing or is not PEM certificate data"
-print_cert_metadata "Secret/reencrypt-bundle tls.crt (Route destination trust)" "$REENCRYPT_CA"
-
-extract_public_cert_key controlcenter-ingress-tls tls.crt "$INGRESS_LEAF" || \
-  fatal "Secret/controlcenter-ingress-tls key tls.crt is missing or is not PEM certificate data"
-print_cert_metadata "Secret/controlcenter-ingress-tls tls.crt (browser-facing)" "$INGRESS_LEAF"
-
-printf '%s\n' "$DEST_CA" >"$ROUTE_CA"
-if ! grep -q -- '-----BEGIN CERTIFICATE-----' "$ROUTE_CA"; then
-  fatal "Route/$ROUTE_NAME destinationCACertificate is not PEM certificate data"
-fi
-print_cert_metadata "Route/$ROUTE_NAME embedded destination CA" "$ROUTE_CA"
-
-REENCRYPT_FP="$(openssl x509 -in "$REENCRYPT_CA" -noout -fingerprint -sha256 | cut -d= -f2-)"
-ROUTE_CA_FP="$(openssl x509 -in "$ROUTE_CA" -noout -fingerprint -sha256 | cut -d= -f2-)"
-if [ "$REENCRYPT_FP" = "$ROUTE_CA_FP" ]; then
-  pass "Route destination CA matches Secret/reencrypt-bundle"
-else
-  echo "FAIL: Route destination CA does not match Secret/reencrypt-bundle"
-fi
-
-if openssl verify -partial_chain -CAfile "$REENCRYPT_CA" "$C3_LEAF"; then
-  pass "controlcenter-tls verifies against reencrypt-bundle"
-else
-  echo "FAIL: controlcenter-tls does not verify against reencrypt-bundle"
-fi
-
-echo
-echo "--- Live certificate served by controlcenter-0:9021 ---"
-oc -n "$NAMESPACE" port-forward pod/controlcenter-0 19021:9021 \
-  >"$WORK_DIR/port-forward.log" 2>&1 &
-PF_PID=$!
-for _ in 1 2 3 4 5 6 7 8 9 10; do
-  if ! kill -0 "$PF_PID" 2>/dev/null; then
-    cat "$WORK_DIR/port-forward.log" >&2 || true
-    fatal "oc port-forward terminated before the TLS check"
+section "2. Correlate the callback failure in component logs"
+echo "Control Center matches from the last 30 minutes:"
+if oc -n "$NAMESPACE" get pod "$C3_POD" >/dev/null 2>&1; then
+  C3_MATCHES="$(oc -n "$NAMESPACE" logs "$C3_POD" --all-containers=true --since=30m 2>&1 | grep -Ei 'PKIX|SSLHandshake|certificate_unknown|certification path|oidc|authorization-code|token endpoint' || true)"
+  if [ -n "$C3_MATCHES" ]; then
+    printf '%s\n' "$C3_MATCHES" | tail -n 120
+    printf '%s\n' "$C3_MATCHES" | grep -Eqi 'PKIX|SSLHandshake|certificate_unknown|certification path' && fail "Control Center logged an outbound TLS trust failure"
+  else
+    warn "No matching Control Center log lines found"
   fi
-  if openssl s_client -connect 127.0.0.1:19021 -servername "$C3_HOST" -showcerts \
-      </dev/null >"$WORK_DIR/s_client.txt" 2>&1; then
-    break
+fi
+
+echo
+echo "Kafka/MDS matches from the last 30 minutes:"
+KAFKA_MATCH_FOUND=0
+for pod in $(oc -n "$NAMESPACE" get pods -o name 2>/dev/null | sed -n 's#^pod/\(kafka-[0-9][0-9]*\)$#\1#p'); do
+  MATCHES="$(oc -n "$NAMESPACE" logs "$pod" --all-containers=true --since=30m 2>&1 | grep -Ei 'PKIX|SSLHandshake|certificate_unknown|certification path|oidc|token endpoint' || true)"
+  if [ -n "$MATCHES" ]; then
+    KAFKA_MATCH_FOUND=1
+    echo "--- $pod ---"
+    printf '%s\n' "$MATCHES" | tail -n 80
   fi
-  sleep 1
 done
-kill "$PF_PID" 2>/dev/null || true
-wait "$PF_PID" 2>/dev/null || true
+[ "$KAFKA_MATCH_FOUND" -eq 1 ] || warn "No matching Kafka/MDS log lines found"
 
-awk '/-----BEGIN CERTIFICATE-----/{capture=1} capture{print} /-----END CERTIFICATE-----/{exit}' \
-  "$WORK_DIR/s_client.txt" >"$LIVE_LEAF"
-if ! grep -q -- '-----BEGIN CERTIFICATE-----' "$LIVE_LEAF"; then
-  echo "Port-forward output:"
-  sed -n '1,80p' "$WORK_DIR/port-forward.log" || true
-  echo "TLS client output:"
-  sed -n '1,80p' "$WORK_DIR/s_client.txt" || true
-  fatal "could not capture the live TLS certificate from controlcenter-0:9021"
-fi
-print_cert_metadata "Live controlcenter-0:9021 certificate" "$LIVE_LEAF"
+section "3. Trust configuration (no credentials)"
+echo "Control Center JVM overrides and mounted volumes:"
+oc -n "$NAMESPACE" get controlcenter controlcenter -o jsonpath='{range .spec.configOverrides.jvm[*]}{.}{"\n"}{end}{range .spec.mountedVolumes.volumes[*]}volume={.name}{" configMap="}{.configMap.name}{" secret="}{.secret.secretName}{"\n"}{end}' 2>/dev/null || true
+echo
+echo "Kafka JVM overrides and mounted volumes:"
+oc -n "$NAMESPACE" get kafka kafka -o jsonpath='{range .spec.configOverrides.jvm[*]}{.}{"\n"}{end}{range .spec.mountedVolumes.volumes[*]}volume={.name}{" configMap="}{.configMap.name}{" secret="}{.secret.secretName}{"\n"}{end}' 2>/dev/null || true
 
-SECRET_FP="$(openssl x509 -in "$C3_LEAF" -noout -fingerprint -sha256 | cut -d= -f2-)"
-LIVE_FP="$(openssl x509 -in "$LIVE_LEAF" -noout -fingerprint -sha256 | cut -d= -f2-)"
-if [ "$SECRET_FP" = "$LIVE_FP" ]; then
-  pass "live port 9021 certificate matches Secret/controlcenter-tls"
+if oc -n "$NAMESPACE" get configmap "$TRUST_CONFIGMAP" >/dev/null 2>&1; then
+  pass "ConfigMap/$TRUST_CONFIGMAP exists"
+  oc -n "$NAMESPACE" get configmap "$TRUST_CONFIGMAP" -o jsonpath='{range $k,$v := .binaryData}{"binaryData key: "}{$k}{"\n"}{end}{range $k,$v := .data}{"data key: "}{$k}{"\n"}{end}'
 else
-  echo "FAIL: live port 9021 certificate does not match Secret/controlcenter-tls"
+  fail "ConfigMap/$TRUST_CONFIGMAP does not exist"
 fi
 
-echo
-echo "=== 7. Test public Control Center endpoint ==="
-HTTP_CODE="$(curl -sS --connect-timeout 10 --max-time 30 -o "$WORK_DIR/c3-response" -w '%{http_code}' "https://$C3_HOST/" || true)"
-case "$HTTP_CODE" in
-  200|301|302|303|307|308|401|403)
-    pass "https://$C3_HOST returned HTTP $HTTP_CODE (router and backend are reachable)"
-    ;;
-  503)
-    fatal "https://$C3_HOST returned HTTP 503; inspect router-to-backend connectivity and C3 TLS logs"
-    ;;
-  000|"")
-    fatal "unable to establish HTTPS connection to $C3_HOST"
-    ;;
-  *)
-    fatal "https://$C3_HOST returned unexpected HTTP $HTTP_CODE"
-    ;;
-esac
+section "4. Inspect the custom JKS trust bundle"
+JKS_FILE="$WORK_DIR/$TRUSTSTORE_KEY"
+JKS_B64="$(oc -n "$NAMESPACE" get configmap "$TRUST_CONFIGMAP" -o "jsonpath={.binaryData.${TRUSTSTORE_KEY//./\\.}}" 2>/dev/null || true)"
+if [ -z "$JKS_B64" ]; then
+  JKS_B64="$(oc -n "$NAMESPACE" get configmap "$TRUST_CONFIGMAP" -o "jsonpath={.data.${TRUSTSTORE_KEY//./\\.}}" 2>/dev/null || true)"
+fi
+if [ -z "$JKS_B64" ]; then
+  fail "ConfigMap/$TRUST_CONFIGMAP does not contain $TRUSTSTORE_KEY"
+elif ! printf '%s' "$JKS_B64" | base64 --decode >"$JKS_FILE" 2>/dev/null; then
+  fail "Could not decode $TRUSTSTORE_KEY"
+elif command -v keytool >/dev/null 2>&1; then
+  echo "Aliases and certificate owners only:"
+  if keytool -list -v -keystore "$JKS_FILE" -storepass "$TRUSTSTORE_PASSWORD" 2>&1 | grep -E '^(Alias name:|Owner:|Issuer:|Valid from:|SHA256:)' | head -n 300; then
+    pass "Build-agent keytool opened the custom truststore"
+  else
+    fail "Build-agent keytool could not open the custom truststore"
+  fi
+else
+  warn "Build agent has no keytool; pod-side checks continue"
+fi
 
-echo
-echo "SUCCESS: Control Center ingress repair and validation passed."
+section "5. Test Okta TLS from Control Center and Kafka"
+test_pod_tls() {
+  pod="$1"
+  echo
+  echo "--- $pod -> $OKTA_HOST:$OKTA_PORT ---"
+  if ! oc -n "$NAMESPACE" get pod "$pod" >/dev/null 2>&1; then
+    fail "Pod/$pod does not exist"
+    return
+  fi
+
+  if oc -n "$NAMESPACE" exec "$pod" -- sh -c 'command -v keytool >/dev/null 2>&1'; then
+    echo "Certificate presented inside this pod (public certificate only):"
+    oc -n "$NAMESPACE" exec "$pod" -- sh -c "keytool -printcert -sslserver '$OKTA_HOST:$OKTA_PORT' -rfc 2>&1" | sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p' | head -n 80 || true
+    echo "Keytool connection result:"
+    if oc -n "$NAMESPACE" exec "$pod" -- sh -c "keytool -printcert -sslserver '$OKTA_HOST:$OKTA_PORT' >/tmp/okta-keytool.out 2>&1; rc=\$?; tail -n 20 /tmp/okta-keytool.out; rm -f /tmp/okta-keytool.out; exit \$rc"; then
+      pass "$pod can reach the Okta TLS endpoint with keytool"
+    else
+      fail "$pod keytool could not complete the Okta TLS connection"
+    fi
+  else
+    warn "$pod has no keytool"
+  fi
+
+  if oc -n "$NAMESPACE" exec "$pod" -- sh -c 'command -v curl >/dev/null 2>&1'; then
+    echo "OIDC discovery request (no client credentials):"
+    if oc -n "$NAMESPACE" exec "$pod" -- sh -c "curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w 'HTTP %{http_code}; peer verify=%{ssl_verify_result}\\n' 'https://$OKTA_HOST/oauth2/default/.well-known/openid-configuration'"; then
+      pass "$pod trusts Okta using curl's trust source"
+    else
+      fail "$pod curl does not trust or cannot reach Okta"
+    fi
+  else
+    warn "$pod has no curl"
+  fi
+
+  echo "Truststore files visible in the pod:"
+  oc -n "$NAMESPACE" exec "$pod" -- sh -c 'for f in /var/ssl/truststore/bundle.jks /mnt/sslcerts/truststore.jks /etc/ssl/certs/java/cacerts "$JAVA_HOME/lib/security/cacerts"; do [ -f "$f" ] && ls -l "$f"; done' 2>/dev/null || true
+  if oc -n "$NAMESPACE" exec "$pod" -- sh -c '[ -f /var/ssl/truststore/bundle.jks ] && command -v keytool >/dev/null 2>&1'; then
+    echo "Custom JKS aliases and certificate owners:"
+    oc -n "$NAMESPACE" exec "$pod" -- sh -c "keytool -list -v -keystore /var/ssl/truststore/bundle.jks -storepass '$TRUSTSTORE_PASSWORD' 2>&1" | grep -E '^(Alias name:|Owner:|Issuer:|Valid from:|SHA256:)' | head -n 300 || fail "$pod could not inspect the custom JKS"
+  fi
+}
+
+test_pod_tls "$C3_POD"
+FIRST_KAFKA_POD="$(oc -n "$NAMESPACE" get pods -o name 2>/dev/null | sed -n 's#^pod/\(kafka-[0-9][0-9]*\)$#\1#p' | head -n 1)"
+if [ -n "$FIRST_KAFKA_POD" ]; then
+  test_pod_tls "$FIRST_KAFKA_POD"
+else
+  fail "No Kafka broker pod found"
+fi
+
+section "6. Relevant recent events"
+oc -n "$NAMESPACE" get events --sort-by=.lastTimestamp 2>/dev/null | tail -n 80 || true
+
+section "Interpretation"
+cat <<'EOF'
+The authorization code in the browser callback proves the redirect URI and
+user assignment now work. PKIX path building failed means the JVM performing
+the code-for-token exchange does not trust the certificate chain it sees for
+the Okta host. Repair the trust bundle of whichever component logs the error.
+It must contain the full chain presented inside the cluster, including an FCB
+TLS-inspection root/intermediate when applicable. Do not disable verification
+and do not use curl -k.
+EOF
+
+if [ "$FAILED" -ne 0 ]; then
+  echo "RESULT: Diagnostic failures found; review the output above."
+  exit 1
+fi
+echo "RESULT: No failure detected by these checks."
