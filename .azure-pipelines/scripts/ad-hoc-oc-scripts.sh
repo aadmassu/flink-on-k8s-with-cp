@@ -88,7 +88,7 @@ public class C3TlsProbe {
   }
 }
 JAVA
-javac --release 11 -d "$BUILD_DIR" "$BUILD_DIR/C3TlsProbe.java"
+javac -d "$BUILD_DIR" "$BUILD_DIR/C3TlsProbe.java"
 base64 "$BUILD_DIR/C3TlsProbe.class" | \
   oc -n "$NS" exec -i "$POD" -c "$CONTAINER" -- sh -c \
   'base64 --decode >/tmp/C3TlsProbe.class'
