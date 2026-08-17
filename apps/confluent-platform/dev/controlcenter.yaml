@@ -233,7 +233,7 @@ spec:
     jvm:
       - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
       - "-Djavax.net.ssl.trustStorePassword=truststorepass"
-      - "-Djavax.net.ssl.trustStoreType=JKS"
+      - "-Djavax.net.ssl.trustStoreType=PKCS12"
     server:
       # Do NOT set confluent.controlcenter.data.dir here — CFK mounts the PVC at /mnt/data/data0 (runbook A25).
       - confluent.controlcenter.streams.num.stream.threads=12
@@ -254,10 +254,10 @@ spec:
       # Explicit trustStore for C3's Armeria/Netty HTTP client to Okta -- JVM -Djavax.net.ssl.trustStore doesn't propagate to Netty SSL contexts (runbook A28).
       - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
       - confluent.metadata.ssl.truststore.password=truststorepass
-      - confluent.metadata.ssl.truststore.type=JKS
+      - confluent.metadata.ssl.truststore.type=PKCS12
       - confluent.controlcenter.streams.ssl.truststore.location=/var/ssl/truststore/bundle.jks
       - confluent.controlcenter.streams.ssl.truststore.password=truststorepass
-      - confluent.controlcenter.streams.ssl.truststore.type=JKS
+      - confluent.controlcenter.streams.ssl.truststore.type=PKCS12
 
       # Monitoring interceptor client.
       - confluent.monitoring.interceptor.security.protocol=SASL_SSL
