@@ -45,17 +45,17 @@ spec:
   tls:
     secretRef: controlcenter-tls
 
-  # JVM outbound trust store (runbook A21).
+  # Control Center-specific trust store (includes org fcb-trust-bundle + OIDC/SSO certs). Created by create-prereqs.
   mountedVolumes:
     volumes:
-      - name: fcb-trust-bundle
+      - name: c3-trust-bundle
         configMap:
-          name: fcb-trust-bundle
+          name: c3-trust-bundle
           items:
             - key: bundle.jks
               path: bundle.jks
     volumeMounts:
-      - name: fcb-trust-bundle
+      - name: c3-trust-bundle
         mountPath: /var/ssl/truststore
         readOnly: true
 

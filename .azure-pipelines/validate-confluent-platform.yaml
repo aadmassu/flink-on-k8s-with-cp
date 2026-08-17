@@ -134,11 +134,11 @@ stages:
 
           - ${{ if eq(parameters.syncTruststore, true) }}:
             - task: Bash@3
-              displayName: "Sync QA truststore to target environment (${{ parameters.environment }})"
+              displayName: "Sync QA truststore to c3-trust-bundle (${{ parameters.environment }})"
               inputs:
                 targetType: filePath
                 filePath: '.azure-pipelines/scripts/sync-truststore.sh'
-                arguments: '$(Build.SourcesDirectory)/.azure-pipelines/truststore-references/qa-reference.jks $(openshift-namespace) fcb-trust-bundle'
+                arguments: '$(Build.SourcesDirectory)/.azure-pipelines/truststore-references/qa-reference.jks $(openshift-namespace) c3-trust-bundle'
               env:
                 TARGET_ENV: ${{ parameters.environment }}
                 OC_API: $(openshift-api)

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# Sync a reference truststore JKS file to a target namespace's fcb-trust-bundle ConfigMap.
+# Sync a reference truststore JKS file to a target namespace's trust ConfigMap.
 # Usage: sync-truststore.sh <source-jks-file> <target-namespace> [trust-configmap-name]
-# Example: sync-truststore.sh control_center_next_gen.truststore.jks dah-flink-dev fcb-trust-bundle
+# Example: sync-truststore.sh control_center_next_gen.truststore.jks dah-flink-dev c3-trust-bundle
 
 SOURCE_JKS="${1:-}"
 TARGET_NS="${2:-}"
-TRUST_CONFIGMAP="${3:-fcb-trust-bundle}"
+TRUST_CONFIGMAP="${3:-c3-trust-bundle}"
 TRUSTSTORE_KEY="bundle.jks"
 
 if [ -z "$SOURCE_JKS" ] || [ -z "$TARGET_NS" ]; then
