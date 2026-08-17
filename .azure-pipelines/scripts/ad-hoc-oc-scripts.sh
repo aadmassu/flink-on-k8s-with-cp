@@ -77,32 +77,22 @@ else
   fail "ConfigMap/$TRUST_CONFIGMAP does not exist"
 fi
 
-section "3.5. Verify running JVM truststore configuration (active pod state)"
-echo "Checking if $C3_POD has the truststore properties in its active JVM cmdline:"
-if oc -n "$NAMESPACE" get pod "$C3_POD" >/dev/null 2>&1; then
-  JVM_CMDLINE="$(oc -n "$NAMESPACE" exec "$C3_POD" -c controlcenter -- sh -c 'tr "\000" " " </proc/1/cmdline; echo' 2>/dev/null || true)"
-  if [ -z "$JVM_CMDLINE" ]; then
-    warn "Could not read /proc/1/cmdline from $C3_POD (container may not allow exec)"
+section "3.5. Extract complete Okta certificate chain"
+echo "Extracting certificate chain from $OKTA_HOST:$OKTA_PORT..."
+OKTA_CHAIN="$WORK_DIR/okta-chain.pem"
+if openssl s_client -connect "$OKTA_HOST:$OKTA_PORT" -showcerts </dev/null 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > "$OKTA_CHAIN"; then
+  CERT_COUNT=$(grep -c "BEGIN CERTIFICATE" "$OKTA_CHAIN")
+  echo "Found $CERT_COUNT certificate(s) in chain"
+  if [ "$CERT_COUNT" -lt 2 ]; then
+    warn "Chain may be incomplete (expected at least 2: leaf + intermediate/root)"
   else
-    echo "JVM command line (truncated to truststore-related args):"
-    echo "$JVM_CMDLINE" | tr ' ' '\n' | grep -i truststore || warn "No truststore properties found in cmdline"
-
-    if echo "$JVM_CMDLINE" | grep -q -- '-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks'; then
-      pass "trustStore property IS ACTIVE in $C3_POD JVM"
-    else
-      warn "trustStore property NOT found in active JVM (pod may need restart)"
-    fi
+    pass "Complete certificate chain extracted ($CERT_COUNT certs)"
   fi
-
-  echo
-  echo "Verifying truststore is mounted and readable from $C3_POD:"
-  if oc -n "$NAMESPACE" exec "$C3_POD" -c controlcenter -- sh -c 'ls -l /var/ssl/truststore/bundle.jks && test -r /var/ssl/truststore/bundle.jks' 2>/dev/null; then
-    pass "Truststore is mounted and readable"
-  else
-    fail "Truststore not mounted or not readable at /var/ssl/truststore/bundle.jks"
-  fi
+  echo ""
+  echo "Certificate chain (leaf to root):"
+  openssl crl2pkcs7 -nocrl -certfile "$OKTA_CHAIN" 2>/dev/null | openssl pkcs7 -print_certs -noout 2>/dev/null | grep -E '^(Subject:|Issuer:)' | head -n 20
 else
-  fail "Pod/$C3_POD does not exist or is not accessible"
+  fail "Could not extract certificate chain from $OKTA_HOST:$OKTA_PORT"
 fi
 
 section "4. Inspect the custom JKS trust bundle"
@@ -179,26 +169,37 @@ fi
 section "6. Relevant recent events"
 oc -n "$NAMESPACE" get events --sort-by=.lastTimestamp 2>/dev/null | tail -n 80 || true
 
-section "7. Recovery guidance if truststore config is not active"
+section "7. Import complete certificate chain into JKS truststore"
+echo "Next steps to fix the PKIX path building error:"
 cat <<'EOF'
-If section 3.5 shows:
-  - "trustStore property NOT found in active JVM (pod may need restart)", OR
-  - "Truststore not mounted or not readable"
 
-Then restart Control Center:
+1. If section 3.5 shows "Chain may be incomplete", get the full chain locally:
 
-  oc -n dah-flink-dev delete pod controlcenter-0
+   openssl s_client -connect myapps.firstcitizens.com:443 -showcerts </dev/null 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > okta-chain.pem
 
-Wait for recovery (up to 10 minutes):
+2. Import the complete chain into the JKS:
 
-  oc -n dah-flink-dev wait pod/controlcenter-0 --for=condition=Ready --timeout=10m
+   keytool -import -alias okta-chain -file okta-chain.pem -keystore bundle.jks -storepass changeit -noprompt
 
-After restart, verify logs for SSL/OIDC errors (last 10 minutes):
+3. Update the fcb-trust-bundle ConfigMap with the new bundle.jks:
 
-  oc -n dah-flink-dev logs controlcenter-0 -c controlcenter --since=10m | grep -Ei 'PKIX|SSLHandshake|certificate_unknown|oidc|authorization-code'
+   oc -n dah-flink-dev create configmap fcb-trust-bundle --from-file=bundle.jks=./bundle.jks --dry-run=client -o yaml | oc apply -f -
 
-Real acceptance test: Log into Control Center UI with OIDC. No PKIX exception = truststore
-is working. Do NOT use curl -v as proof; it tests OS truststore, not the JVM truststore.
+4. Restart Control Center to pick up the updated truststore:
+
+   oc -n dah-flink-dev delete pod controlcenter-0
+   oc -n dah-flink-dev wait pod/controlcenter-0 --for=condition=Ready --timeout=10m
+
+5. Test OIDC SSO (the real acceptance test):
+
+   - Log into Control Center UI: https://controlcenter.apps.dv.ocp.fcbint.net
+   - Click "Sign In with Single Sign-On"
+   - If login succeeds with no PKIX exception, the truststore is fixed
+   - Check logs: oc -n dah-flink-dev logs controlcenter-0 -c controlcenter --since=5m
+
+If still seeing PKIX errors:
+   - Verify all intermediates are in okta-chain.pem (should have leaf + 1+ intermediate + root)
+   - Verify the JKS was updated: keytool -list -keystore bundle.jks -storepass changeit
 EOF
 
 section "Interpretation"
