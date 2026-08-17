@@ -77,6 +77,34 @@ else
   fail "ConfigMap/$TRUST_CONFIGMAP does not exist"
 fi
 
+section "3.5. Verify running JVM truststore configuration (active pod state)"
+echo "Checking if $C3_POD has the truststore properties in its active JVM cmdline:"
+if oc -n "$NAMESPACE" get pod "$C3_POD" >/dev/null 2>&1; then
+  JVM_CMDLINE="$(oc -n "$NAMESPACE" exec "$C3_POD" -c controlcenter -- sh -c 'tr "\000" " " </proc/1/cmdline; echo' 2>/dev/null || true)"
+  if [ -z "$JVM_CMDLINE" ]; then
+    warn "Could not read /proc/1/cmdline from $C3_POD (container may not allow exec)"
+  else
+    echo "JVM command line (truncated to truststore-related args):"
+    echo "$JVM_CMDLINE" | tr ' ' '\n' | grep -i truststore || warn "No truststore properties found in cmdline"
+
+    if echo "$JVM_CMDLINE" | grep -q -- '-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks'; then
+      pass "trustStore property IS ACTIVE in $C3_POD JVM"
+    else
+      warn "trustStore property NOT found in active JVM (pod may need restart)"
+    fi
+  fi
+
+  echo
+  echo "Verifying truststore is mounted and readable from $C3_POD:"
+  if oc -n "$NAMESPACE" exec "$C3_POD" -c controlcenter -- sh -c 'ls -l /var/ssl/truststore/bundle.jks && test -r /var/ssl/truststore/bundle.jks' 2>/dev/null; then
+    pass "Truststore is mounted and readable"
+  else
+    fail "Truststore not mounted or not readable at /var/ssl/truststore/bundle.jks"
+  fi
+else
+  fail "Pod/$C3_POD does not exist or is not accessible"
+fi
+
 section "4. Inspect the custom JKS trust bundle"
 JKS_FILE="$WORK_DIR/$TRUSTSTORE_KEY"
 JKS_B64="$(oc -n "$NAMESPACE" get configmap "$TRUST_CONFIGMAP" -o "jsonpath={.binaryData.${TRUSTSTORE_KEY//./\\.}}" 2>/dev/null || true)"
@@ -150,6 +178,28 @@ fi
 
 section "6. Relevant recent events"
 oc -n "$NAMESPACE" get events --sort-by=.lastTimestamp 2>/dev/null | tail -n 80 || true
+
+section "7. Recovery guidance if truststore config is not active"
+cat <<'EOF'
+If section 3.5 shows:
+  - "trustStore property NOT found in active JVM (pod may need restart)", OR
+  - "Truststore not mounted or not readable"
+
+Then restart Control Center:
+
+  oc -n dah-flink-dev delete pod controlcenter-0
+
+Wait for recovery (up to 10 minutes):
+
+  oc -n dah-flink-dev wait pod/controlcenter-0 --for=condition=Ready --timeout=10m
+
+After restart, verify logs for SSL/OIDC errors (last 10 minutes):
+
+  oc -n dah-flink-dev logs controlcenter-0 -c controlcenter --since=10m | grep -Ei 'PKIX|SSLHandshake|certificate_unknown|oidc|authorization-code'
+
+Real acceptance test: Log into Control Center UI with OIDC. No PKIX exception = truststore
+is working. Do NOT use curl -v as proof; it tests OS truststore, not the JVM truststore.
+EOF
 
 section "Interpretation"
 cat <<'EOF'
