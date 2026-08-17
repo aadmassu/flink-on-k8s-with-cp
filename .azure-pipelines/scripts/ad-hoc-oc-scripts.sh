@@ -169,38 +169,79 @@ fi
 section "6. Relevant recent events"
 oc -n "$NAMESPACE" get events --sort-by=.lastTimestamp 2>/dev/null | tail -n 80 || true
 
-section "7. Import complete certificate chain into JKS truststore"
-echo "Next steps to fix the PKIX path building error:"
-cat <<'EOF'
+section "7. Import complete certificate chain into JKS truststore and restart C3"
+echo "Building complete truststore and updating fcb-trust-bundle ConfigMap..."
 
-1. If section 3.5 shows "Chain may be incomplete", get the full chain locally:
+# Extract the certificate chain if we have it
+OKTA_CHAIN="$WORK_DIR/okta-chain.pem"
+if [ ! -f "$OKTA_CHAIN" ]; then
+  echo "Extracting chain from $OKTA_HOST..."
+  openssl s_client -connect "$OKTA_HOST:$OKTA_PORT" -showcerts </dev/null 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > "$OKTA_CHAIN"
+fi
 
-   openssl s_client -connect myapps.firstcitizens.com:443 -showcerts </dev/null 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > okta-chain.pem
+# Decode the current JKS from ConfigMap
+JKS_FILE="$WORK_DIR/bundle.jks"
+JKS_B64="$(oc -n "$NAMESPACE" get configmap "$TRUST_CONFIGMAP" -o "jsonpath={.binaryData.${TRUSTSTORE_KEY//./\\.}}" 2>/dev/null || true)"
+if [ -z "$JKS_B64" ]; then
+  JKS_B64="$(oc -n "$NAMESPACE" get configmap "$TRUST_CONFIGMAP" -o "jsonpath={.data.${TRUSTSTORE_KEY//./\\.}}" 2>/dev/null || true)"
+fi
 
-2. Import the complete chain into the JKS:
+if [ -z "$JKS_B64" ]; then
+  fail "ConfigMap/$TRUST_CONFIGMAP does not contain $TRUSTSTORE_KEY; cannot update"
+elif ! printf '%s' "$JKS_B64" | base64 --decode >"$JKS_FILE" 2>/dev/null; then
+  fail "Could not decode $TRUSTSTORE_KEY from ConfigMap"
+else
+  pass "Decoded current JKS from ConfigMap"
 
-   keytool -import -alias okta-chain -file okta-chain.pem -keystore bundle.jks -storepass changeit -noprompt
+  # Import the Okta certificate chain
+  if [ -f "$OKTA_CHAIN" ] && [ -s "$OKTA_CHAIN" ]; then
+    echo "Importing Okta certificate chain into JKS..."
+    if keytool -import -alias okta-chain -file "$OKTA_CHAIN" -keystore "$JKS_FILE" -storepass "$TRUSTSTORE_PASSWORD" -noprompt 2>&1 | grep -q "Certificate was added"; then
+      pass "Okta certificate chain imported into JKS"
+    elif keytool -import -alias okta-chain -file "$OKTA_CHAIN" -keystore "$JKS_FILE" -storepass "$TRUSTSTORE_PASSWORD" -noprompt 2>&1 | grep -q "already exists"; then
+      warn "Okta alias already exists in JKS; updating..."
+      keytool -delete -alias okta-chain -keystore "$JKS_FILE" -storepass "$TRUSTSTORE_PASSWORD" -noprompt 2>/dev/null || true
+      keytool -import -alias okta-chain -file "$OKTA_CHAIN" -keystore "$JKS_FILE" -storepass "$TRUSTSTORE_PASSWORD" -noprompt 2>/dev/null && pass "Okta certificate chain updated in JKS"
+    else
+      fail "Could not import Okta certificate chain into JKS"
+    fi
+  else
+    fail "Okta certificate chain not available for import"
+  fi
 
-3. Update the fcb-trust-bundle ConfigMap with the new bundle.jks:
+  # Update the ConfigMap with the new JKS
+  echo "Updating fcb-trust-bundle ConfigMap..."
+  if oc -n "$NAMESPACE" create configmap "$TRUST_CONFIGMAP" --from-file="$TRUSTSTORE_KEY=$JKS_FILE" --dry-run=client -o yaml | oc apply -f - >/dev/null 2>&1; then
+    pass "ConfigMap/$TRUST_CONFIGMAP updated with new JKS"
+  else
+    fail "Could not update ConfigMap/$TRUST_CONFIGMAP"
+  fi
+fi
 
-   oc -n dah-flink-dev create configmap fcb-trust-bundle --from-file=bundle.jks=./bundle.jks --dry-run=client -o yaml | oc apply -f -
-
-4. Restart Control Center to pick up the updated truststore:
-
-   oc -n dah-flink-dev delete pod controlcenter-0
-   oc -n dah-flink-dev wait pod/controlcenter-0 --for=condition=Ready --timeout=10m
-
-5. Test OIDC SSO (the real acceptance test):
-
-   - Log into Control Center UI: https://controlcenter.apps.dv.ocp.fcbint.net
-   - Click "Sign In with Single Sign-On"
-   - If login succeeds with no PKIX exception, the truststore is fixed
-   - Check logs: oc -n dah-flink-dev logs controlcenter-0 -c controlcenter --since=5m
-
-If still seeing PKIX errors:
-   - Verify all intermediates are in okta-chain.pem (should have leaf + 1+ intermediate + root)
-   - Verify the JKS was updated: keytool -list -keystore bundle.jks -storepass changeit
-EOF
+echo ""
+echo "Restarting Control Center pod to pick up updated truststore..."
+if oc -n "$NAMESPACE" delete pod "$C3_POD" 2>/dev/null; then
+  echo "Pod deleted; waiting for recovery (up to 10 minutes)..."
+  if oc -n "$NAMESPACE" wait "pod/$C3_POD" --for=condition=Ready --timeout=10m 2>/dev/null; then
+    pass "Control Center pod recovered and is ready"
+    echo ""
+    echo "Checking logs for PKIX/OIDC errors in the last 5 minutes..."
+    C3_LOGS="$(oc -n "$NAMESPACE" logs "$C3_POD" --all-containers=true --since=5m 2>&1 | grep -Ei 'PKIX|SSLHandshake|certificate_unknown|certification path' || true)"
+    if [ -n "$C3_LOGS" ]; then
+      fail "PKIX errors still present in logs:"
+      echo "$C3_LOGS" | tail -n 20
+    else
+      pass "No PKIX errors detected in recent logs"
+      echo ""
+      echo "Next: Test OIDC SSO login at https://controlcenter.apps.dv.ocp.fcbint.net"
+      echo "Real acceptance test: Successful login with no PKIX exception = truststore is fixed"
+    fi
+  else
+    fail "Control Center pod did not become ready within 10 minutes"
+  fi
+else
+  fail "Could not delete Control Center pod"
+fi
 
 section "Interpretation"
 cat <<'EOF'
