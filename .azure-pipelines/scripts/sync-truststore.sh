@@ -35,18 +35,18 @@ echo ""
 
 # Verify source truststore is valid
 echo "Verifying source truststore..."
-if ! keytool -list -keystore "$SOURCE_JKS" -storepass changeit >/dev/null 2>&1; then
+if ! keytool -list -keystore "$SOURCE_JKS" -storepass truststorepass >/dev/null 2>&1; then
   echo "FATAL: Source truststore is invalid or uses wrong password" >&2
   exit 1
 fi
 
-SOURCE_ALIASES=$(keytool -list -keystore "$SOURCE_JKS" -storepass changeit 2>&1 | tail -n +2 | wc -l)
+SOURCE_ALIASES=$(keytool -list -keystore "$SOURCE_JKS" -storepass truststorepass 2>&1 | tail -n +2 | wc -l)
 echo "✓ Source has $SOURCE_ALIASES aliases"
 echo ""
 
 # Show source aliases
 echo "Source truststore aliases:"
-keytool -list -keystore "$SOURCE_JKS" -storepass changeit 2>&1 | tail -n +2 | sed 's/^/  /'
+keytool -list -keystore "$SOURCE_JKS" -storepass truststorepass 2>&1 | tail -n +2 | sed 's/^/  /'
 echo ""
 
 # Update the ConfigMap
@@ -72,7 +72,7 @@ if [ -z "$TARGET_B64" ]; then
 fi
 
 printf '%s' "$TARGET_B64" | base64 --decode > /tmp/verify.jks
-TARGET_ALIASES=$(keytool -list -keystore /tmp/verify.jks -storepass changeit 2>&1 | tail -n +2 | wc -l)
+TARGET_ALIASES=$(keytool -list -keystore /tmp/verify.jks -storepass truststorepass 2>&1 | tail -n +2 | wc -l)
 rm -f /tmp/verify.jks
 
 echo "✓ Target now has $TARGET_ALIASES aliases (matches source)"

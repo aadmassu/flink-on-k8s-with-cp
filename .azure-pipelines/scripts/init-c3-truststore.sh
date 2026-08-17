@@ -54,12 +54,12 @@ fi
 
 # Verify reference truststore is valid
 echo "Verifying reference truststore..."
-if ! keytool -list -keystore "$REFERENCE_JKS" -storepass changeit >/dev/null 2>&1; then
+if ! keytool -list -keystore "$REFERENCE_JKS" -storepass truststorepass >/dev/null 2>&1; then
   echo "FATAL: Reference truststore is invalid or uses wrong password" >&2
   exit 1
 fi
 
-REF_ALIASES=$(keytool -list -keystore "$REFERENCE_JKS" -storepass changeit 2>&1 | tail -n +2 | wc -l)
+REF_ALIASES=$(keytool -list -keystore "$REFERENCE_JKS" -storepass truststorepass 2>&1 | tail -n +2 | wc -l)
 echo "✓ Reference truststore has $REF_ALIASES aliases"
 echo ""
 
@@ -87,7 +87,7 @@ fi
 
 printf '%s' "$CM_B64" | base64 --decode > /tmp/verify.jks 2>/dev/null || true
 if [ -f /tmp/verify.jks ] && [ -s /tmp/verify.jks ]; then
-  CM_ALIASES=$(keytool -list -keystore /tmp/verify.jks -storepass changeit 2>&1 | tail -n +2 | wc -l)
+  CM_ALIASES=$(keytool -list -keystore /tmp/verify.jks -storepass truststorepass 2>&1 | tail -n +2 | wc -l)
   echo "✓ ConfigMap contains $CM_ALIASES aliases (matches reference)"
   rm -f /tmp/verify.jks
 else
