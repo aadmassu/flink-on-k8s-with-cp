@@ -33,6 +33,14 @@ parameters:
     #   oc get pod -n dah-flink-dev
     #   kubectl get namespaces
 
+  - name: syncTruststore
+    displayName: "Sync QA reference truststore to target environment"
+    type: boolean
+    default: false
+    # When checked: syncs .azure-pipelines/truststore-references/qa-reference.jks to the target environment's fcb-trust-bundle ConfigMap
+    # Useful for aligning truststore certificates across DEV/QA/etc
+    # Requires: Control Center pods to be restarted after sync to pick up updated ConfigMap
+
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
     - group: kafka-openshift-credentials-dev
@@ -119,6 +127,18 @@ stages:
                   echo ""
                   chmod +x .azure-pipelines/scripts/ad-hoc-oc-scripts.sh
                   .azure-pipelines/scripts/ad-hoc-oc-scripts.sh "$OC_NS"
+              env:
+                TARGET_ENV: ${{ parameters.environment }}
+                OC_API: $(openshift-api)
+                OC_NS: $(openshift-namespace)
+
+          - ${{ if eq(parameters.syncTruststore, true) }}:
+            - task: Bash@3
+              displayName: "Sync QA truststore to target environment (${{ parameters.environment }})"
+              inputs:
+                targetType: filePath
+                filePath: '.azure-pipelines/scripts/sync-truststore.sh'
+                arguments: '$(Build.SourcesDirectory)/.azure-pipelines/truststore-references/qa-reference.jks $(openshift-namespace) fcb-trust-bundle'
               env:
                 TARGET_ENV: ${{ parameters.environment }}
                 OC_API: $(openshift-api)
