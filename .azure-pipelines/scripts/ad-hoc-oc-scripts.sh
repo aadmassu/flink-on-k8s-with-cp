@@ -15,6 +15,8 @@ fatal() { echo "FATAL: $*" >&2; exit 1; }
 heading() { printf '\n=== %s ===\n' "$*"; }
 
 command -v oc >/dev/null 2>&1 || fatal "oc is unavailable"
+command -v javac >/dev/null 2>&1 || fatal "javac is unavailable on the build agent"
+command -v base64 >/dev/null 2>&1 || fatal "base64 is unavailable on the build agent"
 oc whoami >/dev/null 2>&1 || fatal "not logged into OpenShift"
 oc -n "$NS" get pod "$POD" >/dev/null 2>&1 || fatal "Pod/$POD does not exist"
 
@@ -28,12 +30,10 @@ oc -n "$NS" exec "$POD" -c "$CONTAINER" -- sh -c \
   'tr "\000" " " </proc/1/cmdline; echo' | \
   sed -E 's/(-D[^ =]*(password|secret)[^ =]*=)[^ ]+/\1<redacted>/Ig'
 
-heading "Install temporary Java TLS probe"
-oc -n "$NS" exec -i "$POD" -c "$CONTAINER" -- sh -c 'cat > /tmp/C3TlsProbe.java' <<'JAVA'
+heading "Compile and install temporary Java TLS probe"
+BUILD_DIR="$(mktemp -d "${AGENT_TEMPDIRECTORY:-/tmp}/c3-java-probe.XXXXXX")"
+cat >"$BUILD_DIR/C3TlsProbe.java" <<'JAVA'
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -88,6 +88,11 @@ public class C3TlsProbe {
   }
 }
 JAVA
+javac --release 11 -d "$BUILD_DIR" "$BUILD_DIR/C3TlsProbe.java"
+base64 "$BUILD_DIR/C3TlsProbe.class" | \
+  oc -n "$NS" exec -i "$POD" -c "$CONTAINER" -- sh -c \
+  'base64 --decode >/tmp/C3TlsProbe.class'
+echo "Probe compiled on build agent and installed in $POD/$CONTAINER"
 
 heading "Java runtime"
 oc -n "$NS" exec "$POD" -c "$CONTAINER" -- java -version 2>&1
@@ -104,7 +109,7 @@ probe() {
       "-Djavax.net.ssl.trustStore=$STORE" \
       "-Djavax.net.ssl.trustStorePassword=$STORE_PASSWORD" \
       "-Djavax.net.ssl.trustStoreType=$store_type" \
-      /tmp/C3TlsProbe.java "$url"
+      -cp /tmp C3TlsProbe "$url"
   local rc=$?
   set -e
   echo "probeExitCode=$rc"
@@ -124,5 +129,7 @@ oc -n "$NS" logs "$POD" -c "$CONTAINER" --since=20m 2>&1 | \
   tail -n 240 || true
 
 heading "Cleanup"
-oc -n "$NS" exec "$POD" -c "$CONTAINER" -- sh -c 'rm -f /tmp/C3TlsProbe.java' || true
+oc -n "$NS" exec "$POD" -c "$CONTAINER" -- sh -c 'rm -f /tmp/C3TlsProbe.class' || true
+find "$BUILD_DIR" -type f -delete 2>/dev/null || true
+rmdir "$BUILD_DIR" 2>/dev/null || true
 echo "COMPLETE: Review each RESULT=TLS_PASS/TLS_FAIL entry above."
