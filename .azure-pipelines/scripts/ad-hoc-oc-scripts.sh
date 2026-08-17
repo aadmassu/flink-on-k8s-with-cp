@@ -225,16 +225,16 @@ if oc -n "$NAMESPACE" delete pod "$C3_POD" 2>/dev/null; then
   if oc -n "$NAMESPACE" wait "pod/$C3_POD" --for=condition=Ready --timeout=10m 2>/dev/null; then
     pass "Control Center pod recovered and is ready"
     echo ""
-    echo "Checking logs for PKIX/OIDC errors in the last 5 minutes..."
-    C3_LOGS="$(oc -n "$NAMESPACE" logs "$C3_POD" --all-containers=true --since=5m 2>&1 | grep -Ei 'PKIX|SSLHandshake|certificate_unknown|certification path' || true)"
+    echo "Checking logs for actual certificate validation errors in the last 5 minutes..."
+    C3_LOGS="$(oc -n "$NAMESPACE" logs "$C3_POD" --all-containers=true --since=5m 2>&1 | grep -Ei 'unable to find valid certification path|CertPathBuilderException|SSLHandshakeException|certificate_unknown|peer (not )?authenticated' || true)"
     if [ -n "$C3_LOGS" ]; then
-      fail "PKIX errors still present in logs:"
+      fail "Certificate validation errors still present in logs:"
       echo "$C3_LOGS" | tail -n 20
     else
-      pass "No PKIX errors detected in recent logs"
+      pass "No certificate validation errors detected in recent logs"
       echo ""
       echo "Next: Test OIDC SSO login at https://controlcenter.apps.dv.ocp.fcbint.net"
-      echo "Real acceptance test: Successful login with no PKIX exception = truststore is fixed"
+      echo "Real acceptance test: Successful login with no certificate exception = truststore is fixed"
     fi
   else
     fail "Control Center pod did not become ready within 10 minutes"
