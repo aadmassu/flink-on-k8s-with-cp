@@ -13,7 +13,7 @@ metadata:
   name: schemaregistry
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-08-17-oidc-pkix-truststore"
+    platform.confluent.io/force-reconcile: "2026-08-18-platform-trust-bundle"
   labels:
     app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: schema-registry
@@ -47,10 +47,10 @@ spec:
     volumes:
       - name: oidc-trust-bundle
         configMap:
-          name: c3-trust-bundle
+          name: fcb-trust-bundle
           items:
-            - key: bundle.jks
-              path: bundle.jks
+            - key: bundle.p12
+              path: bundle.p12
     volumeMounts:
       - name: oidc-trust-bundle
         mountPath: /var/ssl/truststore
@@ -104,12 +104,12 @@ spec:
 
   configOverrides:
     jvm:
-      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
-      - "-Djavax.net.ssl.trustStorePassword=truststorepass"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.p12"
+      - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=PKCS12"
     server:
-      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
-      - confluent.metadata.ssl.truststore.password=truststorepass
+      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.metadata.ssl.truststore.password=changeit
       - confluent.metadata.ssl.truststore.type=PKCS12
       - schema.registry.group.id=schema-registry
       - kafkastore.topic=_schemas

@@ -14,7 +14,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-08-18-mds-use-custom-truststore"
+    platform.confluent.io/force-reconcile: "2026-08-18-platform-trust-bundle"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker

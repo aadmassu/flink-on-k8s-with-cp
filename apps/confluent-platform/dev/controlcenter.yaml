@@ -13,7 +13,7 @@ metadata:
   name: controlcenter
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-08-18-mds-tls-use-c3-truststore"
+    platform.confluent.io/force-reconcile: "2026-08-18-platform-trust-bundle"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
@@ -48,14 +48,14 @@ spec:
   # JVM-wide outbound trust store for Okta/OIDC and FCB endpoints. Created by create-prereqs.
   mountedVolumes:
     volumes:
-      - name: c3-trust-bundle
+      - name: fcb-trust-bundle
         configMap:
-          name: c3-trust-bundle
+          name: fcb-trust-bundle
           items:
-            - key: bundle.jks
-              path: bundle.jks
+            - key: bundle.p12
+              path: bundle.p12
     volumeMounts:
-      - name: c3-trust-bundle
+      - name: fcb-trust-bundle
         mountPath: /var/ssl/truststore
         readOnly: true
 
@@ -231,8 +231,8 @@ spec:
 
   configOverrides:
     jvm:
-      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
-      - "-Djavax.net.ssl.trustStorePassword=truststorepass"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.p12"
+      - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=PKCS12"
     server:
       # Do NOT set confluent.controlcenter.data.dir here — CFK mounts the PVC at /mnt/data/data0 (runbook A25).
@@ -252,16 +252,16 @@ spec:
       - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(Dev)
 
       # Explicit trustStore for C3's Armeria/Netty HTTP client to Okta -- JVM -Djavax.net.ssl.trustStore doesn't propagate to Netty SSL contexts (runbook A28).
-      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
-      - confluent.metadata.ssl.truststore.password=truststorepass
+      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.metadata.ssl.truststore.password=changeit
       - confluent.metadata.ssl.truststore.type=PKCS12
-      - confluent.controlcenter.streams.ssl.truststore.location=/var/ssl/truststore/bundle.jks
-      - confluent.controlcenter.streams.ssl.truststore.password=truststorepass
+      - confluent.controlcenter.streams.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.controlcenter.streams.ssl.truststore.password=changeit
       - confluent.controlcenter.streams.ssl.truststore.type=PKCS12
 
       # REST client truststore for Control Center's OIDC/OAuth token exchange (internal HTTP calls to Okta).
-      - confluent.controlcenter.rest.client.ssl.truststore.location=/var/ssl/truststore/bundle.jks
-      - confluent.controlcenter.rest.client.ssl.truststore.password=truststorepass
+      - confluent.controlcenter.rest.client.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.controlcenter.rest.client.ssl.truststore.password=changeit
       - confluent.controlcenter.rest.client.ssl.truststore.type=PKCS12
 
       # Monitoring interceptor client.
