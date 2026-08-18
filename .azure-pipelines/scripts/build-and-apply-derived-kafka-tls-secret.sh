@@ -65,15 +65,17 @@ redact_secret_value() {
 resolve_ca_paths() {
   local conf_file="$1"
   local conf_dir
-  conf_dir=$(dirname "$(cd "$(dirname "$conf_file")" && pwd -P)/$conf_file")
+  conf_dir=$(cd "$(dirname "$conf_file")" && pwd -P)
 
   while IFS= read -r line; do
     # Skip comments and empty lines
     [[ "$line" =~ ^#  ]] && continue
     [[ -z "$line" ]] && continue
 
-    # Resolve relative to conf file directory
-    local ca_path="${conf_dir}/${line}"
+    # Resolve relative to conf file directory, normalize path
+    local ca_path
+    ca_path=$(readlink -f "${conf_dir}/${line}" 2>/dev/null) || ca_path="${conf_dir}/${line}"
+
     if [ ! -f "$ca_path" ]; then
       printf 'Error: CA certificate not found: %s (from %s)\n' "$ca_path" "$line" >&2
       return 1
