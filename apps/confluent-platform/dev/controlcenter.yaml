@@ -259,6 +259,11 @@ spec:
       - confluent.controlcenter.streams.ssl.truststore.password=truststorepass
       - confluent.controlcenter.streams.ssl.truststore.type=PKCS12
 
+      # REST client truststore for Control Center's OIDC/OAuth token exchange (internal HTTP calls to Okta).
+      - confluent.controlcenter.rest.client.ssl.truststore.location=/var/ssl/truststore/bundle.jks
+      - confluent.controlcenter.rest.client.ssl.truststore.password=truststorepass
+      - confluent.controlcenter.rest.client.ssl.truststore.type=PKCS12
+
       # Monitoring interceptor client.
       - confluent.monitoring.interceptor.security.protocol=SASL_SSL
       - confluent.monitoring.interceptor.sasl.mechanism=OAUTHBEARER
