@@ -741,91 +741,9 @@ stages:
                 OC_NS: $(openshift-namespace)
                 TRUSTSTORE_PASSWORD: $(c3TruststorePassword)
 
-            - task: Bash@3
-              displayName: "Wait for source kafka-tls Secret (cert-manager)"
-              inputs:
-                targetType: inline
-                script: |
-                  set -uo pipefail
-                  OC_NS="$(openshift-namespace)"
-                  echo "Waiting for source kafka-tls Secret from cert-manager (max 5 min)..."
-
-                  # Diagnostic: check if Certificate CR exists
-                  if ! oc -n "$OC_NS" get certificate kafka-tls &>/dev/null; then
-                    echo "WARNING: kafka-tls Certificate CR not found — cert-manager may not have processed it yet"
-                  fi
-
-                  for i in {1..60}; do
-                    if oc -n "$OC_NS" get secret kafka-tls &>/dev/null; then
-                      echo "✓ kafka-tls Secret found on attempt $i"
-                      exit 0
-                    fi
-                    echo "  Attempt $i/60: kafka-tls not ready yet ($(( (i*5)/60 )) min elapsed)..."
-                    sleep 5
-                  done
-                  echo "ERROR: kafka-tls Secret did not appear within 5 minutes"
-                  echo ""
-                  echo "Diagnostics:"
-                  echo "Certificates in namespace:"
-                  oc -n "$OC_NS" get certificate || echo "  (none found)"
-                  echo ""
-                  echo "Recent cert-manager events:"
-                  oc -n cert-manager get events --sort-by='.lastTimestamp' 2>/dev/null | tail -10 || echo "  (could not fetch cert-manager events)"
-                  exit 1
-              env:
-                OC_NS: $(openshift-namespace)
-
-            - task: Bash@3
-              displayName: "Build and apply derived Kafka TLS Secret (kafka-tls-cfk)"
-              inputs:
-                targetType: filePath
-                filePath: '.azure-pipelines/scripts/build-and-apply-derived-kafka-tls-secret.sh'
-                arguments: '--namespace $(openshift-namespace) --environment ${{ parameters.environment }} --ca-bundle-conf $(Build.SourcesDirectory)/apps/confluent-platform/${{ parameters.environment }}/ca-bundle.conf'
-              env:
-                OC_NS: $(openshift-namespace)
-
-            - task: Bash@3
-              displayName: "Verify derived kafka-tls-cfk Secret (DEV only)"
-              condition: eq('${{ parameters.environment }}', 'dev')
-              inputs:
-                targetType: inline
-                script: |
-                  set -uo pipefail
-
-                  echo "================================================================================"
-                  echo "Verifying kafka-tls-cfk Secret"
-                  echo "================================================================================"
-
-                  OC_NS="$(openshift-namespace)"
-
-                  # Wait for Secret to be available (short delay for creation)
-                  sleep 2
-
-                  if ! oc -n "$OC_NS" get secret kafka-tls-cfk &>/dev/null; then
-                    echo "ERROR: kafka-tls-cfk Secret not found in $OC_NS"
-                    exit 1
-                  fi
-
-                  echo ""
-                  echo "Secret exists. Checking contents..."
-
-                  # Extract and verify tls.crt
-                  if ! oc -n "$OC_NS" get secret kafka-tls-cfk -o jsonpath='{.data.tls\.crt}' | base64 -d 2>/dev/null | openssl x509 -noout >/dev/null 2>&1; then
-                    echo "ERROR: tls.crt is not a valid X.509 certificate"
-                    exit 1
-                  fi
-                  echo "  ✓ tls.crt is valid X.509"
-
-                  # Extract and verify tls.key
-                  if ! oc -n "$OC_NS" get secret kafka-tls-cfk -o jsonpath='{.data.tls\.key}' | base64 -d 2>/dev/null | openssl rsa -check -noout >/dev/null 2>&1; then
-                    echo "  (tls.key validation skipped — key format check)"
-                  else
-                    echo "  ✓ tls.key is valid RSA"
-                  fi
-
-                  # Verify ca.crt contains all 3 CAs
-                  CA_COUNT=$(oc -n "$OC_NS" get secret kafka-tls-cfk -o jsonpath='{.data.ca\.crt}' | base64 -d 2>/dev/null | grep -c "BEGIN CERTIFICATE" || echo "0")
-                  if [ "$CA_COUNT" -ne 3 ]; then
+            # NOTE: Derived kafka-tls-cfk Secret is no longer needed.
+            # Using platform-managed fcb-trust-bundle instead (contains FCB Root CAs 1 & 2,
+            # which covers the Okta inspection chain). See CLAUDE.md for details.
                     echo "ERROR: Expected 3 CA certificates in ca.crt, found $CA_COUNT"
                     exit 1
                   fi
