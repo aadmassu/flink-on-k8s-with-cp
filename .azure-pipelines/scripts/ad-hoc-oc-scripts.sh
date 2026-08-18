@@ -104,6 +104,19 @@ main() {
   section "c3-trust-bundle ConfigMap Okta CA validation"
   run oc -n "$NAMESPACE" get configmap c3-trust-bundle -o jsonpath='{.binaryData.bundle\.jks}' 2>/dev/null | base64 -d 2>/dev/null | keytool -list -storepass truststorepass -v 2>&1 | grep -A 2 "sso_oauth_ca\|firstcitizens\.com" || echo "[WARN] Could not extract or verify Okta CA from ConfigMap"
 
+  section "Restart Kafka brokers to reload configuration"
+  printf 'Restarting kafka-0...\n'
+  run oc -n "$NAMESPACE" delete pod kafka-0
+  run oc -n "$NAMESPACE" wait pod/kafka-0 --for=condition=Ready --timeout=15m
+
+  printf 'Restarting kafka-1...\n'
+  run oc -n "$NAMESPACE" delete pod kafka-1
+  run oc -n "$NAMESPACE" wait pod/kafka-1 --for=condition=Ready --timeout=15m
+
+  printf 'Restarting kafka-2...\n'
+  run oc -n "$NAMESPACE" delete pod kafka-2
+  run oc -n "$NAMESPACE" wait pod/kafka-2 --for=condition=Ready --timeout=15m
+
   section "Summary"
   printf '%s\n' \
     'Review the output for:' \
