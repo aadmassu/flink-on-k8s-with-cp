@@ -54,6 +54,10 @@ main() {
   oc -n "$NAMESPACE" get pod kafka-2 \
     -o jsonpath='{range .spec.containers[?(@.name=="kafka")].volumeMounts[*]}{.name}{" → "}{.mountPath}{"\n"}{end}' 2>/dev/null || echo "[FAILED]"
 
+  section "7. Extract truststore password from kafka-kafka-tls-cfk-pkcs12"
+  oc -n "$NAMESPACE" get secret kafka-kafka-tls-cfk-pkcs12 \
+    -o jsonpath='{.data.jksPassword\.txt}' | base64 -d 2>/dev/null || echo "[FAILED TO EXTRACT PASSWORD]"
+
   printf '\n[END]\n'
 }
 
