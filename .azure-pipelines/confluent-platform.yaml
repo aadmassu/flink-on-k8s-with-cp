@@ -2809,6 +2809,16 @@ stages:
                   done
 
                   echo ""
+                  echo "=== Proactive finalizer cleanup (prevents stuck Terminating resources) ==="
+                  # Clear stuck finalizers upfront so deletions don't hang
+                  for cr in kafka kraftcontroller schemaregistry connect kafkarestproxy controlcenter kafkarestclass; do
+                    oc -n "$OC_NS" patch "$cr" "$cr" \
+                      -p '{"metadata":{"finalizers":null}}' \
+                      --type=merge 2>/dev/null || true
+                  done
+                  echo "  Finalizer cleanup attempt complete (no-op if CRs don't exist)"
+
+                  echo ""
                   echo "=== Deleting Confluent Platform CRs (reverse dependency order) ==="
                   # Reverse order so dependents shut down before backends. No `|| true` — we want the pipeline to fail loudly on a silent webhook-rejected delete (the operator would recreate any PVCs the later wipePVCs sub-step then tries to delete).
                   DELETE_ORDER=(
