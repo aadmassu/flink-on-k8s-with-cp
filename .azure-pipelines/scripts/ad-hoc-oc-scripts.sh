@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# JSSE+truststore diagnostic collector for Kafka/MDS OIDC PKIX failure.
-# Prints all diagnostic output to pipeline log (no file generation).
-# Prerequisites: kafka.yaml must have JSSE debugging enabled:
-#   -Djavax.net.debug=ssl,handshake,trustmanager
-#
-# Run after enabling JSSE, then trigger ONE SSO attempt, then capture logs.
+# Focused MDS OIDC troubleshooting diagnostics.
+# Collects truststore validation, config verification, and error logs.
+# Prints all output to pipeline log (no file generation).
 
 NAMESPACE="${NAMESPACE:-dah-flink-dev}"
 
@@ -23,68 +20,70 @@ run() {
 }
 
 main() {
-  section "=== COLLECTION START: $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+  section "=== OIDC DIAGNOSTICS START: $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
 
-  section "1. Source and deployed manifests"
+  section "1. Truststore validation"
 
-  section "Live Kafka CR (oc get kafka kafka -o yaml)"
-  run oc -n "$NAMESPACE" get kafka kafka -o yaml
+  section "1a. Truststore file existence and permissions (kafka-0)"
+  run oc -n "$NAMESPACE" exec kafka-0 -c kafka -- \
+    ls -lh /var/ssl/truststore/bundle.jks
 
-  section "Live Control Center CR (oc get controlcenter controlcenter -o yaml)"
-  run oc -n "$NAMESPACE" get controlcenter controlcenter -o yaml
+  section "1b. Truststore content — list certificates"
+  run oc -n "$NAMESPACE" exec kafka-0 -c kafka -- \
+    keytool -list \
+    -keystore /var/ssl/truststore/bundle.jks \
+    -storetype PKCS12 \
+    -storepass truststorepass 2>&1
 
-  section "2. Kafka pod runtime configuration"
-
-  for pod in kafka-0 kafka-1 kafka-2; do
-    section "Pod manifest: $pod"
-    run oc -n "$NAMESPACE" get pod "$pod" -o yaml
-
-    section "Java command line: $pod (password redacted)"
-    run oc -n "$NAMESPACE" exec "$pod" -c kafka -- sh -c \
-      'tr "\000" " " </proc/1/cmdline' | \
-      sed -E 's/(-Djavax\.net\.ssl\.trustStorePassword=)[^ ]*/\1[REDACTED]/g'
-
-    section "Truststore SHA256: $pod"
-    run oc -n "$NAMESPACE" exec "$pod" -c kafka -- \
-      sha256sum /var/ssl/truststore/bundle.jks
-  done
-
-  section "3. Relevant generated Kafka properties"
-
-  for pod in kafka-0 kafka-1 kafka-2; do
-    section "Kafka properties from $pod (password redacted)"
-    oc -n "$NAMESPACE" exec "$pod" -c kafka -- sh -c \
-      'grep -Ein "oauth|oidc|mds|issuer|jwks|token|truststore|ssl" /opt/confluentinc/etc/kafka/kafka.properties 2>/dev/null || echo "[INFO] No matching properties found"' | \
-      sed -E 's/((password|secret|token)[^=]*=)[^ ]*/\1[REDACTED]/I'
-  done
-
-  section "4. Truststore contents (keytool -list -v)"
+  section "1c. Truststore contains Okta CA? (grep for 'firstcitizens\\|okta')"
   run oc -n "$NAMESPACE" exec kafka-0 -c kafka -- \
     keytool -list -v \
     -keystore /var/ssl/truststore/bundle.jks \
     -storetype PKCS12 \
-    -storepass truststorepass
+    -storepass truststorepass 2>&1 | grep -i "owner\|issuer" | grep -i "firstcitizens\|okta"
 
-  section "5. ConfigMap c3-trust-bundle metadata (no base64 data)"
-  oc -n "$NAMESPACE" get configmap c3-trust-bundle \
-    -o jsonpath='name={.metadata.name}{"\n"}resourceVersion={.metadata.resourceVersion}{"\n"}created={.metadata.creationTimestamp}{"\n"}dataKeys={.data}{"\n"}binaryDataKeys={.binaryData}{"\n"}'
+  section "1d. ConfigMap c3-trust-bundle metadata"
+  run oc -n "$NAMESPACE" get configmap c3-trust-bundle -o jsonpath='name={.metadata.name}{"\n"}size={.data.bundle\.jks | length}{"\n"}created={.metadata.creationTimestamp}{"\n"}'
 
-  section "6. Full Kafka logs (last 20min) with JSSE context — SENSITIVE"
+  section "2. MDS OAuth provider configuration"
 
-  for pod in kafka-0 kafka-1 kafka-2; do
-    section "Logs from $pod (code/state/Authorization redacted)"
-    oc -n "$NAMESPACE" logs "$pod" -c kafka --since=20m 2>&1 | \
-      sed -E 's/(code=)[^ &]*/\1[REDACTED]/g; s/(state=)[^ &]*/\1[REDACTED]/g; s/(client_secret=)[^ &]*/\1[REDACTED]/g; s/(Authorization: )[^ ]*/\1[REDACTED]/g'
-  done
+  section "2a. Kafka CR MDS provider settings (OAuth endpoints and TLS)"
+  run oc -n "$NAMESPACE" get kafka kafka -o jsonpath='{.spec.services.mds.provider}' | head -100
 
-  section "7. Control Center logs (last 20min)"
-  section "Logs from controlcenter-0"
-  oc -n "$NAMESPACE" logs controlcenter-0 -c controlcenter --since=20m 2>&1
+  section "3. JVM arguments and properties"
 
-  section "8. Kafka CR description and events"
-  run oc -n "$NAMESPACE" describe kafka kafka
+  section "3a. Java command line truststore config (kafka-0, password redacted)"
+  run oc -n "$NAMESPACE" exec kafka-0 -c kafka -- \
+    sh -c 'tr "\000" " " </proc/1/cmdline' | \
+    grep -o "\-Djavax.net.ssl.trustStore[^ ]*" || echo "[INFO] No JVM trustStore arg found"
 
-  section "=== COLLECTION END ==="
+  section "3b. Kafka generated server properties — truststore and oauth (password redacted)"
+  run oc -n "$NAMESPACE" exec kafka-0 -c kafka -- \
+    sh -c 'grep -i "truststore\|oauth.*endpoint" /opt/confluentinc/etc/kafka/kafka.properties 2>/dev/null | head -20' | \
+    sed -E 's/([=:]\s*[^ ]*password[^ ]*=)[^ ]*/\1[REDACTED]/I'
+
+  section "4. Error logs focusing on OIDC/OAuth failures"
+
+  section "4a. Kafka logs — last 30min, errors and warnings only (sensitive data redacted)"
+  run oc -n "$NAMESPACE" logs kafka-0 -c kafka --since=30m 2>&1 | \
+    grep -i "error\|exception\|pkix\|oauth\|oidc\|token.*failed\|invalid.*cert" | \
+    sed -E 's/(Authorization: )[^ ]*/\1[REDACTED]/g; s/(code=)[^ &]*/\1[REDACTED]/g' | \
+    tail -50
+
+  section "4b. Control Center logs — last 30min, OIDC/auth errors only"
+  run oc -n "$NAMESPACE" logs controlcenter-0 -c controlcenter --since=30min 2>&1 | \
+    grep -i "oauth\|oidc\|token\|pkix\|certificate\|auth.*failed\|error" | \
+    tail -50
+
+  section "5. Resource status"
+
+  section "5a. Kafka CR status (conditions and ready state)"
+  run oc -n "$NAMESPACE" get kafka kafka -o jsonpath='{.status}' | head -50
+
+  section "5b. Control Center CR status"
+  run oc -n "$NAMESPACE" get controlcenter controlcenter -o jsonpath='{.status}' | head -50
+
+  section "=== OIDC DIAGNOSTICS END ==="
 }
 
 main
