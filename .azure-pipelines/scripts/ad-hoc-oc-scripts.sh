@@ -45,6 +45,40 @@ main() {
   section "1d. ConfigMap c3-trust-bundle metadata"
   run oc -n "$NAMESPACE" get configmap c3-trust-bundle -o jsonpath='name={.metadata.name}{"\n"}size={.data.bundle\.jks | length}{"\n"}created={.metadata.creationTimestamp}{"\n"}'
 
+  section "1e. Inspect kafka-tls-cfk Secret and CFK-generated truststore"
+
+  section "1e-i. kafka-tls-cfk Secret — list data keys"
+  run oc -n "$NAMESPACE" get secret kafka-tls-cfk -o jsonpath='{range .data}{.key}{"\n"}{end}' 2>/dev/null || echo "[INFO] kafka-tls-cfk Secret not found"
+
+  section "1e-ii. Extract and count certificates in kafka-tls-cfk ca.crt"
+  WORK_DIR=$(mktemp -d)
+  trap "rm -rf $WORK_DIR" RETURN
+  if oc -n "$NAMESPACE" get secret kafka-tls-cfk -o jsonpath='{.data.ca\.crt}' 2>/dev/null | base64 -d > "$WORK_DIR/ca.crt" 2>/dev/null; then
+    NUM_CERTS=$(grep -c "BEGIN CERTIFICATE" "$WORK_DIR/ca.crt" 2>/dev/null || echo 0)
+    printf 'Number of certificates in kafka-tls-cfk ca.crt: %d\n' "$NUM_CERTS"
+    printf '\nCertificate subjects:\n'
+    awk '/-----BEGIN CERTIFICATE-----/{flag=1; next} /-----END CERTIFICATE-----/{flag=0} flag' "$WORK_DIR/ca.crt" | \
+      while IFS= read -r line; do
+        if [[ "$line" =~ ^[A-Za-z0-9+/]+=?$ ]]; then
+          echo "$line"
+        fi
+      done | while read -r b64_data; do
+        echo "$b64_data" | base64 -d 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | sed 's/^/  /'
+      done
+  else
+    echo "[INFO] Could not extract ca.crt from kafka-tls-cfk"
+  fi
+
+  section "1e-iii. Find CFK-generated PKCS12 secrets (truststore/keystore)"
+  run oc -n "$NAMESPACE" get secret -o name | grep -iE 'pkcs12|keystore|truststore' || echo "[INFO] No PKCS12 secrets found"
+
+  section "1e-iv. Mount paths in kafka-2 pod (TLS/truststore related)"
+  run oc -n "$NAMESPACE" get pod kafka-2 -o jsonpath='{range .spec.volumes[*]}{.name}{"\t"}{.secret.secretName // .configMap.name}{"\n"}{end}' | grep -iE 'tls|kafka|cert' || echo "[INFO] No matching volumes"
+
+  section "1e-v. Actual filesystem mount points in kafka-2 container"
+  run oc -n "$NAMESPACE" exec kafka-2 -c kafka -- \
+    find /mnt /var -type f \( -name '*truststore*' -o -name '*keystore*' -o -name 'jksPassword*' \) 2>/dev/null | head -20
+
   section "2. MDS OAuth provider configuration"
 
   section "2a. Kafka CR MDS provider settings (OAuth endpoints and TLS)"
