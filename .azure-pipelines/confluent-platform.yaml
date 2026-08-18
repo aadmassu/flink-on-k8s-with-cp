@@ -2559,7 +2559,7 @@ stages:
                     fi
                     ready_addrs=$(oc -n "$OC_NS" get endpointslices \
                       -l kubernetes.io/service-name="$svc" -o json 2>/dev/null | \
-                      python3 -c 'import json,sys;d=json.load(sys.stdin);ready=any(ep.get("addresses")and ep.get("conditions",{}).get("ready",True)is not False for e in d.get("items",[])for ep in e.get("endpoints",[]));print("ready"if ready else"not-ready")')
+                      python3 -c 'import json,sys;d=json.load(sys.stdin);ready=any(ep.get("addresses")and ep.get("conditions",{}).get("ready",True)is not False for e in d.get("items",[])for ep in(e.get("endpoints")or[]));print("ready"if ready else"not-ready")')
                     if [[ "$ready_addrs" != "ready" ]]; then
                       echo "  FAIL: Service/$svc has no ready EndpointSlices"
                       exit 1
