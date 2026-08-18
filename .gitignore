@@ -15,9 +15,6 @@ secrets/
 *.secret
 *.key
 *.pem
-# EXCEPTION: CA certificates in environment ca-certificates directories (public CAs, not secrets)
-!apps/confluent-platform/*/ca-certificates/
-!apps/confluent-platform/*/ca-certificates/*.pem
 *.crt
 .env
 .env.*
