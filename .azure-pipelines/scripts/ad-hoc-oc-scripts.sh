@@ -4,7 +4,7 @@ set -uo pipefail
 # Focused truststore validation for kafka-tls-cfk and CFK-generated PKCS12.
 # Outputs only data needed to verify CA chain completeness and mount paths.
 
-NAMESPACE="${NAMESPACE:-dah-flink-dev}"
+NAMESPACE="${1:-${NAMESPACE:-dah-flink-dev}}"
 
 section() {
   printf '\n%s\n%s\n%s\n' \
