@@ -15,6 +15,10 @@ secrets/
 *.secret
 *.key
 *.pem
+# EXCEPTION: Public CA certificates in common and environment-specific declarations
+!apps/confluent-platform/common/ca-certificates/
+!apps/confluent-platform/common/ca-certificates/*.pem
+!apps/confluent-platform/*/ca-bundle.conf
 *.crt
 .env
 .env.*
