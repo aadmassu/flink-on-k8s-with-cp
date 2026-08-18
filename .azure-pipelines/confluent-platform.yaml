@@ -742,6 +742,27 @@ stages:
                 TRUSTSTORE_PASSWORD: $(c3TruststorePassword)
 
             - task: Bash@3
+              displayName: "Wait for source kafka-tls Secret (cert-manager)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -uo pipefail
+                  OC_NS="$(openshift-namespace)"
+                  echo "Waiting for source kafka-tls Secret from cert-manager (max 2 min)..."
+                  for i in {1..24}; do
+                    if oc -n "$OC_NS" get secret kafka-tls &>/dev/null; then
+                      echo "✓ kafka-tls Secret found"
+                      exit 0
+                    fi
+                    echo "  Attempt $i/24: kafka-tls not ready yet, waiting..."
+                    sleep 5
+                  done
+                  echo "ERROR: kafka-tls Secret did not appear within 2 minutes"
+                  exit 1
+              env:
+                OC_NS: $(openshift-namespace)
+
+            - task: Bash@3
               displayName: "Build and apply derived Kafka TLS Secret (kafka-tls-cfk)"
               inputs:
                 targetType: filePath
