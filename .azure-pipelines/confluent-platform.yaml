@@ -2256,7 +2256,7 @@ stages:
                 APPLY_CONTROL_CENTER: ${{ parameters.applyControlCenter }}
 
             - task: Bash@3
-              displayName: "Verify managed components readiness before Ingress"
+              displayName: "Verify all managed components independently before Ingress"
               inputs:
                 targetType: inline
                 script: |
@@ -2321,39 +2321,92 @@ stages:
                     APPLY_C3=${APPLY_CONTROL_CENTER:-False}
                   fi
 
-                  echo "=== Verifying managed components readiness before Ingress ==="
-                  any_failed=0
+                  echo "=== Verifying all selected managed components independently ==="
+                  echo "All component CRs were applied in the preceding task. Readiness checks"
+                  echo "now run concurrently so one unhealthy component cannot hide another."
+
+                  readiness_dir=$(mktemp -d)
+                  readiness_count=0
+
+                  start_readiness_check() {
+                    local key=$1
+                    local kind=$2
+                    local name=$3
+                    local timeout=$4
+
+                    readiness_count=$((readiness_count + 1))
+                    readiness_key[$readiness_count]=$key
+                    readiness_kind[$readiness_count]=$kind
+                    readiness_name[$readiness_count]=$name
+                    readiness_log[$readiness_count]="$readiness_dir/$key.log"
+
+                    (
+                      wait_component_ready "$kind" "$name" "$timeout"
+                    ) >"${readiness_log[$readiness_count]}" 2>&1 &
+                    readiness_pid[$readiness_count]=$!
+                  }
+
+                  declare -a readiness_key readiness_kind readiness_name readiness_log readiness_pid
 
                   if is_true "$APPLY_SR"; then
-                    if ! wait_component_ready schemaregistry schemaregistry 300; then
-                      any_failed=1
-                    fi
+                    start_readiness_check schemaregistry schemaregistry schemaregistry 300
                   fi
-
                   if is_true "$APPLY_CONNECT"; then
-                    if ! wait_component_ready connect connect 300; then
-                      any_failed=1
-                    fi
+                    start_readiness_check connect connect connect 300
                   fi
-
                   if is_true "$APPLY_KREST"; then
-                    if ! wait_component_ready kafkarestproxy kafkarest 300; then
-                      any_failed=1
-                    fi
+                    start_readiness_check kafkarest kafkarestproxy kafkarest 300
                   fi
-
                   if is_true "$APPLY_C3"; then
-                    if ! wait_component_ready controlcenter controlcenter 300; then
-                      any_failed=1
-                    fi
+                    start_readiness_check controlcenter controlcenter controlcenter 300
                   fi
 
-                  if [ "$any_failed" -ne 0 ]; then
+                  any_failed=0
+                  for ((i=1; i<=readiness_count; i++)); do
+                    if wait "${readiness_pid[$i]}"; then
+                      readiness_result=PASS
+                    else
+                      readiness_result=FAIL
+                      any_failed=1
+                    fi
+
                     echo ""
-                    echo "FATAL: One or more components not ready before Ingress"
-                    echo "Check pod logs and CR conditions for details."
-                    echo "DO NOT apply Ingress rules until all components are cluster-ready=True"
+                    echo "------------------------------------------------------------"
+                    echo "${readiness_result}: ${readiness_kind[$i]}/${readiness_name[$i]}"
+                    echo "------------------------------------------------------------"
+                    sed -n '1,240p' "${readiness_log[$i]}"
+
+                    if [ "$readiness_result" = FAIL ]; then
+                      echo ""
+                      echo "CR snapshot:"
+                      oc -n "$OC_NS" get "${readiness_kind[$i]}" "${readiness_name[$i]}" \
+                        -o wide 2>&1 || true
+                      echo "Recent pod state:"
+                      oc -n "$OC_NS" get pods \
+                        -l "app=${readiness_name[$i]}" -o wide 2>&1 || true
+                      echo "Recent matching log errors:"
+                      for pod in $(oc -n "$OC_NS" get pods \
+                          -l "app=${readiness_name[$i]}" \
+                          -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+                        echo "### pod/$pod"
+                        oc -n "$OC_NS" logs "$pod" --all-containers=true --tail=250 2>&1 \
+                          | grep -Ei 'error|exception|fatal|pkix|oauth|invalid token|user identity' \
+                          | tail -80 || true
+                      done
+                    fi
+                  done
+
+                  if [ "$readiness_count" -eq 0 ]; then
+                    echo "No managed component selected; readiness gate skipped."
+                  elif [ "$any_failed" -ne 0 ]; then
+                    echo ""
+                    echo "FATAL: One or more selected managed components are not ready."
+                    echo "All selected components were checked; review each PASS/FAIL section above."
+                    echo "Ingress application remains blocked until every selected component is ready."
                     exit 1
+                  else
+                    echo ""
+                    echo "OK: every selected managed component is independently ready."
                   fi
               env:
                 OC_NS: $(RESOLVED_NS)
