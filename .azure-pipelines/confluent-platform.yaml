@@ -748,16 +748,29 @@ stages:
                 script: |
                   set -uo pipefail
                   OC_NS="$(openshift-namespace)"
-                  echo "Waiting for source kafka-tls Secret from cert-manager (max 2 min)..."
-                  for i in {1..24}; do
+                  echo "Waiting for source kafka-tls Secret from cert-manager (max 5 min)..."
+
+                  # Diagnostic: check if Certificate CR exists
+                  if ! oc -n "$OC_NS" get certificate kafka-tls &>/dev/null; then
+                    echo "WARNING: kafka-tls Certificate CR not found — cert-manager may not have processed it yet"
+                  fi
+
+                  for i in {1..60}; do
                     if oc -n "$OC_NS" get secret kafka-tls &>/dev/null; then
-                      echo "✓ kafka-tls Secret found"
+                      echo "✓ kafka-tls Secret found on attempt $i"
                       exit 0
                     fi
-                    echo "  Attempt $i/24: kafka-tls not ready yet, waiting..."
+                    echo "  Attempt $i/60: kafka-tls not ready yet ($(( (i*5)/60 )) min elapsed)..."
                     sleep 5
                   done
-                  echo "ERROR: kafka-tls Secret did not appear within 2 minutes"
+                  echo "ERROR: kafka-tls Secret did not appear within 5 minutes"
+                  echo ""
+                  echo "Diagnostics:"
+                  echo "Certificates in namespace:"
+                  oc -n "$OC_NS" get certificate || echo "  (none found)"
+                  echo ""
+                  echo "Recent cert-manager events:"
+                  oc -n cert-manager get events --sort-by='.lastTimestamp' 2>/dev/null | tail -10 || echo "  (could not fetch cert-manager events)"
                   exit 1
               env:
                 OC_NS: $(openshift-namespace)
