@@ -14,7 +14,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-08-18-mds-oidc-client-truststore"
+    platform.confluent.io/force-reconcile: "2026-08-18-mds-use-custom-truststore"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -116,11 +116,9 @@ spec:
         secretRef: mds-token-keypair
       provider:
         oauth:
-          # ignoreTrustStoreConfig routes Okta HTTPS validation through JVM defaults (runbook A22).
           tls:
             enabled: true
-            secretRef: kafka-tls
-            ignoreTrustStoreConfig: true
+            ignoreTrustStoreConfig: false
           configurations:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
