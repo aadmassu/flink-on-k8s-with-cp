@@ -2929,6 +2929,24 @@ stages:
                     fi
                   fi
 
+                  # Wait for pods to terminate after CRs are deleted (operator cleanup can take time)
+                  echo ""
+                  echo "=== Waiting for CFK pods to terminate (max 2 min) ==="
+                  PODS_WAIT_TIMEOUT=120
+                  PODS_WAIT_ELAPSED=0
+                  while [ $PODS_WAIT_ELAPSED -lt $PODS_WAIT_TIMEOUT ]; do
+                    REMAINING_PODS=$(oc -n "$OC_NS" get pods \
+                      -l app.kubernetes.io/part-of=confluent-platform \
+                      -o name 2>/dev/null | wc -l | tr -d ' ')
+                    if [ "$REMAINING_PODS" -eq 0 ]; then
+                      echo "✓ All CFK pods terminated"
+                      break
+                    fi
+                    echo "  Still waiting... ($PODS_WAIT_ELAPSED/$PODS_WAIT_TIMEOUT sec, $REMAINING_PODS pods remaining)"
+                    sleep 10
+                    PODS_WAIT_ELAPSED=$((PODS_WAIT_ELAPSED + 10))
+                  done
+
                   # Never delete TLS Secrets or PVCs while a CFK CR or Pod is
                   # still alive. That can strand finalizers and recreate the
                   # exact Kafka ApplyFailed condition this uninstall prevents.
