@@ -741,6 +741,15 @@ stages:
                 OC_NS: $(openshift-namespace)
                 TRUSTSTORE_PASSWORD: $(c3TruststorePassword)
 
+            - task: Bash@3
+              displayName: "Build and apply Kafka TLS CA bundle (kafka-tls Secret)"
+              inputs:
+                targetType: filePath
+                filePath: '.azure-pipelines/scripts/build-and-apply-kafka-ca-bundle.sh'
+                arguments: '--namespace $(openshift-namespace) --environment ${{ parameters.environment }} --ca-dir $(Build.SourcesDirectory)/apps/confluent-platform/${{ parameters.environment }}/ca-certificates'
+              env:
+                OC_NS: $(openshift-namespace)
+
           - ${{ if eq(parameters.action, 'install-or-update') }}:
             - task: Bash@3
               displayName: "Validate OpenShift namespace matches canonical (RESOLVED_NS enforcement)"
