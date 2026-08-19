@@ -1410,6 +1410,30 @@ stages:
                   echo "  (no controlcenter pod found — C3 CR may not be applied or replicas=0)"
                 fi
 
+                # POD STATUS — Capture any Error or Init state pods
+                echo ""
+                echo "=== Pod Status: Failed/Error/Init pods ==="
+                POD_STATUSES=$(oc -n "$OC_NS" get pods -l app.kubernetes.io/part-of=confluent-platform \
+                  -o jsonpath='{range .items[?(@.status.phase!="Running")]}{.metadata.name}{"\t"}{.status.phase}{"\t"}{.status.containerStatuses[0].state}{"\n"}{end}' 2>/dev/null)
+                if [ -z "$POD_STATUSES" ]; then
+                  echo "  All confluence-platform pods in Running phase"
+                else
+                  echo "$POD_STATUSES"
+                  echo ""
+                  # If any pods failed to initialize, dump init container logs
+                  INIT_ISSUE_PODS=$(oc -n "$OC_NS" get pods -l app.kubernetes.io/part-of=confluent-platform \
+                    -o jsonpath='{range .items[?(@.status.initContainerStatuses[0].state.waiting)]}{.metadata.name}{"\n"}{end}' 2>/dev/null)
+                  if [ -n "$INIT_ISSUE_PODS" ]; then
+                    echo ""
+                    echo "Init container issues detected. Logging init container output:"
+                    while IFS= read -r pod; do
+                      [ -n "$pod" ] || continue
+                      echo "  Pod: $pod"
+                      oc -n "$OC_NS" logs "$pod" -c config-init-container --tail=20 2>&1 | sed 's/^/    /'
+                    done <<< "$INIT_ISSUE_PODS"
+                  fi
+                fi
+
                 echo ""
                 echo "=== End of diagnostics ==="
                 # Always succeed.
