@@ -2991,6 +2991,7 @@ stages:
                     c3-alertmanager-server-basic-auth
                   )
                   DELETED_CFK_PREREQ_SECRETS=()
+                  STUCK_CFK_PREREQ_SECRETS=()
                   for secret_name in "${CFK_PREREQ_SECRETS[@]}"; do
                     if [ -n "${ESO_TARGETS[$secret_name]:-}" ]; then
                       echo "PRESERVE  Secret/$secret_name (managed by ExternalSecret)"
@@ -3005,10 +3006,38 @@ stages:
                         --wait=true --timeout=2m; then
                       DELETED_CFK_PREREQ_SECRETS+=("$secret_name")
                     else
-                      echo "FAIL: deletion of Secret/$secret_name did not complete cleanly"
-                      FAIL=1
+                      echo "  (timed out waiting for deletion; attempting force finalizer cleanup)"
+                      STUCK_CFK_PREREQ_SECRETS+=("$secret_name")
                     fi
                   done
+
+                  # Force-delete finalizers on secrets stuck in Terminating state
+                  if [ "${#STUCK_CFK_PREREQ_SECRETS[@]}" -gt 0 ]; then
+                    echo ""
+                    echo "=== Force-deleting finalizers on stuck prerequisite Secrets ==="
+                    for secret_name in "${STUCK_CFK_PREREQ_SECRETS[@]}"; do
+                      if ! oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                        echo "  Secret/$secret_name already deleted"
+                        DELETED_CFK_PREREQ_SECRETS+=("$secret_name")
+                        continue
+                      fi
+                      echo "  Force-deleting finalizers from Secret/$secret_name"
+                      if oc -n "$OC_NS" patch secret "$secret_name" --type=merge \
+                          -p '{"metadata":{"finalizers":null}}' 2>/dev/null; then
+                        sleep 1
+                        if ! oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                          echo "    ✓ Secret/$secret_name deleted after finalizer cleanup"
+                          DELETED_CFK_PREREQ_SECRETS+=("$secret_name")
+                        else
+                          echo "    WARNING: Secret/$secret_name remains after finalizer removal"
+                          FAIL=1
+                        fi
+                      else
+                        echo "    ERROR: could not patch finalizers on Secret/$secret_name"
+                        FAIL=1
+                      fi
+                    done
+                  fi
 
                   for secret_name in "${DELETED_CFK_PREREQ_SECRETS[@]}"; do
                     if oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
