@@ -2,9 +2,10 @@
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-dah-flink-dev}"
+ENV_NAME="${NAMESPACE#dah-flink-}"
 
 echo "=== Restoring CMF ExternalSecrets ==="
-CMF_EXTERNALSECRETS_DIR="apps/confluent-cmf/$NAMESPACE/externalsecrets"
+CMF_EXTERNALSECRETS_DIR="apps/confluent-cmf/$ENV_NAME/externalsecrets"
 if [ ! -d "$CMF_EXTERNALSECRETS_DIR" ]; then
   echo "ERROR: CMF externalsecrets directory not found: $CMF_EXTERNALSECRETS_DIR"
   exit 1
