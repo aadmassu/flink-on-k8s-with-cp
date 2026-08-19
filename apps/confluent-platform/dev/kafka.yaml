@@ -14,7 +14,7 @@ metadata:
   name: kafka
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-08-19-mds-oidc-trust"
+    platform.confluent.io/force-reconcile: "2026-08-18-platform-trust-bundle"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -44,9 +44,7 @@ spec:
     secretRef: cfk-license
 
   tls:
-    # Derived from kafka-tls: retains tls.crt/tls.key and supplies the
-    # complete FCB/Zscaler CA chain used by Kafka and MDS TLS clients.
-    secretRef: kafka-tls-cfk
+    secretRef: kafka-tls
 
   pdb:
     enabled: true
@@ -70,7 +68,7 @@ spec:
           secretRef: sasl-plain-internal
       tls:
         enabled: true
-        secretRef: kafka-tls-cfk
+        secretRef: kafka-tls
     external:
       authentication:
         type: oauth
@@ -90,7 +88,7 @@ spec:
           loginRetryBackoffMs: 60000
       tls:
         enabled: true
-        secretRef: kafka-tls-cfk
+        secretRef: kafka-tls
 
   # MDS: OAuth for API, OIDC for C3 browser SSO. oauth-mds-rest = server-side; oauth-mds-sso = browser login.
   services:
@@ -99,9 +97,7 @@ spec:
         type: bearer
       tls:
         enabled: true
-        # OidcTokenService exchanges the browser authorization code with
-        # Okta from MDS. This Secret must contain the complete trusted chain.
-        secretRef: kafka-tls-cfk
+        secretRef: kafka-tls
       tokenKeyPair:
         secretRef: mds-token-keypair
       provider:
@@ -161,7 +157,7 @@ spec:
             secretRef: sasl-plain-internal
         tls:
           enabled: true
-          secretRef: kafka-tls-cfk
+          secretRef: kafka-tls
     metricsClient:
       url: https://controlcenter.dah-flink-dev.svc.cluster.local:9090
       authentication:
@@ -178,7 +174,7 @@ spec:
         sslClientAuthentication: true
       tls:
         enabled: true
-        secretRef: kafka-tls-cfk
+        secretRef: kafka-tls
 
   # First-class metricReporter (Psyncopate pattern, not configOverrides).
   metricReporter:
@@ -186,7 +182,7 @@ spec:
     bootstrapEndpoint: kafka.dah-flink-dev.svc.cluster.local:9071
     tls:
       enabled: true
-      secretRef: kafka-tls-cfk
+      secretRef: kafka-tls
     authentication:
       type: plain
       jaasConfig:
