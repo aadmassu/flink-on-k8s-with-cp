@@ -9,12 +9,16 @@ parameters:
 
   - name: executeAdHocScript
     displayName: "Execute ad-hoc-oc-scripts.sh"
-    type: boolean
-    default: false
-    # When checked: runs .azure-pipelines/scripts/ad-hoc-oc-scripts.sh against the target environment
-    # Audits all managed-component OAuth identities and RBAC bindings
-    # Edit the script locally to modify audit logic, commit, and re-run the pipeline
-    # Useful for debugging OAuth/RBAC issues without local oc access (e.g., Zscaler-blocked laptops)
+    type: string
+    default: "none"
+    values:
+      - none
+      - logs
+      - restore-cmf-secrets
+    # Options:
+    #   none: do not run
+    #   logs: capture Control Center and Kafka logs
+    #   restore-cmf-secrets: restore CMF ExternalSecrets from apps/confluent-cmf/<env>/externalsecrets/
 
   - name: executeAdHocCommand
     displayName: "Execute ad hoc command"
@@ -115,19 +119,21 @@ stages:
                 OC_API: $(openshift-api)
                 OC_NS: $(openshift-namespace)
 
-          - ${{ if eq(parameters.executeAdHocScript, true) }}:
+          - ${{ if ne(parameters.executeAdHocScript, 'none') }}:
             - task: Bash@3
-              displayName: "Execute ad-hoc-oc-scripts.sh (${{ parameters.environment }})"
+              displayName: "Execute ad-hoc-oc-scripts.sh: ${{ parameters.executeAdHocScript }}"
               inputs:
                 targetType: inline
                 script: |
                   set -euo pipefail
-                  echo "=== Executing ad-hoc-oc-scripts.sh for environment: $TARGET_ENV ==="
+                  echo "=== Executing ad-hoc-oc-scripts.sh: $COMMAND ($TARGET_ENV) ==="
                   echo "=== OpenShift: $OC_API | Namespace: $OC_NS ==="
                   echo ""
                   chmod +x .azure-pipelines/scripts/ad-hoc-oc-scripts.sh
-                  .azure-pipelines/scripts/ad-hoc-oc-scripts.sh "$OC_NS"
+                  .azure-pipelines/scripts/ad-hoc-oc-scripts.sh "$COMMAND"
               env:
+                COMMAND: ${{ parameters.executeAdHocScript }}
+                NAMESPACE: $(openshift-namespace)
                 TARGET_ENV: ${{ parameters.environment }}
                 OC_API: $(openshift-api)
                 OC_NS: $(openshift-namespace)
