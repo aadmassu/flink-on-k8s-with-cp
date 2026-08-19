@@ -2807,7 +2807,7 @@ stages:
                     for crb in "${stuck_rolebindings[@]}"; do
                       echo "Force-removing finalizers from $crb..."
                       oc -n "$OC_NS" patch "$crb" -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
-      oc -n "$OC_NS" delete "$crb" --ignore-not-found 2>/dev/null || true
+                      oc -n "$OC_NS" delete "$crb" --ignore-not-found 2>/dev/null || true
                     done
                     echo "Force-delete of $stuck_crb_count ConfluentRoleBinding(s) complete"
                   fi
