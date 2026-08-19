@@ -287,10 +287,10 @@ spec:
     # DEV migration sizing within the namespace quota.
     resources:
       requests:
-        cpu: "1250m"
+        cpu: "500m"
         memory: 3Gi
       limits:
-        cpu: "2500m"
+        cpu: "1500m"
         memory: 6Gi
     # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
