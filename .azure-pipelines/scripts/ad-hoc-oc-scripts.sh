@@ -14,7 +14,7 @@ run_tls_probes() {
   container="$2"
   echo "=== TLS probes from ${pod}/${container} ==="
 
-  oc -n "$NS" exec "$pod" -c "$container" -- sh -s -- \
+  oc -n "$NS" exec -i "$pod" -c "$container" -- sh -s -- \
     "$TRUSTSTORE" "$STOREPASS" <<'REMOTE'
 set -eu
 truststore="$1"
