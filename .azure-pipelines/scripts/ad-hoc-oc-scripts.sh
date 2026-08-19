@@ -1,64 +1,55 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -u
 
-# Focused truststore validation for kafka-tls-cfk and CFK-generated PKCS12.
-# Outputs only data needed to verify CA chain completeness and mount paths.
+NS="dah-flink-dev"
+STORE="/var/ssl/truststore/bundle.p12"
+PASSWORD="changeit"
 
-NAMESPACE="${1:-${NAMESPACE:-dah-flink-dev}}"
+echo "=== 1. Validate the actual Kafka/MDS PKCS12 truststore ==="
+oc -n "$NS" exec kafka-0 -c kafka -- \
+  keytool -list -v \
+  -keystore "$STORE" \
+  -storetype PKCS12 \
+  -storepass "$PASSWORD" 2>&1 |
+  grep -E 'Your keystore contains|Alias name:|Owner:|Issuer:|SHA256:' ||
+  echo "FAIL: unable to inspect $STORE"
 
-section() {
-  printf '\n%s\n%s\n%s\n' \
-    '================================================================================' \
-    "$1" \
-    '================================================================================'
-}
+echo
+echo "=== 2. Kafka JVM truststore arguments ==="
+oc -n "$NS" exec kafka-0 -c kafka -- sh -c \
+  'tr "\000" " " </proc/1/cmdline |
+   grep -o -- "-Djavax.net.ssl.trustStore[^ ]*\\|-Djavax.net.ssl.trustStorePassword[^ ]*\\|-Djavax.net.ssl.trustStoreType[^ ]*"'
 
-main() {
-  section "Truststore Validation: kafka-tls-cfk and CFK-generated PKCS12"
+echo
+echo "=== 3. Control Center JVM truststore arguments ==="
+oc -n "$NS" exec controlcenter-0 -c controlcenter -- sh -c \
+  'tr "\000" " " </proc/1/cmdline |
+   grep -o -- "-Djavax.net.ssl.trustStore[^ ]*\\|-Djavax.net.ssl.trustStorePassword[^ ]*\\|-Djavax.net.ssl.trustStoreType[^ ]*"'
 
-  section "1. kafka-tls-cfk Secret — data keys"
-  oc -n "$NAMESPACE" get secret kafka-tls-cfk -o jsonpath='{range .data}{.key}{"\n"}{end}' 2>/dev/null || echo "[NOT FOUND]"
+echo
+echo "=== 4. Confirm truststore files exist ==="
+oc -n "$NS" exec kafka-0 -c kafka -- ls -l "$STORE"
+oc -n "$NS" exec controlcenter-0 -c controlcenter -- ls -l "$STORE"
 
-  section "2. Count and list CAs in kafka-tls-cfk ca.crt"
-  WORK_DIR=$(mktemp -d)
-  trap "rm -rf $WORK_DIR" RETURN
+echo
+echo "=== 5. Actual Control Center callback errors ==="
+oc -n "$NS" logs controlcenter-0 -c controlcenter --since=20m |
+  grep -Ei -C 15 \
+  'authorization-code|oidc|oauth|callback|PKIX|SSLHandshake|certificate_unknown|ProcessingException|SunCertPath' ||
+  echo "No matching C3 entries captured."
 
-  if oc -n "$NAMESPACE" get secret kafka-tls-cfk -o jsonpath='{.data.ca\.crt}' 2>/dev/null | base64 -d > "$WORK_DIR/ca.crt" 2>/dev/null; then
-    NUM_CERTS=$(grep -c "BEGIN CERTIFICATE" "$WORK_DIR/ca.crt" 2>/dev/null || echo 0)
-    printf 'Total certificates: %d\n' "$NUM_CERTS"
-    printf '\nCertificate subjects:\n'
-    awk '/-----BEGIN CERTIFICATE-----/{flag=1; next} /-----END CERTIFICATE-----/{flag=0} flag' "$WORK_DIR/ca.crt" | \
-      while IFS= read -r line; do
-        if [[ "$line" =~ ^[A-Za-z0-9+/]+=?$ ]]; then
-          echo "$line"
-        fi
-      done | while read -r b64_data; do
-        echo "$b64_data" | base64 -d 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | sed 's/^/  /'
-      done
-  else
-    echo "[FAILED TO EXTRACT ca.crt]"
-  fi
+echo
+echo "=== 6. Actual Kafka/MDS callback errors ==="
+for pod in kafka-0 kafka-1 kafka-2; do
+  echo "--- $pod ---"
+  oc -n "$NS" logs "$pod" -c kafka --since=20m |
+    grep -Ei -C 20 \
+    'authorization-code|oidc|oauth|token.base|PKIX|SSLHandshake|certificate_unknown|ProcessingException|SunCertPath' ||
+    echo "No matching MDS entries captured from $pod."
+done
 
-  section "3. CFK-generated PKCS12 secrets"
-  oc -n "$NAMESPACE" get secret -o name 2>/dev/null | grep -iE 'pkcs12|keystore|truststore' || echo "[NONE FOUND]"
-
-  section "4. Pod volumes in kafka-2"
-  printf 'Volume name → Secret/ConfigMap\n'
-  oc -n "$NAMESPACE" get pod kafka-2 -o jsonpath='{range .spec.volumes[*]}{.name}{"\t"}{.secret.secretName // .configMap.name}{"\n"}{end}' 2>/dev/null || echo "[FAILED]"
-
-  section "5. Mounted filesystem paths (truststore/keystore) in kafka-2"
-  oc -n "$NAMESPACE" exec kafka-2 -c kafka -- \
-    find /mnt /var -type f \( -name '*truststore*' -o -name '*keystore*' -o -name 'jksPassword*' \) 2>/dev/null || echo "[NONE FOUND]"
-
-  section "6. Container volume mounts for kafka-2"
-  oc -n "$NAMESPACE" get pod kafka-2 \
-    -o jsonpath='{range .spec.containers[?(@.name=="kafka")].volumeMounts[*]}{.name}{" → "}{.mountPath}{"\n"}{end}' 2>/dev/null || echo "[FAILED]"
-
-  section "7. Extract truststore password from kafka-kafka-tls-cfk-pkcs12"
-  oc -n "$NAMESPACE" get secret kafka-kafka-tls-cfk-pkcs12 \
-    -o jsonpath='{.data.jksPassword\.txt}' | base64 -d 2>/dev/null || echo "[FAILED TO EXTRACT PASSWORD]"
-
-  printf '\n[END]\n'
-}
-
-main
+echo
+echo "=== 7. Rendered MDS SSO and truststore properties ==="
+oc -n "$NS" exec kafka-0 -c kafka -- sh -c \
+  'grep -Ei "confluent\\.oidc\\.|confluent\\.metadata\\.ssl\\.truststore" /opt/confluentinc/etc/kafka/kafka.properties |
+   sed -E "s/(client\\.secret=).*/\\1***REDACTED***/I"'
