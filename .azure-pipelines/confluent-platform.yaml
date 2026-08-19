@@ -2966,7 +2966,6 @@ stages:
                     2>/dev/null || true)
 
                   CFK_PREREQ_SECRETS=(
-                    cfk-license
                     mds-token-keypair
                     sasl-plain-internal
                     oauth-broker
@@ -3045,7 +3044,7 @@ stages:
                       FAIL=1
                     fi
                   done
-                  echo "PRESERVE  Secret/confluent-license (shared with CMF)"
+                  echo "PRESERVE  Secret/cfk-license (managed by ExternalSecret)"
 
                   if [ -f "$ENV_DIR/network-policy/network-policy.yaml" ]; then
                     echo "+ oc delete -f $ENV_DIR/network-policy/network-policy.yaml --ignore-not-found --wait=true --timeout=2m"
