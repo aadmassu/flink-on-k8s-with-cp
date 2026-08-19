@@ -226,7 +226,6 @@ spec:
       - confluent.metadata.server.ssl.truststore.location=/var/ssl/truststore/bundle.p12
       - confluent.metadata.server.ssl.truststore.password=changeit
       - confluent.metadata.server.ssl.truststore.type=PKCS12
-      - confluent.metadata.server.ssl.endpoint.identification.algorithm=https
       - confluent.metadata.server.oauthbearer.groups.claim.name=dahDev_groups
 
       # Broker defaults.
