@@ -19,12 +19,6 @@ run_tls_probes() {
 set -eu
 truststore="$1"
 storepass="$2"
-pem_bundle="/tmp/fcb-c3-ca-bundle.pem"
-
-command -v openssl >/dev/null 2>&1 || {
-  echo "FATAL: openssl is not installed in this container"
-  exit 1
-}
 test -r "$truststore" || {
   echo "FATAL: truststore is not readable: $truststore"
   exit 1
@@ -34,28 +28,23 @@ echo "Truststore: $truststore"
 keytool -list -keystore "$truststore" -storetype PKCS12 \
   -storepass "$storepass" | sed -n '1,6p'
 
-rm -f "$pem_bundle"
-openssl pkcs12 -in "$truststore" -passin "pass:$storepass" \
-  -nokeys -out "$pem_bundle" >/dev/null 2>&1
-test -s "$pem_bundle" || {
-  echo "FATAL: unable to extract CA certificates from $truststore"
-  exit 1
-}
-
 probe() {
   host="$1"
   port="$2"
   label="$3"
   output="/tmp/tls-probe-${port}.txt"
   echo "--- $label: ${host}:${port} ---"
-  if openssl s_client -connect "${host}:${port}" -servername "$host" \
-      -CAfile "$pem_bundle" -verify_return_error -verify_hostname "$host" \
-      </dev/null >"$output" 2>&1; then
-    grep -E 'subject=|issuer=|Verify return code' "$output" | tail -n 6
+  if keytool \
+      "-J-Djavax.net.ssl.trustStore=$truststore" \
+      "-J-Djavax.net.ssl.trustStorePassword=$storepass" \
+      "-J-Djavax.net.ssl.trustStoreType=PKCS12" \
+      -printcert -sslserver "${host}:${port}" -rfc \
+      >"$output" 2>&1; then
+    grep -E 'Owner:|Issuer:|Subject:|BEGIN CERTIFICATE' "$output" | head -n 8 || true
     echo "TLS PASS: $label"
   else
-    grep -E 'subject=|issuer=|verify error|Verify return code|certificate verify failed' \
-      "$output" | tail -n 12 || tail -n 20 "$output"
+    grep -Ei 'PKIX|SSLHandshake|certificate|unable to find valid|Exception' \
+      "$output" | tail -n 15 || tail -n 20 "$output"
     echo "TLS FAIL: $label"
     return 1
   fi
@@ -64,7 +53,7 @@ probe() {
 failures=0
 probe myapps.firstcitizens.com 443 "Okta" || failures=$((failures + 1))
 probe kafka.dah-flink-dev.svc.cluster.local 8090 "Kafka MDS" || failures=$((failures + 1))
-rm -f "$pem_bundle" /tmp/tls-probe-443.txt /tmp/tls-probe-8090.txt
+rm -f /tmp/tls-probe-443.txt /tmp/tls-probe-8090.txt
 
 if [ "$failures" -ne 0 ]; then
   echo "RESULT: FAIL ($failures TLS probe(s) failed)"
