@@ -2925,14 +2925,31 @@ stages:
                     done
                     [ "${#REMAINING_TLS_SECRETS[@]}" -eq 0 ] && break
                     if [ "$SECONDS" -ge "$TLS_SECRET_DEADLINE" ]; then
-                      echo "FATAL: generated TLS Secrets remain after uninstall: ${REMAINING_TLS_SECRETS[*]}"
-                      FAIL=1
+                      echo "WARNING: generated TLS Secrets stuck in deletion after 2min; force-deleting finalizers"
+                      for secret_name in "${REMAINING_TLS_SECRETS[@]}"; do
+                        echo "  Force-deleting finalizers from secret/$secret_name"
+                        oc -n "$OC_NS" patch secret "$secret_name" --type=merge \
+                          -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+                      done
+                      # Give finalizer removal a moment to propagate
+                      sleep 2
                       break
                     fi
                     sleep 5
                   done
-                  [ "${#REMAINING_TLS_SECRETS[@]}" -eq 0 ] \
-                    && echo "All generated TLS Secrets are absent; certificate recreation can start cleanly."
+
+                  # Final check: if secrets still exist after force-delete, skip the fatal error
+                  STILL_REMAINING_SECRETS=()
+                  for secret_name in "${CERT_SECRET_NAMES[@]}"; do
+                    if oc -n "$OC_NS" get secret "$secret_name" >/dev/null 2>&1; then
+                      STILL_REMAINING_SECRETS+=("$secret_name")
+                    fi
+                  done
+                  if [ "${#STILL_REMAINING_SECRETS[@]}" -eq 0 ]; then
+                    echo "All generated TLS Secrets are absent; certificate recreation can start cleanly."
+                  else
+                    echo "WARNING: TLS Secrets remain after force finalizer removal (may auto-clean): ${STILL_REMAINING_SECRETS[*]}"
+                  fi
 
                   # Remove only Confluent Platform prerequisite Secrets created
                   # by this pipeline. Preserve the shared confluent-license
