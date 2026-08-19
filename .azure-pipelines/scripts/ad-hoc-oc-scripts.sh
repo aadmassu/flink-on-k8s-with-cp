@@ -60,68 +60,45 @@ probe_pod() {
   oc -n "$NS" exec "$pod" -c "$container" -- sh -c \
     'tr "\000" "\n" </proc/1/cmdline | grep -E "javax\.net\.ssl\.trustStore" || true'
 
-  echo "--- Genuine Java HTTPS handshakes ---"
-  oc -n "$NS" exec -i "$pod" -c "$container" -- sh -c \
-    "cat >/tmp/TlsProbe.java && java \
-      -Djavax.net.ssl.trustStore='$TRUSTSTORE' \
-      -Djavax.net.ssl.trustStorePassword='$TRUSTSTORE_PASSWORD' \
-      -Djavax.net.ssl.trustStoreType=PKCS12 \
-      /tmp/TlsProbe.java \
-      '$OKTA_DISCOVERY' '$OKTA_TOKEN' '$MDS_URL'; rc=\$?; rm -f /tmp/TlsProbe.java; exit \$rc" <<'JAVA'
-import java.net.HttpURLConnection;
-import java.net.URL;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLHandshakeException;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
-
-public class TlsProbe {
-  public static void main(String[] args) {
-    int failures = 0;
-    for (String value : args) {
-      HttpsURLConnection connection = null;
-      System.out.println("TEST: " + value);
-      try {
-        connection = (HttpsURLConnection) new URL(value).openConnection();
-        connection.setConnectTimeout(15000);
-        connection.setReadTimeout(15000);
-        connection.setInstanceFollowRedirects(false);
-        connection.setRequestMethod("GET");
-        int status = connection.getResponseCode();
-        System.out.println("TLS PASS: HTTP " + status);
-        Certificate[] certificates = connection.getServerCertificates();
-        for (int i = 0; i < certificates.length; i++) {
-          if (certificates[i] instanceof X509Certificate) {
-            X509Certificate certificate = (X509Certificate) certificates[i];
-            System.out.println("  peer[" + i + "] subject=" + certificate.getSubjectX500Principal());
-            System.out.println("  peer[" + i + "] issuer=" + certificate.getIssuerX500Principal());
-          }
-        }
-      } catch (SSLHandshakeException exception) {
-        failures++;
-        System.out.println("TLS FAIL: " + exception);
-        Throwable cause = exception.getCause();
-        while (cause != null) {
-          System.out.println("  caused by: " + cause);
-          cause = cause.getCause();
-        }
-      } catch (Exception exception) {
-        failures++;
-        System.out.println("REQUEST FAIL: " + exception);
-        Throwable cause = exception.getCause();
-        while (cause != null) {
-          System.out.println("  caused by: " + cause);
-          cause = cause.getCause();
-        }
-      } finally {
-        if (connection != null) connection.disconnect();
-      }
-      System.out.println();
+  echo "--- Genuine TLS path and hostname validation ---"
+  oc -n "$NS" exec "$pod" -c "$container" -- sh -c '
+    set -eu
+    command -v openssl >/dev/null 2>&1 || {
+      echo "FATAL: openssl is unavailable in this container"
+      exit 3
     }
-    if (failures > 0) System.exit(2);
-  }
-}
-JAVA
+
+    keytool -list -rfc -storetype PKCS12 \
+      -keystore "'"$TRUSTSTORE"'" \
+      -storepass "'"$TRUSTSTORE_PASSWORD"'" \
+      > /tmp/fcb-trust-bundle.pem
+
+    probe() {
+      host="$1"
+      port="$2"
+      echo "TEST: ${host}:${port}"
+      result="$(printf "" | openssl s_client \
+        -connect "${host}:${port}" \
+        -servername "$host" \
+        -CAfile /tmp/fcb-trust-bundle.pem \
+        -verify_return_error \
+        -verify_hostname "$host" 2>&1)" && rc=0 || rc=$?
+      printf "%s\n" "$result" | grep -E \
+        "subject=|issuer=|Verification error|Verify return code" | tail -n 12 || true
+      if [ "$rc" -ne 0 ] || ! printf "%s\n" "$result" | grep -q "Verify return code: 0 (ok)"; then
+        echo "TLS FAIL: ${host}:${port}"
+        rm -f /tmp/fcb-trust-bundle.pem
+        return 1
+      fi
+      echo "TLS PASS: ${host}:${port}"
+    }
+
+    failures=0
+    probe myapps.firstcitizens.com 443 || failures=$((failures + 1))
+    probe kafka.dah-flink-dev.svc.cluster.local 8090 || failures=$((failures + 1))
+    rm -f /tmp/fcb-trust-bundle.pem
+    [ "$failures" -eq 0 ]
+  '
 }
 
 set +e
@@ -143,4 +120,4 @@ if (( C3_RC != 0 || KAFKA_RC != 0 )); then
   exit 1
 fi
 
-echo "PASS: both JVMs trust the Okta and MDS endpoints using bundle.p12"
+echo "PASS: bundle.p12 validates the Okta and MDS certificate paths and hostnames in both pods"
