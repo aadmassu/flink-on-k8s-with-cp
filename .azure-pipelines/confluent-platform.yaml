@@ -2953,17 +2953,14 @@ stages:
 
                   echo ""
                   echo "=== Deleting Confluent Platform ExternalSecret CRs ==="
-                  while IFS= read -r eso_name; do
-                    [ -z "$eso_name" ] && continue
-                    echo "+ oc -n $OC_NS delete externalsecret/$eso_name --ignore-not-found --wait=true --timeout=2m"
-                    if ! oc -n "$OC_NS" delete "externalsecret/$eso_name" \
-                        --ignore-not-found --wait=true --timeout=2m; then
-                      echo "FAIL: ExternalSecret deletion did not complete cleanly for $eso_name"
+                  for eso_file in "$ENV_DIR"/externalsecrets/*.yaml; do
+                    [ -f "$eso_file" ] || continue
+                    echo "+ oc delete -f $eso_file --ignore-not-found --wait=true --timeout=2m"
+                    if ! oc delete -f "$eso_file" --ignore-not-found --wait=true --timeout=2m; then
+                      echo "FAIL: ExternalSecret deletion did not complete cleanly for $eso_file"
                       FAIL=1
                     fi
-                  done < <(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
-                    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-                    2>/dev/null || true)
+                  done
 
                   # Remove only Confluent Platform prerequisite Secrets created
                   # by this pipeline. ExternalSecret CRs are deleted above, so their
