@@ -2,21 +2,23 @@
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-dah-flink-dev}"
-ENV_NAME="${NAMESPACE#dah-flink-}"
 
-echo "=== Restoring CMF ExternalSecrets ==="
-CMF_EXTERNALSECRETS_DIR="apps/confluent-cmf/$ENV_NAME/externalsecrets"
-if [ ! -d "$CMF_EXTERNALSECRETS_DIR" ]; then
-  echo "ERROR: CMF externalsecrets directory not found: $CMF_EXTERNALSECRETS_DIR"
-  exit 1
+echo "=== Force-deleting cfk-license Secret ==="
+echo "Namespace: $NAMESPACE"
+echo ""
+
+SECRET_NAME="cfk-license"
+
+echo "Checking if secret exists..."
+if ! oc -n "$NAMESPACE" get secret "$SECRET_NAME" &>/dev/null; then
+  echo "Secret $SECRET_NAME not found in namespace $NAMESPACE"
+  exit 0
 fi
 
-for eso_file in "$CMF_EXTERNALSECRETS_DIR"/*.yaml; do
-  [ -f "$eso_file" ] || continue
-  echo "Restoring $(basename "$eso_file")..."
-  oc apply -f "$eso_file" --wait=true
-done
+echo "Secret $SECRET_NAME found. Removing finalizers..."
+oc -n "$NAMESPACE" patch secret "$SECRET_NAME" -p '{"metadata":{"finalizers":null}}' --type=merge || true
 
-echo ""
-echo "=== Restored ExternalSecrets ==="
-oc -n "$NAMESPACE" get externalsecrets.external-secrets.io -l app.kubernetes.io/part-of=confluent-manager-for-flink
+echo "Deleting secret $SECRET_NAME..."
+oc -n "$NAMESPACE" delete secret "$SECRET_NAME" --ignore-not-found
+
+echo "✓ Done"
