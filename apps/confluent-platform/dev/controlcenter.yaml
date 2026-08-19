@@ -13,7 +13,7 @@ metadata:
   name: controlcenter
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-08-18-platform-trust-bundle"
+    platform.confluent.io/force-reconcile: "2026-08-19-oidc-client-trust"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
@@ -161,6 +161,7 @@ spec:
       ssoProtocol: oidc
       tls:
         enabled: true
+        secretRef: kafka-tls
         ignoreTrustStoreConfig: false
       tokenKeyPair:
         secretRef: mds-token-keypair
@@ -265,11 +266,12 @@ spec:
       - confluent.controlcenter.rest.ssl.truststore.type=PKCS12
       - confluent.controlcenter.rest.ssl.endpoint.identification.algorithm=https
 
-      # Separate outbound-client properties for legacy HTTP clients.
-      - confluent.controlcenter.rest.client.ssl.truststore.location=/var/ssl/truststore/bundle.p12
-      - confluent.controlcenter.rest.client.ssl.truststore.password=changeit
-      - confluent.controlcenter.rest.client.ssl.truststore.type=PKCS12
-      - confluent.controlcenter.rest.client.ssl.endpoint.identification.algorithm=https
+      # Generic OAuth/OIDC client context. Control Center Next Gen uses this
+      # context during the authorization-code callback and token exchange.
+      - client.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - client.ssl.truststore.password=changeit
+      - client.ssl.truststore.type=PKCS12
+      - client.ssl.endpoint.identification.algorithm=https
 
       # Monitoring interceptor client.
       - confluent.monitoring.interceptor.security.protocol=SASL_SSL
