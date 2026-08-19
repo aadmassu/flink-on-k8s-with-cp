@@ -246,10 +246,10 @@ spec:
     serviceAccountName: flink-operator
     resources:
       requests:
-        cpu: "1250m"
+        cpu: "1000m"
         memory: 3Gi
       limits:
-        cpu: "2500m"
+        cpu: "2000m"
         memory: 6Gi
     probe:
       liveness:

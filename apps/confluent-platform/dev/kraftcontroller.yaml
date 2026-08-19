@@ -109,10 +109,10 @@ spec:
     # request == limit → Guaranteed QoS.
     resources:
       requests:
-        cpu: "1"
+        cpu: "750m"
         memory: 2Gi
       limits:
-        cpu: "2"
+        cpu: "1500m"
         memory: 3Gi
     probe:
       liveness:
