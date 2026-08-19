@@ -2951,11 +2951,23 @@ stages:
                     echo "WARNING: TLS Secrets remain after force finalizer removal (may auto-clean): ${STILL_REMAINING_SECRETS[*]}"
                   fi
 
+                  echo ""
+                  echo "=== Deleting Confluent Platform ExternalSecret CRs ==="
+                  while IFS= read -r eso_name; do
+                    [ -z "$eso_name" ] && continue
+                    echo "+ oc -n $OC_NS delete externalsecret/$eso_name --ignore-not-found --wait=true --timeout=2m"
+                    if ! oc -n "$OC_NS" delete "externalsecret/$eso_name" \
+                        --ignore-not-found --wait=true --timeout=2m; then
+                      echo "FAIL: ExternalSecret deletion did not complete cleanly for $eso_name"
+                      FAIL=1
+                    fi
+                  done < <(oc -n "$OC_NS" get externalsecrets.external-secrets.io \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                    2>/dev/null || true)
+
                   # Remove only Confluent Platform prerequisite Secrets created
-                  # by this pipeline. Preserve the shared confluent-license
-                  # Secret because CMF consumes it. Also preserve every active
-                  # ExternalSecret target: ESO owns that lifecycle and may
-                  # recreate the Secret immediately if it is deleted here.
+                  # by this pipeline. ExternalSecret CRs are deleted above, so their
+                  # target Secrets can now be safely removed.
                   echo ""
                   echo "=== Deleting pipeline-owned Confluent Platform prerequisite Secrets ==="
                   declare -A ESO_TARGETS=()
