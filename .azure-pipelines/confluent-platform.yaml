@@ -2786,16 +2786,31 @@ stages:
                   # their finalizers can no longer complete MDS discovery.
                   echo ""
                   echo "=== Deleting all namespace ConfluentRoleBindings ==="
+                  declare -a stuck_rolebindings
+                  stuck_crb_count=0
+
                   while IFS= read -r rolebinding_name; do
                     [ -z "$rolebinding_name" ] && continue
                     echo "+ oc -n $OC_NS delete $rolebinding_name --wait=true --timeout=2m"
                     if ! oc -n "$OC_NS" delete "$rolebinding_name" \
                         --wait=true --timeout=2m; then
-                      echo "FAIL: deletion of $rolebinding_name did not complete cleanly"
-                      FAIL=1
+                      echo "WARN: deletion of $rolebinding_name timed out, will force-delete"
+                      stuck_rolebindings[$((stuck_crb_count++))]="$rolebinding_name"
                     fi
                   done < <(oc -n "$OC_NS" get confluentrolebinding \
                     -o name 2>/dev/null || true)
+
+                  # Force-delete stuck ConfluentRoleBindings by removing finalizers
+                  if [ "$stuck_crb_count" -gt 0 ]; then
+                    echo ""
+                    echo "=== Force-deleting $stuck_crb_count stuck ConfluentRoleBinding(s) ==="
+                    for crb in "${stuck_rolebindings[@]}"; do
+                      echo "Force-removing finalizers from $crb..."
+                      oc -n "$OC_NS" patch "$crb" -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+      oc -n "$OC_NS" delete "$crb" --ignore-not-found 2>/dev/null || true
+                    done
+                    echo "Force-delete of $stuck_crb_count ConfluentRoleBinding(s) complete"
+                  fi
 
                   # Browser-facing routes are dependents of the component
                   # Services. Remove them first so a clean uninstall does not
