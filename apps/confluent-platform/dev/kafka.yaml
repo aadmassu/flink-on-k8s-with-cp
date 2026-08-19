@@ -218,10 +218,17 @@ spec:
       - listener.name.token.oauthbearer.ssl.truststore.password=changeit
       - listener.name.token.oauthbearer.ssl.truststore.type=PKCS12
 
-      # MDS truststore for OAuth/OIDC validation (using platform-managed fcb-trust-bundle)
+      # MDS client truststore for OAuth/OIDC validation (using platform-managed fcb-trust-bundle)
       - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.p12
       - confluent.metadata.ssl.truststore.password=changeit
       - confluent.metadata.ssl.truststore.type=PKCS12
+
+      # MDS server-side truststore used for OIDC/JWKS validation and incoming CFK operator mTLS client-certificate validation.
+      - confluent.metadata.server.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.metadata.server.ssl.truststore.password=changeit
+      - confluent.metadata.server.ssl.truststore.type=PKCS12
+      - confluent.metadata.server.ssl.endpoint.identification.algorithm=https
+      - confluent.metadata.server.oauthbearer.groups.claim.name=dahDev_groups
 
       # Broker defaults.
       - confluent.telemetry.enabled=true
