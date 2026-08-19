@@ -1,89 +1,146 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NS="dah-flink-dev"
+NS="${NS:-dah-flink-dev}"
 TRUSTSTORE="/var/ssl/truststore/bundle.p12"
-STOREPASS="changeit"
+TRUSTSTORE_PASSWORD="changeit"
 
-echo "=== 1. Wait for Control Center and Kafka ==="
-oc -n "$NS" wait pod/controlcenter-0 --for=condition=Ready --timeout=15m
-oc -n "$NS" wait pod/kafka-0 --for=condition=Ready --timeout=15m
+OKTA_DISCOVERY="https://myapps.firstcitizens.com/oauth2/default/.well-known/openid-configuration"
+OKTA_TOKEN="https://myapps.firstcitizens.com/oauth2/default/v1/token"
+MDS_URL="https://kafka.dah-flink-dev.svc.cluster.local:8090/security/1.0/activenodes/https"
 
-run_tls_probes() {
-  pod="$1"
-  container="$2"
-  echo "=== TLS probes from ${pod}/${container} ==="
+echo "============================================================"
+echo "DEV Java TLS trust diagnostic (read-only)"
+echo "Namespace: ${NS}"
+echo "============================================================"
 
-  oc -n "$NS" exec -i "$pod" -c "$container" -- sh -s -- \
-    "$TRUSTSTORE" "$STOREPASS" <<'REMOTE'
-set -eu
-truststore="$1"
-storepass="$2"
-test -r "$truststore" || {
-  echo "FATAL: truststore is not readable: $truststore"
+command -v oc >/dev/null 2>&1 || {
+  echo "FATAL: oc is not installed on the pipeline agent"
   exit 1
 }
 
-echo "Truststore: $truststore"
-keytool -list -keystore "$truststore" -storetype PKCS12 \
-  -storepass "$storepass" | sed -n '1,6p'
-
-probe() {
-  host="$1"
-  port="$2"
-  label="$3"
-  output="/tmp/tls-probe-${port}.txt"
-  echo "--- $label: ${host}:${port} ---"
-  if keytool \
-      "-J-Djavax.net.ssl.trustStore=$truststore" \
-      "-J-Djavax.net.ssl.trustStorePassword=$storepass" \
-      "-J-Djavax.net.ssl.trustStoreType=PKCS12" \
-      -printcert -sslserver "${host}:${port}" -rfc \
-      >"$output" 2>&1; then
-    grep -E 'Owner:|Issuer:|Subject:|BEGIN CERTIFICATE' "$output" | head -n 8 || true
-    echo "TLS PASS: $label"
-  else
-    grep -Ei 'PKIX|SSLHandshake|certificate|unable to find valid|Exception' \
-      "$output" | tail -n 15 || tail -n 20 "$output"
-    echo "TLS FAIL: $label"
-    return 1
-  fi
+get_ready_pod() {
+  local component="$1"
+  oc -n "$NS" get pods \
+    -l "app.kubernetes.io/name=${component}" \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{range .items[?(@.status.containerStatuses[0].ready==true)]}{.metadata.name}{"\n"}{end}' \
+    | head -n 1
 }
 
-failures=0
-probe myapps.firstcitizens.com 443 "Okta" || failures=$((failures + 1))
-probe kafka.dah-flink-dev.svc.cluster.local 8090 "Kafka MDS" || failures=$((failures + 1))
-rm -f /tmp/tls-probe-443.txt /tmp/tls-probe-8090.txt
+C3_POD="$(get_ready_pod controlcenter)"
+KAFKA_POD="$(get_ready_pod kafka)"
 
-if [ "$failures" -ne 0 ]; then
-  echo "RESULT: FAIL ($failures TLS probe(s) failed)"
+[[ -n "$C3_POD" ]] || { echo "FATAL: no Ready Control Center pod found"; exit 1; }
+[[ -n "$KAFKA_POD" ]] || { echo "FATAL: no Ready Kafka pod found"; exit 1; }
+
+echo "Control Center pod: ${C3_POD}"
+echo "Kafka pod:          ${KAFKA_POD}"
+
+probe_pod() {
+  local pod="$1"
+  local container="$2"
+  local label="$3"
+
+  echo
+  echo "============================================================"
+  echo "${label}: ${pod}/${container}"
+  echo "============================================================"
+
+  echo "--- Truststore file and checksum ---"
+  oc -n "$NS" exec "$pod" -c "$container" -- sh -c \
+    "set -e; ls -l '$TRUSTSTORE'; (sha256sum '$TRUSTSTORE' 2>/dev/null || cksum '$TRUSTSTORE')"
+
+  echo "--- Truststore readability ---"
+  oc -n "$NS" exec "$pod" -c "$container" -- \
+    keytool -list -storetype PKCS12 -keystore "$TRUSTSTORE" \
+      -storepass "$TRUSTSTORE_PASSWORD" 2>&1 | sed -n '1,8p'
+
+  echo "--- PID 1 JVM truststore arguments ---"
+  oc -n "$NS" exec "$pod" -c "$container" -- sh -c \
+    'tr "\000" "\n" </proc/1/cmdline | grep -E "javax\.net\.ssl\.trustStore" || true'
+
+  echo "--- Genuine Java HTTPS handshakes ---"
+  oc -n "$NS" exec -i "$pod" -c "$container" -- sh -c \
+    "cat >/tmp/TlsProbe.java && java \
+      -Djavax.net.ssl.trustStore='$TRUSTSTORE' \
+      -Djavax.net.ssl.trustStorePassword='$TRUSTSTORE_PASSWORD' \
+      -Djavax.net.ssl.trustStoreType=PKCS12 \
+      /tmp/TlsProbe.java \
+      '$OKTA_DISCOVERY' '$OKTA_TOKEN' '$MDS_URL'; rc=\$?; rm -f /tmp/TlsProbe.java; exit \$rc" <<'JAVA'
+import java.net.HttpURLConnection;
+import java.net.URL;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLHandshakeException;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+
+public class TlsProbe {
+  public static void main(String[] args) {
+    int failures = 0;
+    for (String value : args) {
+      HttpsURLConnection connection = null;
+      System.out.println("TEST: " + value);
+      try {
+        connection = (HttpsURLConnection) new URL(value).openConnection();
+        connection.setConnectTimeout(15000);
+        connection.setReadTimeout(15000);
+        connection.setInstanceFollowRedirects(false);
+        connection.setRequestMethod("GET");
+        int status = connection.getResponseCode();
+        System.out.println("TLS PASS: HTTP " + status);
+        Certificate[] certificates = connection.getServerCertificates();
+        for (int i = 0; i < certificates.length; i++) {
+          if (certificates[i] instanceof X509Certificate) {
+            X509Certificate certificate = (X509Certificate) certificates[i];
+            System.out.println("  peer[" + i + "] subject=" + certificate.getSubjectX500Principal());
+            System.out.println("  peer[" + i + "] issuer=" + certificate.getIssuerX500Principal());
+          }
+        }
+      } catch (SSLHandshakeException exception) {
+        failures++;
+        System.out.println("TLS FAIL: " + exception);
+        Throwable cause = exception.getCause();
+        while (cause != null) {
+          System.out.println("  caused by: " + cause);
+          cause = cause.getCause();
+        }
+      } catch (Exception exception) {
+        failures++;
+        System.out.println("REQUEST FAIL: " + exception);
+        Throwable cause = exception.getCause();
+        while (cause != null) {
+          System.out.println("  caused by: " + cause);
+          cause = cause.getCause();
+        }
+      } finally {
+        if (connection != null) connection.disconnect();
+      }
+      System.out.println();
+    }
+    if (failures > 0) System.exit(2);
+  }
+}
+JAVA
+}
+
+set +e
+probe_pod "$C3_POD" controlcenter "CONTROL CENTER"
+C3_RC=$?
+probe_pod "$KAFKA_POD" kafka "KAFKA / MDS"
+KAFKA_RC=$?
+set -e
+
+echo
+echo "============================================================"
+echo "RESULT"
+echo "============================================================"
+echo "Control Center probe exit code: ${C3_RC}"
+echo "Kafka/MDS probe exit code:      ${KAFKA_RC}"
+
+if (( C3_RC != 0 || KAFKA_RC != 0 )); then
+  echo "FAIL: at least one real Java TLS handshake failed"
   exit 1
 fi
-echo "RESULT: PASS (all TLS handshakes succeeded)"
-REMOTE
-}
 
-run_tls_probes controlcenter-0 controlcenter
-run_tls_probes kafka-0 kafka
-
-echo "=== 2. Supported C3 REST truststore properties ==="
-oc -n "$NS" exec controlcenter-0 -c controlcenter -- sh -c \
-  'grep -E "^confluent\.controlcenter\.rest\.ssl\.(truststore|endpoint)" /opt/confluentinc/etc/controlcenter/controlcenter.properties'
-
-echo "=== 3. Kafka/MDS OIDC and truststore properties ==="
-oc -n "$NS" exec kafka-0 -c kafka -- sh -c \
-  'grep -E "^(confluent\.oidc\.idp\.|confluent\.metadata\.ssl\.truststore\.)" /mnt/config/server.properties | sed -E "s/(client\.secret=).*/\1[REDACTED]/"'
-
-echo "=== 4. Callback-correlated Control Center logs ==="
-oc -n "$NS" logs controlcenter-0 -c controlcenter --since=20m | \
-  grep -Ei -C 15 \
-    'authorization-code/callback|PKIX|SSLHandshakeException|certificate_unknown|ProcessingException' \
-  || true
-
-echo "=== 5. Callback-correlated Kafka/MDS logs ==="
-oc -n "$NS" logs kafka-0 -c kafka --since=20m | \
-  grep -Ei -C 15 \
-    'oidc|PKIX|SSLHandshakeException|certificate_unknown|ProcessingException|/security/1.0' \
-  || true
-
-echo "PASS: Focused C3 and MDS TLS diagnostics completed."
+echo "PASS: both JVMs trust the Okta and MDS endpoints using bundle.p12"
