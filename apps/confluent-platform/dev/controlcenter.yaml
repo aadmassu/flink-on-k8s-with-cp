@@ -265,6 +265,12 @@ spec:
       - confluent.controlcenter.rest.ssl.truststore.type=PKCS12
       - confluent.controlcenter.rest.ssl.endpoint.identification.algorithm=https
 
+      # Separate outbound-client properties for legacy HTTP clients.
+      - confluent.controlcenter.rest.client.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.controlcenter.rest.client.ssl.truststore.password=changeit
+      - confluent.controlcenter.rest.client.ssl.truststore.type=PKCS12
+      - confluent.controlcenter.rest.client.ssl.endpoint.identification.algorithm=https
+
       # Monitoring interceptor client.
       - confluent.monitoring.interceptor.security.protocol=SASL_SSL
       - confluent.monitoring.interceptor.sasl.mechanism=OAUTHBEARER
