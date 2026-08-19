@@ -300,6 +300,37 @@ stages:
                 TARGET_ENV: ${{ parameters.environment }}
 
             - task: Bash@3
+              displayName: "Apply ExternalSecret CRs for cfk-license"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+
+                  TARGET_ENV="${{ parameters.environment }}"
+                  ESO_DIR="apps/confluent-platform/$TARGET_ENV/externalsecrets"
+
+                  if [ ! -d "$ESO_DIR" ]; then
+                    echo "ExternalSecrets directory not found: $ESO_DIR"
+                    exit 1
+                  fi
+
+                  echo "=== Applying ExternalSecret CRs from $ESO_DIR ==="
+                  for eso_file in "$ESO_DIR"/externalsecret-cfk-license.yaml; do
+                    if [ -f "$eso_file" ]; then
+                      echo "Applying $(basename "$eso_file")..."
+                      oc apply -f "$eso_file"
+                    fi
+                  done
+
+                  echo ""
+                  echo "=== Waiting for ExternalSecret to sync ==="
+                  oc -n "$OC_NS" wait --for=condition=Ready externalsecret/cfk-license --timeout=60s 2>/dev/null || {
+                    echo "WARNING: cfk-license ExternalSecret not Ready within 60s, proceeding anyway"
+                  }
+              env:
+                OC_NS: $(openshift-namespace)
+
+            - task: Bash@3
               displayName: "Create prerequisite Opaque Secrets and describe"
               inputs:
                 targetType: inline
