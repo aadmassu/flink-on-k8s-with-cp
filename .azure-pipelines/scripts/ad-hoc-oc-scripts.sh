@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NAMESPACE="${NAMESPACE:-dah-flink-dev}"
+NS="dah-flink-dev"
+POD="$(oc -n "$NS" get pod -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')"
 
-echo "=== Force-deleting cfk-license Secret ==="
-echo "Namespace: $NAMESPACE"
-echo ""
+echo "=== Kafka pod ==="
+echo "$POD"
 
-SECRET_NAME="cfk-license"
+echo "=== PID 1 JVM truststore arguments ==="
+oc -n "$NS" exec "$POD" -c kafka -- sh -c \
+  'tr "\000" "\n" </proc/1/cmdline | grep -E "javax.net.ssl.trustStore(=|Password=|Type=)"' ||
+  echo "FAIL: JVM truststore arguments are absent"
 
-echo "Checking if secret exists..."
-if ! oc -n "$NAMESPACE" get secret "$SECRET_NAME" &>/dev/null; then
-  echo "Secret $SECRET_NAME not found in namespace $NAMESPACE"
-  exit 0
-fi
+echo "=== Mounted bundle ==="
+oc -n "$NS" exec "$POD" -c kafka -- sh -c \
+  'ls -l /var/ssl/truststore/bundle.p12 && sha256sum /var/ssl/truststore/bundle.p12'
 
-echo "Secret $SECRET_NAME found. Removing finalizers..."
-oc -n "$NAMESPACE" patch secret "$SECRET_NAME" -p '{"metadata":{"finalizers":null}}' --type=merge || true
+echo "=== Effective JVM system properties ==="
+oc -n "$NS" exec "$POD" -c kafka -- sh -c \
+  'jcmd 1 VM.system_properties 2>/dev/null | grep -E "^javax.net.ssl.trustStore" || true'
 
-echo "Deleting secret $SECRET_NAME..."
-oc -n "$NAMESPACE" delete secret "$SECRET_NAME" --ignore-not-found
-
-echo "✓ Done"
+echo "=== Truststore selected during recent failures ==="
+oc -n "$NS" logs "$POD" -c kafka --since=30m |
+  grep -E -C 5 \
+  'trustStore is:|PKIX path building failed|HttpsJwks|RbacApiApplication|certificate_unknown' |
+  tail -n 300
