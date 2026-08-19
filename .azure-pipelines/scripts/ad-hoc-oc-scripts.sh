@@ -5,10 +5,6 @@ NS="${NS:-dah-flink-dev}"
 TRUSTSTORE="/var/ssl/truststore/bundle.p12"
 TRUSTSTORE_PASSWORD="changeit"
 
-OKTA_DISCOVERY="https://myapps.firstcitizens.com/oauth2/default/.well-known/openid-configuration"
-OKTA_TOKEN="https://myapps.firstcitizens.com/oauth2/default/v1/token"
-MDS_URL="https://kafka.dah-flink-dev.svc.cluster.local:8090/security/1.0/activenodes/https"
-
 echo "============================================================"
 echo "DEV Java TLS trust diagnostic (read-only)"
 echo "Namespace: ${NS}"
@@ -18,6 +14,13 @@ command -v oc >/dev/null 2>&1 || {
   echo "FATAL: oc is not installed on the pipeline agent"
   exit 1
 }
+command -v openssl >/dev/null 2>&1 || {
+  echo "FATAL: openssl is not installed on the pipeline agent"
+  exit 1
+}
+
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "$WORK_DIR"' EXIT
 
 get_ready_pod() {
   local component="$1"
@@ -60,45 +63,78 @@ probe_pod() {
   oc -n "$NS" exec "$pod" -c "$container" -- sh -c \
     'tr "\000" "\n" </proc/1/cmdline | grep -E "javax\.net\.ssl\.trustStore" || true'
 
-  echo "--- Genuine TLS path and hostname validation ---"
-  oc -n "$NS" exec "$pod" -c "$container" -- sh -c '
-    set -eu
-    command -v openssl >/dev/null 2>&1 || {
-      echo "FATAL: openssl is unavailable in this container"
-      exit 3
-    }
+  echo "--- Export trust anchors from the pod's mounted PKCS12 file ---"
+  local pod_dir="$WORK_DIR/$pod"
+  mkdir -p "$pod_dir"
+  oc -n "$NS" exec "$pod" -c "$container" -- \
+    keytool -list -rfc -storetype PKCS12 -keystore "$TRUSTSTORE" \
+      -storepass "$TRUSTSTORE_PASSWORD" >"$pod_dir/trust-anchors.pem"
 
-    keytool -list -rfc -storetype PKCS12 \
-      -keystore "'"$TRUSTSTORE"'" \
-      -storepass "'"$TRUSTSTORE_PASSWORD"'" \
-      > /tmp/fcb-trust-bundle.pem
+  local failures=0
+  probe_endpoint "$pod" "$container" "$pod_dir" myapps.firstcitizens.com 443 || failures=$((failures + 1))
+  probe_endpoint "$pod" "$container" "$pod_dir" kafka.dah-flink-dev.svc.cluster.local 8090 || failures=$((failures + 1))
+  (( failures == 0 ))
+}
 
-    probe() {
-      host="$1"
-      port="$2"
-      echo "TEST: ${host}:${port}"
-      result="$(printf "" | openssl s_client \
-        -connect "${host}:${port}" \
-        -servername "$host" \
-        -CAfile /tmp/fcb-trust-bundle.pem \
-        -verify_return_error \
-        -verify_hostname "$host" 2>&1)" && rc=0 || rc=$?
-      printf "%s\n" "$result" | grep -E \
-        "subject=|issuer=|Verification error|Verify return code" | tail -n 12 || true
-      if [ "$rc" -ne 0 ] || ! printf "%s\n" "$result" | grep -q "Verify return code: 0 (ok)"; then
-        echo "TLS FAIL: ${host}:${port}"
-        rm -f /tmp/fcb-trust-bundle.pem
-        return 1
-      fi
-      echo "TLS PASS: ${host}:${port}"
-    }
+probe_endpoint() {
+  local pod="$1"
+  local container="$2"
+  local pod_dir="$3"
+  local host="$4"
+  local port="$5"
+  local endpoint_dir="$pod_dir/${host}-${port}"
+  local cert_count
+  local i
 
-    failures=0
-    probe myapps.firstcitizens.com 443 || failures=$((failures + 1))
-    probe kafka.dah-flink-dev.svc.cluster.local 8090 || failures=$((failures + 1))
-    rm -f /tmp/fcb-trust-bundle.pem
-    [ "$failures" -eq 0 ]
-  '
+  mkdir -p "$endpoint_dir"
+  echo "TEST: ${pod} -> ${host}:${port}"
+
+  # keytool performs the connection inside the selected pod. Its RFC output is
+  # copied to the agent only for offline verification; no private keys exist in it.
+  if ! oc -n "$NS" exec "$pod" -c "$container" -- \
+      keytool -printcert -sslserver "${host}:${port}" -rfc \
+      >"$endpoint_dir/peer-chain.txt" 2>"$endpoint_dir/keytool.err"; then
+    echo "TLS FAIL: pod could not retrieve ${host}:${port} certificate chain"
+    sed -n '1,20p' "$endpoint_dir/keytool.err"
+    return 1
+  fi
+
+  awk -v dir="$endpoint_dir" '
+    /-----BEGIN CERTIFICATE-----/ {n++; capture=1}
+    capture {print > (dir "/cert-" n ".pem")}
+    /-----END CERTIFICATE-----/ {capture=0; close(dir "/cert-" n ".pem")}
+    END {print n+0 > (dir "/count")}
+  ' "$endpoint_dir/peer-chain.txt"
+
+  cert_count="$(cat "$endpoint_dir/count")"
+  if [[ ! "$cert_count" =~ ^[0-9]+$ ]] || (( cert_count < 1 )); then
+    echo "TLS FAIL: no peer certificate was captured from ${host}:${port}"
+    return 1
+  fi
+
+  : >"$endpoint_dir/intermediates.pem"
+  if (( cert_count > 1 )); then
+    for ((i=2; i<=cert_count; i++)); do
+      cat "$endpoint_dir/cert-${i}.pem" >>"$endpoint_dir/intermediates.pem"
+    done
+  fi
+
+  echo "Leaf certificate:"
+  openssl x509 -in "$endpoint_dir/cert-1.pem" -noout -subject -issuer -dates
+
+  local verify_args=(verify -purpose sslserver -verify_hostname "$host"
+    -CAfile "$pod_dir/trust-anchors.pem")
+  if [[ -s "$endpoint_dir/intermediates.pem" ]]; then
+    verify_args+=(-untrusted "$endpoint_dir/intermediates.pem")
+  fi
+  verify_args+=("$endpoint_dir/cert-1.pem")
+
+  if openssl "${verify_args[@]}"; then
+    echo "TLS PASS: ${pod} trusts ${host}:${port}; chain and hostname valid"
+  else
+    echo "TLS FAIL: ${pod} does not validate ${host}:${port} with bundle.p12"
+    return 1
+  fi
 }
 
 set +e
