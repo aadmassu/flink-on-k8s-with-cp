@@ -2915,7 +2915,7 @@ stages:
                     fi
                   done
 
-                  TLS_SECRET_DEADLINE=$((SECONDS + 120))
+                  TLS_SECRET_DEADLINE=$((SECONDS + 60))
                   while true; do
                     REMAINING_TLS_SECRETS=()
                     for secret_name in "${CERT_SECRET_NAMES[@]}"; do
@@ -2925,7 +2925,7 @@ stages:
                     done
                     [ "${#REMAINING_TLS_SECRETS[@]}" -eq 0 ] && break
                     if [ "$SECONDS" -ge "$TLS_SECRET_DEADLINE" ]; then
-                      echo "WARNING: generated TLS Secrets stuck in deletion after 2min; force-deleting finalizers"
+                      echo "WARNING: generated TLS Secrets stuck in deletion after 1min; force-deleting finalizers"
                       for secret_name in "${REMAINING_TLS_SECRETS[@]}"; do
                         echo "  Force-deleting finalizers from secret/$secret_name"
                         oc -n "$OC_NS" patch secret "$secret_name" --type=merge \
