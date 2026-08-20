@@ -35,6 +35,10 @@ secrets/
 __MACOSX/
 Thumbs.db
 
+# Local directories
+.claude/
+reports/
+
 # Terraform (if used later)
 .terraform/
 *.tfstate
