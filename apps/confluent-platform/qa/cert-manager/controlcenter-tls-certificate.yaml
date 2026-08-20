@@ -18,7 +18,7 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
     metadata.command-issuer.keyfactor.com/Description: "Control Center next-gen — REST + Prometheus + AlertManager listeners"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
@@ -26,7 +26,7 @@ metadata:
 spec:
   # Internal-only SANs. The FCB Keyfactor approver-policy allows DNS names
   # under *.svc, *.svc.cluster.local, and *.ocp.fcbint.net — anything else
-  # is rejected. The earlier external UI SAN c3.dev.dah.fcbint.net failed
+  # is rejected. The earlier external UI SAN c3.qa.dah.fcbint.net failed
   # the policy and blocked the CertificateRequest.
   #
   # When C3 needs external exposure, the OpenShift Route hostname will
@@ -37,8 +37,10 @@ spec:
     - controlcenter.dah-flink-qa.svc
     - controlcenter.dah-flink-qa.svc.cluster.local
     - controlcenter-0.controlcenter.dah-flink-qa.svc.cluster.local
+    - controlcenter.apps.qa.ocp.fcbint.net
+    - controlcenter.apps.qa-p.ocp.fcbint.net
   duration: 8760h0m0s
-  renewBefore: 360h
+  renewBefore: 1080h0m0s
   privateKey:
     algorithm: RSA
     size: 4096

@@ -1,7 +1,7 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-06-25 (created), 2026-08-07 (last-modified)
+# Date:        2026-06-25 (created), 2026-06-25 (last-modified)
 # Description: NetworkPolicy allowing inbound from confluent-operator
 #              namespace to CFK component management ports (Jolokia 7777
 #              + Prometheus 7778 + JMX 7203 + KRaft 9074 + broker
@@ -30,6 +30,7 @@ spec:
   podSelector: {}
   policyTypes: [Ingress]
   ingress:
+    # Operator management and readiness probe ports
     - from:
         - namespaceSelector:
             matchLabels:
@@ -48,3 +49,16 @@ spec:
         - { protocol: TCP, port: 8083 }
         - { protocol: TCP, port: 8090 }
         - { protocol: TCP, port: 9021 }
+    # OpenShift ingress routers — externally exposed HTTPS ports only.
+    # FCB's router namespace does not carry the optional policy-group label,
+    # so select the immutable namespace name label instead.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-ingress
+      ports:
+        - { protocol: TCP, port: 8081 }  # Schema Registry
+        - { protocol: TCP, port: 8082 }  # Kafka REST Proxy
+        - { protocol: TCP, port: 8083 }  # Kafka Connect
+        - { protocol: TCP, port: 8090 }  # Kafka MDS (C3 SSO)
+        - { protocol: TCP, port: 9021 }  # Control Center

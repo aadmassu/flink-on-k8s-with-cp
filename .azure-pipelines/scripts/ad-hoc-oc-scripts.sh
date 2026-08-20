@@ -2,14 +2,14 @@
 
 set -euo pipefail
 
-NS="dah-flink-dev"
+NS="${OC_NS:-dah-flink-dev}"
 URL="https://myapps.firstcitizens.com/oauth2/default/v1/keys"
 TRUSTSTORE="/var/ssl/truststore/bundle.p12"
 TRUSTSTORE_PASSWORD="changeit"
 JAVA_SOURCE="/tmp/JavaTlsProbe.java"
 
 echo "============================================================"
-echo "DEV Kafka Java TLS comparison"
+echo "${TARGET_ENV:-dev} Kafka Java TLS comparison"
 echo "Namespace: $NS"
 echo "URL:       $URL"
 echo "============================================================"

@@ -1,4 +1,4 @@
-# cert-manager Certificates — dev CFK CP
+# cert-manager Certificates — qa CFK CP
 
 Six `cert-manager.io/v1` Certificate CRs. Each one asks Keyfactor (via
 the `keyfactor` ClusterIssuer) for a Keyfactor-issued cert and lands a
@@ -19,7 +19,7 @@ cert-manager/
 The `confluent-platform.yaml` pipeline `action=install` applies all six
 and waits up to 10 minutes per Secret to materialize before applying the
 CFK CRs. Same Keyfactor + cert-manager pattern as
-[`apps/confluent-cmf/dev/cmf-tls-certificate.yaml`](../../../confluent-cmf/dev/cmf-tls-certificate.yaml)
+[`apps/confluent-cmf/qa/cmf-tls-certificate.yaml`](../../../confluent-cmf/qa/cmf-tls-certificate.yaml)
 on the CMF side.
 
 The non-cert prerequisites (license, MDS keypair, OAuth client creds,

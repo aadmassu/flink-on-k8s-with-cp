@@ -23,19 +23,9 @@ spec:
     name: kafka
     namespace: dah-flink-qa
   kafkaRest:
+    endpoint: https://kafka.dah-flink-qa.svc.cluster.local:8090
     authentication:
-      type: oauth
-      oauth:
-        secretRef: oauth-broker
-        configuration:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahQA_groups
-          subClaimName: sub
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(QA)
-          loginConnectTimeoutMs: 10000
-          loginReadTimeoutMs: 30000
-          loginRetryBackoffMaxMs: 5000
-          loginRetryBackoffMs: 60000
+      type: mtls
+      sslClientAuthentication: true
+    tls:
+      secretRef: cfk-operator-mds-client-tls
