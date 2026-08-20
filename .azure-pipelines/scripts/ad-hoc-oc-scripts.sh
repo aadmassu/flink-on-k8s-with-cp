@@ -1,137 +1,158 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
 NS="${OC_NS:-dah-flink-dev}"
-URL="https://myapps.firstcitizens.com/oauth2/default/v1/keys"
-TRUSTSTORE="/var/ssl/truststore/bundle.p12"
-TRUSTSTORE_PASSWORD="changeit"
-JAVA_SOURCE="/tmp/JavaTlsProbe.java"
+USER_ID="00u1u5ovirxMj7Aq0358"
+GROUP_ID="dv_app_okta_digital_analytics_hub_developers"
+LABEL="rbac.fcbint.net/managed-by=application-onboarding"
 
 echo "============================================================"
-echo "${TARGET_ENV:-dev} Kafka Java TLS comparison"
+echo "DEV C3 RBAC visibility diagnostic (read-only)"
 echo "Namespace: $NS"
-echo "URL:       $URL"
+echo "User:      $USER_ID"
+echo "Group:     $GROUP_ID"
 echo "============================================================"
 
-echo "=== 1. Locate a running Kafka pod ==="
-POD="$(oc -n "$NS" get pods -l app.kubernetes.io/name=kafka --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')"
-if [[ -z "$POD" ]]; then
-  echo "FATAL: No running Kafka pod found in namespace $NS"
-  exit 1
-fi
-echo "Kafka pod: $POD"
+command -v oc >/dev/null 2>&1 || { echo "FATAL: oc is unavailable"; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "FATAL: python3 is unavailable"; exit 1; }
 
-echo "=== 2. Confirm Java and the mounted truststore ==="
-oc -n "$NS" exec "$POD" -c kafka -- java -version
-oc -n "$NS" exec "$POD" -c kafka -- sh -c "test -r '$TRUSTSTORE' && ls -l '$TRUSTSTORE' && sha256sum '$TRUSTSTORE'"
-oc -n "$NS" exec "$POD" -c kafka -- keytool -list -keystore "$TRUSTSTORE" -storetype PKCS12 -storepass "$TRUSTSTORE_PASSWORD" >/dev/null
-echo "PASS: bundle.p12 is readable and its password is valid"
+echo
+echo "=== 1. Component readiness and reported cluster identifiers ==="
+for pair in "kafka kafka" "schemaregistry schemaregistry" "connect connect" "controlcenter controlcenter"; do
+  kind=${pair% *}
+  name=${pair#* }
+  echo
+  echo "--- $kind/$name ---"
+  if ! oc -n "$NS" get "$kind" "$name" -o json >/tmp/cfk-component.json 2>/dev/null; then
+    echo "FAIL: $kind/$name does not exist"
+    continue
+  fi
+  python3 - "$kind" "$name" </tmp/cfk-component.json <<'PY'
+import json, sys
+kind, name = sys.argv[1:]
+obj = json.load(sys.stdin)
+status = obj.get("status") or {}
+conditions = status.get("conditions") or []
+print("generation=%s observedGeneration=%s" %
+      ((obj.get("metadata") or {}).get("generation"), status.get("observedGeneration")))
+for condition in conditions:
+    print("condition %s=%s reason=%s" %
+          (condition.get("type"), condition.get("status"), condition.get("reason", "")))
 
-echo "=== 3. Install temporary Java HTTPS probe in the Kafka container ==="
-oc -n "$NS" exec -i "$POD" -c kafka -- sh -c "cat > '$JAVA_SOURCE'" <<'JAVA'
-import java.net.URL;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
-import javax.net.ssl.HttpsURLConnection;
+def walk(value, path="status"):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            new_path = path + "." + str(key)
+            if "clusterid" in str(key).lower() or "cluster_id" in str(key).lower():
+                print("%s=%r" % (new_path, child))
+            walk(child, new_path)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            walk(child, "%s[%d]" % (path, index))
+walk(status)
+PY
+done
+rm -f /tmp/cfk-component.json
 
-public class JavaTlsProbe {
-    public static void main(String[] args) {
-        if (args.length != 1) {
-            System.err.println("Usage: JavaTlsProbe <https-url>");
-            System.exit(64);
-        }
-
-        System.out.println("java.version=" + System.getProperty("java.version"));
-        System.out.println("javax.net.ssl.trustStore=" + System.getProperty("javax.net.ssl.trustStore", "<JVM default>"));
-        System.out.println("javax.net.ssl.trustStoreType=" + System.getProperty("javax.net.ssl.trustStoreType", "<JVM default>"));
-
-        HttpsURLConnection connection = null;
-        try {
-            connection = (HttpsURLConnection) new URL(args[0]).openConnection();
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(15000);
-            connection.setInstanceFollowRedirects(false);
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Accept", "application/json");
-
-            int status = connection.getResponseCode();
-            System.out.println("HTTP status=" + status);
-            System.out.println("cipherSuite=" + connection.getCipherSuite());
-
-            Certificate[] chain = connection.getServerCertificates();
-            for (int i = 0; i < chain.length; i++) {
-                if (chain[i] instanceof X509Certificate) {
-                    X509Certificate certificate = (X509Certificate) chain[i];
-                    System.out.println("certificate[" + i + "].subject=" + certificate.getSubjectX500Principal());
-                    System.out.println("certificate[" + i + "].issuer=" + certificate.getIssuerX500Principal());
-                }
-            }
-
-            if (status >= 200 && status < 400) {
-                System.out.println("RESULT=PASS");
-                System.exit(0);
-            }
-
-            System.out.println("RESULT=HTTP_FAILURE");
-            System.exit(3);
-        } catch (Throwable error) {
-            System.out.println("RESULT=TLS_OR_CONNECTION_FAILURE");
-            error.printStackTrace(System.out);
-            System.exit(2);
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-}
-JAVA
-
-cleanup() {
-  oc -n "$NS" exec "$POD" -c kafka -- rm -f "$JAVA_SOURCE" >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
-echo "PASS: Temporary probe created"
-
-echo "=== 4. Test A: Java with bundle.p12 ==="
+echo
+echo "=== 2. Application-onboarding ConfluentRolebinding state ==="
+oc -n "$NS" get confluentrolebinding -l "$LABEL" -o json >/tmp/onboarding-rbac.json
 set +e
-oc -n "$NS" exec "$POD" -c kafka -- java \
-  -Djavax.net.ssl.trustStore="$TRUSTSTORE" \
-  -Djavax.net.ssl.trustStorePassword="$TRUSTSTORE_PASSWORD" \
-  -Djavax.net.ssl.trustStoreType=PKCS12 \
-  "$JAVA_SOURCE" "$URL"
-BUNDLE_RC=$?
-set -e
-echo "Test A exit code: $BUNDLE_RC"
+python3 - "$USER_ID" "$GROUP_ID" </tmp/onboarding-rbac.json <<'PY'
+import json, sys
+user_id, group_id = sys.argv[1:]
+obj = json.load(sys.stdin)
+items = obj.get("items") or []
+expected = {
+    ("user", user_id, "ClusterAdmin", "kafka"),
+    ("user", user_id, "SystemAdmin", "schemaRegistryClusterId"),
+    ("user", user_id, "SystemAdmin", "connectClusterId"),
+    ("group", group_id, "ClusterAdmin", "kafka"),
+    ("group", group_id, "SystemAdmin", "schemaRegistryClusterId"),
+    ("group", group_id, "SystemAdmin", "connectClusterId"),
+}
+observed = set()
+not_ready = []
 
-echo "=== 5. Test B: Java with its default truststore ==="
-set +e
-oc -n "$NS" exec "$POD" -c kafka -- java "$JAVA_SOURCE" "$URL"
-DEFAULT_RC=$?
-set -e
-echo "Test B exit code: $DEFAULT_RC"
+for item in sorted(items, key=lambda x: (x.get("metadata") or {}).get("name", "")):
+    metadata = item.get("metadata") or {}
+    spec = item.get("spec") or {}
+    status = item.get("status") or {}
+    principal = spec.get("principal") or {}
+    scope = spec.get("clustersScopeByIds") or {}
+    if "schemaRegistryClusterId" in scope:
+        scope_type = "schemaRegistryClusterId"
+        scope_value = scope.get(scope_type)
+    elif "connectClusterId" in scope:
+        scope_type = "connectClusterId"
+        scope_value = scope.get(scope_type)
+    else:
+        scope_type = "kafka"
+        scope_value = "KafkaRestClass/default"
+    condition_map = dict((c.get("type"), c.get("status")) for c in (status.get("conditions") or []))
+    ready = any((key == "app-ready" or key.endswith("/app-ready")) and value == "True"
+                for key, value in condition_map.items())
+    key = (principal.get("type"), principal.get("name"), spec.get("role"), scope_type)
+    observed.add(key)
+    print("name=%s principal=%s:%s role=%s scope=%s:%s app-ready=%s" %
+          (metadata.get("name"), principal.get("type"), principal.get("name"),
+           spec.get("role"), scope_type, scope_value, ready))
+    if not ready:
+        not_ready.append(metadata.get("name"))
+    for field in ("clusterId", "kafkaClusterId", "schemaRegistryClusterId", "connectClusterId"):
+        if field in status:
+            print("  status.%s=%r" % (field, status.get(field)))
 
-echo "=== 6. Comparison ==="
-if [[ $BUNDLE_RC -eq 0 && $DEFAULT_RC -eq 0 ]]; then
-  echo "RESULT: BOTH_PASS"
-  echo "Interpretation: Both truststores validate the endpoint. The MDS JWKS failure is specific to its internally created SSL context or endpoint configuration."
-elif [[ $BUNDLE_RC -eq 0 && $DEFAULT_RC -ne 0 ]]; then
-  echo "RESULT: BUNDLE_ONLY_PASS"
-  echo "Interpretation: bundle.p12 is correct, but the JVM default truststore is insufficient. MDS is likely not using bundle.p12."
-elif [[ $BUNDLE_RC -ne 0 && $DEFAULT_RC -eq 0 ]]; then
-  echo "RESULT: DEFAULT_ONLY_PASS"
-  echo "Interpretation: bundle.p12 is incomplete or invalid for the endpoint, while the image JVM default truststore works."
+missing = sorted(expected - observed)
+unexpected = sorted(observed - expected)
+print("summary total=%d expected=%d missing=%d unexpected=%d not_ready=%d" %
+      (len(items), len(expected), len(missing), len(unexpected), len(not_ready)))
+for value in missing:
+    print("MISSING: %r" % (value,))
+for value in unexpected:
+    print("UNEXPECTED: %r" % (value,))
+for value in not_ready:
+    print("NOT_READY: %s" % value)
+if missing or not_ready:
+    sys.exit(2)
+PY
+rbac_rc=$?
+set -e
+rm -f /tmp/onboarding-rbac.json
+if [ "$rbac_rc" -ne 0 ]; then
+  echo "FAIL: onboarding RBAC is incomplete or not reconciled."
 else
-  echo "RESULT: BOTH_FAIL"
-  echo "Interpretation: Neither Java trust configuration validates the endpoint. Review the exceptions above."
+  echo "PASS: all six expected onboarding bindings are app-ready."
 fi
 
-echo "============================================================"
-echo "Java TLS comparison completed."
-echo "Test A exit code: $BUNDLE_RC"
-echo "Test B exit code: $DEFAULT_RC"
-echo "============================================================"
+echo
+echo "=== 3. Relevant Control Center authorization evidence (last 60m) ==="
+if oc -n "$NS" get pod controlcenter-0 >/dev/null 2>&1; then
+  oc -n "$NS" logs controlcenter-0 -c controlcenter --since=60m 2>&1 | \
+    grep -Ei -C 3 "$USER_ID|$GROUP_ID|forbidden|not authorized|authorization denied|ClusterAdmin|SystemAdmin|role.?binding|principal|rbac|403" | \
+    tail -n 300 || echo "INFO: no matching C3 log lines found"
+else
+  echo "FAIL: pod/controlcenter-0 does not exist"
+fi
 
-# Keep the pipeline task successful so both diagnostic results remain visible.
-exit 0
+echo
+echo "=== 4. Relevant Kafka/MDS authorization evidence (last 60m) ==="
+for pod in $(oc -n "$NS" get pods -o name 2>/dev/null | sed -n 's#^pod/\(kafka-[0-9][0-9]*\)$#\1#p'); do
+  echo "--- $pod ---"
+  oc -n "$NS" logs "$pod" -c kafka --since=60m 2>&1 | \
+    grep -Ei -C 3 "$USER_ID|$GROUP_ID|forbidden|not authorized|authorization denied|ClusterAdmin|SystemAdmin|role.?binding|principal|rbac|403" | \
+    tail -n 200 || echo "INFO: no matching MDS log lines found in $pod"
+done
+
+echo
+echo "=== 5. Recent rolebinding events ==="
+oc -n "$NS" get events --sort-by=.lastTimestamp 2>/dev/null | \
+  grep -Ei 'ConfluentRolebinding|rolebinding|FailedToDiscover|app-ready' | tail -n 100 || \
+  echo "INFO: no matching rolebinding events"
+
+echo
+if [ "$rbac_rc" -ne 0 ]; then
+  echo "RESULT: RBAC reconciliation failed. Fix the CRs before another C3 login test."
+  exit "$rbac_rc"
+fi
+echo "RESULT: CRs are reconciled. Perform one fresh C3 sign-out/sign-in, then rerun this script immediately so Sections 3-4 capture the authenticated principal and denial."
