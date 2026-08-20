@@ -15,10 +15,10 @@
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: 00u1u5ovirxMj7Aq0358-kafka-systemadmin
+  name: 00u1u5ovirxmj7aq0358-kafka-sa
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: 00u1u5ovirxMj7Aq0358-kafka-systemadmin
+    app.kubernetes.io/name: 00u1u5ovirxmj7aq0358-kafka-sa
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -35,10 +35,10 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: 00u1u5ovirxMj7Aq0358-schemaregistry-systemadmin
+  name: 00u1u5ovirxmj7aq0358-sr-sa
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: 00u1u5ovirxMj7Aq0358-schemaregistry-systemadmin
+    app.kubernetes.io/name: 00u1u5ovirxmj7aq0358-sr-sa
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -57,10 +57,10 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: 00u1u5ovirxMj7Aq0358-connect-systemadmin
+  name: 00u1u5ovirxmj7aq0358-connect-sa
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: 00u1u5ovirxMj7Aq0358-connect-systemadmin
+    app.kubernetes.io/name: 00u1u5ovirxmj7aq0358-connect-sa
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -79,10 +79,10 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: dv_app_okta_digital_analytics_hub_developers-kafka-systemadmin
+  name: dv-app-okta-dah-dev-kafka-sa
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: dv_app_okta_digital_analytics_hub_developers-kafka-systemadmin
+    app.kubernetes.io/name: dv-app-okta-dah-dev-kafka-sa
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -99,10 +99,10 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: dv_app_okta_digital_analytics_hub_developers-schemaregistry-systemadmin
+  name: dv-app-okta-dah-dev-sr-sa
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: dv_app_okta_digital_analytics_hub_developers-schemaregistry-systemadmin
+    app.kubernetes.io/name: dv-app-okta-dah-dev-sr-sa
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -121,10 +121,10 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: dv_app_okta_digital_analytics_hub_developers-connect-systemadmin
+  name: dv-app-okta-dah-dev-connect-sa
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: dv_app_okta_digital_analytics_hub_developers-connect-systemadmin
+    app.kubernetes.io/name: dv-app-okta-dah-dev-connect-sa
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
