@@ -101,6 +101,7 @@ for item in sorted(items, key=lambda x: (x.get("metadata") or {}).get("name", ""
            spec.get("role"), scope_type, scope_value, ready))
     if not ready:
         not_ready.append(metadata.get("name"))
+        print("  status=%s" % json.dumps(status, sort_keys=True))
     for field in ("clusterId", "kafkaClusterId", "schemaRegistryClusterId", "connectClusterId"):
         if field in status:
             print("  status.%s=%r" % (field, status.get(field)))
@@ -125,6 +126,36 @@ if [ "$rbac_rc" -ne 0 ]; then
   echo "FAIL: onboarding RBAC is incomplete or not reconciled."
 else
   echo "PASS: all six expected onboarding bindings are app-ready."
+fi
+
+echo
+echo "=== 2b. Detailed evidence for non-ready onboarding bindings ==="
+while IFS= read -r rolebinding; do
+  [ -z "$rolebinding" ] && continue
+  ready=$(oc -n "$NS" get "$rolebinding" \
+    -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}' 2>/dev/null | \
+    grep -E '(^|/)app-ready=True$' || true)
+  if [ -z "$ready" ]; then
+    echo
+    echo "--- $rolebinding ---"
+    oc -n "$NS" describe "$rolebinding" 2>&1 || true
+  fi
+done < <(oc -n "$NS" get confluentrolebinding -l "$LABEL" -o name 2>/dev/null || true)
+
+echo
+echo "=== 2c. CFK operator reconciliation evidence (best effort) ==="
+OPERATOR_NS="confluent-operator"
+operator_pods=$(oc -n "$OPERATOR_NS" get pods -o name 2>/dev/null || true)
+if [ -z "$operator_pods" ]; then
+  echo "INFO: pipeline identity cannot list operator pods in $OPERATOR_NS; rely on Sections 2 and 2b."
+else
+  while IFS= read -r operator_pod; do
+    [ -z "$operator_pod" ] && continue
+    echo "--- $operator_pod ---"
+    oc -n "$OPERATOR_NS" logs "$operator_pod" --since=60m 2>&1 | \
+      grep -Ei -C 4 'onboarding-|ConfluentRolebinding|rolebinding|FailedToDiscover|app-ready' | \
+      tail -n 300 || echo "INFO: no matching operator log lines in $operator_pod"
+  done <<< "$operator_pods"
 fi
 
 echo
