@@ -2338,6 +2338,40 @@ stages:
                     return 1
                   }
 
+                  # Verify pod configuration matches spec (truststore, OAuth, etc.)
+                  verify_pod_config() {
+                    local kind=$1
+                    local name=$2
+                    local pod_name
+                    pod_name=$(oc -n "$OC_NS" get pods -l app.kubernetes.io/name="$name" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+                    if [ -z "$pod_name" ]; then
+                      echo "WARNING: Could not find pod for $kind/$name"
+                      return 0
+                    fi
+
+                    # Check for truststore volume mount in pod spec
+                    local has_truststore_vol
+                    has_truststore_vol=$(oc -n "$OC_NS" get pod "$pod_name" -o jsonpath='{.spec.volumes[?(@.configMap.name=="fcb-trust-bundle")].name}' 2>/dev/null || echo "")
+
+                    if [ -z "$has_truststore_vol" ]; then
+                      echo "WARNING: Pod $pod_name missing fcb-trust-bundle volume"
+                      return 1
+                    fi
+
+                    # Check for truststore mount in container
+                    local has_truststore_mount
+                    has_truststore_mount=$(oc -n "$OC_NS" get pod "$pod_name" -o jsonpath='{.spec.containers[0].volumeMounts[?(@.name=="fcb-trust-bundle" || @.name=="oidc-trust-bundle")].mountPath}' 2>/dev/null || echo "")
+
+                    if [ -z "$has_truststore_mount" ]; then
+                      echo "WARNING: Pod $pod_name missing truststore volume mount"
+                      return 1
+                    fi
+
+                    echo "  ✓ Pod $pod_name has truststore configured at $has_truststore_mount"
+                    return 0
+                  }
+
                   # Component selection (same logic as CR apply task).
                   is_true() { [ "$1" = "True" ]; }
 
@@ -2408,6 +2442,17 @@ stages:
                     echo "${readiness_result}: ${readiness_kind[$i]}/${readiness_name[$i]}"
                     echo "------------------------------------------------------------"
                     sed -n '1,240p' "${readiness_log[$i]}"
+
+                    # Verify actual pod configuration (truststore, mounts, etc.)
+                    if [ "$readiness_result" = PASS ]; then
+                      echo ""
+                      echo "Verifying pod configuration..."
+                      if ! verify_pod_config "${readiness_kind[$i]}" "${readiness_name[$i]}"; then
+                        echo "WARNING: Pod configuration verification failed for ${readiness_kind[$i]}/${readiness_name[$i]}"
+                        readiness_result=FAIL
+                        any_failed=1
+                      fi
+                    fi
 
                     if [ "$readiness_result" = FAIL ]; then
                       echo ""
