@@ -18,7 +18,6 @@ metadata:
   name: 00u1u5ovirxMj7Aq0358-kafka-systemadmin
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: confluent-platform
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -38,7 +37,6 @@ metadata:
   name: 00u1u5ovirxMj7Aq0358-schemaregistry-systemadmin
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -60,7 +58,6 @@ metadata:
   name: 00u1u5ovirxMj7Aq0358-connect-systemadmin
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: connect
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -82,7 +79,6 @@ metadata:
   name: dv_app_okta_digital_analytics_hub_developers-kafka-systemadmin
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: confluent-platform
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -102,7 +98,6 @@ metadata:
   name: dv_app_okta_digital_analytics_hub_developers-schemaregistry-systemadmin
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: schemaregistry
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
@@ -124,7 +119,6 @@ metadata:
   name: dv_app_okta_digital_analytics_hub_developers-connect-systemadmin
   namespace: dah-flink-dev
   labels:
-    app.kubernetes.io/name: connect
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
