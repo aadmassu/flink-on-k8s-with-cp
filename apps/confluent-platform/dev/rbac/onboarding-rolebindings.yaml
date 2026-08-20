@@ -22,6 +22,7 @@ metadata:
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
 spec:
   principal:
     type: user
@@ -41,6 +42,7 @@ metadata:
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
 spec:
   principal:
     type: user
@@ -62,6 +64,7 @@ metadata:
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
 spec:
   principal:
     type: user
@@ -83,6 +86,7 @@ metadata:
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
 spec:
   principal:
     type: group
@@ -102,6 +106,7 @@ metadata:
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
 spec:
   principal:
     type: group
@@ -123,6 +128,7 @@ metadata:
     app.kubernetes.io/component: application-rbac
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
 spec:
   principal:
     type: group
