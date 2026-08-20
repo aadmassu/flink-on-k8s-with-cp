@@ -27,10 +27,11 @@ for pair in "kafka kafka" "schemaregistry schemaregistry" "connect connect" "con
     echo "FAIL: $kind/$name does not exist"
     continue
   fi
-  python3 - "$kind" "$name" </tmp/cfk-component.json <<'PY'
+  python3 - "$kind" "$name" /tmp/cfk-component.json <<'PY'
 import json, sys
-kind, name = sys.argv[1:]
-obj = json.load(sys.stdin)
+kind, name, json_path = sys.argv[1:]
+with open(json_path, "r") as stream:
+    obj = json.load(stream)
 status = obj.get("status") or {}
 conditions = status.get("conditions") or []
 print("generation=%s observedGeneration=%s" %
@@ -58,10 +59,11 @@ echo
 echo "=== 2. Application-onboarding ConfluentRolebinding state ==="
 oc -n "$NS" get confluentrolebinding -l "$LABEL" -o json >/tmp/onboarding-rbac.json
 set +e
-python3 - "$USER_ID" "$GROUP_ID" </tmp/onboarding-rbac.json <<'PY'
+python3 - "$USER_ID" "$GROUP_ID" /tmp/onboarding-rbac.json <<'PY'
 import json, sys
-user_id, group_id = sys.argv[1:]
-obj = json.load(sys.stdin)
+user_id, group_id, json_path = sys.argv[1:]
+with open(json_path, "r") as stream:
+    obj = json.load(stream)
 items = obj.get("items") or []
 expected = {
     ("user", user_id, "ClusterAdmin", "kafka"),
