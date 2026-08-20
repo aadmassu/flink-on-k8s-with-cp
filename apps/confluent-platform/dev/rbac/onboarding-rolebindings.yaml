@@ -15,7 +15,7 @@
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: onboarding-user-kafka-systemadmin
+  name: 00u1u5ovirxMj7Aq0358-kafka-systemadmin
   namespace: dah-flink-dev
   labels:
     app.kubernetes.io/name: confluent-platform
@@ -35,7 +35,7 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: onboarding-user-schemaregistry-systemadmin
+  name: 00u1u5ovirxMj7Aq0358-schemaregistry-systemadmin
   namespace: dah-flink-dev
   labels:
     app.kubernetes.io/name: schemaregistry
@@ -57,7 +57,7 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: onboarding-user-connect-systemadmin
+  name: 00u1u5ovirxMj7Aq0358-connect-systemadmin
   namespace: dah-flink-dev
   labels:
     app.kubernetes.io/name: connect
@@ -79,7 +79,7 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: onboarding-group-kafka-systemadmin
+  name: dv_app_okta_digital_analytics_hub_developers-kafka-systemadmin
   namespace: dah-flink-dev
   labels:
     app.kubernetes.io/name: confluent-platform
@@ -99,7 +99,7 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: onboarding-group-schemaregistry-systemadmin
+  name: dv_app_okta_digital_analytics_hub_developers-schemaregistry-systemadmin
   namespace: dah-flink-dev
   labels:
     app.kubernetes.io/name: schemaregistry
@@ -121,7 +121,7 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: onboarding-group-connect-systemadmin
+  name: dv_app_okta_digital_analytics_hub_developers-connect-systemadmin
   namespace: dah-flink-dev
   labels:
     app.kubernetes.io/name: connect
