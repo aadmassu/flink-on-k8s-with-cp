@@ -26,10 +26,10 @@ variables:
     - group: kafka-openshift-credentials-dr
 
 stages:
-  - stage: ApplyApplicationRBAC
+  - stage: ApplyRBAC
     displayName: "Apply application RBAC (${{ parameters.environment }})"
     jobs:
-      - job: ApplyApplicationRBAC
+      - job: ApplyRBAC
         pool: DevOpsLinux
         steps:
           - checkout: self
