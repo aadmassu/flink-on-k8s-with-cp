@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "environment": "dev",
+  "namespace": "dah-flink-dev",
+  "oauth": {
+    "tokenEndpoint": "https://myapps.firstcitizens.com/oauth2/default/v1/token",
+    "scope": "11547.DAH(Dev)"
+  },
+  "mds": {
+    "endpoint": "https://kafka.dah-flink-dev.svc.cluster.local:8090",
+    "service": "kafka",
+    "caSecret": "kafka-tls",
+    "caKey": "ca.crt"
+  },
+  "bindings": [
+    {
+      "id": "onboarding-user-kafka-clusteradmin",
+      "principal": "User:00u1u5ovirxMj7Aq0358",
+      "roleName": "ClusterAdmin",
+      "clusters": {
+        "kafka-cluster": "NWU5MmU4ZjYtNThiZS00Mg"
+      }
+    },
+    {
+      "id": "onboarding-user-schemaregistry-systemadmin",
+      "principal": "User:00u1u5ovirxMj7Aq0358",
+      "roleName": "SystemAdmin",
+      "clusters": {
+        "kafka-cluster": "NWU5MmU4ZjYtNThiZS00Mg",
+        "schema-registry-cluster": "id_schemaregistry_dah-flink-dev"
+      }
+    },
+    {
+      "id": "onboarding-user-connect-systemadmin",
+      "principal": "User:00u1u5ovirxMj7Aq0358",
+      "roleName": "SystemAdmin",
+      "clusters": {
+        "kafka-cluster": "NWU5MmU4ZjYtNThiZS00Mg",
+        "connect-cluster": "dah-flink-dev.connect"
+      }
+    },
+    {
+      "id": "onboarding-group-kafka-clusteradmin",
+      "principal": "Group:dv_app_okta_digital_analytics_hub_developers",
+      "roleName": "ClusterAdmin",
+      "clusters": {
+        "kafka-cluster": "NWU5MmU4ZjYtNThiZS00Mg"
+      }
+    },
+    {
+      "id": "onboarding-group-schemaregistry-systemadmin",
+      "principal": "Group:dv_app_okta_digital_analytics_hub_developers",
+      "roleName": "SystemAdmin",
+      "clusters": {
+        "kafka-cluster": "NWU5MmU4ZjYtNThiZS00Mg",
+        "schema-registry-cluster": "id_schemaregistry_dah-flink-dev"
+      }
+    },
+    {
+      "id": "onboarding-group-connect-systemadmin",
+      "principal": "Group:dv_app_okta_digital_analytics_hub_developers",
+      "roleName": "SystemAdmin",
+      "clusters": {
+        "kafka-cluster": "NWU5MmU4ZjYtNThiZS00Mg",
+        "connect-cluster": "dah-flink-dev.connect"
+      }
+    }
+  ]
+}
