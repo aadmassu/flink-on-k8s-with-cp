@@ -5,6 +5,11 @@
 trigger: none
 
 parameters:
+  - name: action
+    displayName: "Action"
+    type: string
+    default: apply
+    values: [apply, delete]
   - name: environment
     displayName: "Target Environment"
     type: string
@@ -26,10 +31,10 @@ variables:
     - group: kafka-openshift-credentials-dr
 
 stages:
-  - stage: ApplyRBAC
-    displayName: "Apply application RBAC (${{ parameters.environment }})"
+  - stage: ManageRBAC
+    displayName: "${{ parameters.action }} application RBAC (${{ parameters.environment }})"
     jobs:
-      - job: ApplyRBAC
+      - job: ManageRBAC
         pool: DevOpsLinux
         steps:
           - checkout: self
@@ -57,7 +62,7 @@ stages:
               OC_NS: $(openshift-namespace)
 
           - task: Bash@3
-            displayName: "Validate and apply application RBAC"
+            displayName: "${{ parameters.action }} application RBAC"
             inputs:
               targetType: inline
               script: |
@@ -83,7 +88,10 @@ stages:
                   exit 1
                 fi
 
-                python3 - "$MANIFEST" "$EXPECTED_NS" <<'PY'
+                if [ "$ACTION" = "apply" ]; then
+                  echo "========== APPLY MODE =========="
+
+                  python3 - "$MANIFEST" "$EXPECTED_NS" <<'PY'
                 import sys
                 import yaml
 
@@ -117,54 +125,105 @@ stages:
                 print("PASS: validated %d application-onboarding rolebinding(s)" % len(documents))
                 PY
 
-                oc -n "$OC_NS" get kafka kafka >/dev/null
-                oc -n "$OC_NS" get kafkarestclass default >/dev/null
+                  oc -n "$OC_NS" get kafka kafka >/dev/null
+                  oc -n "$OC_NS" get kafkarestclass default >/dev/null
 
-                kafka_ready=$(oc -n "$OC_NS" get kafka kafka \
-                  -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}' | \
-                  grep -E '^platform\.confluent\.io/cluster-ready=True$' || true)
-                if [ -z "$kafka_ready" ]; then
-                  echo "FATAL: Kafka is not cluster-ready; RBAC apply is blocked."
-                  exit 1
-                fi
-
-                echo "+ oc apply --dry-run=server -f $MANIFEST"
-                oc apply --dry-run=server -f "$MANIFEST"
-
-                echo "+ oc apply -f $MANIFEST"
-                applied=$(oc apply -f "$MANIFEST" -o name)
-                if [ -z "$applied" ]; then
-                  echo "FATAL: oc apply returned no resources."
-                  exit 1
-                fi
-
-                failures=0
-                while IFS= read -r resource; do
-                  [ -z "$resource" ] && continue
-                  echo "Waiting for $resource app-ready=True..."
-                  ready=false
-                  for attempt in $(seq 1 60); do
-                    state=$(oc -n "$OC_NS" get "$resource" \
-                      -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}' 2>/dev/null || true)
-                    if printf '%s\n' "$state" | grep -Eq '(^|/)app-ready=True$'; then
-                      ready=true
-                      break
-                    fi
-                    sleep 5
-                  done
-                  if [ "$ready" != true ]; then
-                    echo "FAIL: $resource did not reach app-ready=True within 300s."
-                    oc -n "$OC_NS" describe "$resource" || true
-                    failures=$((failures + 1))
+                  kafka_ready=$(oc -n "$OC_NS" get kafka kafka \
+                    -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}' | \
+                    grep -E '^platform\.confluent\.io/cluster-ready=True$' || true)
+                  if [ -z "$kafka_ready" ]; then
+                    echo "FATAL: Kafka is not cluster-ready; RBAC apply is blocked."
+                    exit 1
                   fi
-                done <<< "$applied"
 
-                if [ "$failures" -ne 0 ]; then
-                  echo "FATAL: $failures application rolebinding(s) failed readiness."
+                  echo "+ oc apply --dry-run=server -f $MANIFEST"
+                  oc apply --dry-run=server -f "$MANIFEST"
+
+                  echo "+ oc apply -f $MANIFEST"
+                  applied=$(oc apply -f "$MANIFEST" -o name)
+                  if [ -z "$applied" ]; then
+                    echo "FATAL: oc apply returned no resources."
+                    exit 1
+                  fi
+
+                  failures=0
+                  while IFS= read -r resource; do
+                    [ -z "$resource" ] && continue
+                    echo "Waiting for $resource app-ready=True..."
+                    ready=false
+                    for attempt in $(seq 1 60); do
+                      state=$(oc -n "$OC_NS" get "$resource" \
+                        -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}' 2>/dev/null || true)
+                      if printf '%s\n' "$state" | grep -Eq '(^|/)app-ready=True$'; then
+                        ready=true
+                        break
+                      fi
+                      sleep 5
+                    done
+                    if [ "$ready" != true ]; then
+                      echo "FAIL: $resource did not reach app-ready=True within 300s."
+                      oc -n "$OC_NS" describe "$resource" || true
+                      failures=$((failures + 1))
+                    fi
+                  done <<< "$applied"
+
+                  if [ "$failures" -ne 0 ]; then
+                    echo "FATAL: $failures application rolebinding(s) failed readiness."
+                    exit 1
+                  fi
+
+                  echo "PASS: all application-onboarding rolebindings are ready."
+
+                elif [ "$ACTION" = "delete" ]; then
+                  echo "========== DELETE MODE =========="
+
+                  python3 - "$MANIFEST" "$EXPECTED_NS" <<'PY'
+                import sys
+                import yaml
+
+                path, expected_namespace = sys.argv[1:]
+                with open(path, "r") as stream:
+                    documents = [item for item in yaml.safe_load_all(stream) if item]
+                if not documents:
+                    raise SystemExit("FATAL: onboarding manifest contains no resources")
+
+                names = set()
+                for index, item in enumerate(documents, 1):
+                    if item.get("apiVersion") != "platform.confluent.io/v1beta1" or item.get("kind") != "ConfluentRolebinding":
+                        raise SystemExit("FATAL: document %d is not a ConfluentRolebinding" % index)
+                    metadata = item.get("metadata") or {}
+                    name = metadata.get("name")
+                    if not name or name in names:
+                        raise SystemExit("FATAL: missing or duplicate metadata.name in document %d" % index)
+                    names.add(name)
+                    if metadata.get("namespace") != expected_namespace:
+                        raise SystemExit("FATAL: %s targets namespace %r, expected %r" %
+                                         (name, metadata.get("namespace"), expected_namespace))
+                print("PASS: validated %d rolebinding(s) for deletion" % len(documents))
+                PY
+
+                  echo "Deleting application-onboarding rolebindings..."
+                  oc delete -f "$MANIFEST" --ignore-not-found=true || true
+
+                  echo "Force-deleting any stuck rolebindings with finalizers..."
+                  for rb in $(oc -n "$OC_NS" get confluentrolebinding \
+                      -l "rbac.fcbint.net/managed-by=application-onboarding" \
+                      -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+                    if oc -n "$OC_NS" get confluentrolebinding "$rb" -o jsonpath='{.metadata.deletionTimestamp}' 2>/dev/null | grep -q .; then
+                      echo "Force-deleting rolebinding/$rb (has finalizers)..."
+                      oc patch -n "$OC_NS" confluentrolebinding "$rb" \
+                        -p '{"metadata":{"finalizers":[]}}' --type=merge || true
+                      oc delete -n "$OC_NS" confluentrolebinding "$rb" --grace-period=0 --force || true
+                    fi
+                  done
+
+                  echo "PASS: application-onboarding rolebindings deleted."
+
+                else
+                  echo "FATAL: unsupported action: $ACTION"
                   exit 1
                 fi
-
-                echo "PASS: all application-onboarding rolebindings are ready."
             env:
+              ACTION: ${{ parameters.action }}
               TARGET_ENV: ${{ parameters.environment }}
               OC_NS: $(openshift-namespace)
