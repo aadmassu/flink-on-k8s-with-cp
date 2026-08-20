@@ -3098,7 +3098,16 @@ stages:
                       FAIL=1
                     fi
                   done
-                  echo "PRESERVE  Secret/cfk-license (managed by ExternalSecret)"
+
+                  # Force-delete cfk-license if stuck in Terminating from previous uninstall
+                  if oc -n "$OC_NS" get secret cfk-license 2>/dev/null | grep -q Terminating; then
+                    echo "WARNING: Secret/cfk-license stuck in Terminating state, force-deleting"
+                    oc -n "$OC_NS" patch secret cfk-license -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+                    oc -n "$OC_NS" delete secret cfk-license --ignore-not-found 2>/dev/null || true
+                    echo "  ✓ Force-deleted Secret/cfk-license"
+                  else
+                    echo "PRESERVE  Secret/cfk-license (managed by ExternalSecret)"
+                  fi
 
                   if [ -f "$ENV_DIR/network-policy/network-policy.yaml" ]; then
                     echo "+ oc delete -f $ENV_DIR/network-policy/network-policy.yaml --ignore-not-found --wait=true --timeout=2m"
