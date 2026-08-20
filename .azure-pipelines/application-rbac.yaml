@@ -1,6 +1,6 @@
 # Apply environment-specific application-onboarding Confluent RBAC.
 # Manifests live at:
-#   apps/confluent-platform/<env>/rback/onboarding-rolebindings.yaml
+#   apps/confluent-platform/<env>/rbac/onboarding-rolebindings.yaml
 
 trigger: none
 
@@ -76,7 +76,7 @@ stages:
                   exit 1
                 fi
 
-                MANIFEST="apps/confluent-platform/$TARGET_ENV/rback/onboarding-rolebindings.yaml"
+                MANIFEST="apps/confluent-platform/$TARGET_ENV/rbac/onboarding-rolebindings.yaml"
                 if [ ! -f "$MANIFEST" ]; then
                   echo "FATAL: $MANIFEST is missing."
                   echo "Create it only with identities verified for $TARGET_ENV; DEV identities must not be promoted."
