@@ -1,0 +1,170 @@
+# Apply environment-specific application-onboarding Confluent RBAC.
+# Manifests live at:
+#   apps/confluent-platform/<env>/rback/onboarding-rolebindings.yaml
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: dev
+    values: [dev, qa, uat-p, uat-s, prd, dr]
+
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: kafka-openshift-credentials-dev
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: kafka-openshift-credentials-qa
+  - ${{ if eq(parameters.environment, 'uat-p') }}:
+    - group: kafka-openshift-credentials-uat-p
+  - ${{ if eq(parameters.environment, 'uat-s') }}:
+    - group: kafka-openshift-credentials-uat-s
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
+
+stages:
+  - stage: ApplyApplicationRBAC
+    displayName: "Apply application RBAC (${{ parameters.environment }})"
+    jobs:
+      - job: ApplyApplicationRBAC
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - template: templates/install-tools.yaml
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+                oc project "$OC_NS"
+                echo "Logged in as $(oc whoami); namespace=$OC_NS"
+            env:
+              OC_API: $(openshift-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: $(openshift-namespace)
+
+          - task: Bash@3
+            displayName: "Validate and apply application RBAC"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+
+                case "$TARGET_ENV" in
+                  dev)   EXPECTED_NS="dah-flink-dev" ;;
+                  qa)    EXPECTED_NS="dah-flink-qa" ;;
+                  uat-p|uat-s) EXPECTED_NS="dah-flink-uat" ;;
+                  prd|dr) EXPECTED_NS="dah-flink-prod" ;;
+                  *) echo "FATAL: unsupported environment: $TARGET_ENV"; exit 1 ;;
+                esac
+
+                if [ "$OC_NS" != "$EXPECTED_NS" ]; then
+                  echo "FATAL: variable-group namespace '$OC_NS' does not match canonical '$EXPECTED_NS'."
+                  exit 1
+                fi
+
+                MANIFEST="apps/confluent-platform/$TARGET_ENV/rback/onboarding-rolebindings.yaml"
+                if [ ! -f "$MANIFEST" ]; then
+                  echo "FATAL: $MANIFEST is missing."
+                  echo "Create it only with identities verified for $TARGET_ENV; DEV identities must not be promoted."
+                  exit 1
+                fi
+
+                python3 - "$MANIFEST" "$EXPECTED_NS" <<'PY'
+                import sys
+                import yaml
+
+                path, expected_namespace = sys.argv[1:]
+                with open(path, "r") as stream:
+                    documents = [item for item in yaml.safe_load_all(stream) if item]
+                if not documents:
+                    raise SystemExit("FATAL: onboarding manifest contains no resources")
+
+                names = set()
+                for index, item in enumerate(documents, 1):
+                    if item.get("apiVersion") != "platform.confluent.io/v1beta1" or item.get("kind") != "ConfluentRolebinding":
+                        raise SystemExit("FATAL: document %d is not a ConfluentRolebinding" % index)
+                    metadata = item.get("metadata") or {}
+                    spec = item.get("spec") or {}
+                    name = metadata.get("name")
+                    if not name or name in names:
+                        raise SystemExit("FATAL: missing or duplicate metadata.name in document %d" % index)
+                    names.add(name)
+                    if metadata.get("namespace") != expected_namespace:
+                        raise SystemExit("FATAL: %s targets namespace %r, expected %r" %
+                                         (name, metadata.get("namespace"), expected_namespace))
+                    if (metadata.get("labels") or {}).get("rbac.fcbint.net/managed-by") != "application-onboarding":
+                        raise SystemExit("FATAL: %s is missing the application-onboarding ownership label" % name)
+                    principal = spec.get("principal") or {}
+                    if principal.get("type") not in ("user", "group") or not principal.get("name"):
+                        raise SystemExit("FATAL: %s has an invalid principal" % name)
+                    reference = spec.get("kafkaRestClassRef") or {}
+                    if reference.get("name") != "default" or reference.get("namespace") != expected_namespace:
+                        raise SystemExit("FATAL: %s has an invalid KafkaRestClass reference" % name)
+                print("PASS: validated %d application-onboarding rolebinding(s)" % len(documents))
+                PY
+
+                oc -n "$OC_NS" get kafka kafka >/dev/null
+                oc -n "$OC_NS" get kafkarestclass default >/dev/null
+
+                kafka_ready=$(oc -n "$OC_NS" get kafka kafka \
+                  -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}' | \
+                  grep -E '^platform\.confluent\.io/cluster-ready=True$' || true)
+                if [ -z "$kafka_ready" ]; then
+                  echo "FATAL: Kafka is not cluster-ready; RBAC apply is blocked."
+                  exit 1
+                fi
+
+                echo "+ oc apply --dry-run=server -f $MANIFEST"
+                oc apply --dry-run=server -f "$MANIFEST"
+
+                echo "+ oc apply -f $MANIFEST"
+                applied=$(oc apply -f "$MANIFEST" -o name)
+                if [ -z "$applied" ]; then
+                  echo "FATAL: oc apply returned no resources."
+                  exit 1
+                fi
+
+                failures=0
+                while IFS= read -r resource; do
+                  [ -z "$resource" ] && continue
+                  echo "Waiting for $resource app-ready=True..."
+                  ready=false
+                  for attempt in $(seq 1 60); do
+                    state=$(oc -n "$OC_NS" get "$resource" \
+                      -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}' 2>/dev/null || true)
+                    if printf '%s\n' "$state" | grep -Eq '(^|/)app-ready=True$'; then
+                      ready=true
+                      break
+                    fi
+                    sleep 5
+                  done
+                  if [ "$ready" != true ]; then
+                    echo "FAIL: $resource did not reach app-ready=True within 300s."
+                    oc -n "$OC_NS" describe "$resource" || true
+                    failures=$((failures + 1))
+                  fi
+                done <<< "$applied"
+
+                if [ "$failures" -ne 0 ]; then
+                  echo "FATAL: $failures application rolebinding(s) failed readiness."
+                  exit 1
+                fi
+
+                echo "PASS: all application-onboarding rolebindings are ready."
+            env:
+              TARGET_ENV: ${{ parameters.environment }}
+              OC_NS: $(openshift-namespace)

@@ -619,19 +619,27 @@ stages:
                   rm -f "$SASL_JSON_TMP" "$SASL_PLAIN_TMP"
                   fi
 
-                  # DEV-only: Enforce two-account identity model safeguards
-                  if [ "$TARGET_ENV" = "dev" ]; then
-                    EXPECTED_C3_ID="0oa1ov6h5mwmQTCKI358"
-                    EXPECTED_SSO_ID="0oa1o0ea1m26pITBQ358"
+                  # Enforce the independently verified two-account identity model.
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                    case "$TARGET_ENV" in
+                      dev)
+                        EXPECTED_C3_ID="0oa1ov6h5mwmQTCKI358"
+                        EXPECTED_SSO_ID="0oa1o0ea1m26pITBQ358"
+                        ;;
+                      qa)
+                        EXPECTED_C3_ID="0oa1z6d5wjgBLvoKz358"
+                        EXPECTED_SSO_ID="0oa1z6cqhxwa1O0UK358"
+                        ;;
+                    esac
 
                     echo ""
-                    echo "=== DEV Two-Account Identity Safeguards ==="
+                    echo "=== $TARGET_ENV Two-Account Identity Safeguards ==="
                     if [ -z "$OAUTH_C3_ID" ]; then
-                      echo "FATAL: OAUTH_C3_ID is empty. Dev machine identity is required."
+                      echo "FATAL: OAUTH_C3_ID is empty. Machine identity is required."
                       exit 1
                     fi
                     if [ -z "$OAUTH_MDS_SSO_ID" ]; then
-                      echo "FATAL: OAUTH_MDS_SSO_ID is empty. Dev SSO identity is required."
+                      echo "FATAL: OAUTH_MDS_SSO_ID is empty. SSO identity is required."
                       exit 1
                     fi
                     if [ "$OAUTH_C3_ID" != "$EXPECTED_C3_ID" ]; then
@@ -662,8 +670,8 @@ stages:
                   # oauth-mds-sso — separate Okta OIDC client used by MDS for browser-based SSO (C3 web UI login). Distinct from oauth-mds-rest which is MDS's own service-side OAuth client. Referenced from kafka.yaml spec.services.mds.provider.sso.clientCredentials.secretRef (runbook A22).
                   apply_oauth_secret oauth-mds-sso        "$OAUTH_MDS_SSO_ID"   "$OAUTH_MDS_SSO_SECRET"
 
-                  # DEV-only: Validate oauth-mds-sso Secret structure after creation
-                  if [ "$TARGET_ENV" = "dev" ]; then
+                  # Validate the OIDC SSO Secret structure for promoted environments.
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
                     echo ""
                     echo "=== Validating oauth-mds-sso Secret Structure ==="
 
@@ -758,22 +766,25 @@ stages:
                 C3_ALERT_USER: $(${{ parameters.environment }}-c3-alertmanager-username)
                 C3_ALERT_PWD: $(${{ parameters.environment }}-c3-alertmanager-password)
 
-            - task: Bash@3
-              displayName: "Initialize Control Center-specific truststore (c3-trust-bundle)"
-              inputs:
-                targetType: filePath
-                filePath: '.azure-pipelines/scripts/init-c3-truststore.sh'
-                arguments: '$(openshift-namespace) $(Build.SourcesDirectory)/.azure-pipelines/truststore-references/qa-reference.jks'
-              env:
-                TARGET_ENV: ${{ parameters.environment }}
-                OC_NS: $(openshift-namespace)
-                TRUSTSTORE_PASSWORD: $(c3TruststorePassword)
-
-            # NOTE: Derived kafka-tls-cfk Secret is no longer needed.
-            # Using platform-managed fcb-trust-bundle instead (contains FCB Root CAs 1 & 2,
-            # which covers the Okta inspection chain). See CLAUDE.md for details.
+            # The working DEV baseline uses the platform-managed fcb-trust-bundle
+            # ConfigMap and bundle.p12. Do not create a parallel c3-trust-bundle
+            # or restore the retired derived kafka-tls-cfk Secret.
 
           - ${{ if eq(parameters.action, 'install-or-update') }}:
+            - task: Bash@3
+              displayName: "Render verified QA identities into QA manifests"
+              condition: and(succeeded(), eq('${{ parameters.environment }}', 'qa'))
+              inputs:
+                targetType: filePath
+                filePath: '.azure-pipelines/scripts/render-qa-identities.sh'
+                arguments: 'apps/confluent-platform/qa'
+              env:
+                QA_OAUTH_BROKER_ID: $(qa-oauth-broker-client-id)
+                QA_OAUTH_SR_ID: $(qa-oauth-schemaregistry-client-id)
+                QA_OAUTH_CONNECT_ID: $(qa-oauth-connect-client-id)
+                QA_OAUTH_REST_ID: $(qa-oauth-kafkarest-client-id)
+                QA_OAUTH_C3_ID: $(qa-oauth-controlcenter-client-id)
+
             - task: Bash@3
               displayName: "Validate OpenShift namespace matches canonical (RESOLVED_NS enforcement)"
               inputs:
@@ -833,8 +844,8 @@ stages:
                     cert-manager/controlcenter-tls-certificate.yaml
                   )
 
-                  # DEV-only: include mTLS client certificate and storage
-                  if [ "$TARGET_ENV" = "dev" ]; then
+                  # DEV and QA use the known-good operator-mTLS and C3 storage baseline.
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
                     REQUIRED_FILES+=(
                       storage/controlcenter-prometheus-pvc.yaml
                       cert-manager/cfk-operator-mds-client-certificate.yaml
@@ -899,6 +910,28 @@ stages:
                     echo "See $ENV_DIR/prereqs/README.md for the full list and creation pattern,"
                     echo "then run this pipeline with action=create-prereqs to (re)populate."
                     exit 1
+                  fi
+
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                    echo ""
+                    echo "=== Verifying platform-managed fcb-trust-bundle ==="
+                    if ! oc -n "$OC_NS" get configmap fcb-trust-bundle >/dev/null 2>&1; then
+                      echo "FATAL: ConfigMap/fcb-trust-bundle is missing in $OC_NS."
+                      echo "Request the Container Platform team to provision it before installation."
+                      exit 1
+                    fi
+                    bundle_value=$(oc -n "$OC_NS" get configmap fcb-trust-bundle \
+                      -o go-template='{{ index .binaryData "bundle.p12" }}' 2>/dev/null || true)
+                    if [ -z "$bundle_value" ]; then
+                      bundle_value=$(oc -n "$OC_NS" get configmap fcb-trust-bundle \
+                        -o go-template='{{ index .data "bundle.p12" }}' 2>/dev/null || true)
+                    fi
+                    bundle_size=${#bundle_value}
+                    if [ "${bundle_size:-0}" -lt 100 ]; then
+                      echo "FATAL: ConfigMap/fcb-trust-bundle does not contain a nonempty bundle.p12."
+                      exit 1
+                    fi
+                    echo "OK: ConfigMap/fcb-trust-bundle contains bundle.p12."
                   fi
 
                   echo ""
@@ -1007,6 +1040,7 @@ stages:
                         exit 1
                       fi
                       echo "✅ QA manifests use dahQA_groups and 11547.DAH(QA)"
+                      echo "✅ QA identities were rendered from kafka-openshift-credentials-qa"
                       ;;
                     uat-p|uat-s)
                       # UAT should have dahUAT_groups and 11547.DAH(UAT)
@@ -1142,8 +1176,8 @@ stages:
                     controlcenter-ingress-tls
                   )
 
-                  # DEV-specific: add mTLS client certificate for CFK operator KafkaRestClass reconciliation
-                  if [ "$TARGET_ENV" = "dev" ]; then
+                  # DEV and QA use mTLS for CFK operator KafkaRestClass reconciliation.
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
                     CERT_NAMES+=(cfk-operator-mds-client)
                   fi
                   validate_certificate_secret() {
@@ -1283,10 +1317,10 @@ stages:
                     exit 1
                   fi
 
-                  # DEV-only: validate mTLS client certificate secret contents
-                  if [ "$TARGET_ENV" = "dev" ]; then
+                  # Validate the operator mTLS client certificate in DEV and QA.
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
                     echo ""
-                    echo "=== PHASE 3b: Validating DEV mTLS client certificate secret ==="
+                    echo "=== PHASE 3b: Validating $TARGET_ENV mTLS client certificate secret ==="
                     MTLS_SECRET="cfk-operator-mds-client-tls"
                     echo "Verifying Secret/$MTLS_SECRET contains required keys with correct format..."
 
@@ -1484,15 +1518,21 @@ stages:
                     exit 1
                   fi
 
-                  # DEV-only: static contract checks for mTLS KafkaRestClass
-                  if [ "$TARGET_ENV" = "dev" ]; then
+                  # DEV and QA share the same mTLS KafkaRestClass contract.
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
                     echo ""
-                    echo "=== DEV mTLS Static Contract Checks ==="
+                    echo "=== $TARGET_ENV mTLS Static Contract Checks ==="
                     dev_contract_passed=0
                     dev_contract_failed=0
 
+                    case "$TARGET_ENV" in
+                      dev) contract_namespace="dah-flink-dev"; contract_domain="dv" ;;
+                      qa)  contract_namespace="dah-flink-qa";  contract_domain="qa" ;;
+                    esac
+                    expected_operator_cn="cfk-operator-rbac.apps.${contract_domain}.ocp.fcbint.net"
+
                     # Check kafkarestclass.yaml endpoint
-                    if grep -q "https://kafka\.dah-flink-dev\.svc\.cluster\.local:8090" "$ENV_DIR/kafkarestclass.yaml"; then
+                    if grep -q "https://kafka\.${contract_namespace}\.svc\.cluster\.local:8090" "$ENV_DIR/kafkarestclass.yaml"; then
                       echo "  ✓ kafkarestclass endpoint correct"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
@@ -1571,20 +1611,20 @@ stages:
                       -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d 2>/dev/null | \
                       openssl x509 -noout -subject 2>/dev/null | sed 's/^subject=//' | sed 's/^ *//' | sed 's/CN = //' | sed 's/,.*//')
 
-                    if [ "$cert_cn_actual" = "cfk-operator-rbac.apps.dv.ocp.fcbint.net" ]; then
-                      echo "  ✓ Issued certificate CN is cfk-operator-rbac.apps.dv.ocp.fcbint.net"
+                    if [ "$cert_cn_actual" = "$expected_operator_cn" ]; then
+                      echo "  ✓ Issued certificate CN is $expected_operator_cn"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
-                      echo "  ✗ Issued certificate CN is '$cert_cn_actual', expected cfk-operator-rbac.apps.dv.ocp.fcbint.net"
+                      echo "  ✗ Issued certificate CN is '$cert_cn_actual', expected $expected_operator_cn"
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
                     # Validate principal mapping: FQDN CN maps to short principal
-                    if grep -q "cfk-operator-rbac.*apps.*dv.*ocp.*fcbint.*net.*cfk-operator-rbac" "$ENV_DIR/kafka.yaml"; then
+                    if grep -q "cfk-operator-rbac.*apps.*${contract_domain}.*ocp.*fcbint.*net.*cfk-operator-rbac" "$ENV_DIR/kafka.yaml"; then
                       echo "  ✓ principalMappingRules maps FQDN CN to cfk-operator-rbac"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
-                      echo "  ✗ Missing principalMappingRule for cfk-operator-rbac.apps.dv.ocp.fcbint.net"
+                      echo "  ✗ Missing principalMappingRule for $expected_operator_cn"
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
@@ -1600,10 +1640,10 @@ stages:
                     fi
 
                     # Check certificate commonName (approved FQDN that maps to short principal)
-                    certificate_cn_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); print("pass" if data.get("spec",{}).get("commonName") == "cfk-operator-rbac.apps.dv.ocp.fcbint.net" else "fail")' "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml" 2>/dev/null || echo "error")
+                    certificate_cn_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); print("pass" if data.get("spec",{}).get("commonName") == sys.argv[2] else "fail")' "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml" "$expected_operator_cn" 2>/dev/null || echo "error")
 
                     if [ "$certificate_cn_check" = "pass" ]; then
-                      echo "  ✓ certificate commonName is cfk-operator-rbac.apps.dv.ocp.fcbint.net"
+                      echo "  ✓ certificate commonName is $expected_operator_cn"
                       dev_contract_passed=$((dev_contract_passed+1))
                     else
                       echo "  ✗ certificate commonName is incorrect"
@@ -1624,7 +1664,7 @@ stages:
                     echo ""
                     echo "Contract checks: $dev_contract_passed passed, $dev_contract_failed failed"
                     if [ "$dev_contract_failed" -gt 0 ]; then
-                      echo "ERROR: DEV mTLS contract violations detected. Fix manifests before proceeding."
+                      echo "ERROR: $TARGET_ENV mTLS contract violations detected. Fix manifests before proceeding."
                       exit 1
                     fi
                   fi
@@ -1838,17 +1878,18 @@ stages:
                       exit 1
                     fi
 
-                    # DEV-only bootstrap gate: if Kafka already exists (upgrade scenario), apply rolebindings first
-                    if [ "$TARGET_ENV" = "dev" ] && \
+                    # DEV/QA bootstrap gate: for an existing cluster, establish
+                    # embedded REST authorization before a Kafka rolling update.
+                    if { [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; } && \
                        oc -n "$OC_NS" get kafka kafka >/dev/null 2>&1 && \
                        oc -n "$OC_NS" get kafkarestclass default >/dev/null 2>&1; then
                       echo ""
-                      echo "=== DEV existing-cluster bootstrap: Kafka/KafkaRestClass detected ==="
+                      echo "=== $TARGET_ENV existing-cluster bootstrap: Kafka/KafkaRestClass detected ==="
                       echo "Applying rolebindings BEFORE kafka.yaml rolling update..."
 
-                      # Require rolebindings.yaml for DEV bootstrap
+                      # Require the canonical rolebinding manifest for bootstrap.
                       if [ ! -f "$ENV_DIR/rbac/rolebindings.yaml" ]; then
-                        echo "FATAL: $ENV_DIR/rbac/rolebindings.yaml required for DEV bootstrap but not found."
+                        echo "FATAL: $ENV_DIR/rbac/rolebindings.yaml required for $TARGET_ENV bootstrap but not found."
                         exit 1
                       fi
 
@@ -2221,7 +2262,7 @@ stages:
                   fi
                   if is_true "$APPLY_C3"; then
                     echo ""
-                    if [ "$TARGET_ENV" = "dev" ]; then
+                    if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
                       C3_PROM_PVC="$ENV_DIR/storage/controlcenter-prometheus-pvc.yaml"
                       C3_PROM_PVC_NAME=prometheus-data-controlcenter-0
                       echo "=== Preparing Control Center Prometheus storage ==="
@@ -2680,6 +2721,12 @@ stages:
                     [controlcenter]=controlcenter-ingress.yaml
                   )
 
+                  case "$TARGET_ENV" in
+                    dev) ingress_domain="apps.dv.ocp.fcbint.net" ;;
+                    qa)  ingress_domain="apps.qa.ocp.fcbint.net" ;;
+                    *)   ingress_domain="apps.${TARGET_ENV}.ocp.fcbint.net" ;;
+                  esac
+
                   for svc in "${!svc_applies[@]}"; do
                     if ! is_true "${svc_applies[$svc]}"; then
                       continue
@@ -2693,8 +2740,8 @@ stages:
                     # Control Center uses passthrough; other components use reencrypt
                     if [ "$svc" = "controlcenter" ]; then
                       # C3-specific validation: passthrough, empty path, ImplementationSpecific, port 9021, no destination-CA
-                      if ! grep -q "apps.dv.ocp.fcbint.net" "$ingress_file"; then
-                        echo "  FAIL: $svc Ingress missing floating apps.dv.ocp.fcbint.net hostname"
+                      if ! grep -q "$ingress_domain" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing floating $ingress_domain hostname"
                         exit 1
                       fi
                       if ! grep -q "openshift-core-zone" "$ingress_file"; then
@@ -2721,8 +2768,8 @@ stages:
                       echo "  ✓ $svc Ingress manifest valid (passthrough, port 9021)"
                     else
                       # Reencrypt validation for SR, REST, Connect
-                      if ! grep -q "apps.dv.ocp.fcbint.net" "$ingress_file"; then
-                        echo "  FAIL: $svc Ingress missing floating apps.dv.ocp.fcbint.net hostname"
+                      if ! grep -q "$ingress_domain" "$ingress_file"; then
+                        echo "  FAIL: $svc Ingress missing floating $ingress_domain hostname"
                         exit 1
                       fi
                       if ! grep -q "openshift-core-zone" "$ingress_file"; then
@@ -2807,6 +2854,35 @@ stages:
                       --type=merge 2>/dev/null || true
                   done
                   echo "  Finalizer cleanup attempt complete (no-op if CRs don't exist)"
+
+                  # Application-onboarding RBAC is managed by the separate
+                  # application-rbac pipeline. Revoke it while Kafka/MDS and
+                  # KafkaRestClass are still available so CFK can remove the
+                  # MDS bindings normally. The label fallback also covers a
+                  # renamed or split onboarding manifest.
+                  echo ""
+                  echo "=== Deleting application-onboarding ConfluentRoleBindings ==="
+                  ONBOARDING_RBAC="$ENV_DIR/rback/onboarding-rolebindings.yaml"
+                  if [ -f "$ONBOARDING_RBAC" ]; then
+                    echo "+ oc delete -f $ONBOARDING_RBAC --ignore-not-found --wait=true --timeout=2m"
+                    if ! oc delete -f "$ONBOARDING_RBAC" \
+                        --ignore-not-found --wait=true --timeout=2m; then
+                      echo "WARN: manifest-based onboarding RBAC deletion timed out; namespace cleanup will retry and force-delete if required."
+                    fi
+                  else
+                    echo "INFO: $ONBOARDING_RBAC is absent; using the ownership-label cleanup only."
+                  fi
+
+                  while IFS= read -r onboarding_rolebinding; do
+                    [ -z "$onboarding_rolebinding" ] && continue
+                    echo "+ oc -n $OC_NS delete $onboarding_rolebinding --wait=true --timeout=2m"
+                    if ! oc -n "$OC_NS" delete "$onboarding_rolebinding" \
+                        --wait=true --timeout=2m; then
+                      echo "WARN: $onboarding_rolebinding remains; namespace cleanup will retry and force-delete if required."
+                    fi
+                  done < <(oc -n "$OC_NS" get confluentrolebinding \
+                    -l rbac.fcbint.net/managed-by=application-onboarding \
+                    -o name 2>/dev/null || true)
 
                   echo ""
                   echo "=== Deleting Confluent Platform CRs (reverse dependency order) ==="
