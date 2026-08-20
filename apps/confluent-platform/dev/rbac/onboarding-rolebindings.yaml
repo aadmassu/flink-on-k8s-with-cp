@@ -49,7 +49,7 @@ spec:
     name: "00u1u5ovirxMj7Aq0358"
   role: SystemAdmin
   clustersScopeByIds:
-    schemaRegistryClusterId: id_schemaregistry_dah-flink-dev
+    schemaRegistryClusterId: dah-flink-dev.schemaregistry
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-dev
@@ -113,7 +113,7 @@ spec:
     name: "dv_app_okta_digital_analytics_hub_developers"
   role: SystemAdmin
   clustersScopeByIds:
-    schemaRegistryClusterId: id_schemaregistry_dah-flink-dev
+    schemaRegistryClusterId: dah-flink-dev.schemaregistry
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-dev
