@@ -235,7 +235,6 @@ spec:
       - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.p12"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
       - "-Djavax.net.ssl.trustStoreType=PKCS12"
-      - "-Djavax.net.debug=ssl,handshake,trustmanager"
     server:
       # Do NOT set confluent.controlcenter.data.dir here — CFK mounts the PVC at /mnt/data/data0 (runbook A25).
       - confluent.controlcenter.streams.num.stream.threads=12
