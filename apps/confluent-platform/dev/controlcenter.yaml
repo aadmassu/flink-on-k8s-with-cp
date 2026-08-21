@@ -13,7 +13,7 @@ metadata:
   name: controlcenter
   namespace: dah-flink-dev
   annotations:
-    platform.confluent.io/force-reconcile: "2026-08-21-truststore-validation-fix"
+    platform.confluent.io/force-reconcile: "2026-08-21-force-pod-restart-v2"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
