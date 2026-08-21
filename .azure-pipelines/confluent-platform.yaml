@@ -2390,12 +2390,13 @@ stages:
                       return 0
                     fi
 
-                    # Find the most recent Running pod (skip terminating pods)
+                    # Find the most recent Running pod
                     local pod_name
                     pod_name=$(oc -n "$OC_NS" get pods \
                       -l "app.kubernetes.io/name=$name" \
-                      -o jsonpath='{range .items[?(@.status.phase=="Running" && @.metadata.deletionTimestamp==null)]}{.metadata.name}{"\n"}{end}' \
-                      2>/dev/null | tail -1)
+                      --field-selector=status.phase=Running \
+                      -o jsonpath='{.items[0].metadata.name}' \
+                      2>/dev/null || echo "")
 
                     if [[ -z "$pod_name" ]]; then
                       echo "ERROR: No active Running pod found for $kind/$name"
