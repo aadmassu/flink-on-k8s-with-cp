@@ -2391,25 +2391,21 @@ stages:
                       return 0
                     fi
 
-                    # Check for truststore volume mount in pod spec
-                    local has_truststore_vol
-                    has_truststore_vol=$(oc -n "$OC_NS" get pod "$pod_name" -o jsonpath='{.spec.volumes[?(@.configMap.name=="fcb-trust-bundle")].name}' 2>/dev/null || echo "")
+                    # Check that all containers have truststore mounted at /var/ssl/truststore (read-only)
+                    local truststore_mount_count container_count
+                    truststore_mount_count=$(oc -n "$OC_NS" get pod "$pod_name" -o json 2>/dev/null \
+                      | jq '[.spec.containers[] | select(any(.volumeMounts[]?; .mountPath == "/var/ssl/truststore" and .readOnly == true))] | length' || echo "0")
 
-                    if [ -z "$has_truststore_vol" ]; then
-                      echo "WARNING: Pod $pod_name missing fcb-trust-bundle volume"
+                    container_count=$(oc -n "$OC_NS" get pod "$pod_name" -o jsonpath='{.spec.containers[*].name}' 2>/dev/null \
+                      | awk '{print NF}' || echo "0")
+
+                    if [ "$truststore_mount_count" -ne "$container_count" ]; then
+                      echo "WARNING: Pod $pod_name: not all containers have the read-only truststore mount at /var/ssl/truststore"
+                      echo "  Found in $truststore_mount_count/$container_count containers"
                       return 1
                     fi
 
-                    # Check for truststore mount in container
-                    local has_truststore_mount
-                    has_truststore_mount=$(oc -n "$OC_NS" get pod "$pod_name" -o jsonpath='{.spec.containers[0].volumeMounts[?(@.name=="fcb-trust-bundle" || @.name=="oidc-trust-bundle")].mountPath}' 2>/dev/null || echo "")
-
-                    if [ -z "$has_truststore_mount" ]; then
-                      echo "WARNING: Pod $pod_name missing truststore volume mount"
-                      return 1
-                    fi
-
-                    echo "  ✓ Pod $pod_name has truststore configured at $has_truststore_mount"
+                    echo "  ✓ Pod $pod_name: all $container_count containers have truststore mounted at /var/ssl/truststore (read-only)"
                     return 0
                   }
 
