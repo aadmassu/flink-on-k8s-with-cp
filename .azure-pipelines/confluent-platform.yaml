@@ -2390,67 +2390,52 @@ stages:
                       return 0
                     fi
 
-                    local pod_name pod_json
-                    pod_name=$(
-                      oc -n "$OC_NS" get pods \
-                        -l "app.kubernetes.io/name=$name" \
-                        -o json |
-                      jq -r '
-                        [.items[]
-                         | select(.metadata.deletionTimestamp == null)
-                         | select(.status.phase == "Running")]
-                        | sort_by(.metadata.creationTimestamp)
-                        | last
-                        | .metadata.name // empty
-                      '
-                    )
+                    # Find the most recent Running pod (skip terminating pods)
+                    local pod_name
+                    pod_name=$(oc -n "$OC_NS" get pods \
+                      -l "app.kubernetes.io/name=$name" \
+                      -o jsonpath='{range .items[?(@.status.phase=="Running" && @.metadata.deletionTimestamp==null)]}{.metadata.name}{"\n"}{end}' \
+                      2>/dev/null | tail -1)
 
                     if [[ -z "$pod_name" ]]; then
                       echo "ERROR: No active Running pod found for $kind/$name"
                       return 1
                     fi
 
-                    pod_json=$(oc -n "$OC_NS" get pod "$pod_name" -o json) || {
-                      echo "ERROR: Could not retrieve pod/$pod_name"
-                      return 1
-                    }
-
-                    local container_count truststore_mount_count
-
-                    container_count=$(
-                      jq '[.spec.containers[]] | length' <<<"$pod_json"
-                    )
-
-                    truststore_mount_count=$(
-                      jq '
-                        [.spec.containers[]
-                         | select(any(
-                             .volumeMounts[]?;
-                             .mountPath == "/var/ssl/truststore"
-                             and .readOnly == true
-                           ))]
-                        | length
-                      ' <<<"$pod_json"
-                    )
-
                     echo "  Pod selected: $pod_name"
-                    echo "  Truststore mounts by container:"
-                    jq -r '
-                      .spec.containers[] |
-                      "    \(.name): " +
-                      ([.volumeMounts[]?
-                        | select(.mountPath == "/var/ssl/truststore")
-                        | "\(.name)=\(.mountPath), readOnly=\(.readOnly // false)"
-                       ] | if length == 0 then "MISSING" else join(", ") end)
-                    ' <<<"$pod_json"
 
-                    if [[ "$container_count" -eq 0 ]]; then
+                    # Get container names and check truststore mount for each
+                    local containers truststore_ready
+                    containers=$(oc -n "$OC_NS" get pod "$pod_name" \
+                      -o jsonpath='{.spec.containers[*].name}' 2>/dev/null || echo "")
+
+                    if [[ -z "$containers" ]]; then
                       echo "ERROR: Pod $pod_name has no containers"
                       return 1
                     fi
 
-                    if [[ "$truststore_mount_count" -ne "$container_count" ]]; then
-                      echo "ERROR: Truststore mounted correctly in only $truststore_mount_count/$container_count containers"
+                    echo "  Truststore mounts by container:"
+                    truststore_ready=0
+                    local container_count=0
+
+                    for container in $containers; do
+                      container_count=$((container_count + 1))
+                      local mount_path read_only
+                      mount_path=$(oc -n "$OC_NS" get pod "$pod_name" \
+                        -o jsonpath='{.spec.containers[?(@.name=="'"$container"'")].volumeMounts[?(@.mountPath=="/var/ssl/truststore")].mountPath}' 2>/dev/null)
+                      read_only=$(oc -n "$OC_NS" get pod "$pod_name" \
+                        -o jsonpath='{.spec.containers[?(@.name=="'"$container"'")].volumeMounts[?(@.mountPath=="/var/ssl/truststore")].readOnly}' 2>/dev/null)
+
+                      if [[ "$mount_path" == "/var/ssl/truststore" ]] && [[ "$read_only" == "true" ]]; then
+                        echo "    $container: /var/ssl/truststore (readOnly=true)"
+                        truststore_ready=$((truststore_ready + 1))
+                      else
+                        echo "    $container: MISSING"
+                      fi
+                    done
+
+                    if [[ "$truststore_ready" -ne "$container_count" ]]; then
+                      echo "ERROR: Truststore mounted correctly in only $truststore_ready/$container_count containers"
                       return 1
                     fi
 
