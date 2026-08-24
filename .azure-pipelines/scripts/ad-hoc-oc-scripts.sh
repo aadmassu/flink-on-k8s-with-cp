@@ -4,55 +4,97 @@ set -euo pipefail
 NS="dah-flink-qa"
 TOKEN_URL="https://myapps.firstcitizens.com/oauth2/default/v1/token"
 SCOPE="11547.DAH(QA)"
+MDS_URL="https://kafka.dah-flink-qa.svc.cluster.local:8090"
+MDS_HOST="kafka.dah-flink-qa.svc.cluster.local"
+LOCAL_PORT="18090"
 
-CLIENT_ID=$(oc -n "$NS" get secret oauth-connect \
-  -o jsonpath='{.data.clientId}' | base64 -d)
+WORK_DIR=$(mktemp -d)
+PF_PID=""
 
-CLIENT_SECRET=$(oc -n "$NS" get secret oauth-connect \
-  -o jsonpath='{.data.clientSecret}' | base64 -d)
+cleanup() {
+  [ -n "$PF_PID" ] && kill "$PF_PID" 2>/dev/null || true
+  rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT
 
-PRINCIPAL=$(oc -n "$NS" get confluentrolebinding connect-systemadmin \
-  -o jsonpath='{.spec.principal.name}')
+get_secret_value() {
+  oc -n "$NS" get secret "$1" -o "jsonpath={.data.$2}" | base64 -d
+}
 
-TOKEN_RESPONSE=$(curl -fsS \
-  --user "$CLIENT_ID:$CLIENT_SECRET" \
-  --data-urlencode grant_type=client_credentials \
-  --data-urlencode "scope=$SCOPE" \
-  "$TOKEN_URL")
+get_token() {
+  local secret_name=$1 client_id client_secret response
 
-CLIENT_ID="$CLIENT_ID" PRINCIPAL="$PRINCIPAL" \
-python3 -c '
-import os, sys, json, base64, time
+  client_id=$(get_secret_value "$secret_name" clientId)
+  client_secret=$(get_secret_value "$secret_name" clientSecret)
 
-response = json.load(sys.stdin)
-token = response.get("access_token")
-if not token:
-    print("FAIL: Okta returned no access_token:", response.get("error_description", response.get("error", "unknown error")))
-    sys.exit(1)
+  response=$(curl -fsS \
+    --user "$client_id:$client_secret" \
+    --data-urlencode grant_type=client_credentials \
+    --data-urlencode "scope=$SCOPE" \
+    "$TOKEN_URL")
 
-try:
-    payload = token.split(".")[1]
-    payload += "=" * (-len(payload) % 4)
-    claims = json.loads(base64.urlsafe_b64decode(payload.encode()).decode())
-except Exception as exc:
-    print("FAIL: unable to decode JWT claims:", exc)
-    sys.exit(1)
+  printf '%s' "$response" |
+    python3 -c 'import json,sys; t=json.load(sys.stdin).get("access_token"); print(t) if t else sys.exit("No access_token returned")'
+}
 
-client_id = os.environ["CLIENT_ID"]
-principal = os.environ["PRINCIPAL"]
-subject = str(claims.get("sub", ""))
+echo "=== Obtain OAuth tokens ==="
+ADMIN_TOKEN=$(get_token oauth-mds-rest)
+CONNECT_TOKEN=$(get_token oauth-connect)
+CONNECT_ID=$(get_secret_value oauth-connect clientId)
+PRINCIPAL="User:$CONNECT_ID"
+PRINCIPAL_PATH=$(PRINCIPAL="$PRINCIPAL" python3 -c \
+  'import os; from urllib.parse import quote; print(quote(os.environ["PRINCIPAL"], safe=""))')
 
-print("Secret clientId:      " + client_id)
-print("JWT sub:              " + subject)
-print("Rolebinding principal:" + principal)
-print("Issuer:               " + str(claims.get("iss", "")))
-print("Audience:             " + str(claims.get("aud", "")))
-print("Scope:                " + str(claims.get("scp", claims.get("scope", ""))))
-print("Token expired:        " + str(int(claims.get("exp", 0)) <= int(time.time())))
+echo "=== Prepare trusted MDS connection ==="
+oc -n "$NS" get secret kafka-tls \
+  -o jsonpath='{.data.ca\.crt}' | base64 -d > "$WORK_DIR/ca.crt"
 
-if client_id == subject == principal:
-    print("PASS: all three identities match")
-else:
-    print("FAIL: OAuth clientId, JWT sub, and RBAC principal are not identical")
-    sys.exit(1)
-' <<< "$TOKEN_RESPONSE"
+oc -n "$NS" port-forward service/kafka "$LOCAL_PORT:8090" \
+  >"$WORK_DIR/port-forward.log" 2>&1 &
+PF_PID=$!
+
+for attempt in $(seq 1 30); do
+  if curl -sS --output /dev/null \
+      --cacert "$WORK_DIR/ca.crt" \
+      --connect-to "$MDS_HOST:8090:127.0.0.1:$LOCAL_PORT" \
+      "$MDS_URL/security/1.0/metadataClusterId"; then
+    break
+  fi
+  sleep 2
+done
+
+echo
+echo "=== MDS rolebinding lookup using admin identity ==="
+LOOKUP_CODE=$(curl -sS \
+  --output "$WORK_DIR/lookup.json" \
+  --write-out '%{http_code}' \
+  --cacert "$WORK_DIR/ca.crt" \
+  --connect-to "$MDS_HOST:8090:127.0.0.1:$LOCAL_PORT" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$MDS_URL/security/1.0/lookup/rolebindings/principal/$PRINCIPAL_PATH")
+
+echo "HTTP status: $LOOKUP_CODE"
+python3 -m json.tool "$WORK_DIR/lookup.json" 2>/dev/null ||
+  cat "$WORK_DIR/lookup.json"
+
+echo
+echo "=== Authenticate Connect identity directly against MDS ==="
+AUTH_CODE=$(curl -sS \
+  --output "$WORK_DIR/authenticate.json" \
+  --write-out '%{http_code}' \
+  --cacert "$WORK_DIR/ca.crt" \
+  --connect-to "$MDS_HOST:8090:127.0.0.1:$LOCAL_PORT" \
+  -H "Authorization: Bearer $CONNECT_TOKEN" \
+  "$MDS_URL/security/1.0/authenticate")
+
+echo "HTTP status: $AUTH_CODE"
+python3 -m json.tool "$WORK_DIR/authenticate.json" 2>/dev/null ||
+  cat "$WORK_DIR/authenticate.json"
+
+unset ADMIN_TOKEN CONNECT_TOKEN
+
+echo
+echo "=== Result interpretation ==="
+echo "Lookup 200 + authenticate 200: MDS recognizes the identity; inspect Connect REST authentication."
+echo "Lookup 200 + authenticate 401: role exists, but MDS rejects the OAuth identity."
+echo "Lookup empty/404: CFK CR says CREATED, but the binding is absent from MDS."
