@@ -1,100 +1,137 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 
-NS="dah-flink-qa"
-TOKEN_URL="https://myapps.firstcitizens.com/oauth2/default/v1/token"
-SCOPE="11547.DAH(QA)"
-MDS_URL="https://kafka.dah-flink-qa.svc.cluster.local:8090"
-MDS_HOST="kafka.dah-flink-qa.svc.cluster.local"
-LOCAL_PORT="18090"
+NS="dah-flink-dev"
+URL="https://myapps.firstcitizens.com/oauth2/default/v1/keys"
+TRUSTSTORE="/var/ssl/truststore/bundle.p12"
+TRUSTSTORE_PASSWORD="changeit"
+JAVA_SOURCE="/tmp/JavaTlsProbe.java"
 
-WORK_DIR=$(mktemp -d)
-PF_PID=""
+echo "============================================================"
+echo "DEV Kafka Java TLS comparison"
+echo "Namespace: $NS"
+echo "URL:       $URL"
+echo "============================================================"
+
+echo "=== 1. Locate a running Kafka pod ==="
+POD="$(oc -n "$NS" get pods -l app.kubernetes.io/name=kafka --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')"
+if [[ -z "$POD" ]]; then
+  echo "FATAL: No running Kafka pod found in namespace $NS"
+  exit 1
+fi
+echo "Kafka pod: $POD"
+
+echo "=== 2. Confirm Java and the mounted truststore ==="
+oc -n "$NS" exec "$POD" -c kafka -- java -version
+oc -n "$NS" exec "$POD" -c kafka -- sh -c "test -r '$TRUSTSTORE' && ls -l '$TRUSTSTORE' && sha256sum '$TRUSTSTORE'"
+oc -n "$NS" exec "$POD" -c kafka -- keytool -list -keystore "$TRUSTSTORE" -storetype PKCS12 -storepass "$TRUSTSTORE_PASSWORD" >/dev/null
+echo "PASS: bundle.p12 is readable and its password is valid"
+
+echo "=== 3. Install temporary Java HTTPS probe in the Kafka container ==="
+oc -n "$NS" exec -i "$POD" -c kafka -- sh -c "cat > '$JAVA_SOURCE'" <<'JAVA'
+import java.net.URL;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import javax.net.ssl.HttpsURLConnection;
+
+public class JavaTlsProbe {
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.err.println("Usage: JavaTlsProbe <https-url>");
+            System.exit(64);
+        }
+
+        System.out.println("java.version=" + System.getProperty("java.version"));
+        System.out.println("javax.net.ssl.trustStore=" + System.getProperty("javax.net.ssl.trustStore", "<JVM default>"));
+        System.out.println("javax.net.ssl.trustStoreType=" + System.getProperty("javax.net.ssl.trustStoreType", "<JVM default>"));
+
+        HttpsURLConnection connection = null;
+        try {
+            connection = (HttpsURLConnection) new URL(args[0]).openConnection();
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Accept", "application/json");
+
+            int status = connection.getResponseCode();
+            System.out.println("HTTP status=" + status);
+            System.out.println("cipherSuite=" + connection.getCipherSuite());
+
+            Certificate[] chain = connection.getServerCertificates();
+            for (int i = 0; i < chain.length; i++) {
+                if (chain[i] instanceof X509Certificate) {
+                    X509Certificate certificate = (X509Certificate) chain[i];
+                    System.out.println("certificate[" + i + "].subject=" + certificate.getSubjectX500Principal());
+                    System.out.println("certificate[" + i + "].issuer=" + certificate.getIssuerX500Principal());
+                }
+            }
+
+            if (status >= 200 && status < 400) {
+                System.out.println("RESULT=PASS");
+                System.exit(0);
+            }
+
+            System.out.println("RESULT=HTTP_FAILURE");
+            System.exit(3);
+        } catch (Throwable error) {
+            System.out.println("RESULT=TLS_OR_CONNECTION_FAILURE");
+            error.printStackTrace(System.out);
+            System.exit(2);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+}
+JAVA
 
 cleanup() {
-  [ -n "$PF_PID" ] && kill "$PF_PID" 2>/dev/null || true
-  rm -rf "$WORK_DIR"
+  oc -n "$NS" exec "$POD" -c kafka -- rm -f "$JAVA_SOURCE" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
+echo "PASS: Temporary probe created"
 
-get_secret_value() {
-  oc -n "$NS" get secret "$1" -o "jsonpath={.data.$2}" | base64 -d
-}
+echo "=== 4. Test A: Java with bundle.p12 ==="
+set +e
+oc -n "$NS" exec "$POD" -c kafka -- java \
+  -Djavax.net.ssl.trustStore="$TRUSTSTORE" \
+  -Djavax.net.ssl.trustStorePassword="$TRUSTSTORE_PASSWORD" \
+  -Djavax.net.ssl.trustStoreType=PKCS12 \
+  "$JAVA_SOURCE" "$URL"
+BUNDLE_RC=$?
+set -e
+echo "Test A exit code: $BUNDLE_RC"
 
-get_token() {
-  local secret_name=$1 client_id client_secret response
+echo "=== 5. Test B: Java with its default truststore ==="
+set +e
+oc -n "$NS" exec "$POD" -c kafka -- java "$JAVA_SOURCE" "$URL"
+DEFAULT_RC=$?
+set -e
+echo "Test B exit code: $DEFAULT_RC"
 
-  client_id=$(get_secret_value "$secret_name" clientId)
-  client_secret=$(get_secret_value "$secret_name" clientSecret)
+echo "=== 6. Comparison ==="
+if [[ $BUNDLE_RC -eq 0 && $DEFAULT_RC -eq 0 ]]; then
+  echo "RESULT: BOTH_PASS"
+  echo "Interpretation: Both truststores validate the endpoint. The MDS JWKS failure is specific to its internally created SSL context or endpoint configuration."
+elif [[ $BUNDLE_RC -eq 0 && $DEFAULT_RC -ne 0 ]]; then
+  echo "RESULT: BUNDLE_ONLY_PASS"
+  echo "Interpretation: bundle.p12 is correct, but the JVM default truststore is insufficient. MDS is likely not using bundle.p12."
+elif [[ $BUNDLE_RC -ne 0 && $DEFAULT_RC -eq 0 ]]; then
+  echo "RESULT: DEFAULT_ONLY_PASS"
+  echo "Interpretation: bundle.p12 is incomplete or invalid for the endpoint, while the image JVM default truststore works."
+else
+  echo "RESULT: BOTH_FAIL"
+  echo "Interpretation: Neither Java trust configuration validates the endpoint. Review the exceptions above."
+fi
 
-  response=$(curl -fsS \
-    --user "$client_id:$client_secret" \
-    --data-urlencode grant_type=client_credentials \
-    --data-urlencode "scope=$SCOPE" \
-    "$TOKEN_URL")
+echo "============================================================"
+echo "Java TLS comparison completed."
+echo "Test A exit code: $BUNDLE_RC"
+echo "Test B exit code: $DEFAULT_RC"
+echo "============================================================"
 
-  printf '%s' "$response" |
-    python3 -c 'import json,sys; t=json.load(sys.stdin).get("access_token"); print(t) if t else sys.exit("No access_token returned")'
-}
-
-echo "=== Obtain OAuth tokens ==="
-ADMIN_TOKEN=$(get_token oauth-mds-rest)
-CONNECT_TOKEN=$(get_token oauth-connect)
-CONNECT_ID=$(get_secret_value oauth-connect clientId)
-PRINCIPAL="User:$CONNECT_ID"
-PRINCIPAL_PATH=$(PRINCIPAL="$PRINCIPAL" python3 -c \
-  'import os; from urllib.parse import quote; print(quote(os.environ["PRINCIPAL"], safe=""))')
-
-echo "=== Prepare trusted MDS connection ==="
-oc -n "$NS" get secret kafka-tls \
-  -o jsonpath='{.data.ca\.crt}' | base64 -d > "$WORK_DIR/ca.crt"
-
-oc -n "$NS" port-forward service/kafka "$LOCAL_PORT:8090" \
-  >"$WORK_DIR/port-forward.log" 2>&1 &
-PF_PID=$!
-
-for attempt in $(seq 1 30); do
-  if curl -sS --output /dev/null \
-      --cacert "$WORK_DIR/ca.crt" \
-      --connect-to "$MDS_HOST:8090:127.0.0.1:$LOCAL_PORT" \
-      "$MDS_URL/security/1.0/metadataClusterId"; then
-    break
-  fi
-  sleep 2
-done
-
-echo
-echo "=== MDS rolebinding lookup using admin identity ==="
-LOOKUP_CODE=$(curl -sS \
-  --output "$WORK_DIR/lookup.json" \
-  --write-out '%{http_code}' \
-  --cacert "$WORK_DIR/ca.crt" \
-  --connect-to "$MDS_HOST:8090:127.0.0.1:$LOCAL_PORT" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  "$MDS_URL/security/1.0/lookup/rolebindings/principal/$PRINCIPAL_PATH")
-
-echo "HTTP status: $LOOKUP_CODE"
-python3 -m json.tool "$WORK_DIR/lookup.json" 2>/dev/null ||
-  cat "$WORK_DIR/lookup.json"
-
-echo
-echo "=== Authenticate Connect identity directly against MDS ==="
-AUTH_CODE=$(curl -sS \
-  --output "$WORK_DIR/authenticate.json" \
-  --write-out '%{http_code}' \
-  --cacert "$WORK_DIR/ca.crt" \
-  --connect-to "$MDS_HOST:8090:127.0.0.1:$LOCAL_PORT" \
-  -H "Authorization: Bearer $CONNECT_TOKEN" \
-  "$MDS_URL/security/1.0/authenticate")
-
-echo "HTTP status: $AUTH_CODE"
-python3 -m json.tool "$WORK_DIR/authenticate.json" 2>/dev/null ||
-  cat "$WORK_DIR/authenticate.json"
-
-unset ADMIN_TOKEN CONNECT_TOKEN
-
-echo
-echo "=== Result interpretation ==="
-echo "Lookup 200 + authenticate 200: MDS recognizes the identity; inspect Connect REST authentication."
-echo "Lookup 200 + authenticate 401: role exists, but MDS rejects the OAuth identity."
-echo "Lookup empty/404: CFK CR says CREATED, but the binding is absent from MDS."
+# Keep the pipeline task successful so both diagnostic results remain visible.
+exit 0
