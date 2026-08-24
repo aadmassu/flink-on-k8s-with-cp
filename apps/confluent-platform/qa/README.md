@@ -54,9 +54,9 @@ Run the pipeline twice — `create-prereqs` first, then `install-or-update`.
 For a destructive migration rebuild, run `uninstall` with `wipePVCs=true`
 first. The pipeline applies in this sequence so failures attribute correctly:
 
-1. **`create-prereqs` action** — pipeline creates the 11 non-TLS Opaque Secrets from `kafka-openshift-credentials-<env>` variable group entries. See [`prereqs/README.md`](prereqs/README.md) for the variable mapping.
+1. **`create-prereqs` action** — pipeline creates the non-TLS Opaque Secrets from `kafka-openshift-credentials-<env>` variable group entries. See [`prereqs/README.md`](prereqs/README.md) for the variable mapping.
 2. **`install-or-update` action**:
-   1. Apply the six TLS `Certificate` CRs under `prereqs/`. Pipeline waits up to 10 min per cert for Keyfactor to materialize each `*-tls` Secret.
+   1. Apply the TLS `Certificate` CRs under `cert-manager/`. Pipeline waits for Keyfactor to materialize each `*-tls` Secret.
    2. `kafkarestclass.yaml` — connection profile referenced by Connect + ControlCenter.
    3. `kraftcontroller.yaml` — KRaft quorum must be up before brokers register.
    4. `kafka.yaml` — brokers join the quorum.
@@ -66,16 +66,32 @@ first. The pipeline applies in this sequence so failures attribute correctly:
    8. `controlcenter-prometheus-pvc.yaml` — creates the nested Prometheus claim with `storageClassName: kafka`.
    9. `controlcenter.yaml` — depends on all of the above.
 
+## Application onboarding RBAC
+
+Application/user access is intentionally separate from cluster installation.
+Run `.azure-pipelines/application-rbac.yaml` after the QA cluster is ready.
+The QA variable group must contain the verified token identities below:
+
+| Variable | Required value |
+|---|---|
+| `qa-rbac-onboarding-user-sub` | QA user's exact OIDC `sub` claim |
+| `qa-rbac-onboarding-developer-group` | Exact QA developer group claim emitted in the token |
+
+The pipeline renders these only into temporary files. In
+`direct-mds-bootstrap` mode, `@live` in the JSON input is replaced with the
+new Kafka CR's live `status.clusterID`; a destructive reinstall therefore
+does not leave a stale hard-coded Kafka cluster ID.
+
 ## Capacity (CFK CR settings vs. VM source)
 
 | Component | CR `requests` | CR `limits` | Disk | VM allocation / utilization |
 |---|---|---|---|---|
-| Broker (×3) | 1.25 vCPU / 3 Gi | 2.5 vCPU / 6 Gi | **300 Gi each** | Migration priority |
-| Controller (×3) | 1 vCPU / 2 Gi | 2 vCPU / 3 Gi | **25 Gi each** | Quorum headroom |
-| Schema Registry (×2) | 0.25 vCPU / 768 Mi | 0.75 vCPU / 1.5 Gi | — | Stateless |
+| Broker (×3) | 1 vCPU / 3 Gi | 2 vCPU / 6 Gi | **300 Gi each** | Migration priority |
+| Controller (×3) | 0.75 vCPU / 2 Gi | 1.5 vCPU / 3 Gi | **25 Gi each** | Quorum headroom |
+| Schema Registry (×2) | 0.15 vCPU / 768 Mi | 0.5 vCPU / 1.5 Gi | — | Stateless |
 | REST Proxy | 0.125 vCPU / 512 Mi | 0.375 vCPU / 1 Gi | — | Stateless |
-| Connect (×2) | 0.375 vCPU / 1 Gi | 0.75 vCPU / 2 Gi | — | Stateless; state in Kafka |
-| Control Center | 1.25 vCPU / 3 Gi | 2.5 vCPU / 6 Gi | **100 Gi** | Working/RocksDB state |
+| Connect (×2) | 0.25 vCPU / 1 Gi | 0.5 vCPU / 2 Gi | — | Stateless; state in Kafka |
+| Control Center | 0.5 vCPU / 3 Gi | 1.5 vCPU / 6 Gi | **100 Gi** | Working/RocksDB state |
 | C3 Prometheus | 0.375 vCPU / 1 Gi | 1.25 vCPU / 3 Gi | **100 Gi** | Pre-created PVC |
 | C3 Alertmanager | 0.1 vCPU / 512 Mi | 0.5 vCPU / 1 Gi | — | No PVC |
 

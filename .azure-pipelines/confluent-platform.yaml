@@ -2892,7 +2892,7 @@ stages:
                   # renamed or split onboarding manifest.
                   echo ""
                   echo "=== Deleting application-onboarding ConfluentRoleBindings ==="
-                  ONBOARDING_RBAC="$ENV_DIR/rback/onboarding-rolebindings.yaml"
+                  ONBOARDING_RBAC="$ENV_DIR/rbac/onboarding-rolebindings.yaml"
                   if [ -f "$ONBOARDING_RBAC" ]; then
                     echo "+ oc delete -f $ONBOARDING_RBAC --ignore-not-found --wait=true --timeout=2m"
                     if ! oc delete -f "$ONBOARDING_RBAC" \

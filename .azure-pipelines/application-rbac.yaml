@@ -105,6 +105,50 @@ stages:
                   exit 1
                 fi
 
+                # Onboarding principals are environment-owned identities, not
+                # application OAuth client IDs. Render them into temporary
+                # copies so no secret or identity value is written back into
+                # the checked-out repository.
+                render_dir=$(mktemp -d)
+                cleanup_render() { rm -rf "$render_dir"; }
+                trap cleanup_render EXIT
+                rendered_manifest="$render_dir/onboarding-rolebindings.yaml"
+                rendered_direct="$render_dir/direct-mds-bootstrap.json"
+                cp "$MANIFEST" "$rendered_manifest"
+                [ ! -f "$DIRECT_INPUT" ] || cp "$DIRECT_INPUT" "$rendered_direct"
+
+                if grep -q '__ONBOARDING_' "$rendered_manifest" "$rendered_direct" 2>/dev/null; then
+                  if [ -z "${ONBOARDING_USER_SUB:-}" ] || printf '%s' "$ONBOARDING_USER_SUB" | grep -qF '$('; then
+                    echo "FATAL: $TARGET_ENV-rbac-onboarding-user-sub is required."
+                    exit 1
+                  fi
+                  if [ -z "${ONBOARDING_DEVELOPER_GROUP:-}" ] || printf '%s' "$ONBOARDING_DEVELOPER_GROUP" | grep -qF '$('; then
+                    echo "FATAL: $TARGET_ENV-rbac-onboarding-developer-group is required."
+                    exit 1
+                  fi
+                  python3 - "$rendered_manifest" "$rendered_direct" <<'PY'
+                import os, sys
+                replacements = {
+                    "__ONBOARDING_USER_SUB__": os.environ["ONBOARDING_USER_SUB"],
+                    "__ONBOARDING_DEVELOPER_GROUP__": os.environ["ONBOARDING_DEVELOPER_GROUP"],
+                }
+                for filename in sys.argv[1:]:
+                    try:
+                        with open(filename, "r") as stream:
+                            text = stream.read()
+                    except FileNotFoundError:
+                        continue
+                    for token, value in replacements.items():
+                        text = text.replace(token, value)
+                    if "__ONBOARDING_" in text:
+                        raise SystemExit("FATAL: unresolved onboarding identity in %s" % filename)
+                    with open(filename, "w") as stream:
+                        stream.write(text)
+                PY
+                fi
+                MANIFEST="$rendered_manifest"
+                [ ! -f "$rendered_direct" ] || DIRECT_INPUT="$rendered_direct"
+
                 validate_manifest() {
                   python3 - "$MANIFEST" "$EXPECTED_NS" <<'PY'
                 import sys
@@ -236,7 +280,7 @@ stages:
                     if not item.get("roleName"):
                         raise SystemExit("FATAL: missing roleName in %s" % item["id"])
                     clusters = item.get("clusters") or {}
-                    if clusters.get("kafka-cluster") != kafka_id:
+                    if clusters.get("kafka-cluster") not in (kafka_id, "@live"):
                         raise SystemExit("FATAL: %s Kafka cluster ID does not match live Kafka" % item["id"])
                 print("PASS: validated %d direct-MDS binding(s)" % len(bindings))
                 PY
@@ -254,6 +298,7 @@ stages:
                 cleanup() {
                   [ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null || true
                   rm -rf "$work_dir"
+                  rm -rf "$render_dir"
                 }
                 trap cleanup EXIT
 
@@ -296,13 +341,17 @@ stages:
                 fi
                 echo "PASS: privileged OAuth identity authenticated to MDS."
 
-                python3 - "$DIRECT_INPUT" <<'PY' > "$work_dir/requests.tsv"
+                python3 - "$DIRECT_INPUT" "$KAFKA_ID" <<'PY' > "$work_dir/requests.tsv"
                 import base64, json, sys
                 from urllib.parse import quote
                 with open(sys.argv[1]) as stream:
                     data = json.load(stream)
+                kafka_id = sys.argv[2]
                 for item in data["bindings"]:
-                    body = json.dumps({"clusters": item["clusters"]}, separators=(",", ":"))
+                    clusters = dict(item["clusters"])
+                    if clusters.get("kafka-cluster") == "@live":
+                        clusters["kafka-cluster"] = kafka_id
+                    body = json.dumps({"clusters": clusters}, separators=(",", ":"))
                     encoded = base64.b64encode(body.encode("utf-8")).decode("ascii")
                     print("\t".join((item["id"], quote(item["principal"], safe=""),
                                      item["principal"], item["roleName"], encoded)))
@@ -379,3 +428,5 @@ stages:
               # be present in Kafka spec.authorization.superUsers for this env.
               MDS_REST_CLIENT_ID: $(${{ parameters.environment }}-oauth-mds-rest-client-id)
               MDS_REST_CLIENT_SECRET: $(${{ parameters.environment }}-oauth-mds-rest-client-secret)
+              ONBOARDING_USER_SUB: $(${{ parameters.environment }}-rbac-onboarding-user-sub)
+              ONBOARDING_DEVELOPER_GROUP: $(${{ parameters.environment }}-rbac-onboarding-developer-group)

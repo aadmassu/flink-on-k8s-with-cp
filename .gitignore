@@ -67,6 +67,7 @@ generate_*gantt*.py
 # Temporary
 tmp/
 note.txt
+apps/confluent-platform/*-backup-**/
 
 # Build artifacts (regenerated from source)
 *-refactored*.zip
