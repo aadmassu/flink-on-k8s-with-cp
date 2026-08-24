@@ -48,6 +48,19 @@ qa/
 
 CFK CRs live at the root for clear grouping. The `prereqs/` subfolder holds the cert-manager `Certificate` CRs that land the six `*-tls` Secrets, plus its own [README](prereqs/README.md) documenting the 11 non-TLS Opaque Secrets the pipeline creates from variable-group values.
 
+## Infrastructure ownership — NetworkPolicy
+
+**NetworkPolicy is owned and managed exclusively by the Container Platforms team** in QA and all upper environments (uat-p, uat-s, prd, dr). The application pipeline:
+
+- **Never creates, modifies, or deletes** NetworkPolicy in non-DEV environments
+- **Skips NetworkPolicy validation and ingress-router port checking** for non-DEV
+- **Prints an informational message** during install/uninstall to remind operators that network rules are managed by FCB Container Platforms
+- **Fails hard** (exit 1) if a `network-policy/` directory is found in a non-DEV environment's manifest tree
+
+**DEV is the exception.** The application pipeline manages NetworkPolicy in dev only; the Container Platforms team owns the function in all other environments and will apply equivalent rules as part of their upper-environment provisioning.
+
+Contact Rick Mulder (Principal Infrastructure Engineer, Container Platforms) or submit a SNOW request if you need network access changes in QA or higher.
+
 ## Apply order
 
 Run the pipeline twice — `create-prereqs` first, then `install-or-update`.
