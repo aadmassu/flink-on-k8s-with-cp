@@ -133,7 +133,7 @@ capacity for Flink and operations. It fails rather than consuming the reserve.
 - Confluent license → `confluent-license` Secret (already used by CMF)
 - Kafka admin REST (VM `kafka.rest.*` on broker) → CFK `KafkaRestClass` CR (`kafkarestclass.yaml`) referenced by Connect + ControlCenter
 - `log.dirs=/data/kafka` → CFK PV with the storage class FCB approves; mount path is operator-managed
-- Container images use the same Artifactory pattern as Flink: `artifactory.fcbint.net/camdepositsharedservices-docker-qa/confluentinc/cp-*:8.1.0` for qa / qa / uat, `-docker-prod` for prd
+- Container images use the same Artifactory pattern as Flink: `artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-*:8.1.3` (QA pulls from DEV repo) and `-docker-prod` for prd
 - External Kafka access: `loadBalancer` type — CFK creates per-broker LBs plus a bootstrap LB
 
 **Storage** (resolved from [`docs/OpenShift Persistent Storage.pdf`](../../../docs/OpenShift%20Persistent%20Storage.pdf)):

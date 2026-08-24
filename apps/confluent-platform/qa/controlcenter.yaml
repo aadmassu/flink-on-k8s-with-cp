@@ -23,8 +23,8 @@ spec:
   replicas: 1
 
   image:
-    application: artifactory.fcbint.net/camdepositsharedservices-docker-qa/confluentinc/cp-enterprise-control-center-next-gen:2.5.0
-    init: artifactory.fcbint.net/camdepositsharedservices-docker-qa/confluentinc/confluent-init-container:3.2.0
+    application: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-control-center-next-gen:2.5.0
+    init: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/confluent-init-container:3.2.0
 
   # Gatekeeper [required-workload-labels] inspects the StatefulSet.
   injectLabels:
@@ -189,7 +189,7 @@ spec:
   # C3, Prometheus, and Alertmanager to use the same release tag.
   services:
     prometheus:
-      image: artifactory.fcbint.net/camdepositsharedservices-docker-qa/confluentinc/cp-enterprise-prometheus:2.5.0
+      image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-prometheus:2.5.0
       # OpenShift ResourceQuota validates every generated container. These
       # limits are for the bundled Prometheus container, not the main C3
       # container covered by spec.podTemplate.resources.
@@ -213,7 +213,7 @@ spec:
         # controlcenter-prometheus-pvc.yaml with storageClassName: kafka.
         dataVolumeCapacity: 100Gi
     alertmanager:
-      image: artifactory.fcbint.net/camdepositsharedservices-docker-qa/confluentinc/cp-enterprise-alertmanager:2.5.0
+      image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-alertmanager:2.5.0
       # ResourceQuota also requires explicit resources for Alertmanager.
       containerTemplate:
         resources:
