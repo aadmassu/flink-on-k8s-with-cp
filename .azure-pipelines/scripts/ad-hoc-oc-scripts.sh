@@ -164,19 +164,28 @@ if sys.version_info < (3, 6):
 print("Python version: {0}.{1}.{2}".format(*sys.version_info[:3]))
 PY
 
-# Use the selected environment's live KafkaRestClass OAuth configuration.
-# TOKEN_ENDPOINT and OAUTH_SCOPE may still be supplied explicitly as overrides.
+# Use the selected environment's live Connect OAuth configuration.
+# KafkaRestClass is retained only as a compatibility fallback. TOKEN_ENDPOINT
+# and OAUTH_SCOPE may still be supplied explicitly as overrides.
+if [ -z "$TOKEN_ENDPOINT" ]; then
+  TOKEN_ENDPOINT="$(oc -n "$NS" get connect connect \
+    -o 'jsonpath={.spec.dependencies.mds.authentication.oauth.configuration.tokenEndpointUri}' 2>/dev/null || true)"
+fi
 if [ -z "$TOKEN_ENDPOINT" ]; then
   TOKEN_ENDPOINT="$(oc -n "$NS" get kafkarestclass default \
     -o 'jsonpath={.spec.kafkaRest.authentication.oauth.configuration.tokenEndpointUri}' 2>/dev/null || true)"
+fi
+if [ -z "$OAUTH_SCOPE" ]; then
+  OAUTH_SCOPE="$(oc -n "$NS" get connect connect \
+    -o 'jsonpath={.spec.dependencies.mds.authentication.oauth.configuration.scope}' 2>/dev/null || true)"
 fi
 if [ -z "$OAUTH_SCOPE" ]; then
   OAUTH_SCOPE="$(oc -n "$NS" get kafkarestclass default \
     -o 'jsonpath={.spec.kafkaRest.authentication.oauth.configuration.scope}' 2>/dev/null || true)"
 fi
 
-[ -n "$TOKEN_ENDPOINT" ] || fatal "Could not discover OAuth tokenEndpointUri from KafkaRestClass/default"
-[ -n "$OAUTH_SCOPE" ] || fatal "Could not discover OAuth scope from KafkaRestClass/default"
+[ -n "$TOKEN_ENDPOINT" ] || fatal "Could not discover the OAuth token endpoint from Connect/connect or KafkaRestClass/default"
+[ -n "$OAUTH_SCOPE" ] || fatal "Could not discover the OAuth scope from Connect/connect or KafkaRestClass/default"
 
 echo "============================================================"
 echo "Connect REST OAuth diagnostic"
