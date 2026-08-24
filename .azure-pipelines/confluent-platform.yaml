@@ -94,7 +94,7 @@ parameters:
     displayName: "create-prereqs only: ESO bypass (leave as 'none' for normal deploys)"
     type: string
     default: "none"
-    # Emergency workaround when a SecretStore is broken (e.g. CyberArk 403 SecretSyncedError). For each name in the comma-separated list, create-prereqs deletes the ExternalSecret CR + underlying Secret BEFORE the ESO ownership snapshot, so the Secret is (re)provisioned from the corresponding variable-group value on this same run. Default "none" (also treated: empty string) means no bypass. Common values while a CyberArk safe is being fixed: "cfk-license" or "cfk-license,confluent-license". Only honored when action=create-prereqs; ignored on every other action.
+    # Emergency workaround when the cfk-license SecretStore path is broken (for example, CyberArk 403/SecretSyncedError). Set to "cfk-license" to delete its ExternalSecret CR and stale target BEFORE ownership discovery, then provision the Secret from the environment variable group. Default "none" keeps ESO authoritative. Only honored when action=create-prereqs.
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -309,26 +309,51 @@ stages:
                   TARGET_ENV="${{ parameters.environment }}"
                   ESO_DIR="apps/confluent-platform/$TARGET_ENV/externalsecrets"
 
+                  bypass_requested() {
+                    local requested=$1 configured=${BYPASS_ES_FOR:-none} item
+                    IFS=',' read -ra items <<< "$configured"
+                    for item in "${items[@]}"; do
+                      item=$(printf '%s' "$item" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+                      [ "$item" = "${requested,,}" ] && return 0
+                    done
+                    return 1
+                  }
+
                   if [ ! -d "$ESO_DIR" ]; then
                     echo "ExternalSecrets directory not found: $ESO_DIR"
                     exit 1
                   fi
 
-                  echo "=== Applying ExternalSecret CRs from $ESO_DIR ==="
-                  for eso_file in "$ESO_DIR"/externalsecret-cfk-license.yaml; do
-                    if [ -f "$eso_file" ]; then
-                      echo "Applying $(basename "$eso_file")..."
-                      oc apply -f "$eso_file"
+                  if bypass_requested cfk-license; then
+                    echo "=== ESO bypass requested for cfk-license ==="
+                    echo "Removing the ExternalSecret and stale target before ownership discovery."
+                    oc -n "$OC_NS" delete externalsecret cfk-license \
+                      --ignore-not-found --wait=true --timeout=2m
+                    oc -n "$OC_NS" delete secret cfk-license \
+                      --ignore-not-found --wait=true --timeout=2m
+                  else
+                    echo "=== Applying ExternalSecret CRs from $ESO_DIR ==="
+                    eso_file="$ESO_DIR/externalsecret-cfk-license.yaml"
+                    if [ ! -f "$eso_file" ]; then
+                      echo "FATAL: required ExternalSecret manifest is missing: $eso_file"
+                      exit 1
                     fi
-                  done
+                    oc apply -f "$eso_file"
 
-                  echo ""
-                  echo "=== Waiting for ExternalSecret to sync ==="
-                  oc -n "$OC_NS" wait --for=condition=Ready externalsecret/cfk-license --timeout=60s 2>/dev/null || {
-                    echo "WARNING: cfk-license ExternalSecret not Ready within 60s, proceeding anyway"
-                  }
+                    echo ""
+                    echo "=== Waiting for ExternalSecret/cfk-license to sync ==="
+                    if ! oc -n "$OC_NS" wait --for=condition=Ready \
+                        externalsecret/cfk-license --timeout=60s; then
+                      echo "FATAL: ExternalSecret/cfk-license is not Ready=True."
+                      oc -n "$OC_NS" describe externalsecret cfk-license || true
+                      echo "Repair its SecretStore/remote mapping, or rerun with:"
+                      echo "  bypassEsoForSecrets=cfk-license"
+                      exit 1
+                    fi
+                  fi
               env:
                 OC_NS: $(openshift-namespace)
+                BYPASS_ES_FOR: ${{ parameters.bypassEsoForSecrets }}
 
             - task: Bash@3
               displayName: "Create prerequisite Opaque Secrets and describe"
@@ -386,6 +411,7 @@ stages:
                   echo ""
                   echo "=== Determining pipeline-owned Secrets ==="
                   PIPELINE_OWNED_SECRETS=(
+                    "cfk-license"
                     "sasl-plain-internal"
                     "mds-token-keypair"
                     "oauth-broker"
@@ -408,6 +434,7 @@ stages:
                     else
                       echo "REQUIRE (pipeline): $secret"
                       case "$secret" in
+                        cfk-license) REQUIRED_VARS_FOR_PIPELINE+=("CONFLUENT_LICENSE") ;;
                         sasl-plain-internal) REQUIRED_VARS_FOR_PIPELINE+=("SASL_ADMIN") ;;
                         mds-token-keypair) REQUIRED_VARS_FOR_PIPELINE+=("MDS_PEM") ;;
                         oauth-broker) REQUIRED_VARS_FOR_PIPELINE+=("OAUTH_BROKER_ID" "OAUTH_BROKER_SECRET") ;;
@@ -455,20 +482,6 @@ stages:
                     echo ""
                     echo "ERROR: $missing validation(s) failed"
                     exit 1
-                  fi
-
-                  # STEP 5: Apply ESO bypass if configured (emergency workaround for broken SecretStore).
-                  if [ -n "${BYPASS_ES_FOR:-}" ] && [ "${BYPASS_ES_FOR,,}" != "none" ]; then
-                    echo ""
-                    echo "=== ESO bypass: forcing variable-group provisioning for [$BYPASS_ES_FOR] ==="
-                    IFS=',' read -ra BYPASS_LIST <<< "$BYPASS_ES_FOR"
-                    for name in "${BYPASS_LIST[@]}"; do
-                      name=$(echo "$name" | tr -d ' ')
-                      [ -z "$name" ] && continue
-                      echo "--- $name ---"
-                      oc -n "$OC_NS" delete externalsecret "$name" --ignore-not-found
-                      oc -n "$OC_NS" delete secret "$name" --ignore-not-found
-                    done
                   fi
 
                   # FCB Common Metadata standard requires these labels on every object.
@@ -551,6 +564,12 @@ stages:
                   # cfk-license: Java-properties format for CFK (ESO-managed via externalsecret-cfk-license.yaml).
                   apply_secret_from_literals confluent-license \
                     --from-literal=license.txt="$CONFLUENT_LICENSE"
+
+                  # In normal mode this is skipped because ESO owns cfk-license.
+                  # In bypass mode it is pipeline-owned and uses CFK's required
+                  # Java-properties payload rather than the raw CMF payload.
+                  apply_secret_from_literals cfk-license \
+                    --from-literal=license.txt="license=$CONFLUENT_LICENSE"
 
                   # MDS RSA token keypair. Variable is single-line base64 (ADO UI strips multiline PEM newlines); decode + derive the public key here so Java's PEM parser sees proper BEGIN/END lines. CFK wants both mdsTokenKeyPair.pem (private, signs) and mdsPublicKey.pem (public, validators use).
                   if is_eso_managed mds-token-keypair; then
@@ -3246,6 +3265,7 @@ stages:
                     2>/dev/null || true)
 
                   CFK_PREREQ_SECRETS=(
+                    cfk-license
                     mds-token-keypair
                     sasl-plain-internal
                     oauth-broker
@@ -3324,19 +3344,6 @@ stages:
                       FAIL=1
                     fi
                   done
-
-                  # Force-delete cfk-license if it has a deletionTimestamp or platform finalizers
-                  cfk_license_deletion_ts=$(oc -n "$OC_NS" get secret cfk-license -o jsonpath='{.metadata.deletionTimestamp}' 2>/dev/null || echo "")
-                  if [ -n "$cfk_license_deletion_ts" ]; then
-                    echo "WARNING: Secret/cfk-license has deletionTimestamp=$cfk_license_deletion_ts, force-deleting"
-                    echo "  Removing finalizers..."
-                    oc -n "$OC_NS" patch secret cfk-license -p '{"metadata":{"finalizers":null}}' --type=merge
-                    echo "  Deleting secret..."
-                    oc -n "$OC_NS" delete secret cfk-license --grace-period=0 --force 2>/dev/null || true
-                    echo "  ✓ Force-deleted Secret/cfk-license"
-                  else
-                    echo "PRESERVE  Secret/cfk-license (managed by ExternalSecret)"
-                  fi
 
                   if [ "$TARGET_ENV" = "dev" ]; then
                     if [ -f "$ENV_DIR/network-policy/network-policy.yaml" ]; then
