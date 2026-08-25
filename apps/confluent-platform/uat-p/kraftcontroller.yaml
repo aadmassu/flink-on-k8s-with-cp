@@ -1,7 +1,7 @@
 ---
 ########################################################################
 # Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-08-12 (last-modified)
+# Date:        2026-05-11 (created), 2026-07-01 (last-modified)
 # Description: CFK KRaftController CR — Phase 2. 3-node quorum,
 #              SASL/PLAIN+TLS controller listener and RBAC.
 ########################################################################
@@ -29,7 +29,8 @@ spec:
     app.kubernetes.io/component: kraft-controller
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
-  dataVolumeCapacity: 1Gi
+  # Quorum headroom for migration and metadata growth: 25 Gi per controller.
+  dataVolumeCapacity: 25Gi
   storageClass:
     name: kafka
 
@@ -57,9 +58,9 @@ spec:
   authorization:
     type: rbac
     superUsers:
-      - User:0oa1owhtq2olDZWwf358
+      - User:__ENV_OAUTH_BROKER_CLIENT_ID__
       - User:admin
-      - User:0oa1owhtq2olDZWwf358
+      - User:__ENV_OAUTH_BROKER_CLIENT_ID__
 
   tls:
     secretRef: kraftcontroller-tls
@@ -98,9 +99,8 @@ spec:
       - default.replication.factor=3
       - confluent.metadata.topic.replication.factor=3
       - confluent.balancer.topic.replication.factor=3
-      - confluent.balancer.enable=false
-      - confluent.license.topic.replication.factor=3
-      - confluent.security.event.logger.enable=false
+      - confluent.balancer.enable=true
+      - confluent.balancer.heal.uneven.load.trigger=ANY_UNEVEN_LOAD
       - confluent.license.topic.replication.factor=3
       - confluent.security.event.logger.enable=false
 
@@ -109,11 +109,11 @@ spec:
     # request == limit → Guaranteed QoS.
     resources:
       requests:
-        cpu: "1"
+        cpu: "750m"
         memory: 2Gi
       limits:
-        cpu: "2"
-        memory: 2Gi
+        cpu: "1500m"
+        memory: 3Gi
     probe:
       liveness:
         initialDelaySeconds: 60

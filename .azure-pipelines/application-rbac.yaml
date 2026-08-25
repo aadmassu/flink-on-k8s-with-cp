@@ -1,8 +1,5 @@
-# Manage application-onboarding ConfluentRolebinding resources.
-#
-# The environment's onboarding-rolebindings.yaml is the only source of truth.
-# This pipeline does not render principals, replace placeholders, or call MDS
-# directly. Every committed principal, role, and cluster scope is applied as-is.
+# Manage environment-specific application-onboarding Confluent RBAC.
+# onboarding-rolebindings.yaml is the sole RBAC source for both modes.
 
 trigger: none
 
@@ -11,21 +8,21 @@ parameters:
     displayName: "Action"
     type: string
     default: apply
-    values:
-      - apply
-      - delete
+    values: [apply, delete]
 
   - name: environment
     displayName: "Target Environment"
     type: string
     default: dev
+    values: [dev, qa, uat-p, uat-s, prd, dr]
+
+  - name: deploymentMode
+    displayName: "RBAC deployment mode"
+    type: string
+    default: cfk-cr
     values:
-      - dev
-      - qa
-      - uat-p
-      - uat-s
-      - prd
-      - dr
+      - cfk-cr
+      - direct-mds-bootstrap
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -43,10 +40,9 @@ variables:
 
 stages:
   - stage: ManageApplicationRBAC
-    displayName: "${{ parameters.action }} application RBAC (${{ parameters.environment }})"
+    displayName: "${{ parameters.action }} application RBAC (${{ parameters.environment }}, ${{ parameters.deploymentMode }})"
     jobs:
       - job: ManageApplicationRBAC
-        displayName: "Manage application-onboarding role bindings"
         pool: DevOpsLinux
         steps:
           - checkout: self
@@ -74,119 +70,272 @@ stages:
               OC_NS: $(openshift-namespace)
 
           - task: Bash@3
-            displayName: "${{ parameters.action }} application-onboarding RBAC"
+            displayName: "${{ parameters.action }} RBAC using ${{ parameters.deploymentMode }}"
             inputs:
               targetType: inline
               script: |
                 set -euo pipefail
+
+                fatal() { echo "FATAL: $*" >&2; exit 1; }
 
                 case "$TARGET_ENV" in
                   dev)         EXPECTED_NS="dah-flink-dev" ;;
                   qa)          EXPECTED_NS="dah-flink-qa" ;;
                   uat-p|uat-s) EXPECTED_NS="dah-flink-uat" ;;
                   prd|dr)      EXPECTED_NS="dah-flink-prod" ;;
-                  *) echo "FATAL: unsupported environment: $TARGET_ENV"; exit 1 ;;
+                  *) fatal "unsupported environment: $TARGET_ENV" ;;
                 esac
 
-                if [ "$OC_NS" != "$EXPECTED_NS" ]; then
-                  echo "FATAL: variable-group namespace '$OC_NS' does not match '$EXPECTED_NS'."
-                  exit 1
-                fi
+                [ "$OC_NS" = "$EXPECTED_NS" ] || \
+                  fatal "variable-group namespace '$OC_NS' does not match '$EXPECTED_NS'"
 
                 MANIFEST="apps/confluent-platform/$TARGET_ENV/rbac/onboarding-rolebindings.yaml"
-                if [ ! -f "$MANIFEST" ]; then
-                  echo "FATAL: $MANIFEST is missing."
-                  exit 1
-                fi
+                [ -f "$MANIFEST" ] || fatal "$MANIFEST is missing"
 
-                # Validate the committed manifest without modifying it.
+                # Validate the committed source without rendering or replacing it.
                 python3 - "$MANIFEST" "$EXPECTED_NS" <<'PY'
                 import sys
                 import yaml
 
                 path, expected_namespace = sys.argv[1:]
                 with open(path, "r") as stream:
-                    documents = [item for item in yaml.safe_load_all(stream) if item]
-
-                if not documents:
+                    docs = [x for x in yaml.safe_load_all(stream) if x]
+                if not docs:
                     raise SystemExit("FATAL: onboarding manifest contains no resources")
 
                 names = set()
-                for index, item in enumerate(documents, 1):
+                for index, item in enumerate(docs, 1):
                     if (item.get("apiVersion") != "platform.confluent.io/v1beta1" or
                             item.get("kind") != "ConfluentRolebinding"):
-                        raise SystemExit(
-                            "FATAL: document %d is not a ConfluentRolebinding" % index)
-
+                        raise SystemExit("FATAL: document %d is not a ConfluentRolebinding" % index)
                     metadata = item.get("metadata") or {}
                     spec = item.get("spec") or {}
                     name = metadata.get("name")
-
                     if not name or name in names:
-                        raise SystemExit(
-                            "FATAL: missing or duplicate metadata.name in document %d" % index)
+                        raise SystemExit("FATAL: missing or duplicate metadata.name in document %d" % index)
                     names.add(name)
-
                     if metadata.get("namespace") != expected_namespace:
-                        raise SystemExit(
-                            "FATAL: %s targets namespace %r; expected %r" %
-                            (name, metadata.get("namespace"), expected_namespace))
-
+                        raise SystemExit("FATAL: %s targets namespace %r; expected %r" %
+                                         (name, metadata.get("namespace"), expected_namespace))
                     labels = metadata.get("labels") or {}
                     if labels.get("rbac.fcbint.net/managed-by") != "application-onboarding":
-                        raise SystemExit(
-                            "FATAL: %s is missing the application-onboarding ownership label" % name)
-
+                        raise SystemExit("FATAL: %s is missing the application-onboarding label" % name)
                     principal = spec.get("principal") or {}
-                    if principal.get("type") not in ("user", "group"):
-                        raise SystemExit("FATAL: %s has an invalid principal type" % name)
-                    if not principal.get("name"):
-                        raise SystemExit("FATAL: %s has an empty principal name" % name)
+                    if principal.get("type") not in ("user", "group") or not principal.get("name"):
+                        raise SystemExit("FATAL: %s has an invalid principal" % name)
                     if "__ONBOARDING_" in str(principal.get("name")):
-                        raise SystemExit(
-                            "FATAL: %s contains an unresolved principal placeholder" % name)
-
+                        raise SystemExit("FATAL: %s contains an unresolved principal" % name)
                     if not spec.get("role"):
                         raise SystemExit("FATAL: %s has no role" % name)
-
-                    reference = spec.get("kafkaRestClassRef") or {}
-                    if (reference.get("name") != "default" or
-                            reference.get("namespace") != expected_namespace):
-                        raise SystemExit(
-                            "FATAL: %s has an invalid KafkaRestClass reference" % name)
-
-                print("PASS: validated %d committed role binding(s)" % len(documents))
+                    ref = spec.get("kafkaRestClassRef") or {}
+                    if ref.get("name") != "default" or ref.get("namespace") != expected_namespace:
+                        raise SystemExit("FATAL: %s has an invalid KafkaRestClass reference" % name)
+                print("PASS: validated %d committed role binding(s)" % len(docs))
                 PY
 
-                # Fail before mutation if the required CFK resources are unavailable.
                 oc -n "$OC_NS" get kafka kafka >/dev/null
                 oc -n "$OC_NS" get kafkarestclass default >/dev/null
 
-                case "$ACTION" in
-                  apply)
-                    echo "Applying $MANIFEST unchanged"
-                    oc apply --dry-run=server -f "$MANIFEST"
-                    oc apply -f "$MANIFEST"
-                    echo "PASS: committed onboarding manifest applied unchanged."
-                    ;;
-                  delete)
-                    echo "Deleting resources declared in $MANIFEST"
-                    oc delete -f "$MANIFEST" --ignore-not-found=true --wait=true
-                    echo "PASS: resources declared in the onboarding manifest deleted."
-                    ;;
-                  *)
-                    echo "FATAL: unsupported action: $ACTION"
-                    exit 1
-                    ;;
-                esac
+                if [ "$DEPLOYMENT_MODE" = "cfk-cr" ]; then
+                  case "$ACTION" in
+                    apply)
+                      echo "Applying $MANIFEST unchanged through CFK"
+                      oc apply --dry-run=server -f "$MANIFEST"
+                      oc apply -f "$MANIFEST"
+                      ;;
+                    delete)
+                      echo "Deleting resources declared in $MANIFEST through CFK"
+                      oc delete -f "$MANIFEST" --ignore-not-found=true --wait=true
+                      ;;
+                    *) fatal "unsupported action: $ACTION" ;;
+                  esac
 
-                echo
-                echo "Current application-onboarding role bindings:"
-                oc -n "$OC_NS" get confluentrolebinding \
-                  -l rbac.fcbint.net/managed-by=application-onboarding \
-                  -o custom-columns='NAME:.metadata.name,PRINCIPAL-TYPE:.spec.principal.type,PRINCIPAL:.spec.principal.name,ROLE:.spec.role,STATE:.status.state' \
-                  --sort-by=.metadata.name
+                  oc -n "$OC_NS" get confluentrolebinding \
+                    -l rbac.fcbint.net/managed-by=application-onboarding \
+                    -o custom-columns='NAME:.metadata.name,PRINCIPAL:.spec.principal.name,ROLE:.spec.role,STATE:.status.state' \
+                    --sort-by=.metadata.name
+                  echo "PASS: CFK RBAC action completed"
+                  exit 0
+                fi
+
+                [ "$DEPLOYMENT_MODE" = "direct-mds-bootstrap" ] || \
+                  fatal "unsupported deployment mode: $DEPLOYMENT_MODE"
+                [ -n "${MDS_REST_CLIENT_ID:-}" ] || fatal "MDS REST client ID is required"
+                [ -n "${MDS_REST_CLIENT_SECRET:-}" ] || fatal "MDS REST client secret is required"
+
+                echo "WARNING: direct MDS bootstrap bypasses the CFK rolebinding controller"
+
+                KAFKA_ID="$(oc -n "$OC_NS" get kafka kafka -o jsonpath='{.status.clusterID}')"
+                [ -n "$KAFKA_ID" ] || fatal "Kafka status.clusterID is empty"
+
+                TOKEN_ENDPOINT="$(oc -n "$OC_NS" get kafka kafka -o jsonpath='{.spec.services.mds.provider.oauth.configurations.tokenEndpointUri}')"
+                OAUTH_SCOPE="$(oc -n "$OC_NS" get kafka kafka -o jsonpath='{.spec.services.mds.provider.oauth.configurations.scope}')"
+                MDS_ENDPOINT="$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.spec.kafkaRest.endpoint}')"
+                MDS_SERVICE="$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.spec.kafkaClusterRef.name}')"
+                CA_SECRET="$(oc -n "$OC_NS" get kafkarestclass default -o jsonpath='{.spec.kafkaRest.tls.secretRef}')"
+
+                [ -n "$TOKEN_ENDPOINT" ] || fatal "Kafka MDS OAuth token endpoint is empty"
+                [ -n "$OAUTH_SCOPE" ] || fatal "Kafka MDS OAuth scope is empty"
+                [ -n "$MDS_ENDPOINT" ] || fatal "KafkaRestClass endpoint is empty"
+                [ -n "$MDS_SERVICE" ] || fatal "KafkaRestClass kafkaClusterRef.name is empty"
+                [ -n "$CA_SECRET" ] || fatal "KafkaRestClass TLS secretRef is empty"
+
+                read -r MDS_HOST MDS_PORT <<EOF
+                $(python3 - "$MDS_ENDPOINT" <<'PY'
+                import sys
+                try:
+                    from urllib.parse import urlparse
+                except ImportError:
+                    from urlparse import urlparse
+                parsed = urlparse(sys.argv[1])
+                print(parsed.hostname or "", parsed.port or 443)
+                PY
+                )
+                EOF
+                [ -n "$MDS_HOST" ] || fatal "could not parse MDS hostname"
+
+                work_dir="$(mktemp -d)"
+                pf_pid=""
+                cleanup() {
+                  [ -z "$pf_pid" ] || kill "$pf_pid" 2>/dev/null || true
+                  rm -rf "$work_dir"
+                }
+                trap cleanup EXIT INT TERM
+
+                oc -n "$OC_NS" get secret "$CA_SECRET" \
+                  -o 'jsonpath={.data.ca\.crt}' | base64 --decode >"$work_dir/ca.crt"
+                [ -s "$work_dir/ca.crt" ] || fatal "Secret/$CA_SECRET ca.crt is empty"
+
+                token_code="$(curl --silent --show-error \
+                  --output "$work_dir/token.json" --write-out '%{http_code}' \
+                  --user "$MDS_REST_CLIENT_ID:$MDS_REST_CLIENT_SECRET" \
+                  --header 'Content-Type: application/x-www-form-urlencoded' \
+                  --data-urlencode 'grant_type=client_credentials' \
+                  --data-urlencode "scope=$OAUTH_SCOPE" "$TOKEN_ENDPOINT")"
+                [ "$token_code" = "200" ] || fatal "OAuth token request failed; HTTP $token_code"
+
+                ACCESS_TOKEN="$(python3 - "$work_dir/token.json" <<'PY'
+                import json, sys
+                with open(sys.argv[1]) as stream:
+                    token = json.load(stream).get("access_token")
+                if not token:
+                    raise SystemExit("FATAL: token response has no access_token")
+                print(token)
+                PY
+                )"
+
+                LOCAL_PORT=18090
+                oc -n "$OC_NS" port-forward "service/$MDS_SERVICE" "$LOCAL_PORT:$MDS_PORT" \
+                  >"$work_dir/port-forward.log" 2>&1 &
+                pf_pid=$!
+
+                connected=false
+                for attempt in $(seq 1 30); do
+                  code="$(curl --silent --output "$work_dir/mds-health.json" --write-out '%{http_code}' \
+                    --cacert "$work_dir/ca.crt" \
+                    --connect-to "$MDS_HOST:$MDS_PORT:127.0.0.1:$LOCAL_PORT" \
+                    --header "Authorization: Bearer $ACCESS_TOKEN" \
+                    "$MDS_ENDPOINT/security/1.0/metadataClusterId" || true)"
+                  if [ "$code" = "200" ]; then connected=true; break; fi
+                  sleep 2
+                done
+                [ "$connected" = "true" ] || fatal "cannot authenticate to MDS; HTTP $code"
+
+                # Convert the committed CFK CRs to MDS requests. No second RBAC
+                # data file or identity substitution is used.
+                python3 - "$MANIFEST" "$KAFKA_ID" <<'PY' >"$work_dir/requests.tsv"
+                import base64
+                import json
+                import sys
+                import yaml
+                try:
+                    from urllib.parse import quote
+                except ImportError:
+                    from urllib import quote
+
+                path, kafka_id = sys.argv[1:]
+                scope_map = {
+                    "schemaRegistryClusterId": "schema-registry-cluster",
+                    "connectClusterId": "connect-cluster",
+                    "ksqlDBClusterId": "ksql-cluster",
+                }
+                with open(path) as stream:
+                    docs = [x for x in yaml.safe_load_all(stream) if x]
+
+                for item in docs:
+                    metadata = item["metadata"]
+                    spec = item["spec"]
+                    p = spec["principal"]
+                    principal = ("User:" if p["type"] == "user" else "Group:") + str(p["name"])
+                    body = {"clusters": {"kafka-cluster": kafka_id}}
+                    for source, target in scope_map.items():
+                        value = (spec.get("clustersScopeByIds") or {}).get(source)
+                        if value:
+                            body["clusters"][target] = value
+                    patterns = spec.get("resourcePatterns")
+                    if patterns:
+                        body["resourcePatterns"] = patterns
+                    encoded = base64.b64encode(json.dumps(body, separators=(",", ":")).encode("utf-8")).decode("ascii")
+                    print("\t".join((metadata["name"], quote(principal, safe=""),
+                                     principal, spec["role"], encoded)))
+                PY
+
+                while IFS=$'\t' read -r binding_id principal_path principal role_name body64; do
+                  body="$(printf '%s' "$body64" | base64 --decode)"
+                  endpoint="$MDS_ENDPOINT/security/1.0/principals/$principal_path/roles/$role_name"
+                  response="$work_dir/$binding_id.json"
+
+                  case "$ACTION" in
+                    apply)
+                      method=POST
+                      code="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+                        --request "$method" --cacert "$work_dir/ca.crt" \
+                        --connect-to "$MDS_HOST:$MDS_PORT:127.0.0.1:$LOCAL_PORT" \
+                        --header "Authorization: Bearer $ACCESS_TOKEN" \
+                        --header 'Accept: application/json' \
+                        --header 'Content-Type: application/json' \
+                        --data "$body" "$endpoint" || true)"
+                      case "$code" in 204|409) ;; *) cat "$response" || true; fatal "$binding_id apply failed; HTTP $code" ;; esac
+
+                      verify="$work_dir/$binding_id-verify.json"
+                      verify_code="$(curl --silent --show-error --output "$verify" --write-out '%{http_code}' \
+                        --request POST --cacert "$work_dir/ca.crt" \
+                        --connect-to "$MDS_HOST:$MDS_PORT:127.0.0.1:$LOCAL_PORT" \
+                        --header "Authorization: Bearer $ACCESS_TOKEN" \
+                        --header 'Accept: application/json' \
+                        --header 'Content-Type: application/json' \
+                        --data "$body" \
+                        "$MDS_ENDPOINT/security/1.0/lookup/principals/$principal_path/roleNames" || true)"
+                      [ "$verify_code" = "200" ] || fatal "$binding_id verification failed; HTTP $verify_code"
+                      python3 - "$verify" "$role_name" "$binding_id" <<'PY'
+                import json, sys
+                with open(sys.argv[1]) as stream:
+                    roles = json.load(stream)
+                if sys.argv[2] not in roles:
+                    raise SystemExit("FATAL: %s verification did not return %s" % (sys.argv[3], sys.argv[2]))
+                print("PASS: %s applied and verified" % sys.argv[3])
+                PY
+                      ;;
+                    delete)
+                      code="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+                        --request DELETE --cacert "$work_dir/ca.crt" \
+                        --connect-to "$MDS_HOST:$MDS_PORT:127.0.0.1:$LOCAL_PORT" \
+                        --header "Authorization: Bearer $ACCESS_TOKEN" \
+                        --header 'Accept: application/json' \
+                        --header 'Content-Type: application/json' \
+                        --data "$body" "$endpoint" || true)"
+                      case "$code" in 204|404) echo "PASS: $binding_id delete processed" ;; *) cat "$response" || true; fatal "$binding_id delete failed; HTTP $code" ;; esac
+                      ;;
+                    *) fatal "unsupported action: $ACTION" ;;
+                  esac
+                done <"$work_dir/requests.tsv"
+
+                unset ACCESS_TOKEN MDS_REST_CLIENT_SECRET
+                echo "PASS: direct MDS bootstrap completed from $MANIFEST"
             env:
               ACTION: ${{ parameters.action }}
               TARGET_ENV: ${{ parameters.environment }}
+              DEPLOYMENT_MODE: ${{ parameters.deploymentMode }}
               OC_NS: $(openshift-namespace)
+              MDS_REST_CLIENT_ID: $(${{ parameters.environment }}-oauth-mds-rest-client-id)
+              MDS_REST_CLIENT_SECRET: $(${{ parameters.environment }}-oauth-mds-rest-client-secret)

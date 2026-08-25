@@ -20,7 +20,7 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
     metadata.command-issuer.keyfactor.com/Description: "Kafka brokers — internal listeners and MDS"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
@@ -29,7 +29,7 @@ spec:
   # Internal-only SANs. The FCB Keyfactor approver-policy allows DNS names
   # under *.svc, *.svc.cluster.local, and *.ocp.fcbint.net — anything else
   # is rejected. The earlier draft included external LB SANs under
-  # kafka.dev.dah.fcbint.net (a stand-in for the eventual external hostname);
+  # kafka.qa.dah.fcbint.net (a stand-in for the eventual external hostname);
   # those tripped the policy and blocked the CertificateRequest.
   #
   # External LB exposure remains staged in kafka.yaml's externalAccess block.
@@ -46,8 +46,15 @@ spec:
     - kafka-0.kafka.dah-flink-uat.svc.cluster.local
     - kafka-1.kafka.dah-flink-uat.svc.cluster.local
     - kafka-2.kafka.dah-flink-uat.svc.cluster.local
+    - kafka.apps.ut-s.ocp.fcbint.net
+    - kafka-0.kafka.apps.ut.ocp.fcbint.net
+    - kafka-1.kafka.apps.ut.ocp.fcbint.net
+    - kafka-2.kafka.apps.ut.ocp.fcbint.net
+    - kafka-0.kafka.apps.ut-s.ocp.fcbint.net
+    - kafka-1.kafka.apps.ut-s.ocp.fcbint.net
+    - kafka-2.kafka.apps.ut-s.ocp.fcbint.net
   duration: 8760h0m0s
-  renewBefore: 360h
+  renewBefore: 1080h0m0s
   privateKey:
     algorithm: RSA
     size: 4096

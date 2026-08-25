@@ -19,7 +19,7 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
     metadata.command-issuer.keyfactor.com/Description: "KRaft controllers — quorum listener"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
@@ -32,8 +32,15 @@ spec:
     - kraftcontroller-0.kraftcontroller.dah-flink-uat.svc.cluster.local
     - kraftcontroller-1.kraftcontroller.dah-flink-uat.svc.cluster.local
     - kraftcontroller-2.kraftcontroller.dah-flink-uat.svc.cluster.local
+    - kraftcontroller.apps.ut.ocp.fcbint.net
+    - kraftcontroller-0.kraftcontroller.apps.ut-p.ocp.fcbint.net
+    - kraftcontroller-1.kraftcontroller.apps.ut-p.ocp.fcbint.net
+    - kraftcontroller-2.kraftcontroller.apps.ut-p.ocp.fcbint.net
+    - kraftcontroller-0.kraftcontroller.apps.ut.ocp.fcbint.net
+    - kraftcontroller-1.kraftcontroller.apps.ut.ocp.fcbint.net
+    - kraftcontroller-2.kraftcontroller.apps.ut.ocp.fcbint.net
   duration: 8760h0m0s
-  renewBefore: 360h
+  renewBefore: 1080h0m0s
   privateKey:
     algorithm: RSA
     size: 4096

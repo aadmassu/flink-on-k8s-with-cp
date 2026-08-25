@@ -1,0 +1,208 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-06-30 (created), 2026-07-01 (last-modified)
+# Description: Phase 2 RBAC grants. Principals are Okta CLIENT IDs
+#              (subClaimName=sub) sourced from VM property files.
+#              Applied after Kafka cluster-ready (runbook A22).
+#
+# Client ID map:
+#   Kafka broker    __ENV_OAUTH_BROKER_CLIENT_ID__  (super-user)
+#   Schema Registry __ENV_OAUTH_SR_CLIENT_ID__
+#   Connect         __ENV_OAUTH_CONNECT_CLIENT_ID__
+#   Kafka REST      __ENV_OAUTH_REST_CLIENT_ID__
+#   Control Center  __ENV_OAUTH_C3_CLIENT_ID__
+########################################################################
+
+# -- Schema Registry (__ENV_OAUTH_SR_CLIENT_ID__) --------------------------------
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: schemaregistry-resourceowner-schemas
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_OAUTH_SR_CLIENT_ID__"
+  role: ResourceOwner
+  resourcePatterns:
+    - resourceType: Topic
+      name: _schemas
+      patternType: LITERAL
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-uat
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: schemaregistry-resourceowner-group
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/component: schema-registry
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_OAUTH_SR_CLIENT_ID__"
+  role: ResourceOwner
+  resourcePatterns:
+    - resourceType: Group
+      name: schema-registry
+      patternType: LITERAL
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-uat
+---
+
+# -- Kafka Connect (__ENV_OAUTH_CONNECT_CLIENT_ID__) ----------------------------------
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: connect-resourceowner-config-topic
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/component: kafka-connect
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_OAUTH_CONNECT_CLIENT_ID__"
+  role: ResourceOwner
+  resourcePatterns:
+    - resourceType: Topic
+      name: connect-cluster-configs
+      patternType: LITERAL
+    - resourceType: Topic
+      name: connect-cluster-offsets
+      patternType: LITERAL
+    - resourceType: Topic
+      name: connect-cluster-status
+      patternType: LITERAL
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-uat
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: connect-resourceowner-group
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/component: kafka-connect
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_OAUTH_CONNECT_CLIENT_ID__"
+  role: ResourceOwner
+  resourcePatterns:
+    - resourceType: Group
+      name: connect-cluster
+      patternType: LITERAL
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-uat
+---
+
+# SystemAdmin cluster-scope for Connect -- fixes MDS "User Identity not found" 401s from RefreshActiveMetadataServerUrls once A27 discovery is resolved.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: connect-systemadmin
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/component: kafka-connect
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_OAUTH_CONNECT_CLIENT_ID__"
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-uat
+---
+
+# -- Kafka REST Proxy (__ENV_OAUTH_REST_CLIENT_ID__) -------------------------------
+# SystemAdmin cluster-scope for Phase 2; tighten per-topic once we know which topics REST clients exercise.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: kafkarest-systemadmin
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/component: kafka-rest-proxy
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_OAUTH_REST_CLIENT_ID__"
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-uat
+---
+
+# -- Control Center (__ENV_OAUTH_C3_CLIENT_ID__) ---------------------------------
+# SystemAdmin cluster-scope for Phase 2 — C3's own producers (heartbeat, metrics, monitoring interceptor, streams) need IdempotentWrite + Write on _confluent-controlcenter*/monitoring*/metrics*. Tighten later.
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: controlcenter-systemadmin
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/component: control-center
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_OAUTH_C3_CLIENT_ID__"
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-uat
+---
+
+# -- Kafka embedded REST (kafka.dah-flink-uat.svc.cluster.local) ---------
+
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: kafka-embedded-rest-systemadmin
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: kafka-broker
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: kafka.dah-flink-uat.svc.cluster.local
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-uat

@@ -13,7 +13,7 @@ metadata:
   name: controlcenter
   namespace: dah-flink-uat
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-c3-basic-auth"
+    platform.confluent.io/force-reconcile: "2026-08-21-force-pod-restart-v2"
   labels:
     app.kubernetes.io/name: controlcenter
     app.kubernetes.io/component: control-center
@@ -34,31 +34,32 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  # 15 Gi dev; VM target 300 Gi.
-  dataVolumeCapacity: 15Gi
+  # Control Center working/RocksDB state. Prometheus has a separate 100 Gi PVC.
+  dataVolumeCapacity: 100Gi
   storageClass:
     name: kafka
 
   license:
     secretRef: cfk-license
 
-  # tls:
-#    secretRef: controlcenter-tls
+  tls:
+    secretRef: controlcenter-tls
 
-  # JVM outbound trust store (runbook A21).
+  # JVM-wide outbound trust store for Okta/OIDC and FCB endpoints. Created by create-prereqs.
   mountedVolumes:
     volumes:
       - name: fcb-trust-bundle
         configMap:
           name: fcb-trust-bundle
           items:
-            - key: bundle.jks
-              path: bundle.jks
+            - key: bundle.p12
+              path: bundle.p12
     volumeMounts:
       - name: fcb-trust-bundle
         mountPath: /var/ssl/truststore
         readOnly: true
 
+  # No superUsers — all access via ConfluentRolebindings.
   authorization:
     type: rbac
 
@@ -67,6 +68,27 @@ spec:
     maxUnavailable: 1
 
   dependencies:
+    # Control Center Next Gen reads metrics and alerts from its bundled
+    # Prometheus/Alertmanager services. The same basic-auth Secrets are used
+    # by the corresponding server and client blocks.
+    prometheusClient:
+      url: https://controlcenter.dah-flink-uat.svc.cluster.local:9090
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-prom-client-basic-auth
+      tls:
+        enabled: true
+        secretRef: controlcenter-tls
+    alertManagerClient:
+      url: https://controlcenter.dah-flink-uat.svc.cluster.local:9093
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-alert-client-basic-auth
+      tls:
+        enabled: true
+        secretRef: controlcenter-tls
     # Dep-to-Kafka: flat oauth+jaasConfig (runbook A22).
     kafka:
       bootstrapEndpoint: kafka.dah-flink-uat.svc.cluster.local:9092
@@ -77,7 +99,6 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahUAT_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -103,7 +124,6 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahUAT_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -126,7 +146,6 @@ spec:
             configuration:
               audience: "Confluent,account,api://default"
               expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-              groupsClaimName: dahUAT_groups
               subClaimName: sub
               jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
               tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -143,6 +162,7 @@ spec:
       tls:
         enabled: true
         secretRef: kafka-tls
+        ignoreTrustStoreConfig: false
       tokenKeyPair:
         secretRef: mds-token-keypair
       authentication:
@@ -152,7 +172,6 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahUAT_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -166,13 +185,56 @@ spec:
       name: default
       namespace: dah-flink-uat
 
-  # Prometheus + AlertManager bundle deferred; c3-*-basic-auth Secrets already exist.
+  # Control Center Next Gen bundled observability services. Confluent requires
+  # C3, Prometheus, and Alertmanager to use the same release tag.
+  services:
+    prometheus:
+      image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-prometheus:2.5.0
+      # OpenShift ResourceQuota validates every generated container. These
+      # limits are for the bundled Prometheus container, not the main C3
+      # container covered by spec.podTemplate.resources.
+      containerTemplate:
+        resources:
+          requests:
+            cpu: 375m
+            memory: 1Gi
+          limits:
+            cpu: "1250m"
+            memory: 3Gi
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-prom-server-basic-auth
+      tls:
+        secretRef: controlcenter-tls
+      pvc:
+        # CFK 3.2 does not propagate spec.storageClass to this nested PVC.
+        # The pipeline pre-creates prometheus-data-controlcenter-0 from
+        # controlcenter-prometheus-pvc.yaml with storageClassName: kafka.
+        dataVolumeCapacity: 100Gi
+    alertmanager:
+      image: artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-enterprise-alertmanager:2.5.0
+      # ResourceQuota also requires explicit resources for Alertmanager.
+      containerTemplate:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+      authentication:
+        type: basic
+        basic:
+          secretRef: c3-alert-server-basic-auth
+      tls:
+        secretRef: controlcenter-tls
 
   configOverrides:
     jvm:
-      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.p12"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
-      - "-Djavax.net.ssl.trustStoreType=JKS"
+      - "-Djavax.net.ssl.trustStoreType=PKCS12"
     server:
       # Do NOT set confluent.controlcenter.data.dir here — CFK mounts the PVC at /mnt/data/data0 (runbook A25).
       - confluent.controlcenter.streams.num.stream.threads=12
@@ -191,12 +253,25 @@ spec:
       - confluent.controlcenter.streams.sasl.oauthbearer.scope=11547.DAH(UAT)
 
       # Explicit trustStore for C3's Armeria/Netty HTTP client to Okta -- JVM -Djavax.net.ssl.trustStore doesn't propagate to Netty SSL contexts (runbook A28).
-      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.jks
+      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.p12
       - confluent.metadata.ssl.truststore.password=changeit
-      - confluent.metadata.ssl.truststore.type=JKS
-      - confluent.controlcenter.streams.ssl.truststore.location=/var/ssl/truststore/bundle.jks
+      - confluent.metadata.ssl.truststore.type=PKCS12
+      - confluent.controlcenter.streams.ssl.truststore.location=/var/ssl/truststore/bundle.p12
       - confluent.controlcenter.streams.ssl.truststore.password=changeit
-      - confluent.controlcenter.streams.ssl.truststore.type=JKS
+      - confluent.controlcenter.streams.ssl.truststore.type=PKCS12
+
+      # REST client truststore for Control Center's OIDC/OAuth token exchange (internal HTTP calls to Okta).
+      - confluent.controlcenter.rest.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.controlcenter.rest.ssl.truststore.password=changeit
+      - confluent.controlcenter.rest.ssl.truststore.type=PKCS12
+      - confluent.controlcenter.rest.ssl.endpoint.identification.algorithm=https
+
+      # Generic OAuth/OIDC client context. Control Center Next Gen uses this
+      # context during the authorization-code callback and token exchange.
+      - client.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - client.ssl.truststore.password=changeit
+      - client.ssl.truststore.type=PKCS12
+      - client.ssl.endpoint.identification.algorithm=https
 
       # Monitoring interceptor client.
       - confluent.monitoring.interceptor.security.protocol=SASL_SSL
@@ -208,14 +283,14 @@ spec:
 
   podTemplate:
     serviceAccountName: flink-operator
-    # Dev-smoke sizing (runbook F2). VM/UAT target 12/16.
+    # QA migration sizing within the namespace quota.
     resources:
       requests:
-        cpu: "1"
-        memory: 2Gi
+        cpu: "500m"
+        memory: 3Gi
       limits:
-        cpu: "2"
-        memory: 4Gi
+        cpu: "1500m"
+        memory: 6Gi
     # OpenShift restricted-v2 SCC assigns the UID range (runbook E1).
     podSecurityContext: {}
     labels:

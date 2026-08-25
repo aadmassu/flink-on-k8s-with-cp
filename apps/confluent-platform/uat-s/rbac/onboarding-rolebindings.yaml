@@ -1,6 +1,6 @@
 ---
 ########################################################################
-# Description: Application-onboarding RBAC for UAT-S.
+# Description: Application-onboarding RBAC for QA.
 #
 # This file is the single source of truth for application onboarding RBAC.
 # The application-rbac pipeline applies these resources unchanged. Update
@@ -84,7 +84,7 @@ metadata:
 spec:
   principal:
     type: group
-    name: "qa_app_okta_digital_analytics_hub_users"
+    name: "ut_app_okta_digital_analytics_hub_users"
   role: ClusterAdmin
   kafkaRestClassRef:
     name: default
@@ -104,7 +104,7 @@ metadata:
 spec:
   principal:
     type: group
-    name: "qa_app_okta_digital_analytics_hub_users"
+    name: "ut_app_okta_digital_analytics_hub_users"
   role: SystemAdmin
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_dah-flink-uat
@@ -126,7 +126,7 @@ metadata:
 spec:
   principal:
     type: group
-    name: "qa_app_okta_digital_analytics_hub_users"
+    name: "ut_app_okta_digital_analytics_hub_users"
   role: SystemAdmin
   clustersScopeByIds:
     connectClusterId: dah-flink-uat.connect

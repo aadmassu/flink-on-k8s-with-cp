@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ENV_DIR=${1:-apps/confluent-platform/qa}
+ENV_DIR=${1:?manifest directory is required}
 
 if [ ! -d "$ENV_DIR" ]; then
-  echo "FATAL: QA manifest directory does not exist: $ENV_DIR" >&2
+  echo "FATAL: manifest directory does not exist: $ENV_DIR" >&2
   exit 1
 fi
 
@@ -17,11 +17,11 @@ require_id() {
   fi
 }
 
-require_id QA_OAUTH_BROKER_ID
-require_id QA_OAUTH_SR_ID
-require_id QA_OAUTH_CONNECT_ID
-require_id QA_OAUTH_REST_ID
-require_id QA_OAUTH_C3_ID
+require_id OAUTH_BROKER_ID
+require_id OAUTH_SR_ID
+require_id OAUTH_CONNECT_ID
+require_id OAUTH_REST_ID
+require_id OAUTH_C3_ID
 
 python3 - "$ENV_DIR" <<'PY'
 import os
@@ -30,11 +30,16 @@ import sys
 
 env_dir = pathlib.Path(sys.argv[1])
 replacements = {
-    "__QA_OAUTH_BROKER_CLIENT_ID__": os.environ["QA_OAUTH_BROKER_ID"],
-    "__QA_OAUTH_SR_CLIENT_ID__": os.environ["QA_OAUTH_SR_ID"],
-    "__QA_OAUTH_CONNECT_CLIENT_ID__": os.environ["QA_OAUTH_CONNECT_ID"],
-    "__QA_OAUTH_REST_CLIENT_ID__": os.environ["QA_OAUTH_REST_ID"],
-    "__QA_OAUTH_C3_CLIENT_ID__": os.environ["QA_OAUTH_C3_ID"],
+    "__QA_OAUTH_BROKER_CLIENT_ID__": os.environ["OAUTH_BROKER_ID"],
+    "__QA_OAUTH_SR_CLIENT_ID__": os.environ["OAUTH_SR_ID"],
+    "__QA_OAUTH_CONNECT_CLIENT_ID__": os.environ["OAUTH_CONNECT_ID"],
+    "__QA_OAUTH_REST_CLIENT_ID__": os.environ["OAUTH_REST_ID"],
+    "__QA_OAUTH_C3_CLIENT_ID__": os.environ["OAUTH_C3_ID"],
+    "__ENV_OAUTH_BROKER_CLIENT_ID__": os.environ["OAUTH_BROKER_ID"],
+    "__ENV_OAUTH_SR_CLIENT_ID__": os.environ["OAUTH_SR_ID"],
+    "__ENV_OAUTH_CONNECT_CLIENT_ID__": os.environ["OAUTH_CONNECT_ID"],
+    "__ENV_OAUTH_REST_CLIENT_ID__": os.environ["OAUTH_REST_ID"],
+    "__ENV_OAUTH_C3_CLIENT_ID__": os.environ["OAUTH_C3_ID"],
 }
 
 changed = 0
@@ -50,16 +55,16 @@ for path in sorted(env_dir.rglob("*.yaml")):
 remaining = []
 for path in sorted(env_dir.rglob("*.yaml")):
     text = path.read_text(encoding="utf-8")
-    if "__QA_OAUTH_" in text:
+    if "__QA_OAUTH_" in text or "__ENV_OAUTH_" in text:
         remaining.append(str(path))
 
 if remaining:
-    print("FATAL: unresolved QA identity tokens remain:", file=sys.stderr)
+    print("FATAL: unresolved identity tokens remain:", file=sys.stderr)
     for path in remaining:
         print("  " + path, file=sys.stderr)
     raise SystemExit(1)
 
-print("Rendered verified QA identities into {} manifest file(s).".format(changed))
+print("Rendered verified environment identities into {} manifest file(s).".format(changed))
 PY
 
-echo "PASS: QA manifests contain no unresolved identity tokens."
+echo "PASS: manifests contain no unresolved identity tokens."

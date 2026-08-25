@@ -1,13 +1,5 @@
-Environment: uat-p
+Environment: qa
 Generated: 2026-08-12
-Shared Namespace: dah-flink-uat (UAT-P and UAT-S mirror sites)
-
-NOTES ON SHARED DEPLOYMENT:
-- UAT-P and UAT-S are two mirrored sites deployed to the SAME Kubernetes namespace (dah-flink-uat).
-- Both environments target the same CyberArk path hierarchy (uat-*).
-- CyberArk Secrets are idempotent: creating this inventory in both directories allows independent
-  deployment coordination without duplicating the Secret objects.
-- All 14 Secrets below are shared — no per-site variation.
 
 Secret Name | Azure Variable | CyberArk Path | Status
 ------------|--------------------|-----------------|--------

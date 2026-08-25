@@ -1,45 +1,36 @@
-# CFK Confluent Platform — dev
+# CFK Confluent Platform — qa
 
-CFK Custom Resources that reproduce the existing dev VM Confluent Platform cluster on OpenShift. Every CR in this folder is authored against the corresponding `.properties` file under [`../cp-confluent/dev/`](../cp-confluent/dev/) — that's the source of truth for parity.
+CFK Custom Resources that reproduce the existing qa VM Confluent Platform cluster on OpenShift. Every CR in this folder is authored against the corresponding `.properties` file under [`../cp-confluent/qa/`](../cp-confluent/qa/) — that's the source of truth for parity.
 
-> ⚠️ **Heads-up — broker/controller CPU+memory AND all PVC sizes have been scaled down from the VM allocation.** Two separate constraints drove this:
->
-> **1. Worker-node fit (2026-05-12)**: FCB worker nodes are **16 vCPU / 32 GiB**. VM brokers got 16 vCPU / 16 GiB and controllers 4 vCPU / 4 GiB at 2%/9% utilization — but carrying those request sizes into K8s leaves the broker pods stuck `Pending` (kubelet reserves ~1–2 vCPU, leaving ~14 allocatable).
->
-> **2. Namespace ResourceQuota (2026-05-13)**: `dah-flink-uat` has a 10 GiB total `requests.storage` cap. Original VM-sized PVCs (3 × 1 TiB brokers + 3 × 64 GiB controllers + 300 GiB C3 = ~3.5 TiB) exceeded the cap 350×. Until Tom raises the quota, dev PVCs are tightly sized to fit exactly 10 GiB.
->
-> | Component | Old (VM) | **CFK `request` / `limit`** | **PVC (TEMP, until quota raised)** |
-> |---|---|---|---|
-> | Broker (×3) | 16 vCPU / 16 GiB / 1 TiB | **2 / 4 vCPU**, **4 / 8 GiB** | **2 GiB** (was 1 TiB) |
-> | KRaft ctrlr (×3) | 4 vCPU / 4 GiB / 64 GiB | **1 / 2 vCPU**, **2 / 2 GiB** | **1 GiB** (was 64 GiB) |
-> | C3 | 12 vCPU / 16 GiB / 300 GiB | unchanged | **1 GiB** (was 300 GiB) |
->
-> Total dev PVC ask: 6 + 3 + 1 = 10 GiB, fits the namespace quota exactly. Bump back to VM-sized PVCs (1 TiB brokers, 64 GiB controllers, 300 GiB C3) the day Tom raises the namespace `requests.storage` quota. CPU/memory limits stay where they are — those are about the 16/32 worker fit, separate from the quota.
->
-> Full table + per-node co-tenancy math in the [Capacity](#capacity-cfk-cr-settings-vs-vm-source) section below. SR / Connect / REST / C3 CPU+memory unchanged — those VM sizes already fit a 16/32 worker.
+> **UAT migration sizing (2026-08-15):** ResourceQuota now permits
+> 1,272 Gi of requested storage. This package assigns 1,175 Gi to CFK and
+> leaves 97 Gi free: Kafka 3 x 300 Gi, KRaft 3 x 25 Gi, Control Center
+> 100 Gi, and bundled Prometheus 100 Gi. See
+> [`UAT_RESOURCE_BUDGET.md`](UAT_RESOURCE_BUDGET.md) for the complete CPU,
+> memory, storage, and reserved-capacity calculation.
 
 ## Target
 
 - **Confluent Platform**: 8.1.x
 - **CFK operator**: latest version that supports CP 8.1.x. Operator install is owned by FCB's Container Platforms team; FCB will upgrade if a newer version is required.
 - **Namespace**: `dah-flink-uat` (CFK operator lives in its own namespace and watches `dah-flink-<env>`)
-- **Mode**: KRaft (3 controllers, 3 brokers) — matching the dev VM cluster
+- **Mode**: KRaft (3 controllers, 3 brokers) — matching the qa VM cluster
 
-## Topology mirrored from VM dev
+## Topology mirrored from VM qa
 
 | Component | Replicas | VM hosts | CR file |
 |---|---|---|---|
-| KRaft Controller | 3 | `t11547varc-00c1`, `kprg`, `zg6u` | [`kraftcontroller.yaml`](kraftcontroller.yaml) |
-| Kafka Broker | 3 | `t11547varc-9vdq`, `9tcm`, `mcae` | [`kafka.yaml`](kafka.yaml) |
-| Schema Registry | 1 | `t11547varc-b9eb`, `lntz` | [`schemaregistry.yaml`](schemaregistry.yaml) |
-| Connect | 2 | `t11547varc-4zxw`, `5cr4` | [`connect.yaml`](connect.yaml) |
-| Kafka REST Proxy | 1 | `t11547varc-0wjc`, `amm5` | [`kafkarest.yaml`](kafkarest.yaml) |
-| Control Center | 1 | `t11547varc-mdnp` | [`controlcenter.yaml`](controlcenter.yaml) |
+| KRaft Controller | 3 | `d11547varc-jxvh`, `pnvg`, `d2kd` | [`kraftcontroller.yaml`](kraftcontroller.yaml) |
+| Kafka Broker | 3 | `d11547varc-pgm8`, `g719`, `81mb` | [`kafka.yaml`](kafka.yaml) |
+| Schema Registry | 2 | `d11547varc-4559` | [`schemaregistry.yaml`](schemaregistry.yaml) |
+| Connect | 2 | `d11547varc-y0lb`, `rigt` | [`connect.yaml`](connect.yaml) |
+| Kafka REST Proxy | 1 | `d11547varc-hsu5` | [`kafkarest.yaml`](kafkarest.yaml) |
+| Control Center | 1 | `d11547varc-g5w0` | [`controlcenter.yaml`](controlcenter.yaml) |
 
 ## Folder layout
 
 ```
-dev/
+qa/
 ├── README.md                  (this file)
 ├── kafkarestclass.yaml        \
 ├── kraftcontroller.yaml        |
@@ -48,6 +39,8 @@ dev/
 ├── connect.yaml                |
 ├── kafkarest.yaml              |
 ├── controlcenter.yaml         /
+├── controlcenter-prometheus-pvc.yaml ── explicit kafka-SC PVC
+├── UAT_RESOURCE_BUDGET.md     ── quota and headroom calculation
 └── prereqs/                   ── supporting prerequisites (TLS Certificates + prereqs README)
     ├── README.md
     └── *-tls-certificate.yaml
@@ -55,50 +48,69 @@ dev/
 
 CFK CRs live at the root for clear grouping. The `prereqs/` subfolder holds the cert-manager `Certificate` CRs that land the six `*-tls` Secrets, plus its own [README](prereqs/README.md) documenting the 11 non-TLS Opaque Secrets the pipeline creates from variable-group values.
 
+## Infrastructure ownership — NetworkPolicy
+
+**NetworkPolicy is owned and managed exclusively by the Container Platforms team** in UAT and all upper environments (uat-p, uat-s, prd, dr). The application pipeline:
+
+- **Never creates, modifies, or deletes** NetworkPolicy in non-DEV environments
+- **Skips NetworkPolicy validation and ingress-router port checking** for non-DEV
+- **Prints an informational message** during install/uninstall to remind operators that network rules are managed by FCB Container Platforms
+- **Fails hard** (exit 1) if a `network-policy/` directory is found in a non-DEV environment's manifest tree
+
+**DEV is the exception.** The application pipeline manages NetworkPolicy in dev only; the Container Platforms team owns the function in all other environments and will apply equivalent rules as part of their upper-environment provisioning.
+
+Contact Rick Mulder (Principal Infrastructure Engineer, Container Platforms) or submit a SNOW request if you need network access changes in UAT or higher.
+
 ## Apply order
 
-Run the pipeline twice — `create-prereqs` first, then `install`. CFK reconciles in dependency order itself, but the pipeline applies in this sequence so any failure attributes to the right component:
+Run the pipeline twice — `create-prereqs` first, then `install-or-update`.
+For a destructive migration rebuild, run `uninstall` with `wipePVCs=true`
+first. The pipeline applies in this sequence so failures attribute correctly:
 
-1. **`create-prereqs` action** — pipeline creates the 11 non-TLS Opaque Secrets from `kafka-openshift-credentials-<env>` variable group entries. See [`prereqs/README.md`](prereqs/README.md) for the variable mapping.
-2. **`install` action**:
-   1. Apply the six TLS `Certificate` CRs under `prereqs/`. Pipeline waits up to 10 min per cert for Keyfactor to materialize each `*-tls` Secret.
+1. **`create-prereqs` action** — pipeline creates the non-TLS Opaque Secrets from `kafka-openshift-credentials-<env>` variable group entries. See [`prereqs/README.md`](prereqs/README.md) for the variable mapping.
+2. **`install-or-update` action**:
+   1. Apply the TLS `Certificate` CRs under `cert-manager/`. Pipeline waits for Keyfactor to materialize each `*-tls` Secret.
    2. `kafkarestclass.yaml` — connection profile referenced by Connect + ControlCenter.
    3. `kraftcontroller.yaml` — KRaft quorum must be up before brokers register.
    4. `kafka.yaml` — brokers join the quorum.
    5. `schemaregistry.yaml` — uses Kafka as its kafkastore.
    6. `connect.yaml` — needs Kafka + SR.
    7. `kafkarest.yaml` — needs Kafka + SR.
-   8. `controlcenter.yaml` — depends on all of the above.
+   8. `controlcenter-prometheus-pvc.yaml` — creates the nested Prometheus claim with `storageClassName: kafka`.
+   9. `controlcenter.yaml` — depends on all of the above.
+
+## Application onboarding RBAC
+
+Application/user access is intentionally separate from cluster installation.
+Run `.azure-pipelines/application-rbac.yaml` after the UAT cluster is ready.
+The UAT variable group must contain the verified token identities below:
+
+| Variable | Required value |
+|---|---|
+| `uat-rbac-onboarding-user-sub` | UAT user's exact OIDC `sub` claim |
+| `uat-rbac-onboarding-developer-group` | Exact UAT developer group claim emitted in the token |
+
+The pipeline renders these only into temporary files. In
+`direct-mds-bootstrap` mode, `@live` in the JSON input is replaced with the
+new Kafka CR's live `status.clusterID`; a destructive reinstall therefore
+does not leave a stale hard-coded Kafka cluster ID.
 
 ## Capacity (CFK CR settings vs. VM source)
 
 | Component | CR `requests` | CR `limits` | Disk | VM allocation / utilization |
 |---|---|---|---|---|
-| Broker (×3) | 2 vCPU / 4 Gi | 4 vCPU / 8 Gi | **2 GiB** (TEMP) | VM 16 vCPU / 16 GiB; actual usage 2% CPU / 20% mem |
-| Controller (×3) | 1 vCPU / 2 Gi | 2 vCPU / 2 Gi | **1 GiB** (TEMP) | VM 4 vCPU / 4 GiB; 9% utilization (actual ~0.36 vCPU / 0.36 GiB) |
-| Schema Registry | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB; stable moderate |
-| REST Proxy | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB |
-| Connect (×2) | 4 vCPU / 4 Gi | 4 vCPU / 4 Gi | — | VM 4 vCPU / 4 GiB; moderate |
-| Control Center | 12 vCPU / 16 Gi | 12 vCPU / 16 Gi | **1 GiB** (TEMP) | VM 12 vCPU / 16 GiB; stable |
+| Broker (×3) | 1 vCPU / 3 Gi | 2 vCPU / 6 Gi | **300 Gi each** | Migration priority |
+| Controller (×3) | 0.75 vCPU / 2 Gi | 1.5 vCPU / 3 Gi | **25 Gi each** | Quorum headroom |
+| Schema Registry (×2) | 0.15 vCPU / 768 Mi | 0.5 vCPU / 1.5 Gi | — | Stateless |
+| REST Proxy | 0.125 vCPU / 512 Mi | 0.375 vCPU / 1 Gi | — | Stateless |
+| Connect (×2) | 0.25 vCPU / 1 Gi | 0.5 vCPU / 2 Gi | — | Stateless; state in Kafka |
+| Control Center | 0.5 vCPU / 3 Gi | 1.5 vCPU / 6 Gi | **100 Gi** | Working/RocksDB state |
+| C3 Prometheus | 0.375 vCPU / 1 Gi | 1.25 vCPU / 3 Gi | **100 Gi** | Pre-created PVC |
+| C3 Alertmanager | 0.1 vCPU / 512 Mi | 0.5 vCPU / 1 Gi | — | No PVC |
 
-**Broker sizing rationale**: FCB worker nodes are **16 vCPU / 32 GiB** (per Tom). The VM had 100% of a 16-vCPU box, but only used 2% CPU and 20% memory. On a K8s node, requesting that full VM allocation makes the broker un-schedulable (kubelet + OpenShift system daemons reserve ~1–2 vCPU). The CR `requests` are sized at ~6× actual dev usage — comfortable headroom — and the `limits` allow the broker to burst when needed without monopolizing a worker.
-
-**Controller sizing rationale**: KRaft controllers handle metadata-log writes only (topic creates, partition reassignments, leader elections), no data-path traffic. VM was 4 vCPU / 4 GiB at 9% utilization — actual usage ~0.36 vCPU and ~0.36 GiB. Shrunk to `request: 1 vCPU / 2 Gi`, `limit: 2 vCPU / 2 Gi` — still ~3× CPU and ~5× memory over actual.
-
-**Co-tenancy on a 16 vCPU / 32 GiB worker** with one broker + one controller co-located (per the anti-affinity rules):
-
-```
-broker     limit  4 vCPU / 8 GiB
-controller limit  2 vCPU / 2 GiB
-system            ~2 vCPU / ~4 GiB   (kubelet, OpenShift node-exporter, ovs-cni, etc.)
-─────────────────────────────────────
-total used        ~8 vCPU / ~14 GiB
-free on worker    ~8 vCPU / ~18 GiB  (for CMF, monitoring, other CFK pods)
-```
-
-**SR / REST / Connect / C3** match VM allocation 1:1 — those VMs were 4 vCPU / 4 GiB (12 / 16 for C3), and there's no scheduling issue at those sizes on a 16/32 worker.
-
-If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, raise `limits` first (JVM heap auto-tunes to ~75% of memory limit); request increases only if average load consistently exceeds requests.
+The pipeline performs a live quota projection before mutation. It subtracts
+the currently deployed CFK footprint, adds this desired footprint, and reserves
+capacity for Flink and operations. It fails rather than consuming the reserve.
 
 ## What's preserved vs adapted from the VM config
 
@@ -107,7 +119,7 @@ If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, rai
 - Log retention 168h (7d), 1 GiB segments
 - Min ISR for transaction-state log = 2
 - KRaft quorum size = 3
-- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, scope `11547.DAH(UAT)`
+- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, and UAT scope `11547.DAH(UAT)`
 - Authorizer: `ConfluentServerAuthorizer` with `CONFLUENT,KRAFT_ACL` rule providers
 - Embedded MDS on broker port 8090 (HTTPS, BEARER)
 - Self-Balancing Cluster (SBC) enabled
@@ -121,7 +133,7 @@ If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, rai
 - Confluent license → `confluent-license` Secret (already used by CMF)
 - Kafka admin REST (VM `kafka.rest.*` on broker) → CFK `KafkaRestClass` CR (`kafkarestclass.yaml`) referenced by Connect + ControlCenter
 - `log.dirs=/data/kafka` → CFK PV with the storage class FCB approves; mount path is operator-managed
-- Container images use the same Artifactory pattern as Flink: `artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-*:8.1.0` for dev / qa / uat, `-docker-prod` for prd
+- Container images use the same Artifactory pattern as Flink: `artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-*:8.1.3` (UAT pulls from DEV repo) and `-docker-prod` for prd
 - External Kafka access: `loadBalancer` type — CFK creates per-broker LBs plus a bootstrap LB
 
 **Storage** (resolved from [`docs/OpenShift Persistent Storage.pdf`](../../../docs/OpenShift%20Persistent%20Storage.pdf)):
@@ -160,8 +172,8 @@ KRaft controller (64 GB) and C3 (300 GB) volumes are under the 500 GB threshold 
 - **CFK / init container**: `0.1351.59` (matches the vendored chart `charts/confluent-for-kubernetes/` `appVersion: 3.1.1`, operator image `confluentinc/confluent-operator:0.1351.59`). The same tag is used for `confluentinc/confluent-init-container`. If FCB's Container Platforms upgrades the operator, bump these in lockstep.
 - **Service account**: `flink-operator` — same SA the CMF and Flink Operator pods run under. RBAC is owned by FCB's `fcb-security` ArgoCD chart in `dah-flink-uat`.
 - **External Kafka LB** (tentative — confirm with Tom; needs hostname under `*.ocp.fcbint.net` per Keyfactor approver-policy):
-  - bootstrap: `bootstrap.kafka.dev.dah.fcbint.net`
-  - brokers: `b0/b1/b2.kafka.dev.dah.fcbint.net`
+  - bootstrap: `bootstrap.kafka.qa.dah.fcbint.net`
+  - brokers: `b0/b1/b2.kafka.qa.dah.fcbint.net`
   - **Note**: these SANs are *not* in the cert today — Keyfactor rejected the request as a policy violation (allowed suffixes are `*.svc`, `*.svc.cluster.local`, `*.ocp.fcbint.net`; `*.dah.fcbint.net` is not allowed). Internal cluster bringup is unaffected (CMF, Flink jobs use the internal `*.svc.cluster.local` listener). Re-add the SANs once a real LB hostname is allocated under `*.ocp.fcbint.net`.
 - **External C3 UI** (tentative): same situation — SAN removed from the cert until a real Route hostname under `*.apps.<cluster>.ocp.fcbint.net` is allocated.
 
@@ -186,6 +198,6 @@ The keypair should not rotate (rotation invalidates outstanding tokens), so this
 
 ## Cross-reference
 
-- VM reference properties: [`../cp-confluent/dev/`](../cp-confluent/dev/)
+- VM reference properties: [`../cp-confluent/qa/`](../cp-confluent/qa/)
 - Project memory on the migration plan: `project_cfk_migration.md`
 - Flink stays pointed at the VM cluster until migration completes: `project_flink_targets_vm_cp.md`

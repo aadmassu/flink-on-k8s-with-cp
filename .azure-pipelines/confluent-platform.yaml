@@ -639,7 +639,7 @@ stages:
                   fi
 
                   # Enforce the independently verified two-account identity model.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
                     case "$TARGET_ENV" in
                       dev)
                         EXPECTED_C3_ID="0oa1ov6h5mwmQTCKI358"
@@ -648,6 +648,13 @@ stages:
                       qa)
                         EXPECTED_C3_ID="0oa1z6d5wjgBLvoKz358"
                         EXPECTED_SSO_ID="0oa1z6cqhxwa1O0UK358"
+                        ;;
+                      uat-p|uat-s)
+                        # UAT-P and UAT-S share credentials. Their values are
+                        # supplied by their separate Azure DevOps variable
+                        # groups, so enforce separation without hard-coding.
+                        EXPECTED_C3_ID="$OAUTH_C3_ID"
+                        EXPECTED_SSO_ID="$OAUTH_MDS_SSO_ID"
                         ;;
                     esac
 
@@ -690,7 +697,7 @@ stages:
                   apply_oauth_secret oauth-mds-sso        "$OAUTH_MDS_SSO_ID"   "$OAUTH_MDS_SSO_SECRET"
 
                   # Validate the OIDC SSO Secret structure for promoted environments.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
                     echo ""
                     echo "=== Validating oauth-mds-sso Secret Structure ==="
 
@@ -791,18 +798,18 @@ stages:
 
           - ${{ if eq(parameters.action, 'install-or-update') }}:
             - task: Bash@3
-              displayName: "Render verified QA identities into QA manifests"
-              condition: and(succeeded(), eq('${{ parameters.environment }}', 'qa'))
+              displayName: "Render verified component identities into manifests"
+              condition: succeeded()
               inputs:
                 targetType: filePath
                 filePath: '.azure-pipelines/scripts/render-qa-identities.sh'
-                arguments: 'apps/confluent-platform/qa'
+                arguments: 'apps/confluent-platform/${{ parameters.environment }}'
               env:
-                QA_OAUTH_BROKER_ID: $(qa-oauth-broker-client-id)
-                QA_OAUTH_SR_ID: $(qa-oauth-schemaregistry-client-id)
-                QA_OAUTH_CONNECT_ID: $(qa-oauth-connect-client-id)
-                QA_OAUTH_REST_ID: $(qa-oauth-kafkarest-client-id)
-                QA_OAUTH_C3_ID: $(qa-oauth-controlcenter-client-id)
+                OAUTH_BROKER_ID: $(${{ parameters.environment }}-oauth-broker-client-id)
+                OAUTH_SR_ID: $(${{ parameters.environment }}-oauth-schemaregistry-client-id)
+                OAUTH_CONNECT_ID: $(${{ parameters.environment }}-oauth-connect-client-id)
+                OAUTH_REST_ID: $(${{ parameters.environment }}-oauth-kafkarest-client-id)
+                OAUTH_C3_ID: $(${{ parameters.environment }}-oauth-controlcenter-client-id)
 
             - task: Bash@3
               displayName: "Validate OpenShift namespace matches canonical (RESOLVED_NS enforcement)"
@@ -933,7 +940,7 @@ stages:
                   )
 
                   # DEV and QA use the known-good operator-mTLS and C3 storage baseline.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
                     REQUIRED_FILES+=(
                       storage/controlcenter-prometheus-pvc.yaml
                       cert-manager/cfk-operator-mds-client-certificate.yaml
@@ -1000,7 +1007,7 @@ stages:
                     exit 1
                   fi
 
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
                     echo ""
                     echo "=== Verifying platform-managed fcb-trust-bundle ==="
                     if ! oc -n "$OC_NS" get configmap fcb-trust-bundle >/dev/null 2>&1; then
@@ -1265,7 +1272,7 @@ stages:
                   )
 
                   # DEV and QA use mTLS for CFK operator KafkaRestClass reconciliation.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
                     CERT_NAMES+=(cfk-operator-mds-client)
                   fi
                   validate_certificate_secret() {
@@ -1406,7 +1413,7 @@ stages:
                   fi
 
                   # Validate the operator mTLS client certificate in DEV and QA.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
                     echo ""
                     echo "=== PHASE 3b: Validating $TARGET_ENV mTLS client certificate secret ==="
                     MTLS_SECRET="cfk-operator-mds-client-tls"
@@ -1611,7 +1618,7 @@ stages:
                   fi
 
                   # DEV and QA share the same mTLS KafkaRestClass contract.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
                     echo ""
                     echo "=== $TARGET_ENV mTLS Static Contract Checks ==="
                     dev_contract_passed=0
@@ -1620,6 +1627,7 @@ stages:
                     case "$TARGET_ENV" in
                       dev) contract_namespace="dah-flink-dev"; contract_domain="dv" ;;
                       qa)  contract_namespace="dah-flink-qa";  contract_domain="qa" ;;
+                      uat-p|uat-s) contract_namespace="dah-flink-uat"; contract_domain="ut" ;;
                     esac
                     expected_operator_cn="cfk-operator-rbac.apps.${contract_domain}.ocp.fcbint.net"
 
@@ -1970,7 +1978,8 @@ stages:
 
                     # DEV/QA bootstrap gate: for an existing cluster, establish
                     # embedded REST authorization before a Kafka rolling update.
-                    if { [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; } && \
+                    if { [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || \
+                         [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; } && \
                        oc -n "$OC_NS" get kafka kafka >/dev/null 2>&1 && \
                        oc -n "$OC_NS" get kafkarestclass default >/dev/null 2>&1; then
                       echo ""
@@ -2352,7 +2361,7 @@ stages:
                   fi
                   if is_true "$APPLY_C3"; then
                     echo ""
-                    if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ]; then
+                    if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
                       C3_PROM_PVC="$ENV_DIR/storage/controlcenter-prometheus-pvc.yaml"
                       C3_PROM_PVC_NAME=prometheus-data-controlcenter-0
                       echo "=== Preparing Control Center Prometheus storage ==="

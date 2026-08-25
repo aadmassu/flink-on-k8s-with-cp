@@ -17,7 +17,7 @@ metadata:
     fcbint.net/app-id: "11547"
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-DEV
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
     metadata.command-issuer.keyfactor.com/Description: "Schema Registry — HTTPS listener"
     metadata.command-issuer.keyfactor.com/Organization: FCB
     metadata.command-issuer.keyfactor.com/Application-ID: "11547"
@@ -29,7 +29,7 @@ spec:
     - schemaregistry.dah-flink-uat.svc.cluster.local
     - schemaregistry-0.schemaregistry.dah-flink-uat.svc.cluster.local
   duration: 8760h0m0s
-  renewBefore: 360h
+  renewBefore: 1080h0m0s
   privateKey:
     algorithm: RSA
     size: 4096

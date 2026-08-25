@@ -12,7 +12,7 @@ metadata:
   name: kafkarest
   namespace: dah-flink-uat
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-phase2-oauth-listeners-full-rewrite"
+    platform.confluent.io/force-reconcile: "2026-08-18-platform-trust-bundle"
   labels:
     app.kubernetes.io/name: kafkarest
     app.kubernetes.io/component: kafka-rest-proxy
@@ -36,19 +36,20 @@ spec:
   license:
     secretRef: cfk-license
 
-  # tls:
-#    secretRef: kafkarest-tls
+  # Like-for-like with the Ansible reference: REST Proxy serves HTTPS.
+  tls:
+    secretRef: kafkarest-tls
 
   mountedVolumes:
     volumes:
-      - name: fcb-trust-bundle
+      - name: oidc-trust-bundle
         configMap:
           name: fcb-trust-bundle
           items:
-            - key: bundle.jks
-              path: bundle.jks
+            - key: bundle.p12
+              path: bundle.p12
     volumeMounts:
-      - name: fcb-trust-bundle
+      - name: oidc-trust-bundle
         mountPath: /var/ssl/truststore
         readOnly: true
 
@@ -70,7 +71,6 @@ spec:
         oauthSettings:
           audience: "Confluent,account,api://default"
           expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahUAT_groups
           subClaimName: sub
           jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
           tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -97,7 +97,6 @@ spec:
           configuration:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahUAT_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -105,20 +104,23 @@ spec:
 
   configOverrides:
     jvm:
-      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.p12"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
-      - "-Djavax.net.ssl.trustStoreType=JKS"
-    server: []
+      - "-Djavax.net.ssl.trustStoreType=PKCS12"
+    server:
+      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.metadata.ssl.truststore.password=changeit
+      - confluent.metadata.ssl.truststore.type=PKCS12
 
   podTemplate:
     serviceAccountName: flink-operator
     resources:
       requests:
-        cpu: "100m"
-        memory: 256Mi
-      limits:
-        cpu: "250m"
+        cpu: "125m"
         memory: 512Mi
+      limits:
+        cpu: "375m"
+        memory: 1Gi
     probe:
       liveness:
         initialDelaySeconds: 60

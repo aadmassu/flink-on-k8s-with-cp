@@ -14,7 +14,7 @@ metadata:
   name: kafka
   namespace: dah-flink-uat
   annotations:
-    platform.confluent.io/force-reconcile: "2026-07-01-brokers-all-components-superusers-workaround"
+    platform.confluent.io/force-reconcile: "2026-08-18-platform-trust-bundle"
   labels:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/component: kafka-broker
@@ -35,7 +35,8 @@ spec:
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 
-  dataVolumeCapacity: 15Gi
+  # Migration capacity: 300 Gi per broker (3 x 300 Gi = 900 Gi).
+  dataVolumeCapacity: 300Gi
   storageClass:
     name: kafka
 
@@ -44,20 +45,6 @@ spec:
 
   tls:
     secretRef: kafka-tls
-
-  # JVM-wide outbound trust store — Okta certs chain through this bundle (runbook A21).
-  mountedVolumes:
-    volumes:
-      - name: fcb-trust-bundle
-        configMap:
-          name: fcb-trust-bundle
-          items:
-            - key: bundle.jks
-              path: bundle.jks
-    volumeMounts:
-      - name: fcb-trust-bundle
-        mountPath: /var/ssl/truststore
-        readOnly: true
 
   pdb:
     enabled: true
@@ -68,8 +55,10 @@ spec:
   authorization:
     type: rbac
     superUsers:
-      - User:0oa1owhtq2olDZWwf358   # DEV broker/MDS superuser
+      - User:__ENV_OAUTH_BROKER_CLIENT_ID__   # QA broker/MDS superuser
       - User:admin                   # internal SASL/PLAIN infrastructure user
+      - User:cfk-operator-rbac       # CFK operator mTLS for KafkaRestClass reconciliation
+      - User:kafka.dah-flink-uat.svc.cluster.local  # Kafka brokers embedded kafkaRest mTLS to MDS
 
   listeners:
     internal:
@@ -113,15 +102,12 @@ spec:
         secretRef: mds-token-keypair
       provider:
         oauth:
-          # ignoreTrustStoreConfig routes Okta HTTPS validation through JVM defaults (runbook A22).
           tls:
             enabled: true
-            secretRef: kafka-tls
-            ignoreTrustStoreConfig: true
+            ignoreTrustStoreConfig: false
           configurations:
             audience: "Confluent,account,api://default"
             expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-            groupsClaimName: dahUAT_groups
             subClaimName: sub
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
@@ -130,6 +116,12 @@ spec:
             loginReadTimeoutMs: 30000
             loginRetryBackoffMaxMs: 5000
             loginRetryBackoffMs: 60000
+        mtls:
+          sslClientAuthentication: requested
+          principalMappingRules:
+            - "RULE:.*CN=cfk-operator-rbac\\.apps\\.qa\\.ocp\\.fcbint\\.net.*$/cfk-operator-rbac/"
+            - "RULE:.*CN=([a-zA-Z0-9.-]*).*$/$1/"
+            - "DEFAULT"
         sso:
           clientCredentials:
             secretRef: oauth-mds-sso
@@ -140,18 +132,19 @@ spec:
             tokenBaseEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
             jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
             groupsClaimName: dahUAT_groups
-            subClaimName: email
-            groupsClaimScope: openid profile email
+            subClaimName: sub
+            groupsClaimScope: 11547.DAH(UAT)
             refreshToken: true
       # Client IDs the operator may act on-behalf-of when reconciling rolebindings (runbook A23).
       impersonation:
         admins:
-          - User:0oa1owhtq2olDZWwf358   # MDS OAuth superuser
-          - User:0oa1owhtq2olDZWwf358   # broker / kafka-rest embedded
-          - User:0oa1owiage2MyoHdt358   # Schema Registry
-          - User:0oa1owi0yntGMBvPS358   # Connect
-          - User:0oa1owi3wkxJS3b3b358   # Kafka REST Proxy
-          - User:0oa1ov6h5mwmQTCKI358   # Control Center
+          - User:__ENV_OAUTH_BROKER_CLIENT_ID__   # MDS OAuth superuser
+          - User:__ENV_OAUTH_SR_CLIENT_ID__   # Schema Registry
+          - User:__ENV_OAUTH_CONNECT_CLIENT_ID__   # Connect
+          - User:__ENV_OAUTH_REST_CLIENT_ID__   # Kafka REST Proxy
+          - User:__ENV_OAUTH_C3_CLIENT_ID__   # Control Center
+          - User:cfk-operator-rbac       # CFK operator mTLS for KafkaRestClass reconciliation
+          - User:kafka.dah-flink-uat.svc.cluster.local  # Kafka brokers embedded kafkaRest mTLS to MDS
 
   dependencies:
     kRaftController:
@@ -174,24 +167,11 @@ spec:
       tls:
         enabled: true
         secretRef: controlcenter-tls
-    # kafkaRest auth shape uses live-CRD flat form (type=oauth + jaasConfig + oauthSettings), NOT the vendored 3.1.x nested shape (runbook A22).
+    # kafkaRest uses mTLS to authenticate to Kafka brokers + MDS (runbook A22).
     kafkaRest:
       authentication:
-        type: oauth
-        jaasConfig:
-          secretRef: oauth-broker
-        oauthSettings:
-          audience: "Confluent,account,api://default"
-          expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
-          groupsClaimName: dahUAT_groups
-          subClaimName: sub
-          jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
-          tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
-          scope: 11547.DAH(UAT)
-          loginConnectTimeoutMs: 10000
-          loginReadTimeoutMs: 30000
-          loginRetryBackoffMaxMs: 5000
-          loginRetryBackoffMs: 60000
+        type: mtls
+        sslClientAuthentication: true
       tls:
         enabled: true
         secretRef: kafka-tls
@@ -208,24 +188,45 @@ spec:
       jaasConfig:
         secretRef: sasl-plain-internal
 
+  mountedVolumes:
+    volumes:
+      - name: fcb-trust-bundle
+        configMap:
+          name: fcb-trust-bundle
+          items:
+            - key: bundle.p12
+              path: bundle.p12
+    volumeMounts:
+      - name: fcb-trust-bundle
+        mountPath: /var/ssl/truststore
+        readOnly: true
+
   configOverrides:
     jvm:
-      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.jks"
+      - "-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.p12"
       - "-Djavax.net.ssl.trustStorePassword=changeit"
-      - "-Djavax.net.ssl.trustStoreType=JKS"
+      - "-Djavax.net.ssl.trustStoreType=PKCS12"
     server:
       # The external application listener remains OAuth. The internal listener
       # and broker/controller infrastructure path are generated by CFK from
       # sasl-plain-internal; do not override their SASL mechanism here.
-      - listener.name.external.oauthbearer.sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required unsecuredLoginStringClaim_sub="thePrincipalName" publicKeyPath="/mnt/secrets/mds-token/mdsPublicKey.pem";
+      - listener.name.external.oauthbearer.sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required unsecuredLoginStringClaim_sub="thePrincipalName" publicKeyPath="/mnt/secrets/mds-token/mdsPublicKey.pem" ssl.truststore.location="/var/ssl/truststore/bundle.p12" ssl.truststore.password="changeit" ssl.truststore.type="PKCS12";
 
-      # Embedded kafkaRest at :8090.
-      - confluent.kafkarest.security.protocol=SASL_SSL
-      - confluent.kafkarest.sasl.mechanism=OAUTHBEARER
-      - confluent.kafkarest.sasl.oauthbearer.token.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/token
-      - confluent.kafkarest.sasl.oauthbearer.jwks.endpoint.url=https://myapps.firstcitizens.com/oauth2/default/v1/keys
-      - confluent.kafkarest.sasl.oauthbearer.expected.issuer=https://myapps.firstcitizens.com/oauth2/default
-      - confluent.kafkarest.sasl.oauthbearer.scope=11547.DAH(Dev)
+      # TOKEN listener OAuth bearer validator truststore (for JWKS endpoint validation during startup)
+      - listener.name.token.oauthbearer.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - listener.name.token.oauthbearer.ssl.truststore.password=changeit
+      - listener.name.token.oauthbearer.ssl.truststore.type=PKCS12
+
+      # MDS client truststore for OAuth/OIDC validation (using platform-managed fcb-trust-bundle)
+      - confluent.metadata.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.metadata.ssl.truststore.password=changeit
+      - confluent.metadata.ssl.truststore.type=PKCS12
+
+      # MDS server-side truststore used for OIDC/JWKS validation and incoming CFK operator mTLS client-certificate validation.
+      - confluent.metadata.server.ssl.truststore.location=/var/ssl/truststore/bundle.p12
+      - confluent.metadata.server.ssl.truststore.password=changeit
+      - confluent.metadata.server.ssl.truststore.type=PKCS12
+      - confluent.metadata.server.oauthbearer.groups.claim.name=dahUAT_groups
 
       # Broker defaults.
       - confluent.telemetry.enabled=true
@@ -253,11 +254,11 @@ spec:
     serviceAccountName: flink-operator
     resources:
       requests:
-        cpu: "1"
-        memory: 2Gi
+        cpu: "1000m"
+        memory: 3Gi
       limits:
-        cpu: "2"
-        memory: 4Gi
+        cpu: "2000m"
+        memory: 6Gi
     probe:
       liveness:
         initialDelaySeconds: 90
