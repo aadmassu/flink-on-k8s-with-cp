@@ -22,7 +22,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "__ONBOARDING_USER_SUB__"
+    name: "0oa1z6cqhxwa1O0UK358"
   role: ClusterAdmin
   kafkaRestClassRef:
     name: default
@@ -42,7 +42,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "__ONBOARDING_USER_SUB__"
+    name: "0oa1z6cqhxwa1O0UK358"
   role: SystemAdmin
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_dah-flink-qa
@@ -64,7 +64,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "__ONBOARDING_USER_SUB__"
+    name: "0oa1z6cqhxwa1O0UK358"
   role: SystemAdmin
   clustersScopeByIds:
     connectClusterId: dah-flink-qa.connect
@@ -86,7 +86,7 @@ metadata:
 spec:
   principal:
     type: group
-    name: "__ONBOARDING_DEVELOPER_GROUP__"
+    name: "qa_app_okta_digital_analytics_hub_users"
   role: ClusterAdmin
   kafkaRestClassRef:
     name: default
@@ -106,7 +106,7 @@ metadata:
 spec:
   principal:
     type: group
-    name: "__ONBOARDING_DEVELOPER_GROUP__"
+    name: "qa_app_okta_digital_analytics_hub_users"
   role: SystemAdmin
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_dah-flink-qa
@@ -128,7 +128,7 @@ metadata:
 spec:
   principal:
     type: group
-    name: "__ONBOARDING_DEVELOPER_GROUP__"
+    name: "qa_app_okta_digital_analytics_hub_users"
   role: SystemAdmin
   clustersScopeByIds:
     connectClusterId: dah-flink-qa.connect
