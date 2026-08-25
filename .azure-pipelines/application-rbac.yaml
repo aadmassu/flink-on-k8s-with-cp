@@ -29,10 +29,8 @@ parameters:
     type: string
     default: cfk-cr
     values:
-      - value: cfk-cr
-        displayName: Client Onboarding
-      - value: direct-mds-bootstrap
-        displayName: Emergency Direct MDS Bootstrap
+      - cfk-cr  # Client Onboarding
+      - direct-mds-bootstrap  # Emergency Direct MDS Bootstrap
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
