@@ -35,7 +35,18 @@ spec:
                   number: 8083
             path: /
             pathType: Prefix
+    - host: connect.apps.ut-s.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: connect
+                port:
+                  number: 8083
+            path: /
+            pathType: Prefix
   tls:
     - hosts:
         - connect.apps.ut.ocp.fcbint.net
+        - connect.apps.ut-s.ocp.fcbint.net
       secretName: connect-ingress-tls

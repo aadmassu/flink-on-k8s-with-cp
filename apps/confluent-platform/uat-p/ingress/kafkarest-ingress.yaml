@@ -34,7 +34,18 @@ spec:
                   number: 8082
             path: /
             pathType: Prefix
+    - host: kafkarest.apps.ut-p.ocp.fcbint.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: kafkarest
+                port:
+                  number: 8082
+            path: /
+            pathType: Prefix
   tls:
     - hosts:
         - kafkarest.apps.ut.ocp.fcbint.net
+        - kafkarest.apps.ut-p.ocp.fcbint.net
       secretName: kafkarest-ingress-tls
