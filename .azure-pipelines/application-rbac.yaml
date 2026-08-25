@@ -1,7 +1,7 @@
 # Manage environment-specific application-onboarding Confluent RBAC.
 #
-# cfk-cr (default): declarative CFK ConfluentRolebinding resources.
-# direct-mds-bootstrap: explicit emergency bypass while CFK is unhealthy.
+# RBAC Onboarding (default): declarative CFK ConfluentRolebinding resources.
+# Emergency Direct MDS Bootstrap: explicit emergency bypass while CFK is unhealthy.
 
 trigger: none
 
@@ -27,10 +27,10 @@ parameters:
   - name: deploymentMode
     displayName: "RBAC deployment mode"
     type: string
-    default: cfk-cr
+    default: RBAC Onboarding
     values:
-      - cfk-cr  # Client Onboarding
-      - direct-mds-bootstrap  # Emergency Direct MDS Bootstrap
+      - RBAC Onboarding
+      - Emergency Direct MDS Bootstrap
 
 variables:
   - ${{ if eq(parameters.environment, 'dev') }}:
@@ -189,7 +189,7 @@ stages:
                 oc -n "$OC_NS" get kafka kafka >/dev/null
                 oc -n "$OC_NS" get kafkarestclass default >/dev/null
 
-                if [ "$DEPLOYMENT_MODE" = "cfk-cr" ]; then
+                if [ "$DEPLOYMENT_MODE" = "RBAC Onboarding" ]; then
                   if [ "$ACTION" = "apply" ]; then
                     echo "========== CFK CR APPLY MODE =========="
                     oc apply --dry-run=server -f "$MANIFEST"
@@ -227,7 +227,7 @@ stages:
                   exit 0
                 fi
 
-                if [ "$DEPLOYMENT_MODE" != "direct-mds-bootstrap" ]; then
+                if [ "$DEPLOYMENT_MODE" != "Emergency Direct MDS Bootstrap" ]; then
                   echo "FATAL: unsupported deployment mode: $DEPLOYMENT_MODE"
                   exit 1
                 fi
