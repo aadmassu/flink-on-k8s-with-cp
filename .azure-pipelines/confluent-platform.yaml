@@ -2890,25 +2890,35 @@ stages:
                       ;;
                   esac
 
+                  # Ingress must expose exactly one host rule: the floating name.
+                  # Site-specific names live only in the Certificate SANs.
                   validate_ingress_hosts() {
                     local manifest=$1
-                    shift
-                    python3 - "$manifest" "$@" <<'PY'
+                    local expected=$2
+                    python3 - "$manifest" "$expected" <<'PY'
                   import sys
                   import yaml
 
                   manifest = sys.argv[1]
-                  required = set(sys.argv[2:])
+                  expected = sys.argv[2]
                   with open(manifest) as stream:
                       document = yaml.safe_load(stream)
-                  actual = {
+                  hosts = [
                       rule.get("host")
                       for rule in document.get("spec", {}).get("rules", [])
-                      if rule.get("host")
-                  }
-                  missing = required - actual
-                  if missing:
-                      print("Missing exact Ingress host rule(s): %s" % sorted(missing))
+                  ]
+                  if hosts != [expected]:
+                      print("Ingress must declare exactly one host rule (%s), found: %s"
+                            % (expected, hosts))
+                      raise SystemExit(1)
+                  tls_hosts = [
+                      host
+                      for entry in document.get("spec", {}).get("tls", [])
+                      for host in entry.get("hosts", [])
+                  ]
+                  if tls_hosts and tls_hosts != [expected]:
+                      print("Ingress spec.tls hosts must be exactly [%s], found: %s"
+                            % (expected, tls_hosts))
                       raise SystemExit(1)
                   PY
                   }
@@ -2923,12 +2933,8 @@ stages:
                       exit 1
                     fi
 
-                    required_hosts=("$svc.$floating_ingress_domain")
-                    if [ "$site_ingress_domain" != "$floating_ingress_domain" ]; then
-                      required_hosts+=("$svc.$site_ingress_domain")
-                    fi
-                    if ! validate_ingress_hosts "$ingress_file" "${required_hosts[@]}"; then
-                      echo "  FAIL: $svc Ingress does not contain the required floating/site host rules"
+                    if ! validate_ingress_hosts "$ingress_file" "$svc.$floating_ingress_domain"; then
+                      echo "  FAIL: $svc Ingress must declare exactly one host rule: $svc.$floating_ingress_domain"
                       exit 1
                     fi
 
@@ -3000,12 +3006,8 @@ stages:
                       echo "  FAIL: Ingress file not found: $ingress_file"
                       exit 1
                     fi
-                    required_hosts=("$svc.$floating_ingress_domain")
-                    if [ "$site_ingress_domain" != "$floating_ingress_domain" ]; then
-                      required_hosts+=("$svc.$site_ingress_domain")
-                    fi
-                    validate_ingress_hosts "$ingress_file" "${required_hosts[@]}" || {
-                      echo "  FAIL: Kafka MDS Ingress does not contain the required floating/site host rules"
+                    validate_ingress_hosts "$ingress_file" "$svc.$floating_ingress_domain" || {
+                      echo "  FAIL: Kafka MDS Ingress must declare exactly one host rule: $svc.$floating_ingress_domain"
                       exit 1
                     }
                     grep -q "openshift-core-zone" "$ingress_file" || {
@@ -3040,9 +3042,11 @@ stages:
                   oc get ingress -n "$OC_NS" 2>&1 || true
 
                   echo ""
-                  echo "NOTE: UAT exposes both the shared floating DNS and the local site DNS:"
-                  echo "  floating: <component>.$floating_ingress_domain"
-                  echo "  site:     <component>.$site_ingress_domain"
+                  echo "NOTE: Ingress routes the shared floating DNS only:"
+                  echo "  floating (Ingress host): <component>.$floating_ingress_domain"
+                  echo "  site (Certificate SAN):  <component>.$site_ingress_domain"
+                  echo "The site name stays in the Certificate SANs so the cluster-local"
+                  echo "hostname still validates; it is not an Ingress host rule."
                   echo "The floating CNAME must be managed through the FCB DNS request process."
               env:
                 OC_NS: $(RESOLVED_NS)

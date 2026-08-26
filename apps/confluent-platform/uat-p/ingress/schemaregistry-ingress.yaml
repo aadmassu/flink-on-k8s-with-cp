@@ -28,18 +28,7 @@ spec:
               number: 8081
         path: /
         pathType: Prefix
-  - host: schemaregistry.apps.ut-p.ocp.fcbint.net
-    http:
-      paths:
-      - backend:
-          service:
-            name: schemaregistry
-            port:
-              number: 8081
-        path: /
-        pathType: Prefix
   tls:
   - hosts:
     - schemaregistry.apps.ut.ocp.fcbint.net
-    - schemaregistry.apps.ut-p.ocp.fcbint.net
     secretName: schemaregistry-ingress-tls
