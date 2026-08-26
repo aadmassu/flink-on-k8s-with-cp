@@ -1,10 +1,4 @@
 ---
-########################################################################
-# Author:      Ayu Admassu
-# Date:        2026-08-07 (last-modified)
-# Description: Ingress exposing Kafka REST Proxy publicly. Backend
-#              HTTPS on 8082 (kafkarest-tls); edge termination reencrypt.
-########################################################################
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -15,7 +9,7 @@ metadata:
     app.kubernetes.io/instance: kafkarest
     app.kubernetes.io/component: ingress
     app.kubernetes.io/part-of: confluent-platform
-    fcbint.net/app-id: "11547"
+    fcbint.net/app-id: '11547'
   annotations:
     route.openshift.io/termination: reencrypt
     route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle
@@ -24,17 +18,28 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: kafkarest.apps.ut.ocp.fcbint.net
-      http:
-        paths:
-          - backend:
-              service:
-                name: kafkarest
-                port:
-                  number: 8082
-            path: /
-            pathType: Prefix
+  - host: kafkarest.apps.ut.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: kafkarest
+            port:
+              number: 8082
+        path: /
+        pathType: Prefix
+  - host: kafkarest.apps.ut-s.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: kafkarest
+            port:
+              number: 8082
+        path: /
+        pathType: Prefix
   tls:
-    - hosts:
-        - kafkarest.apps.ut.ocp.fcbint.net
-      secretName: kafkarest-ingress-tls
+  - hosts:
+    - kafkarest.apps.ut.ocp.fcbint.net
+    - kafkarest.apps.ut-s.ocp.fcbint.net
+    secretName: kafkarest-ingress-tls

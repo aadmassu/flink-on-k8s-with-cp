@@ -1,13 +1,4 @@
 ---
-########################################################################
-# Author:      Ayu Admassu
-# Date:        2026-08-13
-# Description: Dedicated mTLS client certificate for CFK operator's
-#              KafkaRestClass reconciliation against MDS. Replaces OAuth
-#              for operator-to-MDS communication in QA only.
-#              Runbook A22 (extended for mTLS).
-########################################################################
-
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -18,18 +9,19 @@ metadata:
     app.kubernetes.io/instance: cfk-operator-mds-client
     app.kubernetes.io/component: mds-client-certificate
     app.kubernetes.io/part-of: confluent-platform
-    fcbint.net/app-id: "11547"
+    fcbint.net/app-id: '11547'
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
-    metadata.command-issuer.keyfactor.com/Description: "CFK operator mTLS client certificate for MDS KafkaRestClass reconciliation"
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-UAT
+    metadata.command-issuer.keyfactor.com/Description: CFK operator mTLS client certificate
+      for MDS KafkaRestClass reconciliation
     metadata.command-issuer.keyfactor.com/Organization: FCB
-    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Application-ID: '11547'
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
   commonName: cfk-operator-rbac.apps.ut.ocp.fcbint.net
   dnsNames:
-    - cfk-operator-rbac.apps.ut.ocp.fcbint.net
+  - cfk-operator-rbac.apps.ut.ocp.fcbint.net
   secretName: cfk-operator-mds-client-tls
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
@@ -38,7 +30,7 @@ spec:
     size: 4096
     rotationPolicy: Always
   usages:
-    - client auth
+  - client auth
   issuerRef:
     group: command-issuer.keyfactor.com
     kind: ClusterIssuer
@@ -49,4 +41,4 @@ spec:
       app.kubernetes.io/instance: cfk-operator-mds-client
       app.kubernetes.io/component: mds-client-certificate
       app.kubernetes.io/part-of: confluent-platform
-      fcbint.net/app-id: "11547"
+      fcbint.net/app-id: '11547'

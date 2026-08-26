@@ -1,14 +1,4 @@
 ---
-########################################################################
-# Author:      Ayu Admassu
-# Date:        2026-08-16 (last-modified)
-# Description: Ingress exposing Control Center UI publicly (main
-#              browser-facing CP dashboard). TLS passthrough sends the
-#              encrypted connection directly to the HTTPS backend on 9021.
-#              Control Center serves controlcenter-tls, whose SAN includes
-#              the floating public hostname. The router does not terminate
-#              TLS and does not use an ingress or destination-CA certificate.
-########################################################################
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -19,7 +9,7 @@ metadata:
     app.kubernetes.io/instance: controlcenter
     app.kubernetes.io/component: ingress
     app.kubernetes.io/part-of: confluent-platform
-    fcbint.net/app-id: "11547"
+    fcbint.net/app-id: '11547'
   annotations:
     route.openshift.io/termination: passthrough
     route.openshift.io/insecureEdgeTerminationPolicy: Redirect
@@ -27,16 +17,23 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: controlcenter.apps.ut.ocp.fcbint.net
-      http:
-        paths:
-          # Passthrough TLS cannot use HTTP path-based routing because the
-          # router does not decrypt the request. These values are required
-          # by OpenShift when generating the passthrough Route.
-          - backend:
-              service:
-                name: controlcenter
-                port:
-                  number: 9021
-            path: ""
-            pathType: ImplementationSpecific
+  - host: controlcenter.apps.ut.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: controlcenter
+            port:
+              number: 9021
+        path: ''
+        pathType: ImplementationSpecific
+  - host: controlcenter.apps.ut-p.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: controlcenter
+            port:
+              number: 9021
+        path: ''
+        pathType: ImplementationSpecific

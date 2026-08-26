@@ -1,11 +1,4 @@
 ---
-########################################################################
-# Author:      Ayu Admassu
-# Date:        2026-08-07 (last-modified)
-# Description: Ingress exposing Schema Registry REST/UI publicly.
-#              Backend HTTPS on 8081 (schemaregistry-tls); edge
-#              termination reencrypt.
-########################################################################
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -16,7 +9,7 @@ metadata:
     app.kubernetes.io/instance: schemaregistry
     app.kubernetes.io/component: ingress
     app.kubernetes.io/part-of: confluent-platform
-    fcbint.net/app-id: "11547"
+    fcbint.net/app-id: '11547'
   annotations:
     route.openshift.io/termination: reencrypt
     route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle
@@ -25,17 +18,28 @@ metadata:
 spec:
   ingressClassName: openshift-core-zone
   rules:
-    - host: schemaregistry.apps.ut.ocp.fcbint.net
-      http:
-        paths:
-          - backend:
-              service:
-                name: schemaregistry
-                port:
-                  number: 8081
-            path: /
-            pathType: Prefix
+  - host: schemaregistry.apps.ut.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: schemaregistry
+            port:
+              number: 8081
+        path: /
+        pathType: Prefix
+  - host: schemaregistry.apps.ut-s.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: schemaregistry
+            port:
+              number: 8081
+        path: /
+        pathType: Prefix
   tls:
-    - hosts:
-        - schemaregistry.apps.ut.ocp.fcbint.net
-      secretName: schemaregistry-ingress-tls
+  - hosts:
+    - schemaregistry.apps.ut.ocp.fcbint.net
+    - schemaregistry.apps.ut-s.ocp.fcbint.net
+    secretName: schemaregistry-ingress-tls

@@ -2854,11 +2854,64 @@ stages:
                     [controlcenter]=controlcenter-ingress.yaml
                   )
 
+                  # FCB naming contract:
+                  #   UAT floating:  *.apps.ut.ocp.fcbint.net
+                  #   UAT primary:   *.apps.ut-p.ocp.fcbint.net
+                  #   UAT secondary: *.apps.ut-s.ocp.fcbint.net
+                  # DEV/QA retain their already-working floating names.
                   case "$TARGET_ENV" in
-                    dev) ingress_domain="apps.dv.ocp.fcbint.net" ;;
-                    qa)  ingress_domain="apps.qa.ocp.fcbint.net" ;;
-                    *)   ingress_domain="apps.${TARGET_ENV}.ocp.fcbint.net" ;;
+                    dev)
+                      floating_ingress_domain="apps.dv.ocp.fcbint.net"
+                      site_ingress_domain="$floating_ingress_domain"
+                      ;;
+                    qa)
+                      floating_ingress_domain="apps.qa.ocp.fcbint.net"
+                      site_ingress_domain="$floating_ingress_domain"
+                      ;;
+                    uat-p)
+                      floating_ingress_domain="apps.ut.ocp.fcbint.net"
+                      site_ingress_domain="apps.ut-p.ocp.fcbint.net"
+                      ;;
+                    uat-s)
+                      floating_ingress_domain="apps.ut.ocp.fcbint.net"
+                      site_ingress_domain="apps.ut-s.ocp.fcbint.net"
+                      ;;
+                    prd)
+                      floating_ingress_domain="apps.pd.ocp.fcbint.net"
+                      site_ingress_domain="apps.pd-p.ocp.fcbint.net"
+                      ;;
+                    dr)
+                      floating_ingress_domain="apps.pd.ocp.fcbint.net"
+                      site_ingress_domain="apps.pd-s.ocp.fcbint.net"
+                      ;;
+                    *)
+                      echo "FATAL: unsupported ingress environment $TARGET_ENV"
+                      exit 1
+                      ;;
                   esac
+
+                  validate_ingress_hosts() {
+                    local manifest=$1
+                    shift
+                    python3 - "$manifest" "$@" <<'PY'
+                  import sys
+                  import yaml
+
+                  manifest = sys.argv[1]
+                  required = set(sys.argv[2:])
+                  with open(manifest) as stream:
+                      document = yaml.safe_load(stream)
+                  actual = {
+                      rule.get("host")
+                      for rule in document.get("spec", {}).get("rules", [])
+                      if rule.get("host")
+                  }
+                  missing = required - actual
+                  if missing:
+                      print("Missing exact Ingress host rule(s): %s" % sorted(missing))
+                      raise SystemExit(1)
+                  PY
+                  }
 
                   for svc in "${!svc_applies[@]}"; do
                     if ! is_true "${svc_applies[$svc]}"; then
@@ -2870,13 +2923,18 @@ stages:
                       exit 1
                     fi
 
+                    required_hosts=("$svc.$floating_ingress_domain")
+                    if [ "$site_ingress_domain" != "$floating_ingress_domain" ]; then
+                      required_hosts+=("$svc.$site_ingress_domain")
+                    fi
+                    if ! validate_ingress_hosts "$ingress_file" "${required_hosts[@]}"; then
+                      echo "  FAIL: $svc Ingress does not contain the required floating/site host rules"
+                      exit 1
+                    fi
+
                     # Control Center uses passthrough; other components use reencrypt
                     if [ "$svc" = "controlcenter" ]; then
                       # C3-specific validation: passthrough, empty path, ImplementationSpecific, port 9021, no destination-CA
-                      if ! grep -q "$ingress_domain" "$ingress_file"; then
-                        echo "  FAIL: $svc Ingress missing floating $ingress_domain hostname"
-                        exit 1
-                      fi
                       if ! grep -q "openshift-core-zone" "$ingress_file"; then
                         echo "  FAIL: $svc Ingress missing openshift-core-zone ingressClassName"
                         exit 1
@@ -2901,10 +2959,6 @@ stages:
                       echo "  ✓ $svc Ingress manifest valid (passthrough, port 9021)"
                     else
                       # Reencrypt validation for SR, REST, Connect
-                      if ! grep -q "$ingress_domain" "$ingress_file"; then
-                        echo "  FAIL: $svc Ingress missing floating $ingress_domain hostname"
-                        exit 1
-                      fi
                       if ! grep -q "openshift-core-zone" "$ingress_file"; then
                         echo "  FAIL: $svc Ingress missing openshift-core-zone ingressClassName"
                         exit 1
@@ -2923,6 +2977,37 @@ stages:
                     fi
                   done
 
+                  if is_true "$APPLY_KAFKA"; then
+                    svc="kafka-mds"
+                    ingress_file="$ENV_DIR/ingress/kafka-mds-ingress.yaml"
+                    if [ ! -f "$ingress_file" ]; then
+                      echo "  FAIL: Ingress file not found: $ingress_file"
+                      exit 1
+                    fi
+                    required_hosts=("$svc.$floating_ingress_domain")
+                    if [ "$site_ingress_domain" != "$floating_ingress_domain" ]; then
+                      required_hosts+=("$svc.$site_ingress_domain")
+                    fi
+                    validate_ingress_hosts "$ingress_file" "${required_hosts[@]}" || {
+                      echo "  FAIL: Kafka MDS Ingress does not contain the required floating/site host rules"
+                      exit 1
+                    }
+                    grep -q "openshift-core-zone" "$ingress_file" || {
+                      echo "  FAIL: Kafka MDS Ingress missing openshift-core-zone ingressClassName"
+                      exit 1
+                    }
+                    grep -q "route.openshift.io/termination.*reencrypt" "$ingress_file" || {
+                      echo "  FAIL: Kafka MDS Ingress missing reencrypt termination"
+                      exit 1
+                    }
+                    grep -q "destination-ca-certificate-secret.*kafka-tls" "$ingress_file" || {
+                      echo "  FAIL: Kafka MDS Ingress must use kafka-tls as destination CA"
+                      exit 1
+                    }
+                    python3 -c "import yaml,sys;d=yaml.safe_load(open('$ingress_file'));found=any(int(path.get('backend',{}).get('service',{}).get('port',{}).get('number',0))==8090 for rule in d.get('spec',{}).get('rules',[]) for path in rule.get('http',{}).get('paths',[]));sys.exit(0 if found else 1)" || exit 1
+                    echo "  ✓ kafka-mds Ingress manifest valid (reencrypt, port 8090)"
+                  fi
+
                   echo ""
                   echo "✅ All pre-Ingress validations passed"
 
@@ -2939,11 +3024,10 @@ stages:
                   oc get ingress -n "$OC_NS" 2>&1 || true
 
                   echo ""
-                  echo "NOTE: public hostnames follow the Container Team's"
-                  echo "Internal-OCP pattern from https://confluence.fcpd.fcbint.net/spaces/CONV/pages/172530278/OpenShift+Ingress:"
-                  echo "  <component>.apps.<env-cluster>.ocp.fcbint.net"
-                  echo "DNS is automatic via the cluster wildcard for dev/qa;"
-                  echo "UAT/PRD add Floating-DNS CNAMEs per the Confluence page."
+                  echo "NOTE: UAT exposes both the shared floating DNS and the local site DNS:"
+                  echo "  floating: <component>.$floating_ingress_domain"
+                  echo "  site:     <component>.$site_ingress_domain"
+                  echo "The floating CNAME must be managed through the FCB DNS request process."
               env:
                 OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}

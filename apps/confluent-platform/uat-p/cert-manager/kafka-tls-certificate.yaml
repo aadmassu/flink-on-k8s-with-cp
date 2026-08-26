@@ -1,13 +1,4 @@
 ---
-########################################################################
-# Author:      Ayu Admassu
-# Date:        2026-05-11 (created), 2026-06-30 (last-modified)
-# Description: Keyfactor Certificate for the Kafka brokers (Secret
-#              kafka-tls; consumed by the Kafka CR via tls.secretRef).
-#              SANs cover headless per-pod DNS + round-robin Service DNS.
-#              PEM-only — CFK init container does the JKS/PKCS12 render
-#              at startup (runbook A21).
-########################################################################
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -17,42 +8,30 @@ metadata:
     app.kubernetes.io/name: kafka
     app.kubernetes.io/instance: kafka-tls
     app.kubernetes.io/component: kafka-broker
-    fcbint.net/app-id: "11547"
+    fcbint.net/app-id: '11547'
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
-    metadata.command-issuer.keyfactor.com/Description: "Kafka brokers — internal listeners and MDS"
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-UAT
+    metadata.command-issuer.keyfactor.com/Description: "Kafka brokers \u2014 internal\
+      \ listeners and MDS"
     metadata.command-issuer.keyfactor.com/Organization: FCB
-    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Application-ID: '11547'
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  # Internal-only SANs. The FCB Keyfactor approver-policy allows DNS names
-  # under *.svc, *.svc.cluster.local, and *.ocp.fcbint.net — anything else
-  # is rejected. The earlier draft included external LB SANs under
-  # kafka.qa.dah.fcbint.net (a stand-in for the eventual external hostname);
-  # those tripped the policy and blocked the CertificateRequest.
-  #
-  # External LB exposure remains staged in kafka.yaml's externalAccess block.
-  # External SANs will be re-added once either (a) Tom allocates an LB
-  # hostname under *.ocp.fcbint.net, or (b) FCB binds a separate ClusterIssuer
-  # to Keyfactor's wildcard template. Until then, external clients that
-  # strictly validate TLS hostname will fail against the LB; in-cluster
-  # traffic (CMF, Flink jobs) uses the *.svc.cluster.local listener and is
-  # unaffected.
   commonName: kafka.dah-flink-uat.svc.cluster.local
   dnsNames:
-    - kafka.dah-flink-uat.svc
-    - kafka.dah-flink-uat.svc.cluster.local
-    - kafka-0.kafka.dah-flink-uat.svc.cluster.local
-    - kafka-1.kafka.dah-flink-uat.svc.cluster.local
-    - kafka-2.kafka.dah-flink-uat.svc.cluster.local
-    - kafka.apps.ut-p.ocp.fcbint.net
-    - kafka-0.kafka.apps.ut.ocp.fcbint.net
-    - kafka-1.kafka.apps.ut.ocp.fcbint.net
-    - kafka-2.kafka.apps.ut.ocp.fcbint.net
-    - kafka-0.kafka.apps.ut-p.ocp.fcbint.net
-    - kafka-1.kafka.apps.ut-p.ocp.fcbint.net
-    - kafka-2.kafka.apps.ut-p.ocp.fcbint.net
+  - kafka.dah-flink-uat.svc
+  - kafka.dah-flink-uat.svc.cluster.local
+  - kafka-0.kafka.dah-flink-uat.svc.cluster.local
+  - kafka-1.kafka.dah-flink-uat.svc.cluster.local
+  - kafka-2.kafka.dah-flink-uat.svc.cluster.local
+  - kafka.apps.ut-p.ocp.fcbint.net
+  - kafka-0.kafka.apps.ut.ocp.fcbint.net
+  - kafka-1.kafka.apps.ut.ocp.fcbint.net
+  - kafka-2.kafka.apps.ut.ocp.fcbint.net
+  - kafka-0.kafka.apps.ut-p.ocp.fcbint.net
+  - kafka-1.kafka.apps.ut-p.ocp.fcbint.net
+  - kafka-2.kafka.apps.ut-p.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:
@@ -69,4 +48,4 @@ spec:
       app.kubernetes.io/name: kafka
       app.kubernetes.io/instance: kafka-tls
       app.kubernetes.io/component: kafka-broker
-      fcbint.net/app-id: "11547"
+      fcbint.net/app-id: '11547'

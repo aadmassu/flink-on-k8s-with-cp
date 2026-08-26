@@ -1,12 +1,4 @@
 ---
-########################################################################
-# Author:      Ayu Admassu
-# Date:        2026-06-10 (created), 2026-06-10 (last-modified)
-# Description: Keyfactor Certificate for the broker MDS REST Ingress
-#              edge (port 8090 on the broker Service). Distinct from
-#              kafka-tls (backend cert covers Kafka listeners + in-cluster
-#              MDS); this is the edge cert HAProxy presents to browsers.
-########################################################################
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -17,18 +9,20 @@ metadata:
     app.kubernetes.io/instance: kafka-mds-ingress-tls
     app.kubernetes.io/component: ingress-cert
     app.kubernetes.io/part-of: confluent-platform
-    fcbint.net/app-id: "11547"
+    fcbint.net/app-id: '11547'
   annotations:
     metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
-    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
-    metadata.command-issuer.keyfactor.com/Description: "Kafka broker MDS REST endpoint (Ingress edge cert)"
+    metadata.command-issuer.keyfactor.com/Environment: Non-Prod-UAT
+    metadata.command-issuer.keyfactor.com/Description: Kafka broker MDS REST endpoint
+      (Ingress edge cert)
     metadata.command-issuer.keyfactor.com/Organization: FCB
-    metadata.command-issuer.keyfactor.com/Application-ID: "11547"
+    metadata.command-issuer.keyfactor.com/Application-ID: '11547'
     metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
 spec:
-  commonName: kafka-mds.apps.ut.ocp.fcbint.net
+  commonName: kafka-mds.apps.ut-p.ocp.fcbint.net
   dnsNames:
-    - kafka-mds.apps.ut.ocp.fcbint.net
+  - kafka-mds.apps.ut-p.ocp.fcbint.net
+  - kafka-mds.apps.ut.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:
@@ -46,4 +40,4 @@ spec:
       app.kubernetes.io/instance: kafka-mds-ingress-tls
       app.kubernetes.io/component: ingress-cert
       app.kubernetes.io/part-of: confluent-platform
-      fcbint.net/app-id: "11547"
+      fcbint.net/app-id: '11547'
