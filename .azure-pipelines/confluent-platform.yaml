@@ -2947,15 +2947,31 @@ stages:
                         echo "  FAIL: $svc Ingress must not have destination-ca-certificate annotation (passthrough does not use it)"
                         exit 1
                       fi
-                      if ! grep -q 'path: ""' "$ingress_file"; then
-                        echo "  FAIL: $svc Ingress must have empty path for passthrough"
-                        exit 1
-                      fi
-                      if ! grep -q "pathType: ImplementationSpecific" "$ingress_file"; then
-                        echo "  FAIL: $svc Ingress must use ImplementationSpecific pathType for passthrough"
-                        exit 1
-                      fi
-                      python3 -c "import yaml,sys;d=yaml.safe_load(open('$ingress_file'));p=9021;found=any(int(path.get('backend',{}).get('service',{}).get('port',{}).get('number',0))==p for rule in d.get('spec',{}).get('rules',[])for path in rule.get('http',{}).get('paths',[]));sys.exit(0 if found else 1)" || exit 1
+                      # Passthrough paths must be empty + ImplementationSpecific and target 9021.
+                      python3 - "$ingress_file" <<'PY'
+                  import sys
+                  import yaml
+
+                  with open(sys.argv[1]) as stream:
+                      manifest = yaml.safe_load(stream)
+
+                  paths = [
+                      path
+                      for rule in manifest.get("spec", {}).get("rules", [])
+                      for path in rule.get("http", {}).get("paths", [])
+                  ]
+
+                  valid = paths and all(
+                      path.get("path") == ""
+                      and path.get("pathType") == "ImplementationSpecific"
+                      and path.get("backend", {}).get("service", {}).get("port", {}).get("number") == 9021
+                      for path in paths
+                  )
+
+                  if not valid:
+                      print("FAIL: Control Center passthrough paths must use an empty path, ImplementationSpecific and port 9021")
+                      raise SystemExit(1)
+                  PY
                       echo "  ✓ $svc Ingress manifest valid (passthrough, port 9021)"
                     else
                       # Reencrypt validation for SR, REST, Connect
