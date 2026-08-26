@@ -28,7 +28,6 @@ spec:
   commonName: schemaregistry.apps.ut.ocp.fcbint.net
   dnsNames:
     - schemaregistry.apps.ut.ocp.fcbint.net
-    - schemaregistry.apps.ut-s.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:

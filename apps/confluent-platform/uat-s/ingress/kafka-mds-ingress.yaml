@@ -36,18 +36,7 @@ spec:
                   number: 8090
             path: /
             pathType: Prefix
-    - host: kafka-mds.apps.ut-s.ocp.fcbint.net
-      http:
-        paths:
-          - backend:
-              service:
-                name: kafka
-                port:
-                  number: 8090
-            path: /
-            pathType: Prefix
   tls:
     - hosts:
         - kafka-mds.apps.ut.ocp.fcbint.net
-        - kafka-mds.apps.ut-s.ocp.fcbint.net
       secretName: kafka-mds-ingress-tls

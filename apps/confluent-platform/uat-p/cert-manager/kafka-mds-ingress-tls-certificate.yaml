@@ -29,7 +29,6 @@ spec:
   commonName: kafka-mds.apps.ut.ocp.fcbint.net
   dnsNames:
     - kafka-mds.apps.ut.ocp.fcbint.net
-    - kafka-mds.apps.ut-p.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:

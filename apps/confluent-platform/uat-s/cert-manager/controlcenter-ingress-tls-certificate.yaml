@@ -27,7 +27,6 @@ spec:
   commonName: controlcenter.apps.ut.ocp.fcbint.net
   dnsNames:
     - controlcenter.apps.ut.ocp.fcbint.net
-    - controlcenter.apps.ut-s.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:

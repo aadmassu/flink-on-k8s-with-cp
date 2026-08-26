@@ -40,13 +40,3 @@ spec:
                   number: 9021
             path: ""
             pathType: ImplementationSpecific
-    - host: controlcenter.apps.ut-p.ocp.fcbint.net
-      http:
-        paths:
-          - backend:
-              service:
-                name: controlcenter
-                port:
-                  number: 9021
-            path: ""
-            pathType: ImplementationSpecific

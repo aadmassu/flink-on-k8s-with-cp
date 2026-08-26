@@ -27,7 +27,6 @@ spec:
   commonName: kafkarest.apps.ut.ocp.fcbint.net
   dnsNames:
     - kafkarest.apps.ut.ocp.fcbint.net
-    - kafkarest.apps.ut-s.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:

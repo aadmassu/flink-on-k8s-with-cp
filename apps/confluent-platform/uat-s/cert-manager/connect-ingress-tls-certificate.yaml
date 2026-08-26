@@ -27,7 +27,6 @@ spec:
   commonName: connect.apps.ut.ocp.fcbint.net
   dnsNames:
     - connect.apps.ut.ocp.fcbint.net
-    - connect.apps.ut-s.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:
