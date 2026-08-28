@@ -381,35 +381,8 @@ stages:
                     [ -n "$ESO_OWNED" ] && grep -qxF "$name" <<< "$ESO_OWNED" || return 1
                   }
 
-                  # STEP 2: Verify ESO-managed Secrets using CR names and target Secret names.
-                  echo ""
-                  echo "=== Verifying ESO-managed Secrets ==="
-                  eso_failed=0
-                  if (( ESO_COUNT > 0 )); then
-                    for es_cr_name in "${!ESO_CR_TO_TARGET[@]}"; do
-                      es_target_name="${ESO_CR_TO_TARGET[$es_cr_name]}"
-                      synced=$(oc -n "$OC_NS" get externalsecret "$es_cr_name" \
-                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
-
-                      if [ "$synced" != "True" ]; then
-                        echo "ERROR: ExternalSecret CR $es_cr_name (targets Secret $es_target_name) not Ready=True"
-                        eso_failed=$((eso_failed+1))
-                      else
-                        echo "OK: $es_cr_name → $es_target_name (Ready)"
-                      fi
-                    done
-                  else
-                    echo "  (no ExternalSecrets discovered in namespace)"
-                  fi
-
-                  if [ "$eso_failed" -gt 0 ]; then
-                    echo "ERROR: $eso_failed ExternalSecret(s) not synchronized"
-                    exit 1
-                  fi
-
-                  # STEP 3: Determine which Secrets are pipeline-owned (NOT ESO-managed)
-                  echo ""
-                  echo "=== Determining pipeline-owned Secrets ==="
+                  # Secrets this pipeline owns. Only ExternalSecrets targeting these
+                  # names can block a CFK run; others (CMF's) are reported, not fatal.
                   PIPELINE_OWNED_SECRETS=(
                     "cfk-license"
                     "sasl-plain-internal"
@@ -427,6 +400,52 @@ stages:
                     "c3-alert-client-basic-auth"
                   )
 
+                  is_cfk_required() {
+                    local needle=$1 s
+                    for s in "${PIPELINE_OWNED_SECRETS[@]}"; do
+                      [ "$s" = "$needle" ] && return 0
+                    done
+                    return 1
+                  }
+
+                  # STEP 2: Verify ESO-managed Secrets using CR names and target Secret names.
+                  echo ""
+                  echo "=== Verifying ESO-managed Secrets ==="
+                  eso_failed=0
+                  eso_foreign=0
+                  if (( ESO_COUNT > 0 )); then
+                    for es_cr_name in "${!ESO_CR_TO_TARGET[@]}"; do
+                      es_target_name="${ESO_CR_TO_TARGET[$es_cr_name]}"
+                      synced=$(oc -n "$OC_NS" get externalsecret "$es_cr_name" \
+                        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+
+                      if [ "$synced" = "True" ]; then
+                        echo "OK: $es_cr_name → $es_target_name (Ready)"
+                      elif is_cfk_required "$es_target_name"; then
+                        echo "ERROR: ExternalSecret CR $es_cr_name (targets Secret $es_target_name) not Ready=True"
+                        eso_failed=$((eso_failed+1))
+                      else
+                        echo "WARN: ExternalSecret CR $es_cr_name (targets Secret $es_target_name) not Ready=True — not a CFK prerequisite, continuing"
+                        eso_foreign=$((eso_foreign+1))
+                      fi
+                    done
+                  else
+                    echo "  (no ExternalSecrets discovered in namespace)"
+                  fi
+
+                  if [ "$eso_foreign" -gt 0 ]; then
+                    echo "NOTE: $eso_foreign unhealthy ExternalSecret(s) belong to another component (for example CMF)."
+                    echo "      CFK is unaffected, but that component's own pipeline will fail until its SecretStore is repaired."
+                  fi
+
+                  if [ "$eso_failed" -gt 0 ]; then
+                    echo "ERROR: $eso_failed CFK-required ExternalSecret(s) not synchronized"
+                    exit 1
+                  fi
+
+                  # STEP 3: Determine which Secrets are pipeline-owned (NOT ESO-managed)
+                  echo ""
+                  echo "=== Determining pipeline-owned Secrets ==="
                   REQUIRED_VARS_FOR_PIPELINE=()
                   for secret in "${PIPELINE_OWNED_SECRETS[@]}"; do
                     if is_eso_managed "$secret"; then
@@ -701,12 +720,33 @@ stages:
                     echo ""
                     echo "=== Validating oauth-mds-sso Secret Structure ==="
 
-                    if oc -n "$OC_NS" get secret oauth-mds-sso -o jsonpath='{.data.clientId}' 2>/dev/null | grep -q .; then
+                    sso_client_id=$(oc -n "$OC_NS" get secret oauth-mds-sso \
+                      -o jsonpath='{.data.clientId}' 2>/dev/null | base64 -d 2>/dev/null || echo "")
+                    if [ -n "$sso_client_id" ]; then
                       echo "✓ oauth-mds-sso contains clientId"
                     else
                       echo "FATAL: oauth-mds-sso missing or empty clientId"
                       exit 1
                     fi
+
+                    # Browser SSO must use the Okta OIDC web app. Okta rejects
+                    # application_type=service clients at the /authorize endpoint.
+                    if [ "$sso_client_id" = "$OAUTH_C3_ID" ]; then
+                      echo "FATAL: oauth-mds-sso holds Control Center's machine client ($OAUTH_C3_ID)."
+                      echo "  Okta refuses application_type=service clients at /authorize, so C3"
+                      echo "  browser login fails with 'Clients with application_type of service"
+                      echo "  are not allowed to access the authorize endpoint'."
+                      echo "  Expected the OIDC web app: $OAUTH_MDS_SSO_ID"
+                      exit 1
+                    fi
+
+                    if [ "$sso_client_id" != "$OAUTH_MDS_SSO_ID" ]; then
+                      echo "FATAL: oauth-mds-sso clientId is stale — does not match the variable group."
+                      echo "  in Secret: $sso_client_id"
+                      echo "  expected:  $OAUTH_MDS_SSO_ID  (${TARGET_ENV}-oauth-mds-sso-client-id)"
+                      exit 1
+                    fi
+                    echo "✓ oauth-mds-sso clientId matches ${TARGET_ENV}-oauth-mds-sso-client-id"
 
                     if oc -n "$OC_NS" get secret oauth-mds-sso -o jsonpath='{.data.clientSecret}' 2>/dev/null | grep -q .; then
                       echo "✓ oauth-mds-sso contains clientSecret"

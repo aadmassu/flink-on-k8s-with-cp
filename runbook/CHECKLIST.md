@@ -332,9 +332,19 @@ so a manual recovery follows the same shape.
 > enforces the readiness gates between stages even when only one
 > downstream component is selected.
 
-1. [ ] All ExternalSecrets — wait for every one to report `Ready=True`
+1. [ ] CFK-owned ExternalSecrets — every one targeting a Secret in
+       `PIPELINE_OWNED_SECRETS` reports `Ready=True`. Others in the
+       namespace (CMF's) only warn; a `WARN ... not a CFK prerequisite`
+       line means that component's SecretStore is broken and its own
+       pipeline will fail — CFK is unaffected (see LESSONS_LEARNED H7)
 2. [ ] TLS secrets (KeyFactor cert-manager Certificates) — wait for
        `Ready=True` on the underlying Secret
+3. [ ] `oauth-mds-sso` holds the Okta OIDC **web** app client
+       (`<env>-oauth-mds-sso-client-id`), NOT Control Center's machine
+       client — the pipeline now asserts this. Register the callback on
+       that app for the floating host
+       `https://controlcenter.apps.<domain>.ocp.fcbint.net/api/metadata/security/1.0/oidc/authorization-code/callback`
+       (see LESSONS_LEARNED A30)
 
 **Phase 1 — apply, then wait for cluster-ready before phase 2:**
 
