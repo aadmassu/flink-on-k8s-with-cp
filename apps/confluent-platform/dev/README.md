@@ -6,7 +6,7 @@ CFK Custom Resources that reproduce the existing dev VM Confluent Platform clust
 > 1,272 Gi of requested storage. This package assigns 1,175 Gi to CFK and
 > leaves 97 Gi free: Kafka 3 x 300 Gi, KRaft 3 x 25 Gi, Control Center
 > 100 Gi, and bundled Prometheus 100 Gi. See
-> [`DEV_RESOURCE_BUDGET.md`](DEV_RESOURCE_BUDGET.md) for the complete CPU,
+> [`DEV_RESOURCE_BUDGET.md`](env-docs/DEV_RESOURCE_BUDGET.md) for the complete CPU,
 > memory, storage, and reserved-capacity calculation.
 
 ## Target
@@ -40,7 +40,7 @@ dev/
 ├── kafkarest.yaml              |
 ├── controlcenter.yaml         /
 ├── controlcenter-prometheus-pvc.yaml ── explicit kafka-SC PVC
-├── DEV_RESOURCE_BUDGET.md     ── quota and headroom calculation
+├── env-docs/                  ── env notes (resource budget, mTLS, CyberArk inventory)
 └── prereqs/                   ── supporting prerequisites (TLS Certificates + prereqs README)
     ├── README.md
     └── *-tls-certificate.yaml
