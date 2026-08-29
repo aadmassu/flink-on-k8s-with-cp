@@ -84,7 +84,7 @@ Per FCB's approver-policy, all six annotations must be present or Keyfactor reje
 
 | Annotation | Value |
 |---|---|
-| `Certificate-Support-Group-Contact` | `dahkfkaksupportnotification@firstcitizens.com` |
+| `Certificate-Support-Group-Contact` | `dahkafkasupportnotification@firstcitizens.com` |
 | `Environment` | `Non-Prod-DEV` / `Non-Prod-QA` / `Non-Prod-UAT` / `Prod-Corp` |
 | `Description` | `Confluent Manager for Apache Flink — REST endpoint TLS` |
 | `Organization` | `FCB` |

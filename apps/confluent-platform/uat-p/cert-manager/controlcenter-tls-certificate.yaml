@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: control-center
     fcbint.net/app-id: '11547'
   annotations:
-    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
     metadata.command-issuer.keyfactor.com/Environment: Non-Prod-UAT
     metadata.command-issuer.keyfactor.com/Description: "Control Center next-gen \u2014\
       \ REST + Prometheus + AlertManager listeners"

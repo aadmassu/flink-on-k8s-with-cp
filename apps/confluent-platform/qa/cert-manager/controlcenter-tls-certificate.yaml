@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/component: control-center
     fcbint.net/app-id: "11547"
   annotations:
-    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
     metadata.command-issuer.keyfactor.com/Environment: Non-Prod-QA
     metadata.command-issuer.keyfactor.com/Description: "Control Center next-gen — REST + Prometheus + AlertManager listeners"
     metadata.command-issuer.keyfactor.com/Organization: FCB

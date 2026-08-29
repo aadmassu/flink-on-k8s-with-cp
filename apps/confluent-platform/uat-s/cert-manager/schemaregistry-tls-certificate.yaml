@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: schema-registry
     fcbint.net/app-id: '11547'
   annotations:
-    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkfkaksupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
     metadata.command-issuer.keyfactor.com/Environment: Non-Prod-UAT
     metadata.command-issuer.keyfactor.com/Description: "Schema Registry \u2014 HTTPS\
       \ listener"
