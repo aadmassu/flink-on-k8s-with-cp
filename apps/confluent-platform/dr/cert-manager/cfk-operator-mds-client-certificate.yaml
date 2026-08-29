@@ -1,0 +1,44 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cfk-operator-mds-client
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: cfk-operator-mds-client
+    app.kubernetes.io/instance: cfk-operator-mds-client
+    app.kubernetes.io/component: mds-client-certificate
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: '11547'
+  annotations:
+    metadata.command-issuer.keyfactor.com/Certificate-Support-Group-Contact: dahkafkasupportnotification@firstcitizens.com
+    metadata.command-issuer.keyfactor.com/Environment: Prod-Corp
+    metadata.command-issuer.keyfactor.com/Description: CFK operator mTLS client certificate
+      for MDS KafkaRestClass reconciliation
+    metadata.command-issuer.keyfactor.com/Organization: FCB
+    metadata.command-issuer.keyfactor.com/Application-ID: '11547'
+    metadata.command-issuer.keyfactor.com/Platform: OPENSHIFT
+spec:
+  commonName: cfk-operator-rbac.apps.pd.ocp.fcbint.net
+  dnsNames:
+  - cfk-operator-rbac.apps.pd.ocp.fcbint.net
+  secretName: cfk-operator-mds-client-tls
+  duration: 8760h0m0s
+  renewBefore: 1080h0m0s
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  usages:
+  - client auth
+  issuerRef:
+    group: command-issuer.keyfactor.com
+    kind: ClusterIssuer
+    name: keyfactor
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: cfk-operator-mds-client
+      app.kubernetes.io/instance: cfk-operator-mds-client
+      app.kubernetes.io/component: mds-client-certificate
+      app.kubernetes.io/part-of: confluent-platform
+      fcbint.net/app-id: '11547'

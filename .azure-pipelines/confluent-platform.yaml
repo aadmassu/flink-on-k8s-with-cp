@@ -658,7 +658,7 @@ stages:
                   fi
 
                   # Enforce the independently verified two-account identity model.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ] || [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
                     case "$TARGET_ENV" in
                       dev)
                         EXPECTED_C3_ID="0oa1ov6h5mwmQTCKI358"
@@ -672,6 +672,12 @@ stages:
                         # UAT-P and UAT-S share credentials. Their values are
                         # supplied by their separate Azure DevOps variable
                         # groups, so enforce separation without hard-coding.
+                        EXPECTED_C3_ID="$OAUTH_C3_ID"
+                        EXPECTED_SSO_ID="$OAUTH_MDS_SSO_ID"
+                        ;;
+                      prd|dr)
+                        # PRD and DR share the production identities from their
+                        # own variable groups; enforce separation without hard-coding.
                         EXPECTED_C3_ID="$OAUTH_C3_ID"
                         EXPECTED_SSO_ID="$OAUTH_MDS_SSO_ID"
                         ;;
@@ -716,7 +722,7 @@ stages:
                   apply_oauth_secret oauth-mds-sso        "$OAUTH_MDS_SSO_ID"   "$OAUTH_MDS_SSO_SECRET"
 
                   # Validate the OIDC SSO Secret structure for promoted environments.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ] || [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
                     echo ""
                     echo "=== Validating oauth-mds-sso Secret Structure ==="
 
@@ -980,7 +986,7 @@ stages:
                   )
 
                   # DEV and QA use the known-good operator-mTLS and C3 storage baseline.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ] || [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
                     REQUIRED_FILES+=(
                       storage/controlcenter-prometheus-pvc.yaml
                       cert-manager/cfk-operator-mds-client-certificate.yaml
@@ -1047,7 +1053,7 @@ stages:
                     exit 1
                   fi
 
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ] || [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
                     echo ""
                     echo "=== Verifying platform-managed fcb-trust-bundle ==="
                     if ! oc -n "$OC_NS" get configmap fcb-trust-bundle >/dev/null 2>&1; then
@@ -1149,11 +1155,11 @@ stages:
                   case "$TARGET_ENV" in
                     dev)
                       # DEV should have dahDev_groups and 11547.DAH(Dev)
-                      if active_yaml_contains 'dahQA_groups|dahUAT_groups|dahProd_groups'; then
-                        echo "ERROR: DEV manifests contain non-DEV OAuth groups (QA/UAT/Prod)"
+                      if active_yaml_contains 'dahQA_groups|dahUAT_groups|dahPD_groups'; then
+                        echo "ERROR: DEV manifests contain non-DEV OAuth groups (QA/UAT/PD)"
                         exit 1
                       fi
-                      if active_yaml_contains '11547\.DAH\(QA\)|11547\.DAH\(UAT\)|11547\.DAH\(Prod\)'; then
+                      if active_yaml_contains '11547\.DAH\(QA\)|11547\.DAH\(UAT\)|11547\.DAH\(PD\)'; then
                         echo "ERROR: DEV manifests contain non-DEV OAuth scopes"
                         exit 1
                       fi
@@ -1166,11 +1172,11 @@ stages:
                       ;;
                     qa)
                       # QA should have dahQA_groups and 11547.DAH(QA)
-                      if active_yaml_contains 'dahDev_groups|dahUAT_groups|dahProd_groups'; then
+                      if active_yaml_contains 'dahDev_groups|dahUAT_groups|dahPD_groups'; then
                         echo "ERROR: QA manifests contain non-QA OAuth groups"
                         exit 1
                       fi
-                      if active_yaml_contains '11547\.DAH\(Dev\)|11547\.DAH\(UAT\)|11547\.DAH\(Prod\)'; then
+                      if active_yaml_contains '11547\.DAH\(Dev\)|11547\.DAH\(UAT\)|11547\.DAH\(PD\)'; then
                         echo "ERROR: QA manifests contain non-QA OAuth scopes"
                         exit 1
                       fi
@@ -1179,27 +1185,36 @@ stages:
                       ;;
                     uat-p|uat-s)
                       # UAT should have dahUAT_groups and 11547.DAH(UAT)
-                      if active_yaml_contains 'dahDev_groups|dahQA_groups|dahProd_groups'; then
+                      if active_yaml_contains 'dahDev_groups|dahQA_groups|dahPD_groups'; then
                         echo "ERROR: UAT manifests contain non-UAT OAuth groups"
                         exit 1
                       fi
-                      if active_yaml_contains '11547\.DAH\(Dev\)|11547\.DAH\(QA\)|11547\.DAH\(Prod\)'; then
+                      if active_yaml_contains '11547\.DAH\(Dev\)|11547\.DAH\(QA\)|11547\.DAH\(PD\)'; then
                         echo "ERROR: UAT manifests contain non-UAT OAuth scopes"
                         exit 1
                       fi
                       echo "✅ UAT manifests use dahUAT_groups and 11547.DAH(UAT)"
                       ;;
                     prd|dr)
-                      # PRD/DR should have dahProd_groups and 11547.DAH(Prod)
+                      # FCB production contract is dahPD_groups + 11547.DAH(PD).
+                      # Required positively, and non-PD values rejected.
+                      if ! active_yaml_contains 'dahPD_groups'; then
+                        echo "ERROR: PRD/DR manifests are missing the required OAuth group claim dahPD_groups"
+                        exit 1
+                      fi
+                      if ! active_yaml_contains '11547\.DAH\(PD\)'; then
+                        echo "ERROR: PRD/DR manifests are missing the required OAuth scope 11547.DAH(PD)"
+                        exit 1
+                      fi
                       if active_yaml_contains 'dahDev_groups|dahQA_groups|dahUAT_groups'; then
-                        echo "ERROR: PRD/DR manifests contain non-PRD OAuth groups"
+                        echo "ERROR: PRD/DR manifests contain non-PD OAuth groups (Dev/QA/UAT)"
                         exit 1
                       fi
                       if active_yaml_contains '11547\.DAH\(Dev\)|11547\.DAH\(QA\)|11547\.DAH\(UAT\)'; then
-                        echo "ERROR: PRD/DR manifests contain non-PRD OAuth scopes"
+                        echo "ERROR: PRD/DR manifests contain non-PD OAuth scopes (Dev/QA/UAT)"
                         exit 1
                       fi
-                      echo "✅ PRD/DR manifests use dahProd_groups and 11547.DAH(Prod)"
+                      echo "✅ PRD/DR manifests use dahPD_groups and 11547.DAH(PD)"
                       ;;
                   esac
 
@@ -1312,7 +1327,7 @@ stages:
                   )
 
                   # DEV and QA use mTLS for CFK operator KafkaRestClass reconciliation.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ] || [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
                     CERT_NAMES+=(cfk-operator-mds-client)
                   fi
                   validate_certificate_secret() {
@@ -1453,7 +1468,7 @@ stages:
                   fi
 
                   # Validate the operator mTLS client certificate in DEV and QA.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ] || [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
                     echo ""
                     echo "=== PHASE 3b: Validating $TARGET_ENV mTLS client certificate secret ==="
                     MTLS_SECRET="cfk-operator-mds-client-tls"
@@ -1658,7 +1673,7 @@ stages:
                   fi
 
                   # DEV and QA share the same mTLS KafkaRestClass contract.
-                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
+                  if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ] || [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
                     echo ""
                     echo "=== $TARGET_ENV mTLS Static Contract Checks ==="
                     dev_contract_passed=0
@@ -1668,6 +1683,10 @@ stages:
                       dev) contract_namespace="dah-flink-dev"; contract_domain="dv" ;;
                       qa)  contract_namespace="dah-flink-qa";  contract_domain="qa" ;;
                       uat-p|uat-s) contract_namespace="dah-flink-uat"; contract_domain="ut" ;;
+                      # PRD and DR share the production floating identity
+                      # cfk-operator-rbac.apps.pd.ocp.fcbint.net (both clusters
+                      # front the same *.apps.pd floating name).
+                      prd|dr) contract_namespace="dah-flink-prod"; contract_domain="pd" ;;
                     esac
                     expected_operator_cn="cfk-operator-rbac.apps.${contract_domain}.ocp.fcbint.net"
 
@@ -2401,7 +2420,7 @@ stages:
                   fi
                   if is_true "$APPLY_C3"; then
                     echo ""
-                    if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ]; then
+                    if [ "$TARGET_ENV" = "dev" ] || [ "$TARGET_ENV" = "qa" ] || [ "$TARGET_ENV" = "uat-p" ] || [ "$TARGET_ENV" = "uat-s" ] || [ "$TARGET_ENV" = "prd" ] || [ "$TARGET_ENV" = "dr" ]; then
                       C3_PROM_PVC="$ENV_DIR/storage/controlcenter-prometheus-pvc.yaml"
                       C3_PROM_PVC_NAME=prometheus-data-controlcenter-0
                       echo "=== Preparing Control Center Prometheus storage ==="

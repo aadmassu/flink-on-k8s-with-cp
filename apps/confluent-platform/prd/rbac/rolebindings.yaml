@@ -7,14 +7,14 @@
 #              Applied after Kafka cluster-ready (runbook A22).
 #
 # Client ID map:
-#   Kafka broker    0oa1owhtq2olDZWwf358  (super-user)
-#   Schema Registry 0oa1owiage2MyoHdt358
-#   Connect         0oa1owi0yntGMBvPS358
-#   Kafka REST      0oa1owi3wkxJS3b3b358
-#   Control Center  0oa1ov6h5mwmQTCKI358
+#   Kafka broker    __ENV_OAUTH_BROKER_CLIENT_ID__  (super-user)
+#   Schema Registry __ENV_OAUTH_SR_CLIENT_ID__
+#   Connect         __ENV_OAUTH_CONNECT_CLIENT_ID__
+#   Kafka REST      __ENV_OAUTH_REST_CLIENT_ID__
+#   Control Center  __ENV_OAUTH_C3_CLIENT_ID__
 ########################################################################
 
-# -- Schema Registry (0oa1owiage2MyoHdt358) --------------------------------
+# -- Schema Registry (__ENV_OAUTH_SR_CLIENT_ID__) --------------------------------
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
@@ -29,7 +29,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1owiage2MyoHdt358"
+    name: "__ENV_OAUTH_SR_CLIENT_ID__"
   role: ResourceOwner
   resourcePatterns:
     - resourceType: Topic
@@ -52,7 +52,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1owiage2MyoHdt358"
+    name: "__ENV_OAUTH_SR_CLIENT_ID__"
   role: ResourceOwner
   resourcePatterns:
     - resourceType: Group
@@ -63,7 +63,7 @@ spec:
     namespace: dah-flink-prod
 ---
 
-# -- Kafka Connect (0oa1owi0yntGMBvPS358) ----------------------------------
+# -- Kafka Connect (__ENV_OAUTH_CONNECT_CLIENT_ID__) ----------------------------------
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
@@ -78,7 +78,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1owi0yntGMBvPS358"
+    name: "__ENV_OAUTH_CONNECT_CLIENT_ID__"
   role: ResourceOwner
   resourcePatterns:
     - resourceType: Topic
@@ -107,7 +107,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1owi0yntGMBvPS358"
+    name: "__ENV_OAUTH_CONNECT_CLIENT_ID__"
   role: ResourceOwner
   resourcePatterns:
     - resourceType: Group
@@ -133,14 +133,14 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1owi0yntGMBvPS358"
+    name: "__ENV_OAUTH_CONNECT_CLIENT_ID__"
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-prod
 ---
 
-# -- Kafka REST Proxy (0oa1owi3wkxJS3b3b358) -------------------------------
+# -- Kafka REST Proxy (__ENV_OAUTH_REST_CLIENT_ID__) -------------------------------
 # SystemAdmin cluster-scope for Phase 2; tighten per-topic once we know which topics REST clients exercise.
 
 apiVersion: platform.confluent.io/v1beta1
@@ -156,14 +156,14 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1owi3wkxJS3b3b358"
+    name: "__ENV_OAUTH_REST_CLIENT_ID__"
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-prod
 ---
 
-# -- Control Center (0oa1ov6h5mwmQTCKI358) ---------------------------------
+# -- Control Center (__ENV_OAUTH_C3_CLIENT_ID__) ---------------------------------
 # SystemAdmin cluster-scope for Phase 2 — C3's own producers (heartbeat, metrics, monitoring interceptor, streams) need IdempotentWrite + Write on _confluent-controlcenter*/monitoring*/metrics*. Tighten later.
 
 apiVersion: platform.confluent.io/v1beta1
@@ -179,28 +179,29 @@ metadata:
 spec:
   principal:
     type: user
-    name: "0oa1ov6h5mwmQTCKI358"
+    name: "__ENV_OAUTH_C3_CLIENT_ID__"
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-prod
 ---
 
-# -- Human super-admins (MDS SSO uses email as sub claim) ------------------
+# -- Kafka embedded REST (kafka.dah-flink-prod.svc.cluster.local) ---------
 
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
-  name: aadmassu-sys-admin
+  name: kafka-embedded-rest-systemadmin
   namespace: dah-flink-prod
   labels:
-    app.kubernetes.io/component: rbac-user
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: kafka-broker
     app.kubernetes.io/part-of: confluent-platform
     fcbint.net/app-id: "11547"
 spec:
   principal:
     type: user
-    name: aadmassu@psyncopate.com
+    name: kafka.dah-flink-prod.svc.cluster.local
   role: SystemAdmin
   kafkaRestClassRef:
     name: default

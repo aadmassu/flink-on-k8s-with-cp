@@ -155,6 +155,12 @@ If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, rai
 - Container images use the same Artifactory pattern as Flink: `artifactory.fcbint.net/camdepositsharedservices-docker-dev/confluentinc/cp-*:8.1.0` for dev / qa / uat, `-docker-prod` for prd
 - External Kafka access: `loadBalancer` type — CFK creates per-broker LBs plus a bootstrap LB
 
+> **Temporary approved exception**: PRD pulls Confluent images from
+> `camdepositsharedservices-docker-dev` until the production Artifactory
+> repository is available. Image names and immutable version tags remain
+> controlled. Migrate to `camdepositsharedservices-docker-prod` after
+> repository readiness is confirmed.
+
 **Storage** (resolved from [`docs/OpenShift Persistent Storage.pdf`](../../../docs/OpenShift%20Persistent%20Storage.pdf)):
 
 FCB provisioned a dedicated **`kafka`** StorageClass on vSphere CSI (`csi.vsphere.vmware.com`) for this workload, with `reclaimPolicy: Retain` (PVs are preserved if a PVC gets deleted — data-safety for the log dirs / quorum log / RocksDB state) and `allowVolumeExpansion: true`. Owned by Container Platforms (`ContainerPlatforms@firstcitizens.com`), backed by a dedicated vSphere datastore. We use it for every PV in this stack — Kafka log dirs, KRaft quorum log, and Control Center RocksDB state. CFK workloads are single-writer per PV, so block-mode is the right shape (no need for RWX / filesystem SCs on the cluster). Previously used `ocs-storagecluster-ceph-rbd`; switched on 2026-07-06 to the dedicated `kafka` SC.

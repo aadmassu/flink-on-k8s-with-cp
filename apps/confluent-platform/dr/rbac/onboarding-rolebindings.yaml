@@ -1,0 +1,135 @@
+---
+########################################################################
+# Description: Application-onboarding RBAC for QA.
+#
+# This file is the single source of truth for application onboarding RBAC.
+# The application-rbac pipeline applies these resources unchanged. Update
+# principals, roles, and component scopes directly in this manifest.
+########################################################################
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: onboarding-user-kafka-clusteradmin
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: confluent-platform
+    app.kubernetes.io/component: application-rbac
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
+spec:
+  principal:
+    type: user
+    name: "00u1u5ovirxMj7Aq0358"
+  role: ClusterAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-prod
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: onboarding-user-schemaregistry-systemadmin
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: confluent-platform
+    app.kubernetes.io/component: application-rbac
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
+spec:
+  principal:
+    type: user
+    name: "00u1u5ovirxMj7Aq0358"
+  role: SystemAdmin
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_dah-flink-prod
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-prod
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: onboarding-user-connect-systemadmin
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: confluent-platform
+    app.kubernetes.io/component: application-rbac
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
+spec:
+  principal:
+    type: user
+    name: "00u1u5ovirxMj7Aq0358"
+  role: SystemAdmin
+  clustersScopeByIds:
+    connectClusterId: dah-flink-prod.connect
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-prod
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: onboarding-group-kafka-clusteradmin
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: confluent-platform
+    app.kubernetes.io/component: application-rbac
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
+spec:
+  principal:
+    type: group
+    name: "pd_app_okta_digital_analytics_hub_users"
+  role: ClusterAdmin
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-prod
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: onboarding-group-schemaregistry-systemadmin
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: confluent-platform
+    app.kubernetes.io/component: application-rbac
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
+spec:
+  principal:
+    type: group
+    name: "pd_app_okta_digital_analytics_hub_users"
+  role: SystemAdmin
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_dah-flink-prod
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-prod
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: onboarding-group-connect-systemadmin
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: confluent-platform
+    app.kubernetes.io/component: application-rbac
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+    rbac.fcbint.net/managed-by: application-onboarding
+spec:
+  principal:
+    type: group
+    name: "pd_app_okta_digital_analytics_hub_users"
+  role: SystemAdmin
+  clustersScopeByIds:
+    connectClusterId: dah-flink-prod.connect
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-prod
