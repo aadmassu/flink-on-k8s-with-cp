@@ -72,3 +72,6 @@ apps/confluent-platform/*-backup-**/
 # Build artifacts (regenerated from source)
 *-refactored*.zip
 *.zip
+
+# VM Confluent Platform reference properties (contain plaintext credentials)
+apps/confluent-platform/cp-confluent/
