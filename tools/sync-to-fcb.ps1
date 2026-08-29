@@ -8,7 +8,9 @@
  (proposals, weekly reports, issue tracker, lessons-learned, REST-proxy
  design docs). The local-only project-docs/ directory and everything
  under it (vendor PDFs, screenshots, ROSA notes, pump.txt, dump.txt) is
- excluded from the /MIR pass and never reaches DAH.Kafka.OS.
+ excluded from the /MIR pass and never reaches DAH.Kafka.OS. The same
+ applies to apps/confluent-platform/cp-confluent/ — VM reference
+ .properties files holding plaintext credentials.
 
  HOW TO USE (PowerShell ISE)
    1. Open this file in PowerShell ISE on the FCB-issued Windows laptop.
@@ -60,6 +62,12 @@ $Destination = "C:\git-repos\DAH.Kafka.OS"           # FCB Azure DevOps clone
 #                directory and everything under it stays on the source side and
 #                never reaches DAH.Kafka.OS.
 # tools/        local sync helpers (this script); not needed in DAH.Kafka.OS
+# cp-confluent/ VM Confluent Platform reference .properties files. They carry
+#                plaintext client secrets, SASL passwords and the license JWT,
+#                and are git-ignored on the source side. /XD means robocopy
+#                neither copies NOR deletes them, so any existing copy in
+#                DAH.Kafka.OS is left untouched — remove it there separately
+#                if it should not remain.
 # node_modules/ defensive; nothing tracked uses it but skip if it appears
 # .gitattributes routes *.tar through Git LFS, which the destination Azure DevOps
 #                Repos server does NOT support (push fails with
@@ -67,7 +75,7 @@ $Destination = "C:\git-repos\DAH.Kafka.OS"           # FCB Azure DevOps clone
 #                Excluding it means tar files are committed on the destination
 #                as regular large files (Azure DevOps Repos accepts those).
 
-$excludeDirs  = @('.git', '.github', 'project-docs', 'tools', 'node_modules')
+$excludeDirs  = @('.git', '.github', 'project-docs', 'tools', 'cp-confluent', 'node_modules')
 $excludeFiles = @('.gitattributes')
 
 # =============================================================================
