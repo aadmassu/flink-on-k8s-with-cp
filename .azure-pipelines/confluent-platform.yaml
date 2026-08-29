@@ -1777,18 +1777,37 @@ stages:
                       dev_contract_passed=$((dev_contract_passed+1))
                     fi
 
-                    # Validate actual issued certificate: FQDN CN and clientAuth EKU
+                    # Validate actual issued certificate: FQDN CN and clientAuth EKU.
+                    # Decode the complete PEM bundle before invoking OpenSSL. Streaming a
+                    # leaf+chain bundle through `openssl x509` can make upstream base64
+                    # exit with SIGPIPE (141) under `set -o pipefail` after OpenSSL has
+                    # consumed the first certificate.
                     echo "  Validating actual issued cfk-operator-mds-client certificate..."
-                    cert_cn_actual=$(oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
-                      -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d 2>/dev/null | \
-                      openssl x509 -noout -subject 2>/dev/null | sed 's/^subject=//' | sed 's/^ *//' | sed 's/CN = //' | sed 's/,.*//')
+                    contract_cert_tmp=$(mktemp)
+                    contract_cert_b64=$(oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
+                      -o jsonpath='{.data.tls\.crt}' 2>/dev/null || true)
 
-                    if [ "$cert_cn_actual" = "$expected_operator_cn" ]; then
-                      echo "  ✓ Issued certificate CN is $expected_operator_cn"
-                      dev_contract_passed=$((dev_contract_passed+1))
-                    else
-                      echo "  ✗ Issued certificate CN is '$cert_cn_actual', expected $expected_operator_cn"
+                    contract_cert_extract_ok=true
+                    if [ -z "$contract_cert_b64" ] \
+                        || ! printf '%s' "$contract_cert_b64" | base64 -d > "$contract_cert_tmp" 2>/dev/null \
+                        || [ ! -s "$contract_cert_tmp" ]; then
+                      contract_cert_extract_ok=false
+                      cert_cn_actual=""
+                      echo "  ✗ Unable to extract the issued CFK operator certificate"
                       dev_contract_failed=$((dev_contract_failed+1))
+                    else
+                      cert_subject=$(openssl x509 -in "$contract_cert_tmp" -noout -subject 2>/dev/null || true)
+                      cert_cn_actual=$(sed -e 's/^subject=//' -e 's/^ *//' -e 's/CN = //' -e 's/,.*//' <<< "$cert_subject")
+                    fi
+
+                    if [ "$contract_cert_extract_ok" = true ]; then
+                      if [ "$cert_cn_actual" = "$expected_operator_cn" ]; then
+                        echo "  ✓ Issued certificate CN is $expected_operator_cn"
+                        dev_contract_passed=$((dev_contract_passed+1))
+                      else
+                        echo "  ✗ Issued certificate CN is '$cert_cn_actual', expected $expected_operator_cn"
+                        dev_contract_failed=$((dev_contract_failed+1))
+                      fi
                     fi
 
                     # Validate principal mapping: FQDN CN maps to short principal
@@ -1800,19 +1819,10 @@ stages:
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
-                    # Check issued certificate has clientAuth EKU. Decode to a file and
-                    # search captured output; the old oc|base64|openssl|grep -q chain
-                    # made the verdict depend on pipeline exit status.
-                    contract_cert_tmp=$(mktemp)
-                    if ! oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
-                        -o jsonpath='{.data.tls\.crt}' 2>/dev/null \
-                        | base64 -d > "$contract_cert_tmp" 2>/dev/null || [ ! -s "$contract_cert_tmp" ]; then
-                      echo "  ✗ Unable to extract the issued CFK operator certificate"
-                      dev_contract_failed=$((dev_contract_failed+1))
-                      rm -f "$contract_cert_tmp"
-                    else
+                    # Check issued certificate has clientAuth EKU using the same fully
+                    # decoded file used by the CN validation above.
+                    if [ "$contract_cert_extract_ok" = true ]; then
                       contract_eku_text=$(openssl x509 -in "$contract_cert_tmp" -noout -ext extendedKeyUsage 2>/dev/null || true)
-                      rm -f "$contract_cert_tmp"
                       if grep -Fq "TLS Web Client Authentication" <<< "$contract_eku_text"; then
                         echo "  ✓ Issued certificate has TLS Web Client Authentication EKU"
                         dev_contract_passed=$((dev_contract_passed+1))
@@ -1821,6 +1831,7 @@ stages:
                         dev_contract_failed=$((dev_contract_failed+1))
                       fi
                     fi
+                    rm -f "$contract_cert_tmp"
 
                     # Check certificate commonName (approved FQDN that maps to short principal)
                     certificate_cn_check=$(python3 -c 'import sys,yaml; data=yaml.safe_load(open(sys.argv[1])); print("pass" if data.get("spec",{}).get("commonName") == sys.argv[2] else "fail")' "$ENV_DIR/cert-manager/cfk-operator-mds-client-certificate.yaml" "$expected_operator_cn" 2>/dev/null || echo "error")
