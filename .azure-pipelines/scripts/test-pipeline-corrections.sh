@@ -109,6 +109,74 @@ test_namespace_before_prereqs() {
   test "$validate" -lt "$create"
 }
 
+# --- clientAuth EKU check: deterministic, not pipeline-exit-status dependent ---
+# Mirrors the two-step form used at all three EKU sites in the pipeline.
+eku_has_client_auth() {
+  local cert=$1 eku_text
+  eku_text=$(openssl x509 -in "$cert" -noout -ext extendedKeyUsage 2>/dev/null || true)
+  grep -Fq "TLS Web Client Authentication" <<< "$eku_text"
+}
+
+EKU_TMP=$(mktemp -d)
+trap 'rm -rf "$EKU_TMP"' EXIT
+
+make_eku_cert() {
+  local out=$1 eku=$2 sans=${3:-}
+  {
+    printf '[req]\ndistinguished_name=dn\n[dn]\n[v3]\nextendedKeyUsage=%s\n' "$eku"
+    [ -n "$sans" ] && printf 'subjectAltName=%s\n' "$sans"
+  } > "$EKU_TMP/req.cnf"
+  openssl req -x509 -newkey rsa:2048 -keyout "$EKU_TMP/key.pem" -out "$out" \
+    -days 2 -nodes -subj "/CN=cfk-operator-rbac.apps.pd.ocp.fcbint.net" \
+    -extensions v3 -config "$EKU_TMP/req.cnf" 2>/dev/null
+}
+
+test_eku_accepts_client_auth() {
+  make_eku_cert "$EKU_TMP/client.pem" clientAuth
+  eku_has_client_auth "$EKU_TMP/client.pem"
+}
+
+test_eku_rejects_server_only() {
+  make_eku_cert "$EKU_TMP/server.pem" serverAuth
+  ! eku_has_client_auth "$EKU_TMP/server.pem"
+}
+
+# A large certificate makes the consumer exit long before the producer finishes.
+# The two-step form must stay deterministic where a pipe into grep -q would not.
+test_eku_large_cert_deterministic() {
+  local sans i rc
+  sans=$(for i in $(seq 1 1500); do printf 'DNS:h%05d.apps.pd.ocp.fcbint.net,' "$i"; done | sed 's/,$//')
+  make_eku_cert "$EKU_TMP/big.pem" clientAuth "$sans"
+  for i in $(seq 1 25); do
+    eku_has_client_auth "$EKU_TMP/big.pem" || return 1
+  done
+  return 0
+}
+
+# No EKU extension at all must fail closed, not error out.
+test_eku_missing_extension_fails() {
+  openssl req -x509 -newkey rsa:2048 -keyout "$EKU_TMP/k3.pem" -out "$EKU_TMP/noeku.pem" \
+    -days 2 -nodes -subj "/CN=no-eku.example.net" 2>/dev/null
+  ! eku_has_client_auth "$EKU_TMP/noeku.pem"
+}
+
+# The fragile pattern must not exist in executable lines (comments may name it).
+test_no_openssl_grep_q_patterns() {
+  ! grep -nE 'openssl[^|]*\|[^|]*grep[[:space:]]+-q' "$PIPELINE_FILE" \
+    | grep -vE '^[0-9]+:[[:space:]]*#'
+}
+
+test_eku_checks_use_captured_output() {
+  local n
+  n=$(grep -c 'grep -Fq "TLS Web Client Authentication" <<<' "$PIPELINE_FILE")
+  test "$n" -eq 3
+}
+
+# The fix must be global: no environment-gated EKU logic.
+test_eku_checks_are_environment_neutral() {
+  ! grep -nE '(prd|dr|uat)[^\n]*TLS Web Client Authentication' "$PIPELINE_FILE"
+}
+
 printf 'Pipeline SHA-256: %s\n' "$PIPELINE_SHA"
 record 'complete six-environment package' test_complete_package
 record 'EndpointSlice counts ready/unspecified endpoints across all slices' test_endpoint_positive
@@ -122,6 +190,13 @@ record 'MDS uses verified TLS and stdin-enabled oc exec' test_mds_verified_tls
 record 'managed components use CFK cluster-ready condition' test_readiness_condition
 record 'certificate phases are ordered before mutation/dependency validation' test_certificate_order
 record 'namespace validation precedes prerequisite creation' test_namespace_before_prereqs
+record 'clientAuth EKU check accepts a clientAuth certificate' test_eku_accepts_client_auth
+record 'clientAuth EKU check rejects a serverAuth-only certificate' test_eku_rejects_server_only
+record 'clientAuth EKU check rejects a certificate with no EKU extension' test_eku_missing_extension_fails
+record 'clientAuth EKU check is deterministic on a large certificate' test_eku_large_cert_deterministic
+record 'no openssl-piped-into-grep -q patterns remain' test_no_openssl_grep_q_patterns
+record 'all three EKU checks search captured output' test_eku_checks_use_captured_output
+record 'EKU checks are environment-neutral' test_eku_checks_are_environment_neutral
 
 printf 'Passed: %d\nFailed: %d\n' "$passed" "$failed"
 test "$failed" -eq 0

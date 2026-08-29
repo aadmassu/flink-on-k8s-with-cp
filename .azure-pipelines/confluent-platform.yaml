@@ -1376,9 +1376,12 @@ stages:
                       return 1
                     fi
 
-                    # For mTLS certificates, validate clientAuth EKU
+                    # For mTLS certificates, validate clientAuth EKU. Capture the
+                    # OpenSSL output first; piping into grep -q is exit-status fragile.
                     if [[ "$cert_name" == *"mds-client"* ]]; then
-                      if ! openssl x509 -in "$cert_tmp/tls.crt" -noout -text | grep -q "TLS Web Client Authentication"; then
+                      local eku_text
+                      eku_text=$(openssl x509 -in "$cert_tmp/tls.crt" -noout -ext extendedKeyUsage 2>/dev/null || true)
+                      if ! grep -Fq "TLS Web Client Authentication" <<< "$eku_text"; then
                         echo "  ERROR: Certificate/$cert_name → Secret/$secret_name: missing TLS Web Client Authentication EKU"
                         rm -rf "$cert_tmp"
                         return 1
@@ -1486,10 +1489,20 @@ stages:
                       echo "  ✓ $key present and nonempty"
                     done
 
-                    # Validate tls.crt has clientAuth EKU
-                    crt_data=$(oc -n "$OC_NS" get secret "$MTLS_SECRET" \
-                      -o go-template="{{ index .data \"tls.crt\" }}" 2>/dev/null | base64 -d)
-                    if ! printf '%s' "$crt_data" | openssl x509 -noout -text | grep -q "TLS Web Client Authentication"; then
+                    # Validate tls.crt has clientAuth EKU. Decode the certificate to a
+                    # file first, then search captured OpenSSL output — piping into
+                    # grep -q makes the result depend on pipeline exit status.
+                    mtls_cert_tmp=$(mktemp)
+                    if ! oc -n "$OC_NS" get secret "$MTLS_SECRET" \
+                        -o go-template="{{ index .data \"tls.crt\" }}" 2>/dev/null \
+                        | base64 -d > "$mtls_cert_tmp" 2>/dev/null || [ ! -s "$mtls_cert_tmp" ]; then
+                      echo "  ERROR: Unable to extract the issued CFK operator certificate from Secret/$MTLS_SECRET"
+                      rm -f "$mtls_cert_tmp"
+                      exit 1
+                    fi
+                    mtls_eku_text=$(openssl x509 -in "$mtls_cert_tmp" -noout -ext extendedKeyUsage 2>/dev/null || true)
+                    rm -f "$mtls_cert_tmp"
+                    if ! grep -Fq "TLS Web Client Authentication" <<< "$mtls_eku_text"; then
                       echo "  ERROR: Secret/$MTLS_SECRET tls.crt missing TLS Web Client Authentication EKU"
                       exit 1
                     fi
@@ -1787,15 +1800,26 @@ stages:
                       dev_contract_failed=$((dev_contract_failed+1))
                     fi
 
-                    # Check issued certificate has clientAuth EKU
-                    if oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
-                      -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d 2>/dev/null | \
-                      openssl x509 -noout -text 2>/dev/null | grep -q "TLS Web Client Authentication"; then
-                      echo "  ✓ Issued certificate has TLS Web Client Authentication EKU"
-                      dev_contract_passed=$((dev_contract_passed+1))
-                    else
-                      echo "  ✗ Issued certificate missing TLS Web Client Authentication EKU"
+                    # Check issued certificate has clientAuth EKU. Decode to a file and
+                    # search captured output; the old oc|base64|openssl|grep -q chain
+                    # made the verdict depend on pipeline exit status.
+                    contract_cert_tmp=$(mktemp)
+                    if ! oc -n "$OC_NS" get secret cfk-operator-mds-client-tls \
+                        -o jsonpath='{.data.tls\.crt}' 2>/dev/null \
+                        | base64 -d > "$contract_cert_tmp" 2>/dev/null || [ ! -s "$contract_cert_tmp" ]; then
+                      echo "  ✗ Unable to extract the issued CFK operator certificate"
                       dev_contract_failed=$((dev_contract_failed+1))
+                      rm -f "$contract_cert_tmp"
+                    else
+                      contract_eku_text=$(openssl x509 -in "$contract_cert_tmp" -noout -ext extendedKeyUsage 2>/dev/null || true)
+                      rm -f "$contract_cert_tmp"
+                      if grep -Fq "TLS Web Client Authentication" <<< "$contract_eku_text"; then
+                        echo "  ✓ Issued certificate has TLS Web Client Authentication EKU"
+                        dev_contract_passed=$((dev_contract_passed+1))
+                      else
+                        echo "  ✗ Issued certificate missing TLS Web Client Authentication EKU"
+                        dev_contract_failed=$((dev_contract_failed+1))
+                      fi
                     fi
 
                     # Check certificate commonName (approved FQDN that maps to short principal)
