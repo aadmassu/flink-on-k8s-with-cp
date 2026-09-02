@@ -128,6 +128,11 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
 - [ ] Advertised endpoint gap acknowledged: VM advertises certonly on
       `brokerN.<env>.firstcitizens.com:7055`. Until tracker 2.10 lands,
       the CFK listener is bind-only and cert-only clients CANNOT cut over
+- [ ] If exposing certonly: mode is `staticForHostBasedRouting` (same
+      port, per-broker hostname), NOT `staticForPortBasedRouting`. CFK
+      is 0-indexed so `broker0/1/2` will NOT match VM's `broker1..3` /
+      `broker01..03` — confirm the DNS decision before filing 2.10
+      (`LESSONS_LEARNED.md` A32)
 
 ### 1d. Resources, scheduling, and admission constraints
 - [ ] `spec.podTemplate.resources` (NOT `spec.resources`) is set;

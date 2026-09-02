@@ -36,16 +36,51 @@ table before comparing a VM `.properties` file against a CFK Kafka CR.
 Port 9092 carries OAuth on **both** platforms, so client bootstrap strings keep
 the same port across the migration. Only the hostname changes.
 
-> **Advertised-port gap (open item).** VM binds `CERTONLY` on 9094 but
-> *advertises* it as `brokerN.<env>.firstcitizens.com:7055` — a different
-> hostname family and port than the bind. mTLS clients connect to 7055 today.
-> For a transparent cutover the CFK `certonly` listener must eventually
-> advertise the same host:port, which needs (a) the tracker 2.10 custom-TCP-port
-> exception, (b) `externalAccess.staticForPortBasedRouting` on the custom
-> listener, and (c) those hostnames added as SANs on `kafka-tls-certificate.yaml`
-> (they are not there today). Neither
-> `docs/firewall/INBOUND-FIREWALL-REQUESTS.md` nor the cert manifest accounts
-> for 7055 yet.
+### Advertised endpoint gap on `certonly` (open item)
+
+VM binds `CERTONLY://:9094` but *advertises*
+`CERTONLY://brokerN.<env>.firstcitizens.com:7055` — a different hostname family
+AND a different port than the bind. mTLS clients connect to **7055** today.
+
+Advertised certonly endpoints, from `cp-confluent/<env>/`:
+
+| Env | Advertised hostnames | Port |
+|---|---|---|
+| dev | `broker{1,2,3}.dev.firstcitizens.com` | 7055 |
+| uat | `broker{1,2,3}.uat.firstcitizens.com` | 7055 |
+| prd | `broker{01,02,03}.dah-kafka-pdc.firstcitizens.com` | 7055 |
+| dr  | `broker{01,02,03}.dah-kafka-sdc.firstcitizens.com` | 7055 |
+
+Same port on every broker, different hostname per broker — so the matching CFK
+mode is `externalAccess.type: staticForHostBasedRouting` (`brokerPrefix` +
+`domain` + `port`), **not** `staticForPortBasedRouting`, which holds the host
+constant and increments the port per broker.
+
+> **Exact hostname parity is NOT achievable.** CFK derives each advertised name
+> as `<brokerPrefix><brokerId>.<domain>` from **0-indexed** broker IDs
+> (`kafka-0`, `kafka-1`, `kafka-2`), and CFK 3.1.2's Kafka CR has no
+> broker-id-offset field. VM hostnames are **1-indexed** (`broker1..broker3` in
+> dev/uat) or **zero-padded 1-indexed** (`broker01..broker03` in prd/dr), and
+> VM's own `broker.id` values are 101/102/103 — decoupled from the hostname.
+> `brokerPrefix: broker` therefore yields `broker0/1/2`, which in dev/uat
+> *partially overlaps* the VM names while pointing at a different broker — a
+> worse failure mode than no overlap. In prd/dr there is no overlap at all
+> because of the zero-padding.
+
+Closing this needs, in order:
+
+1. Tracker 2.10 custom-TCP-port exception (NodePort is prohibited platform-wide;
+   LoadBalancer collides with the ClusterIP-only standard at Gatekeeper)
+2. A decision on advertised hostnames — either new CFK-shaped names with
+   cert-only clients re-pointed, or FCB DNS aliases mapping the VM names onto
+   CFK broker endpoints so client config is untouched
+3. Whichever names are chosen added as SANs on
+   `cert-manager/kafka-tls-certificate.yaml`. Note these are on
+   `firstcitizens.com`, while every CFK certificate today is on `fcbint.net` —
+   whether the KeyFactor ClusterIssuer will issue for that domain is an open
+   question for FCB PKI
+4. `docs/firewall/INBOUND-FIREWALL-REQUESTS.md` updated — it lists 9094 only
+   and never mentions 7055, so the inbound ask is incomplete as written
 
 ## Listener Details
 
