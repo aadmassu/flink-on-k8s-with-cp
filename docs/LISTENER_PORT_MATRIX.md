@@ -5,17 +5,51 @@ Refactor Phase: Hybrid Authentication (:9071→:9092 migration)
 
 ## Overview
 
-Confluent Platform on CFK (Confluent for Kubernetes) uses a dual-listener architecture:
+Confluent Platform on CFK (Confluent for Kubernetes) uses a multi-listener architecture:
 
-| Listener   | Port | Protocol   | Auth Mechanism       | Use Case                                                           |
+| CFK listener key | Port | Protocol   | Auth Mechanism       | Use Case                                                           |
 |-----------|------|-----------|----------------------|--------------------------------------------------------------------|
-| **INTERNAL** | 9071 | SASL_SSL  | SASL/PLAIN + TLS     | Inter-broker communication, KRaft controller traffic, admin ops    |
-| **EXTERNAL** | 9092 | SASL_SSL  | OAuth + TLS          | Managed component clients (SR, Connect, REST, C3) using OAuth      |
-| **MDS/REST** | 8090 | HTTPS    | OAuth (Bearer token) | Metadata Service REST API, rolebindings, RBAC queries             |
+| `internal` | 9071 | SASL_SSL  | SASL/PLAIN + TLS     | Inter-broker communication, KRaft controller traffic, admin ops    |
+| `external` | 9092 | SASL_SSL  | OAuth + TLS          | Managed component clients (SR, Connect, REST, C3) using OAuth      |
+| `custom[certonly]` | 9094 | SSL | mTLS (client cert)   | Cert-only clients; mirrors the VM `CERTONLY` listener              |
+| MDS/REST   | 8090 | HTTPS    | OAuth (Bearer token) | Metadata Service REST API, rolebindings, RBAC queries             |
+
+> **CFK listener keys are fixed by the CRD.** `spec.listeners` accepts only
+> `internal`, `external`, `replication` and `custom` (`additionalProperties:
+> false`); arbitrary names are rejected at admission. The VM listener names
+> cannot be reproduced on CFK — see the mapping table below.
+
+## VM CP → CFK listener mapping
+
+The two platforms use the same ports for the same jobs but **opposite names**.
+VM `INTERNAL` means "internal to the FCB network" (client-facing); CFK
+`internal` means "internal to the Kubernetes cluster" (inter-broker). Read this
+table before comparing a VM `.properties` file against a CFK Kafka CR.
+
+| Role | VM listener | VM port | CFK listener key | CFK port |
+|---|---|---|---|---|
+| Client-facing OAuth (SR, Connect, REST, C3, apps) | `INTERNAL` | 9092 | `external` | 9092 |
+| Inter-broker replication (PLAIN) | `BROKER` | 9091 | `internal` | 9071 |
+| KRaft controller quorum (PLAIN) | `CONTROLLER` | 9093 | `dependencies.kRaftController.controllerListener` | 9074 |
+| mTLS cert-only clients | `CERTONLY` | 9094 (advertised 7055) | `custom[certonly]` | 9094 |
+
+Port 9092 carries OAuth on **both** platforms, so client bootstrap strings keep
+the same port across the migration. Only the hostname changes.
+
+> **Advertised-port gap (open item).** VM binds `CERTONLY` on 9094 but
+> *advertises* it as `brokerN.<env>.firstcitizens.com:7055` — a different
+> hostname family and port than the bind. mTLS clients connect to 7055 today.
+> For a transparent cutover the CFK `certonly` listener must eventually
+> advertise the same host:port, which needs (a) the tracker 2.10 custom-TCP-port
+> exception, (b) `externalAccess.staticForPortBasedRouting` on the custom
+> listener, and (c) those hostnames added as SANs on `kafka-tls-certificate.yaml`
+> (they are not there today). Neither
+> `docs/firewall/INBOUND-FIREWALL-REQUESTS.md` nor the cert manifest accounts
+> for 7055 yet.
 
 ## Listener Details
 
-### INTERNAL Listener (:9071)
+### `internal` listener (:9071) — VM equivalent: `BROKER:9091`
 
 - **Protocol**: `SASL_SSL` (SASL/PLAIN over TLS 1.3)
 - **Authentication**: SASL/PLAIN with credentials from `sasl-plain-internal` Secret
@@ -28,7 +62,7 @@ Confluent Platform on CFK (Confluent for Kubernetes) uses a dual-listener archit
   - Tools: AdminClient (broker/controller operations)
   - CFK Operator (cluster health probes)
 
-### EXTERNAL Listener (:9092) — *NEW POST-REFACTOR*
+### `external` listener (:9092) — VM equivalent: `INTERNAL:9092`
 
 - **Protocol**: `SASL_SSL` (OAuth over TLS 1.3)
 - **Authentication**: OAuth + JAAS (OAUTHBEARER mechanism)
@@ -42,7 +76,7 @@ Confluent Platform on CFK (Confluent for Kubernetes) uses a dual-listener archit
   - **Kafka REST Proxy**: `oauth-kafkarest` Secret
   - **Control Center**: `oauth-controlcenter` Secret (C3 backend communication; OIDC is MDS responsibility)
 
-### MDS Listener (:8090)
+### MDS listener (:8090)
 
 - **Protocol**: HTTPS (TLS 1.3)
 - **Authentication**: OAuth Bearer tokens + OIDC for browser SSO
@@ -62,14 +96,14 @@ Confluent Platform on CFK (Confluent for Kubernetes) uses a dual-listener archit
 | **qa**    | kafka.dah-flink-qa.svc.cluster.local  | dah-flink-qa  |
 | **uat-p** | kafka.dah-flink-uat.svc.cluster.local | dah-flink-uat |
 | **uat-s** | kafka.dah-flink-uat.svc.cluster.local | dah-flink-uat |
-| **prd**   | kafka.dah-flink-prd.svc.cluster.local | dah-flink-prd |
-| **dr**    | kafka.dah-flink-dr.svc.cluster.local  | dah-flink-dr  |
+| **prd**   | kafka.dah-flink-prod.svc.cluster.local | dah-flink-prod |
+| **dr**    | kafka.dah-flink-prod.svc.cluster.local | dah-flink-prod (pd-s cluster) |
 
 > **Note**: UAT-P and UAT-S share the same kafka service DNS (`dah-flink-uat`) but are in separate logical environments with distinct Okta scopes and rolebindings.
 
 ## Managed Component Bootstrap Endpoints (Post-Refactor)
 
-All managed components now connect to the **EXTERNAL listener (:9092)** instead of INTERNAL (:9071).
+All managed components now connect to the **`external` listener (:9092)** instead of `internal` (:9071) — matching how every VM component bootstraps to the VM `INTERNAL:9092` OAuth listener.
 
 ```yaml
 dependencies:

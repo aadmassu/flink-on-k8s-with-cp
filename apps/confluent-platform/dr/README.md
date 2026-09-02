@@ -8,9 +8,9 @@
 >
 > Shared with `../prd/` (do not diverge these; they represent the same Prod family):
 >
-> - **OAuth scope `11547.DAH(Prod)`** — same Okta app as prd/; tokens issued to
+> - **OAuth scope `11547.DAH(PD)`** — same Okta app as prd/; tokens issued to
 >   users must validate on either cluster during a failover.
-> - **Groups claim `dahProd_groups`** — same.
+> - **Groups claim `dahPD_groups`** — same.
 > - **ESO SecretStore `11547-p-key-fp`** — DR's `dah-flink-prod` namespace can
 >   share the Prod CyberArk safe since it's the same logical env.
 > - **Floating DNS `apps.pd.ocp.fcbint.net`** — same for the five REST/UI Ingresses.
@@ -147,7 +147,7 @@ If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, rai
 - Log retention 168h (7d), 1 GiB segments
 - Min ISR for transaction-state log = 2
 - KRaft quorum size = 3
-- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, scope `11547.DAH(Prod)`
+- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, scope `11547.DAH(PD)`
 - Authorizer: `ConfluentServerAuthorizer` with `CONFLUENT,KRAFT_ACL` rule providers
 - Embedded MDS on broker port 8090 (HTTPS, BEARER)
 - Self-Balancing Cluster (SBC) enabled

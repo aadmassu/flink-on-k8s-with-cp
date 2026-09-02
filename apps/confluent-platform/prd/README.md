@@ -3,16 +3,17 @@
 > 🛑 **PLACEHOLDER STATE — DO NOT DEPLOY WITHOUT FILLING IN THE VALUES BELOW.**
 > This tree was cloned from `../uat/` on 2026-07-08 with mechanical env-token
 > substitutions (namespace → dah-flink-prod, DNS → apps.pd, ESO → 11547-p-key-fp,
-> AZDO var prefix → prd-, OAuth scope → DAH(Prod), groups claim → dahProd_groups).
+> AZDO var prefix → prd-, OAuth scope → DAH(PD), groups claim → dahPD_groups).
 > The following values are best-guess / unverified and MUST be confirmed before
 > any pipeline run against the PRD cluster:
 >
-> - **OAuth scope `11547.DAH(Prod)`** — confirm against the PRD Okta app registration
-> - **Groups claim `dahProd_groups`** — confirm against the PRD Okta app registration
+> - **OAuth scope `11547.DAH(PD)`** — CONFIRMED against the VM PRD broker
+>   properties in `../cp-confluent/prd/`
+> - **Groups claim `dahPD_groups`** — CONFIRMED against the same VM properties
 > - **ESO SecretStore `11547-p-key-fp`** — confirm with Container Platforms; the PRD
 >   CyberArk safe follows the d/q/u pattern but the exact name is not in this repo yet
-> - **OpenShift API URL `api.pd.ocp.fcbint.net`** — confirm against ROSA; may be
->   `api.pd-p.ocp.fcbint.net` for the primary cluster explicitly
+> - **OpenShift API URL `api.pd.ocp.fcbint.net`** — confirm with Container
+>   Platforms; may be `api.pd-p.ocp.fcbint.net` for the primary cluster explicitly
 > - **VM CP hostnames** — the mapping table below carries `<REPLACE_WITH_PRD_...>`
 >   placeholders. Populate from `apps/confluent-platform/cp-confluent/prd/` when
 >   Ayu extracts the PRD VM .properties files from the FCB laptop (that folder
@@ -138,7 +139,7 @@ If broker traffic grows enough to bottleneck on CPU or hit the heap ceiling, rai
 - Log retention 168h (7d), 1 GiB segments
 - Min ISR for transaction-state log = 2
 - KRaft quorum size = 3
-- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, scope `11547.DAH(Prod)`
+- OAuth issuer (Okta: `myapps.firstcitizens.com/oauth2/default`), JWKS endpoint, scope `11547.DAH(PD)`
 - Authorizer: `ConfluentServerAuthorizer` with `CONFLUENT,KRAFT_ACL` rule providers
 - Embedded MDS on broker port 8090 (HTTPS, BEARER)
 - Self-Balancing Cluster (SBC) enabled

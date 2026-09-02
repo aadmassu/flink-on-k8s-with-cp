@@ -93,8 +93,8 @@ Control Center displays user groups based on the `dahDev_groups`, `dahQA_groups`
 | **qa** | `dahQA_groups` | QA environment |
 | **uat-p** | `dahUAT_groups` | UAT (both -p and -s environments) |
 | **uat-s** | `dahUAT_groups` | UAT (both -p and -s environments) |
-| **prd** | `dahProd_groups` | Production |
-| **dr** | `dahProd_groups` | Disaster Recovery (same as PRD) |
+| **prd** | `dahPD_groups` | Production |
+| **dr** | `dahPD_groups` | Disaster Recovery (same as PRD) |
 
 #### Claim Delivery Method
 

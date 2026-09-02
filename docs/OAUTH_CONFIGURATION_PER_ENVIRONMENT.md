@@ -86,8 +86,8 @@ Each environment uses its own Okta client IDs and scopes. Do not copy between en
 
 ## PRD (Production)
 
-**Okta Scope:** `11547.DAH(Prod)`  
-**Groups Claim:** `dahProd_groups`  
+**Okta Scope:** `11547.DAH(PD)`  
+**Groups Claim:** `dahPD_groups`  
 **Okta Issuer:** `https://myapps.firstcitizens.com/oauth2/default`
 
 **Okta Client IDs (to be provided):**
@@ -125,8 +125,8 @@ For each environment, update:
 **kafka.yaml:**
 - `listeners.external.oauthSettings.audience` (same for all: `Confluent,account,api://default`)
 - `listeners.external.oauthSettings.expectedIssuer` (same for all: `https://myapps.firstcitizens.com/oauth2/default`)
-- `listeners.external.oauthSettings.groupsClaimName` (environment-specific: `dahDev_groups` → `dahQA_groups` → `dahUAT_groups` → `dahProd_groups`)
-- `listeners.external.oauthSettings.scope` (environment-specific: `11547.DAH(Dev)` → `11547.DAH(QA)` → `11547.DAH(UAT)` → `11547.DAH(Prod)`)
+- `listeners.external.oauthSettings.groupsClaimName` (environment-specific: `dahDev_groups` → `dahQA_groups` → `dahUAT_groups` → `dahPD_groups`)
+- `listeners.external.oauthSettings.scope` (environment-specific: `11547.DAH(Dev)` → `11547.DAH(QA)` → `11547.DAH(UAT)` → `11547.DAH(PD)`)
 - All other `oauthSettings` blocks under `listeners.external` and `services.mds.provider.oauth`
 - `authorization.superUsers` (update broker OAuth client ID)
 - `configOverrides.server` lines with OAuth settings (scope and endpoint URLs)

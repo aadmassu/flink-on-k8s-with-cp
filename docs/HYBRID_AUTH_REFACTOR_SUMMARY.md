@@ -186,7 +186,7 @@ fi
 - Base configuration (issuer, endpoints)
 - **Redirect URIs for all 6 environments** (with exact callback URIs)
 - Scope configuration (openid, profile, email, refresh token)
-- Groups claim configuration by environment (dahDev_groups, dahQA_groups, dahUAT_groups, dahProd_groups)
+- Groups claim configuration by environment (dahDev_groups, dahQA_groups, dahUAT_groups, dahPD_groups)
 - Subject claim options (email vs. sub)
 - Pre-deployment checklist
 - Post-deployment validation tests (browser, token introspection, C3 connection, Kafka listener)

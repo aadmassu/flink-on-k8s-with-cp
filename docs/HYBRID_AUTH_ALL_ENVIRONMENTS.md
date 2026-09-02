@@ -269,8 +269,8 @@ Each environment has **unique OAuth credentials and Okta scopes**. Do not copy O
 
 - **Kafka internal listener:** SASL/PLAIN over TLS
 - **OAuth client IDs:** Verify in `apps/confluent-platform/prd/kafka.yaml` (currently inherited from qa structure)
-- **Groups claim:** Confirm (likely dahProd_groups or similar)
-- **Scope:** Confirm (likely 11547.DAH(Prod) or similar)
+- **Groups claim:** `dahPD_groups` (confirmed against VM PRD broker properties)
+- **Scope:** `11547.DAH(PD)` (confirmed against VM PRD broker properties)
 - **Okta issuer:** Confirm same endpoint
 - **Namespace:** `dah-flink-prod` (not `dah-flink-prd`)
 

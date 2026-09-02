@@ -97,10 +97,12 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       no `docker.io`, no `quay.io` direct pulls
 
 ### 1c. OAuth / OIDC configuration (every component except KRaftController)
-- [ ] `scope: 11547.DAH(<EnvName>)` matches the env (Dev, UAT, STG,
-      PRD-1, PRD-2 — capital case as defined in Okta)
+- [ ] `scope: 11547.DAH(<EnvName>)` matches the env — the only values
+      that exist in Okta are `Dev`, `QA`, `UAT`, `PD`. Prod is `PD`,
+      NOT `Prod`; verify against `cp-confluent/<env>/` VM properties
 - [ ] `groupsClaimName: dah<Env>_groups` matches the env (dahDev_groups,
-      dahUAT_groups, etc.)
+      dahQA_groups, dahUAT_groups, dahPD_groups — prod is `dahPD_groups`,
+      NOT `dahProd_groups`)
 - [ ] `subClaimName: sub` (consistent across envs)
 - [ ] OAuth config uses the *nested* `authentication.oauth.{secretRef,
       configuration}` shape, not the flat form
@@ -109,6 +111,23 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       `mtls` with `sslClientAuthentication: requested`, and OIDC is
       configured under `dependencies.mds.ssoProtocol: oidc`
       (`LESSONS_LEARNED.md` A5)
+
+### 1c-bis. Listener parity against the VM cluster (`LESSONS_LEARNED.md` A31, A32)
+- [ ] Parity confirmed by **role and port**, never by listener name — VM
+      `INTERNAL` is client-facing OAuth, CFK `internal` is inter-broker.
+      Use the mapping table in `docs/LISTENER_PORT_MATRIX.md`
+- [ ] `external:9092` carries `type: oauth`; every managed component's
+      `dependencies.kafka.bootstrapEndpoint` ends `:9092` (not `:9071`)
+- [ ] `internal:9071` carries `type: plain` from `sasl-plain-internal`
+- [ ] If the env's VM brokers have a `CERTONLY` listener, a
+      `listeners.custom` entry named `certonly` exists on port 9094 with
+      `type: mtls` + `sslClientAuthentication: required`
+- [ ] Post-admission check: `custom` survived (CFK v1beta1 strips
+      schema-mismatched blocks silently — confirm the listener is in the
+      applied CR, not just the file)
+- [ ] Advertised endpoint gap acknowledged: VM advertises certonly on
+      `brokerN.<env>.firstcitizens.com:7055`. Until tracker 2.10 lands,
+      the CFK listener is bind-only and cert-only clients CANNOT cut over
 
 ### 1d. Resources, scheduling, and admission constraints
 - [ ] `spec.podTemplate.resources` (NOT `spec.resources`) is set;

@@ -55,7 +55,7 @@ spec:
   authorization:
     type: rbac
     superUsers:
-      - User:__ENV_OAUTH_BROKER_CLIENT_ID__   # QA broker/MDS superuser
+      - User:__ENV_OAUTH_BROKER_CLIENT_ID__   # broker/MDS superuser
       - User:admin                   # internal SASL/PLAIN infrastructure user
       - User:cfk-operator-rbac       # CFK operator mTLS for KafkaRestClass reconciliation
       - User:kafka.dah-flink-prod.svc.cluster.local  # Kafka brokers embedded kafkaRest mTLS to MDS
