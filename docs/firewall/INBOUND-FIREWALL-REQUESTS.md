@@ -26,7 +26,7 @@ References:
 |---|---|---|---|
 | Kafka broker (SASL_SSL / OAuth) | `bootstrap.kafka.<env>.dah.fcbint.net` and `b0.kafka.<env>.dah.fcbint.net` / `b1...` / `b2...` | 9092 | Producer / consumer wire protocol; OAuth via Okta |
 | Kafka broker (mTLS, `certonly` listener) — bind port | same broker hostnames as above | 9094 | mTLS-authenticated wire protocol for cert-only clients (incl. cluster-link source) |
-| Kafka broker (mTLS, `certonly` listener) — **advertised** port | per-broker names on `firstcitizens.com`, see table below | **7055** | The port cert-only clients actually connect to today on VM CP. Must be allowed alongside 9094 or no existing mTLS client can reach CFK |
+| Kafka broker (mTLS, `certonly` listener) — **advertised** via F5 | `broker0{1,2,3}.dah-kafka-{pdc,sdc}.firstcitizens.com` | **7055** | F5 VIP port presented to the FIS partner; the F5 translates to 9094 on the brokers. Not a broker port — see the section below |
 | Schema Registry | `schemaregistry.apps.<env>.ocp.fcbint.net` | 8081 | Schema register / lookup over HTTPS |
 | Kafka REST Proxy | `kafkarest.apps.<env>.ocp.fcbint.net` | 8082 | HTTP producer / consumer for browser / FaaS clients |
 | Kafka Connect | `connect.apps.<env>.ocp.fcbint.net` | 8083 | Connector REST API |
@@ -38,31 +38,36 @@ existing producer / consumer configs point at the same FQDN before and after
 switchover. The other CFK components use the OCP cluster's apps domain
 (`<svc>.apps.<env>.ocp.fcbint.net`).
 
-### certonly advertised endpoints (the 7055 ask)
+### certonly / 7055 — partner traffic through the F5, not a broker port
 
-VM CP binds the `CERTONLY` listener on 9094 but advertises it on **7055** under
-a different hostname family. Existing mTLS clients are configured against the
-advertised endpoint, so 7055 has to be in the inbound ask — an allowlist that
-covers 9094 only will leave every cert-only client unable to connect after
-cutover.
+Confirmed against the FCB VM network architecture diagram (held locally in
+`project-docs/diagrams/`). **7055 is an F5 VIP port.** The brokers bind 9094;
+the F5 presents 7055 to the partner and translates. So the inbound ask has two
+distinct legs, with different sources:
 
-| Env | Advertised hostnames (VM CP today) | Port |
-|---|---|---|
-| dev | `broker{1,2,3}.dev.firstcitizens.com` | 7055 |
-| uat | `broker{1,2,3}.uat.firstcitizens.com` | 7055 |
-| prd | `broker{01,02,03}.dah-kafka-pdc.firstcitizens.com` | 7055 |
-| dr  | `broker{01,02,03}.dah-kafka-sdc.firstcitizens.com` | 7055 |
+| Leg | Source | Destination | Port |
+|---|---|---|---|
+| Partner → perimeter | FIS partner connection (external) | public VIPs 69.89.143.28-30 (PDC) / 69.89.156.28-30 (SDC) | 7055 |
+| F5 → brokers | F5 VIP 10.0.192.196-198 (PDC) / 10.208.4.36-38 (SDC) | CFK broker pods, `certonly` listener | 9094 |
 
-Two things are still undecided and both affect this request, so file it only
-once they are settled (see `../LISTENER_PORT_MATRIX.md`):
+This corrects the earlier framing on this page, which treated 7055 as a broker
+port reachable from the App / VM zone. It is neither: the source is an external
+partner, and only the F5 ever talks to 9094.
 
-- **Which hostnames CFK will advertise.** CFK builds advertised names as
-  `<brokerPrefix><brokerId>.<domain>` from 0-indexed broker IDs, so it cannot
-  reproduce VM's 1-indexed / zero-padded names. Either cert-only clients get
-  re-pointed at new names, or FCB DNS aliases the VM names onto CFK endpoints.
-- **Whether 7055 is kept at all.** Retaining it preserves every existing client
-  config; switching to 9094 makes bind and advertised port agree and drops one
-  perimeter mapping, at the cost of a change on every mTLS client.
+**Migration action is on the F5, not the firewall.** Re-pointing the F5 pool
+members from the VM brokers to the CFK brokers preserves the partner's DNS
+name, VIP and port unchanged. What is genuinely new for the firewall is only
+the second leg — F5 VIPs reaching the CFK broker pods on 9094.
+
+Still to settle before filing (see `../LISTENER_PORT_MATRIX.md`):
+
+- **Advertised names.** CFK emits `broker0/1/2` from 0-indexed broker IDs where
+  the partner expects `broker01/02/03`. Resolved by adding DNS records for the
+  CFK-advertised names against the same three VIPs — partner config untouched —
+  then adding those names as SANs on the broker certificate.
+- **Whether the F5 terminates or passes through mTLS.** Determines the
+  principal the broker actually authenticates and therefore the `certonly`
+  listener's `principalMappingRules`.
 
 ## Flink component ports
 
@@ -78,8 +83,9 @@ job has its own DNS entry; the same TCP/8081 rule covers all jobs in the env.
 
 | Traffic pattern | Source zone | Ports to allow |
 |---|---|---|
-| Producer / consumer clients running on VMs | App / VM zone | Kafka 9092 / 9094 / 7055, Schema Registry 8081 |
-| Cluster-link source broker (VM CP → CFK migration) | VM CP broker host IPs | Kafka 9092 / 9094 / 7055 |
+| Producer / consumer clients running on VMs | App / VM zone | Kafka 9092, Schema Registry 8081 |
+| Cluster-link source broker (VM CP → CFK migration) | VM CP broker host IPs | Kafka 9092 / 9094 |
+| Partner mTLS (FIS) via F5 | F5 VIPs 10.0.192.196-198 (PDC) / 10.208.4.36-38 (SDC) | Kafka 9094 (`certonly`) |
 | Browser / admin access | User Zone | C3 9021, Connect 8083, Kafka REST 8082, MDS 8090, CMF 8080, Flink JM 8081 |
 
 Tushar (kafka admin) supplies the exact App / VM zone CIDRs and VM CP broker

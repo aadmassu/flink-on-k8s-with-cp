@@ -36,51 +36,50 @@ table before comparing a VM `.properties` file against a CFK Kafka CR.
 Port 9092 carries OAuth on **both** platforms, so client bootstrap strings keep
 the same port across the migration. Only the hostname changes.
 
-### Advertised endpoint gap on `certonly` (open item)
+### The `certonly` path: 7055 is an F5 VIP port, not a broker port
 
-VM binds `CERTONLY://:9094` but *advertises*
-`CERTONLY://brokerN.<env>.firstcitizens.com:7055` — a different hostname family
-AND a different port than the bind. mTLS clients connect to **7055** today.
+Confirmed against the FCB VM network architecture diagram (Platform
+Integration, held locally in `project-docs/diagrams/`). The brokers bind 9094;
+**an F5 load balancer presents 7055 externally and translates to 9094**:
 
-Advertised certonly endpoints, from `cp-confluent/<env>/`:
+```
+FIS partner  --7055 mTLS TLS1.3-->  public VIP  --NAT-->  F5 internal VIP  --9094-->  Kafka broker
+```
 
-| Env | Advertised hostnames | Port |
+| | PDC (primary) | SDC (secondary) |
 |---|---|---|
-| dev | `broker{1,2,3}.dev.firstcitizens.com` | 7055 |
-| uat | `broker{1,2,3}.uat.firstcitizens.com` | 7055 |
-| prd | `broker{01,02,03}.dah-kafka-pdc.firstcitizens.com` | 7055 |
-| dr  | `broker{01,02,03}.dah-kafka-sdc.firstcitizens.com` | 7055 |
+| Advertised name | `broker0{1,2,3}.dah-kafka-pdc.firstcitizens.com` | `broker0{1,2,3}.dah-kafka-sdc.firstcitizens.com` |
+| Public VIP | 69.89.143.28 / .29 / .30 | 69.89.156.28 / .29 / .30 |
+| NAT to F5 VIP | 10.0.192.196 / .197 / .198 | 10.208.4.38 / .37 / .36 |
+| F5 VIP name | `broker{1,2,3}-pdc.fcbint.net` | `broker{1,2,3}-sdc.fcpd.fcbint.net` |
+| Broker port | 9094 | 9094 |
 
-Same port on every broker, different hostname per broker — so the matching CFK
-mode is `externalAccess.type: staticForHostBasedRouting` (`brokerPrefix` +
-`domain` + `port`), **not** `staticForPortBasedRouting`, which holds the host
-constant and increments the port per broker.
+Note SDC's VIPs descend (`broker1`→.38, `broker2`→.37, `broker3`→.36) while
+PDC's ascend; the name→VIP mapping is still 1:1 and consistent in both.
 
-> **Exact hostname parity is NOT achievable.** CFK derives each advertised name
-> as `<brokerPrefix><brokerId>.<domain>` from **0-indexed** broker IDs
-> (`kafka-0`, `kafka-1`, `kafka-2`), and CFK 3.1.2's Kafka CR has no
-> broker-id-offset field. VM hostnames are **1-indexed** (`broker1..broker3` in
-> dev/uat) or **zero-padded 1-indexed** (`broker01..broker03` in prd/dr), and
-> VM's own `broker.id` values are 101/102/103 — decoupled from the hostname.
-> `brokerPrefix: broker` therefore yields `broker0/1/2`, which in dev/uat
-> *partially overlaps* the VM names while pointing at a different broker — a
-> worse failure mode than no overlap. In prd/dr there is no overlap at all
-> because of the zero-padding.
+**What this means for the migration.** CFK brokers binding 9094 already match
+VM broker behaviour exactly — there is no bind-port gap. The cutover action is
+to re-point the **F5 pool members** from the VM brokers to the CFK brokers.
+The partner changes nothing: same DNS name, same public VIP, same port 7055.
 
-Closing this needs, in order:
+**The advertised-name problem survives, but is now cheap to solve.** Kafka's
+metadata response must hand back names that route back through the F5. CFK
+emits `<brokerPrefix><brokerId>.<domain>` from 0-indexed IDs, so it produces
+`broker0/1/2` where the partner expects `broker01/02/03`. Because the partner
+only ever *dials* the bootstrap names, the fix is to add DNS records for
+whatever names CFK advertises, pointing at the **same three VIPs** — no partner
+config change, no coordination window. Those advertised names then have to
+appear as SANs on `cert-manager/kafka-tls-certificate.yaml` so the partner's
+client can validate the broker cert after the metadata redirect.
 
-1. Tracker 2.10 custom-TCP-port exception (NodePort is prohibited platform-wide;
-   LoadBalancer collides with the ClusterIP-only standard at Gatekeeper)
-2. A decision on advertised hostnames — either new CFK-shaped names with
-   cert-only clients re-pointed, or FCB DNS aliases mapping the VM names onto
-   CFK broker endpoints so client config is untouched
-3. Whichever names are chosen added as SANs on
-   `cert-manager/kafka-tls-certificate.yaml`. Note these are on
-   `firstcitizens.com`, while every CFK certificate today is on `fcbint.net` —
-   whether the KeyFactor ClusterIssuer will issue for that domain is an open
-   question for FCB PKI
-4. `docs/firewall/INBOUND-FIREWALL-REQUESTS.md` updated — it lists 9094 only
-   and never mentions 7055, so the inbound ask is incomplete as written
+> **Open question — does the F5 terminate or pass through mTLS?** The diagram
+> labels the partner→F5 leg `mTLS` and the F5→broker leg `BSA` (server auth
+> only). If the F5 terminates client-certificate auth, the broker's `certonly`
+> listener sees the **F5's** certificate rather than the partner's, which
+> changes both the authenticated principal and what `principalMappingRules`
+> must produce. Confirm with Tushar / Rick before finalising the CFK
+> `custom[certonly]` auth block. (Treat the diagram's protocol labels as
+> approximate — Kafka ports are labelled "HTTPs" throughout, which they are not.)
 
 ## Listener Details
 

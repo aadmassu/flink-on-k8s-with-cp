@@ -125,14 +125,18 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
 - [ ] Post-admission check: `custom` survived (CFK v1beta1 strips
       schema-mismatched blocks silently — confirm the listener is in the
       applied CR, not just the file)
-- [ ] Advertised endpoint gap acknowledged: VM advertises certonly on
-      `brokerN.<env>.firstcitizens.com:7055`. Until tracker 2.10 lands,
-      the CFK listener is bind-only and cert-only clients CANNOT cut over
-- [ ] If exposing certonly: mode is `staticForHostBasedRouting` (same
-      port, per-broker hostname), NOT `staticForPortBasedRouting`. CFK
-      is 0-indexed so `broker0/1/2` will NOT match VM's `broker1..3` /
-      `broker01..03` — confirm the DNS decision before filing 2.10
-      (`LESSONS_LEARNED.md` A32)
+- [ ] certonly binds 9094 — correct and already at parity with VM. 7055
+      is an F5 VIP port, NOT a broker port (`LESSONS_LEARNED.md` A32)
+- [ ] Cutover action is on the F5: re-point pool members from VM brokers
+      to CFK brokers. Partner DNS name / VIP / port stay unchanged
+- [ ] If advertising externally: mode is `staticForHostBasedRouting`
+      (same port, per-broker hostname), NOT `staticForPortBasedRouting`.
+      CFK is 0-indexed so it emits `broker0/1/2` where the partner
+      expects `broker01/02/03` — add DNS for the CFK-advertised names
+      against the SAME VIPs, then add them as SANs on the broker cert
+- [ ] CONFIRM FIRST: does the F5 terminate or pass through mTLS? If it
+      terminates, the broker sees the F5 cert and `principalMappingRules`
+      must change. Do not finalise the certonly auth block until answered
 
 ### 1d. Resources, scheduling, and admission constraints
 - [ ] `spec.podTemplate.resources` (NOT `spec.resources`) is set;
