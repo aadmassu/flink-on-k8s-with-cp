@@ -262,6 +262,9 @@ stages:
                 echo "=== SQL Server ==="
                 test_dns "$DB_HOST" "SQL Server"
 
+                echo "=== Adobe ==="
+                test_dns "dcs.adobedc.net" "Adobe URL"
+
                 echo ""
                 echo "=== Kafka Brokers ==="
                 IFS=',' read -ra BROKERS <<< "$KAFKA_BROKERS"
@@ -338,6 +341,9 @@ stages:
 
                 echo "=== SQL Server ==="
                 test_connection "$DB_HOST" 3085 "SQL Server"
+
+                echo "=== Adobe ==="
+                test_connection "dcs.adobedc.net" 443 "Adobe URL"
 
                 echo ""
                 echo "=== Kafka Brokers ==="

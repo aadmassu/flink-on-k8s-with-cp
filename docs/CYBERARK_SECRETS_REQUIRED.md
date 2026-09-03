@@ -114,5 +114,5 @@ CMF has separate ExternalSecrets in `apps/confluent-cmf/<env>/externalsecrets/`:
 
 **ExternalSecret manifests exist at:**
 
-- CFK Platform: `apps/confluent-platform/<env>/externalsecrets/externalsecrets-hybrid-auth-cyberark-disabled.yaml` (commented out, ready to enable)
+- CFK Platform: not yet written. The secret → Azure variable → CyberArk path mapping is in `apps/confluent-platform/<env>/env-docs/CYBERARK_MIGRATION_INVENTORY.txt`; the pipeline creates these Secrets today
 - CMF: `apps/confluent-cmf/<env>/externalsecrets/externalsecret-*.yaml` (existing)
