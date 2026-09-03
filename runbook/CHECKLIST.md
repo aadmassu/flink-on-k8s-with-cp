@@ -138,6 +138,19 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       terminates, the broker sees the F5 cert and `principalMappingRules`
       must change. Do not finalise the certonly auth block until answered
 
+### 1c-ter. MDS token validation on the OAuth listener (`LESSONS_LEARNED.md` A33)
+- [ ] `listener.name.external.oauthbearer.sasl.server.callback.handler.class`
+      is set to `io.confluent.kafka.server.plugins.auth.token.CompositeBearerValidatorCallbackHandler`
+      — without it C3 human SSO sessions are rejected and Topics shows 0
+- [ ] `publicKeyPath` in the external listener's JAAS config points at
+      `/mnt/secrets/mds-token-keypair/mdsPublicKey.pem` (the directory CFK
+      mounts the Secret at), NOT `/mnt/secrets/mds-token/`
+- [ ] Both applied together — the handler alone is a FATAL startup failure
+      if the key path is wrong; the path alone is a no-op
+- [ ] Post-deploy: click Topics in C3 as a human user. No
+      `Could not validate the access token` in the broker log, and the
+      topic count is non-zero
+
 ### 1d. Resources, scheduling, and admission constraints
 - [ ] `spec.podTemplate.resources` (NOT `spec.resources`) is set;
       requests and limits both present (`LESSONS_LEARNED.md` A1)

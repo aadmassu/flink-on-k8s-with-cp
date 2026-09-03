@@ -1718,6 +1718,31 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 * **Exact hostname parity is not achievable, and the near-miss is dangerous**: CFK builds each advertised name as `<brokerPrefix><brokerId>.<domain>` from **0-indexed** broker IDs, and the CFK 3.1.2 Kafka CR exposes no broker-id-offset field (checked the full `spec` schema). VM hostnames are 1-indexed (`broker1..3`, dev/uat) or zero-padded 1-indexed (`broker01..03`, prd/dr), and VM's `broker.id` values are 101/102/103 — decoupled from the hostname entirely. So `brokerPrefix: broker` emits `broker0/1/2`: in dev/uat that **partially overlaps** the VM names while resolving to a different broker, which is worse than no overlap; in prd/dr the zero-padding means no overlap at all. Resolve by choosing either new CFK-shaped names (and re-pointing cert-only clients) or FCB DNS aliases mapping VM names onto CFK endpoints — do not assume `brokerPrefix` alone gets you parity.
 * **Why it matters**: the whole class of "the VM property file says something CFK cannot express" needs the network picture before it is called a gap. Here the property file was describing a perimeter mapping, not a broker capability. Two live follow-ons remain: (a) the CFK-advertised names must resolve to the same three VIPs and appear as SANs on `cert-manager/kafka-tls-certificate.yaml` — they are on `firstcitizens.com` while every CFK cert is on `fcbint.net`, a KeyFactor policy question for FCB PKI; (b) **does the F5 terminate or pass through mTLS?** The diagram labels the partner leg `mTLS` and the F5→broker leg `BSA` (server auth only). If the F5 terminates client-cert auth, the broker authenticates the *F5's* certificate, not the partner's, which changes `principalMappingRules` on the `certonly` listener. Unresolved — confirm with Tushar / Rick. Treat the diagram's protocol labels as approximate; every Kafka port on it is labelled "HTTPs".
 
+### A33. C3 "Topics" kicks you back to login and shows 0 topics — the broker validates only Okta JWTs, not MDS-issued ones
+
+* **Symptom**: Control Center dashboard renders fine — 3 brokers, live production/consumption throughput — but the Topics panel reads `0 Total` with `--` partitions, and clicking **Topics** immediately bounces you to the login screen. Log back in, click again, same thing. Reproduces identically in **every** environment. Broker log fills with:
+  ```
+  WARN [data-plane-kafka-network-thread-N-EXTERNAL-SASL_SSL-N]
+    OAuthBearerValidatorCallbackHandler handleValidatorCallback -
+    Could not validate the access token: JWT rejected due to invalid signature.
+    Invalid JWS Signature: JsonWebSignature{"alg":"RS256","kid":null}
+  ```
+* **Root cause**: decode the rejected token and it is **not an Okta token** — `iss: "Confluent"`, `kid: null`, `sub: 00u…` (an Okta *user* id, not a `0oa…` client id), carrying the user's Okta groups. It is an **MDS-issued** token: when a human clicks Topics, C3 calls Kafka *on behalf of that user* with a token MDS minted and signed with `mds-token-keypair`. The broker's EXTERNAL listener hands it to Apache's `DefaultJwtValidator` → `BrokerJwtValidator`, which only verifies against the **Okta JWKS**. An MDS-signed token can never validate there, so SASL auth fails, C3 treats the session as invalid, and redirects to login — an unwinnable loop, since each fresh login mints another MDS token (confirmed: consecutive rejections carry different `ssid` and `auth_time` values seconds apart, on all three brokers).
+* **Why metrics still work**: C3's own Streams app authenticates as its Okta *service* client (`0oa…`), an Okta-signed token that validates normally. Only the human-on-behalf-of path breaks — hence live broker throughput next to a zero topic count.
+* **The VM does this correctly** and we dropped half of it in the port. VM pins the composite validator on its OAuth listener:
+  ```
+  listener.name.internal.oauthbearer.sasl.server.callback.handler.class=\
+    io.confluent.kafka.server.plugins.auth.token.CompositeBearerValidatorCallbackHandler
+  ```
+  That handler validates **both** token families — Okta JWTs via JWKS, MDS tokens via `publicKeyPath`. Our CR carried the `publicKeyPath` on the *login module* but never the server callback handler, so nothing ever consumed the key.
+* **Fix — two changes, and neither works alone**:
+  1. Add the handler: `listener.name.external.oauthbearer.sasl.server.callback.handler.class=io.confluent.kafka.server.plugins.auth.token.CompositeBearerValidatorCallbackHandler`
+  2. **Correct `publicKeyPath`.** It read `/mnt/secrets/mds-token/mdsPublicKey.pem` in all six envs; CFK actually mounts the `mds-token-keypair` Secret at **`/mnt/secrets/mds-token-keypair/`** (verified against a live `kafka-0` pod spec). The filename is right — the pipeline writes `mdsPublicKey.pem` — the directory was wrong.
+
+  Applying only (1) turns a warning into a **fatal** startup failure: a missing `publicKeyPath` throws inside `SaslChannelBuilder.configure()`, the same position that crash-loops a broker (compare A34/the PRD JWKS timeout). Applying only (2) changes nothing, because nothing reads the file.
+* **Why it hid for months**: the wrong path was unreachable code. No composite handler meant nothing opened the file, so the typo produced no error anywhere. The two bugs masked each other.
+* **Why it matters**: never read "the dashboard loads" as "auth works". C3 has two distinct paths to Kafka — its own service identity and impersonation of the logged-in human — and they use different token issuers. A config that satisfies one can fail the other completely while the UI still looks half-alive. Also worth re-checking whether the CFK-generated `token` listener needs the same handler; the pod mounts `kafka-tokensasl-listener-apikeys`, but only `EXTERNAL` threads appear in the failure logs.
+
 ---
 
 ## How to add an entry here
