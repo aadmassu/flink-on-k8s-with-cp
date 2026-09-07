@@ -118,6 +118,10 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       Use the mapping table in `docs/LISTENER_PORT_MATRIX.md`
 - [ ] `external:9092` carries `type: oauth`; every managed component's
       `dependencies.kafka.bootstrapEndpoint` ends `:9092` (not `:9071`)
+- [ ] `custom[certonly]` on 9094 present with `type: mtls`,
+      `sslClientAuthentication: required`, CN mapping rule (rolled to all
+      six envs 2026-09-07; adding it rolls the brokers, so validate the CR
+      and schedule the restart)
 - [ ] `internal:9071` carries `type: plain` from `sasl-plain-internal`
 - [ ] If the env's VM brokers have a `CERTONLY` listener, a
       `listeners.custom` entry named `certonly` exists on port 9094 with

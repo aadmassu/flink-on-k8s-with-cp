@@ -89,6 +89,21 @@ spec:
       tls:
         enabled: true
         secretRef: kafka-tls
+    # certonly mirrors the VM CERTONLY:9094 listener for mTLS-only clients.
+    # Not externally exposed yet — tracker 2.10 custom-TCP-port exception pending.
+    custom:
+      - name: certonly
+        port: 9094
+        authentication:
+          type: mtls
+          mtls:
+            sslClientAuthentication: required
+            principalMappingRules:
+              - "RULE:^.*[Cc][Nn]=([^,]+).*$/$1/L"
+              - "DEFAULT"
+        tls:
+          enabled: true
+          secretRef: kafka-tls
 
   # MDS: OAuth for API, OIDC for C3 browser SSO. oauth-mds-rest = server-side; oauth-mds-sso = browser login.
   services:
