@@ -1,0 +1,9 @@
+# ACLs synced from source to destination (spec.aclFilters). Enables acl.sync.enable.
+# Format (pipe-separated, 7 fields):
+#   resourceType|name|patternType|principal|host|operation|permissionType
+#   resourceType: topic | group | cluster | transactionId | any
+#   patternType:  literal | prefixed | match | any
+#   operation:    ANY | READ | WRITE | CREATE | DELETE | ALTER | DESCRIBE | CLUSTER_ACTION | IDEMPOTENT_WRITE
+#   permissionType: any | allow | deny
+# The source authorizes with RBAC role bindings (MDS), not ACLs. Leave empty unless
+# `kafka-acls --list` on the source shows KRAFT_ACL entries that must carry over.

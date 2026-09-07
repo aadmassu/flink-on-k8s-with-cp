@@ -469,6 +469,71 @@ Quick-reference for problems that have a documented fix in
   (`oc -n dah-flink-<env> get sts,pod -l app.kubernetes.io/instance=<name>`),
   then patch finalizers to `[]` as above with the right kind/name.
 
+## 6. Cluster Linking + Schema Linking (`LESSONS_LEARNED.md` I1–I5)
+
+Run per link, QA first. Pipeline: `.azure-pipelines/cluster-linking.yaml`;
+config: `apps/confluent-platform/<env>/cluster-linking/`.
+
+### 6a. Before the first run
+- [ ] Linking principal chosen (`linkPrincipal` dropdown; default
+      `oauth-broker` = `<env>-oauth-broker-client-{id,secret}`, already in
+      the variable group). A dedicated `<env>-clusterlink-oauth-client-*`
+      pair is optional. Owner: Kafka Admin (variable group), FCB Security
+      (new client, if any)
+- [ ] `<env>-kafka-broker-hosts` and `<env>-schema-registry-hosts` in the
+      variable group name THIS env's VM hosts (QA's once pointed at DEV);
+      `validate` fails on `SOURCE_HOST_PREFIX` if they do not
+- [ ] `link.env` has no `REPLACE_WITH_*` in `SOURCE_BOOTSTRAP`,
+      `SOURCE_SR_URL`, `DEST_SR_PUBLIC_URL`; `DEST_NAMESPACE` equals the
+      variable group namespace
+- [ ] `topics.txt` filled from the source inventory (`discover-source`
+      lists what the source actually has and flags misses)
+- [ ] `consumer-groups.txt` lists the groups that cut over first, or is
+      empty on purpose (offset sync then stays off)
+- [ ] `acls.txt` empty unless `kafka-acls --list` on the source shows
+      KRAFT_ACL entries (the source authorizes with RBAC)
+- [ ] Source SR loads the exporter extension + update handler AND sets
+      `password.encoder.secret` (VM QA is missing all three as of
+      2026-09-05). Owner: Kafka Admin
+- [ ] Network: `kafka-0` → source brokers 9092, CFK operator → source SR
+      8081, source SR → CFK SR Ingress 443. `connectivity-test.yaml` covers
+      the first two; the third is confirmed by `validate`'s `/subjects`
+      probe against `DEST_SR_PUBLIC_URL` (reachability from the VM itself
+      must be confirmed by the Kafka Admin)
+
+### 6b. Provisioning order
+- [ ] `discover-source` — save the artifact; hand
+      `source-rolebindings.rendered.sh` to the Kafka Admin and wait for
+      confirmation it ran
+- [ ] `create-link-prereqs` — `oauth-clusterlink`, `clusterlink-source-ca`,
+      and the two `ConfluentRolebinding`s report `CREATED`
+- [ ] `validate` — every gate PASS; read the dry-run output of both CRs
+- [ ] `provision-cluster-link` — admission diff shows no DROPPED fields;
+      all mirrors ACTIVE within the wait window
+- [ ] `provision-schema-link` — exporter RUNNING on the source SR; CFK SR
+      `/subjects` lists the exported subjects
+- [ ] `mirror-status` — lag converges to 0 and stays there before any
+      consumer is repointed
+
+### 6c. Cutover per topic
+- [ ] Producers stopped on the source topic; lag 0 in `mirror-status`
+- [ ] Topic added to `promote-topics.txt` (kept there permanently), commit
+- [ ] `promote` — STOPPED for every listed topic; `clink-*` KafkaTopic CR
+      present
+- [ ] Consumers repointed; committed offsets present on the CFK side if the
+      group was in `consumer-groups.txt`
+- [ ] Schemas: exporter left RUNNING until the last subject cuts over; then
+      `delete-link` (or delete the SchemaExporter alone) and set the CFK
+      SR subjects out of IMPORT mode
+
+### 6d. Not yet possible
+- [ ] CFK UAT-P → CFK UAT-S and CFK PRD → CFK DR wait on externally
+      reachable CFK brokers (per-broker passthrough Routes) and
+      cluster-specific SR hostnames on the secondary. Owner: Container
+      Platforms (Routes), Ayu (manifests)
+- [ ] CFK SR as a *source* (UAT-P, PRD) needs `spec.passwordEncoder` on the
+      SchemaRegistry CR before an exporter can be created on it
+
 ## Escalation contacts
 
 | Issue                                | Owner                                |
@@ -483,3 +548,5 @@ Quick-reference for problems that have a documented fix in
 | Okta scope / groups claim setup      | FCB Security                         |
 | Artifactory image mirror             | Tushar                               |
 | KeyFactor PKI / cert-manager         | Rick                                 |
+| Source-side link role bindings, VM SR exporter config | Kafka Admin (Tushar)  |
+| Linking principal Okta client        | FCB Security                         |

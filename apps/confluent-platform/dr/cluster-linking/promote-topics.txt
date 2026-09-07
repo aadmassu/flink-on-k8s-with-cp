@@ -1,0 +1,4 @@
+# Mirror topics to PROMOTE on the next `promote` run (one per line, mirror-topic name).
+# Promote is one-way: the mirror becomes a normal writable topic on the CFK side and stops
+# following the source. The pipeline refuses to promote a topic whose mirror lag is not zero.
+# Keep promoted topics listed here permanently so re-renders never flip them back to ACTIVE.

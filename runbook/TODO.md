@@ -80,3 +80,47 @@ retire once RBAC lands.
 **Clears when**: qa's Role is patched to include `networkpolicies.networking.k8s.io`
 and a plain `install-or-update` (no bypass) succeeds. Delete this TODO section
 at that point.
+
+## Cluster Linking + Schema Linking — documentation and follow-ups
+
+**Owner**: Ayu. **Opened**: 2026-09-05. Pipeline and per-env config landed
+(`.azure-pipelines/cluster-linking.yaml`,
+`apps/confluent-platform/<env>/cluster-linking/`); QA is the pilot.
+
+- [ ] **`docs/CLUSTER_LINKING.md`** — write once the QA link is ACTIVE:
+      topology per env (six links), the linking principal and both sets of
+      role bindings, how the text files drive the CR, the mirror-status
+      report, promote / failover / delete semantics, and the cutover
+      sequence per topic. Deferred on purpose until the first real run
+      shows the actual CR status fields and describe output.
+- [ ] **Confirm UAT link plan**: the request list reads "UAT-P → UAT-P CFK";
+      the repo assumes CFK UAT-P → CFK UAT-S (`uat-s/cluster-linking/`).
+      Confirm with Ayu before UAT work starts.
+- [ ] **VM QA Schema Registry**: ask the Kafka Admin to add the
+      SchemaExporter extension, update handler, and `password.encoder.secret`
+      (present on DEV/UAT/PRD/DR except the encoder secret). Blocks
+      `provision-schema-link` in QA.
+- [ ] **Linking principal**: the pipeline defaults to the existing
+      `<env>-oauth-broker-client-*` pair (VM broker/MDS super.user). Decide
+      before UAT whether a dedicated Okta client (`linkPrincipal=clusterlink`,
+      `<env>-clusterlink-oauth-client-*`) is required for audit.
+- [ ] **Variable group hygiene**: confirm `qa-kafka-broker-hosts` /
+      `qa-schema-registry-hosts` name the QA VM hosts (`q11547varc-*`), not
+      DEV's; `validate` now fails on the prefix check if they do not.
+- [ ] **CFK broker exposure for CFK→CFK links** (UAT-P→UAT-S, PRD→DR):
+      per-broker passthrough Routes + advertised names + SANs. Raise with
+      Container Platforms; ties into the `advertised.listeners` write-up
+      above.
+- [ ] **`spec.passwordEncoder` on SchemaRegistry CRs** that will act as
+      exporter sources (uat-p, prd). Rolls SR; schedule with a maintenance
+      window.
+- [ ] **Audit onboarding role bindings' SR scope**: they use
+      `id_schemaregistry_<ns>` while the SR CR overrides
+      `schema.registry.group.id=schema-registry`. `discover-source` prints
+      the live value; align one or the other (`LESSONS_LEARNED.md` I3).
+- [ ] **Verify first-run assumptions** in QA and correct the runbook:
+      ClusterLink CR `oauthSettings` field set survives admission; KRaft
+      brokers create the link without `spec.passwordEncoder`; the
+      `kafka-mirrors --describe --pedantic` column names match
+      `mirror_report.py`'s parser; the CFK SR container exposes
+      `schema.registry.group.id` at the path the lib greps.

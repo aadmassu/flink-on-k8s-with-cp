@@ -1,0 +1,64 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-09-05 (created)
+# Description: CFK SchemaExporter CR (qa). Manages the exporter that
+#              runs INSIDE the source Schema Registry and pushes subjects
+#              to the CFK SR. subjects[] is rendered from subjects.txt
+#              (runbook I2).
+########################################################################
+apiVersion: platform.confluent.io/v1beta1
+kind: SchemaExporter
+metadata:
+  name: vm-qa-to-cfk-qa-schemas
+  namespace: dah-flink-qa
+  labels:
+    app.kubernetes.io/name: schemaexporter
+    app.kubernetes.io/instance: vm-qa-to-cfk-qa-schemas
+    app.kubernetes.io/component: schema-link
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  # Source SR (where the exporter lives). The operator reaches it over this endpoint.
+  # __TOKENS__ are rendered by the pipeline from link.env and the variable group.
+  sourceCluster:
+    schemaRegistryRest:
+      endpoint: __SOURCE_SR_URL__
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-clusterlink
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: __SOURCE_OAUTH_TOKEN_ENDPOINT__
+            scope: 11547.DAH(QA)
+      tls:
+        enabled: true
+        secretRef: clusterlink-source-ca
+  # Destination CFK SR, addressed by the hostname the SOURCE can route to (Ingress, reencrypt).
+  destinationCluster:
+    schemaRegistryRest:
+      endpoint: https://schemaregistry.apps.qa.ocp.fcbint.net
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: oauth-clusterlink
+          configuration:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: __SOURCE_OAUTH_TOKEN_ENDPOINT__
+            scope: 11547.DAH(QA)
+      tls:
+        enabled: true
+        secretRef: clusterlink-source-ca
+  # NONE keeps subject names identical on both sides so clients cut over without renames.
+  contextType: NONE
+  # RENDERED from subjects.txt
+  subjects: []

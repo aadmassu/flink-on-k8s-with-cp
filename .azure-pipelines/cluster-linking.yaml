@@ -1,0 +1,901 @@
+# Pipeline: cluster-linking — Cluster Linking + Schema Linking into the CFK
+# cluster in dah-flink-<env>. Author: Ayu Admassu. Created 2026-09-05.
+# Variable group: kafka-openshift-credentials-<env>. Reused entries:
+#   <env>-kafka-broker-hosts, <env>-schema-registry-hosts (source endpoints when link.env says @vargroup)
+#   kafka-oauthbearer-token-endpoint-url (Okta token URL)
+#   <env>-<linkPrincipal>-client-id / -client-secret (Okta client the link authenticates with)
+# Config folder:  apps/confluent-platform/<env>/cluster-linking/ (see its README).
+#
+# ACTIONS
+#   discover-source        read-only: source cluster id, topics, groups, subjects,
+#                          rendered source-rolebindings.sh for the Kafka Admin
+#   create-link-prereqs    Secrets oauth-clusterlink + clusterlink-source-ca, rbac/
+#   validate               static + live gates, dry-run of both rendered CRs
+#   provision-cluster-link render + apply ClusterLink, wait for ACTIVE mirrors
+#   provision-schema-link  render + apply SchemaExporter, wait for RUNNING
+#   mirror-status          per-topic lag/state table + diagnostics (artifact)
+#   promote                promote promote-topics.txt (refuses when lag > 0)
+#   failover               emergency; failoverTopics + confirmDestructive
+#   delete-link            remove exporter + link; confirmDestructive
+#
+# VALIDATION GATES (validate, and repeated inside every mutating action)
+#   1. link.env parses, no REPLACE_WITH_* in the values the action needs
+#   2. topics/groups/acls/subjects files parse; promote list is a subset of mirrors
+#   3. Kafka CR cluster-ready=True, KafkaRestClass present, sasl-plain-internal present
+#   4. oauth-clusterlink + clusterlink-source-ca Secrets present
+#   5. Source reachable from kafka-0 with the linking principal (kafka-cluster cluster-id)
+#   6. Schema Registry exporter extension answers on the source SR (/exporters) and the CFK SR
+#   7. oc apply --dry-run=server on the rendered CRs
+#   8. Post-apply admission diff (silent-strip detection) and live state checks
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: "Target Environment"
+    type: string
+    default: qa
+    values: [dev, qa, uat-p, uat-s, prd, dr]
+
+  - name: action
+    displayName: "Action"
+    type: string
+    default: validate
+    values:
+      - discover-source
+      - create-link-prereqs
+      - validate
+      - provision-cluster-link
+      - provision-schema-link
+      - mirror-status
+      - promote
+      - failover
+      - delete-link
+
+  - name: linkPrincipal
+    displayName: "Okta client used by the link (variable-group pair <env>-<choice>-client-id/secret)"
+    type: string
+    default: oauth-broker
+    # oauth-broker = the VM broker/MDS client (already super.user on the VM). clusterlink = a
+    # dedicated client under <env>-clusterlink-oauth-client-*, once FCB Security issues it.
+    values: [oauth-broker, oauth-mds-rest, oauth-schemaregistry, clusterlink]
+
+  - name: failoverTopics
+    displayName: "failover only: comma-separated mirror topics"
+    type: string
+    default: " "
+
+  - name: confirmDestructive
+    displayName: "Confirm failover / delete-link (irreversible)"
+    type: boolean
+    default: false
+
+  - name: waitTimeoutMinutes
+    displayName: "Minutes to wait for link / mirror / exporter state"
+    type: string
+    default: "10"
+
+variables:
+  - ${{ if eq(parameters.environment, 'dev') }}:
+    - group: kafka-openshift-credentials-dev
+  - ${{ if eq(parameters.environment, 'qa') }}:
+    - group: kafka-openshift-credentials-qa
+  - ${{ if eq(parameters.environment, 'uat-p') }}:
+    - group: kafka-openshift-credentials-uat-p
+  - ${{ if eq(parameters.environment, 'uat-s') }}:
+    - group: kafka-openshift-credentials-uat-s
+  - ${{ if eq(parameters.environment, 'prd') }}:
+    - group: kafka-openshift-credentials-prd
+  - ${{ if eq(parameters.environment, 'dr') }}:
+    - group: kafka-openshift-credentials-dr
+  # linkPrincipal picks which existing Okta client pair in the variable group the link uses.
+  - ${{ if eq(parameters.linkPrincipal, 'clusterlink') }}:
+    - name: linkClientId
+      value: $(${{ parameters.environment }}-clusterlink-oauth-client-id)
+    - name: linkClientSecret
+      value: $(${{ parameters.environment }}-clusterlink-oauth-client-secret)
+    - name: linkPrincipalVarName
+      value: ${{ parameters.environment }}-clusterlink-oauth-client-id
+  - ${{ if ne(parameters.linkPrincipal, 'clusterlink') }}:
+    - name: linkClientId
+      value: $(${{ parameters.environment }}-${{ parameters.linkPrincipal }}-client-id)
+    - name: linkClientSecret
+      value: $(${{ parameters.environment }}-${{ parameters.linkPrincipal }}-client-secret)
+    - name: linkPrincipalVarName
+      value: ${{ parameters.environment }}-${{ parameters.linkPrincipal }}-client-id
+  - name: LINK_DIR
+    value: apps/confluent-platform/${{ parameters.environment }}/cluster-linking
+  - name: RENDER_DIR
+    value: $(Pipeline.Workspace)/rendered
+  - name: REPORT_DIR
+    value: $(Build.ArtifactStagingDirectory)/cluster-linking
+
+stages:
+  - stage: ClusterLinking
+    displayName: "Cluster linking ${{ parameters.action }} (${{ parameters.environment }})"
+    jobs:
+      - job: ClusterLinking
+        pool: DevOpsLinux
+        steps:
+          - checkout: self
+            env:
+              GIT_SSL_NO_VERIFY: "true"
+
+          - template: templates/install-tools.yaml
+
+          - task: Bash@3
+            displayName: "Login to OpenShift"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Logging in to OpenShift at $OC_API..."
+                oc login "$OC_API" \
+                  --username="$OC_USER" \
+                  --password="$OC_PWD" \
+                  --insecure-skip-tls-verify
+                echo ""
+                echo "=== Logged-in user ==="
+                oc whoami
+                echo ""
+                echo "=== Switching to namespace $OC_NS ==="
+                oc project "$OC_NS"
+            env:
+              OC_API: $(openshift-api)
+              OC_USER: $(openshift-service-account-name)
+              OC_PWD: $(openshift-service-account-pwd)
+              OC_NS: $(openshift-namespace)
+
+          # ------------------------------------------------------------------
+          # Gate 1+2: static validation of the config folder (every action)
+          # ------------------------------------------------------------------
+          - task: Bash@3
+            displayName: "Static validation: link.env + topic/group/acl/subject files"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                source .azure-pipelines/scripts/cluster-linking-lib.sh
+                load_link_env
+                mkdir -p "$RENDER_DIR" "$REPORT_DIR"
+
+                echo "=== $LINK_DIR ==="
+                ls -la "$LINK_DIR"
+                echo ""
+                echo "=== link.env (resolved) ==="
+                grep -vE '^\s*(#|$)' "$LINK_DIR/link.env"
+                echo ""
+
+                if [ "$DEST_NAMESPACE" != "$OC_NS" ]; then
+                  fatal "link.env DEST_NAMESPACE=$DEST_NAMESPACE but the variable group namespace is $OC_NS"
+                fi
+
+                # Values every action needs; SR-side values are gated per action below.
+                require_no_placeholders LINK_NAME SCHEMA_LINK_NAME SOURCE_BOOTSTRAP SOURCE_OAUTH_SCOPE SOURCE_OAUTH_TOKEN_ENDPOINT
+
+                echo "=== duplicate-key + parse check on YAML in the folder ==="
+                python3 - "$LINK_DIR" <<'PY'
+                import pathlib, sys, yaml
+                class Strict(yaml.SafeLoader):
+                    pass
+                def construct(self, node):
+                    seen = set()
+                    for k, _ in node.value:
+                        key = self.construct_object(k)
+                        if key in seen:
+                            raise yaml.YAMLError("duplicate key %r at line %d" % (key, k.start_mark.line + 1))
+                        seen.add(key)
+                    return self.construct_mapping(node)
+                Strict.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct)
+                bad = 0
+                for p in sorted(pathlib.Path(sys.argv[1]).rglob("*.yaml")):
+                    try:
+                        list(yaml.load_all(p.read_text(encoding="utf-8"), Loader=Strict))
+                        print("OK  ", p)
+                    except Exception as exc:
+                        bad += 1
+                        print("FAIL", p, exc)
+                raise SystemExit(1 if bad else 0)
+                PY
+
+                echo ""
+                echo "=== cluster link files ==="
+                python3 .azure-pipelines/scripts/render_clusterlink.py --env-dir "$LINK_DIR" --check \
+                  || { [ "$ACTION" = "discover-source" ] || [ "$ACTION" = "create-link-prereqs" ] || exit 1; echo "WARN: continuing; $ACTION does not render the ClusterLink"; }
+                echo ""
+                echo "=== schema link files ==="
+                python3 .azure-pipelines/scripts/render_schemaexporter.py --env-dir "$LINK_DIR" --check \
+                  || { [ "$ACTION" = "provision-schema-link" ] && exit 1; echo "WARN: schema-link files not ready; only provision-schema-link needs them"; }
+
+                if [ "$ACTION" = "failover" ] || [ "$ACTION" = "delete-link" ]; then
+                  [ "$CONFIRM" = "True" ] || [ "$CONFIRM" = "true" ] \
+                    || fatal "$ACTION is irreversible; tick 'Confirm failover / delete-link' to proceed"
+                fi
+                if [ "$ACTION" = "failover" ]; then
+                  FO=$(printf '%s' "$FAILOVER_TOPICS" | tr -d '[:space:]')
+                  [ -n "$FO" ] || fatal "failover needs a comma-separated topic list in failoverTopics"
+                  python3 .azure-pipelines/scripts/render_clusterlink.py --env-dir "$LINK_DIR" --check --failover-topics "$FO"
+                fi
+                echo ""
+                echo "PASS: static validation"
+            env:
+              LINK_DIR: $(LINK_DIR)
+              VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+              VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+              VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+              RENDER_DIR: $(RENDER_DIR)
+              REPORT_DIR: $(REPORT_DIR)
+              OC_NS: $(openshift-namespace)
+              ACTION: ${{ parameters.action }}
+              CONFIRM: ${{ parameters.confirmDestructive }}
+              FAILOVER_TOPICS: ${{ parameters.failoverTopics }}
+
+          # ------------------------------------------------------------------
+          # Render the linking principal id into rbac/ and source-rolebindings.sh
+          # ------------------------------------------------------------------
+          - task: Bash@3
+            displayName: "Render linking principal into rbac/ and source-rolebindings.sh"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                source .azure-pipelines/scripts/cluster-linking-lib.sh
+                load_link_env
+                echo "linking principal source: variable $LINK_CLIENT_ID_VARNAME (linkPrincipal=$LINK_PRINCIPAL)"
+                if [[ ! "${LINK_CLIENT_ID_VAR:-}" =~ ^0oa[[:alnum:]]+$ ]]; then
+                  echo "WARN: variable $LINK_CLIENT_ID_VARNAME is not set to an Okta client id (0oa...)."
+                  echo "      create-link-prereqs and rbac rendering will fail until it exists in kafka-openshift-credentials-${TARGET_ENV}."
+                  [ "$ACTION" = "create-link-prereqs" ] && exit 1
+                  exit 0
+                fi
+                python3 - "$LINK_DIR" "$LINK_CLIENT_ID_VAR" <<'PY'
+                import pathlib, sys
+                d, cid = pathlib.Path(sys.argv[1]), sys.argv[2]
+                n = 0
+                for p in list(d.rglob("*.yaml")) + [d / "source-rolebindings.sh"]:
+                    if not p.exists():
+                        continue
+                    t = p.read_text(encoding="utf-8")
+                    r = t.replace("__ENV_CLUSTERLINK_CLIENT_ID__", cid)
+                    if r != t:
+                        p.write_text(r, encoding="utf-8"); n += 1
+                print("rendered linking principal into %d file(s)" % n)
+                PY
+            env:
+              LINK_DIR: $(LINK_DIR)
+              VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+              VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+              VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+              TARGET_ENV: ${{ parameters.environment }}
+              ACTION: ${{ parameters.action }}
+              LINK_CLIENT_ID_VAR: $(linkClientId)
+              LINK_CLIENT_ID_VARNAME: $(linkPrincipalVarName)
+              LINK_PRINCIPAL: ${{ parameters.linkPrincipal }}
+
+          # ------------------------------------------------------------------
+          # create-link-prereqs
+          # ------------------------------------------------------------------
+          - ${{ if eq(parameters.action, 'create-link-prereqs') }}:
+            - task: Bash@3
+              displayName: "Create oauth-clusterlink + clusterlink-source-ca Secrets, apply rbac/"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  source .azure-pipelines/scripts/cluster-linking-lib.sh
+                  load_link_env
+
+                  echo "linking principal: linkPrincipal=$LINK_PRINCIPAL (variables $LINK_CLIENT_ID_VARNAME / ...-client-secret)"
+                  for v in LINK_CLIENT_ID LINK_CLIENT_SECRET; do
+                    val="${!v:-}"
+                    if [ -z "$val" ] || [[ "$val" =~ ^\$\( ]] || [[ "$val" =~ ^REPLACE_WITH_ ]]; then
+                      fatal "$v missing: $LINK_CLIENT_ID_VARNAME / matching -client-secret are not set in kafka-openshift-credentials-${TARGET_ENV}"
+                    fi
+                  done
+                  [[ "$LINK_CLIENT_ID" =~ ^0oa[[:alnum:]]+$ ]] || fatal "$LINK_CLIENT_ID_VARNAME does not look like an Okta client id"
+
+                  label_secret() {
+                    oc label --local --overwrite -f - --dry-run=client -o yaml \
+                      app.kubernetes.io/name=confluent-platform \
+                      app.kubernetes.io/instance="$1" \
+                      app.kubernetes.io/component=cluster-link \
+                      app.kubernetes.io/part-of=confluent-platform \
+                      fcbint.net/app-id=11547
+                  }
+
+                  eso_owned() {
+                    oc -n "$DEST_NAMESPACE" get externalsecrets.external-secrets.io \
+                      -o jsonpath='{range .items[*]}{.spec.target.name}{"\n"}{end}' 2>/dev/null | grep -qx "$1"
+                  }
+
+                  echo "=== $LINK_OAUTH_SECRET (same five-key layout as the other oauth-* Secrets) ==="
+                  if eso_owned "$LINK_OAUTH_SECRET"; then
+                    echo "SKIPPED: ESO owns $LINK_OAUTH_SECRET"
+                  else
+                    bearer_tmp=$(mktemp); oauth_tmp=$(mktemp)
+                    printf 'username=%s\npassword=%s\n' "$LINK_CLIENT_ID" "$LINK_CLIENT_SECRET" > "$bearer_tmp"
+                    printf 'clientId=%s\nclientSecret=%s\n' "$LINK_CLIENT_ID" "$LINK_CLIENT_SECRET" > "$oauth_tmp"
+                    oc create secret generic "$LINK_OAUTH_SECRET" -n "$DEST_NAMESPACE" --dry-run=client -o yaml \
+                      --from-literal=clientId="$LINK_CLIENT_ID" \
+                      --from-literal=clientSecret="$LINK_CLIENT_SECRET" \
+                      --from-file=bearer.txt="$bearer_tmp" \
+                      --from-file=oauth.txt="$oauth_tmp" \
+                      --from-file=oidcClientSecret.txt="$oauth_tmp" \
+                      | label_secret "$LINK_OAUTH_SECRET" | oc apply -f -
+                    rm -f "$bearer_tmp" "$oauth_tmp"
+                  fi
+                  echo "$LINK_OAUTH_SECRET keys: $(oc -n "$DEST_NAMESPACE" get secret "$LINK_OAUTH_SECRET" -o go-template='{{range $k,$v := .data}}{{$k}} {{end}}')"
+
+                  echo ""
+                  echo "=== $SOURCE_CA_SECRET: FCB roots + kafka-tls ca.crt, as cacerts.pem and ca.crt ==="
+                  ca_tmp=$(mktemp)
+                  cat apps/confluent-platform/common/ca-certificates/*.pem > "$ca_tmp"
+                  if oc -n "$DEST_NAMESPACE" get secret kafka-tls -o jsonpath='{.data.ca\.crt}' 2>/dev/null | base64 -d >> "$ca_tmp"; then
+                    echo "appended kafka-tls ca.crt"
+                  fi
+                  echo "" >> "$ca_tmp"
+                  n=$(grep -c 'BEGIN CERTIFICATE' "$ca_tmp" || true)
+                  [ "${n:-0}" -ge 1 ] || fatal "no PEM certificates collected for $SOURCE_CA_SECRET"
+                  echo "certificates in bundle: $n"
+                  python3 - "$ca_tmp" <<'PY'
+                  import re, sys, base64, hashlib
+                  t = open(sys.argv[1]).read()
+                  for i, m in enumerate(re.finditer(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", t, re.S), 1):
+                      der = base64.b64decode("".join(m.group(1).split()))
+                      print("  cert %d sha256=%s (%d bytes)" % (i, hashlib.sha256(der).hexdigest()[:16], len(der)))
+                  PY
+                  oc create secret generic "$SOURCE_CA_SECRET" -n "$DEST_NAMESPACE" --dry-run=client -o yaml \
+                    --from-file=cacerts.pem="$ca_tmp" \
+                    --from-file=ca.crt="$ca_tmp" \
+                    | label_secret "$SOURCE_CA_SECRET" | oc apply -f -
+                  rm -f "$ca_tmp"
+
+                  echo ""
+                  echo "=== destination role bindings (rbac/) ==="
+                  POD_DIR=/tmp/cl-prereq-$$
+                  pod_prepare
+                  trap pod_cleanup EXIT
+                  if [ "${DEST_SR_CLUSTER_ID:-@live}" = "@live" ]; then
+                    discover_dest_sr_cluster_id; DEST_SR_CLUSTER_ID=$DEST_SR_CLUSTER_ID_LIVE
+                  fi
+                  echo "destination SR cluster id: $DEST_SR_CLUSTER_ID"
+                  sed "s/__DEST_SR_CLUSTER_ID__/$DEST_SR_CLUSTER_ID/g" "$LINK_DIR/rbac/clusterlink-rolebindings.yaml" > "$RENDER_DIR/clusterlink-rolebindings.yaml"
+                  grep -q '__' "$RENDER_DIR/clusterlink-rolebindings.yaml" && fatal "unresolved token in rendered role bindings"
+                  oc apply --dry-run=server -f "$RENDER_DIR/clusterlink-rolebindings.yaml"
+                  oc apply -f "$RENDER_DIR/clusterlink-rolebindings.yaml"
+                  sleep 10
+                  oc -n "$DEST_NAMESPACE" get confluentrolebinding clusterlink-sr-resourceowner-subjects clusterlink-kafka-operator \
+                    -o custom-columns='NAME:.metadata.name,STATE:.status.state,MSG:.status.conditions[0].message'
+              env:
+                LINK_DIR: $(LINK_DIR)
+                VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+                VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+                VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+                RENDER_DIR: $(RENDER_DIR)
+                TARGET_ENV: ${{ parameters.environment }}
+                LINK_CLIENT_ID: $(linkClientId)
+                LINK_CLIENT_SECRET: $(linkClientSecret)
+                LINK_CLIENT_ID_VARNAME: $(linkPrincipalVarName)
+                LINK_PRINCIPAL: ${{ parameters.linkPrincipal }}
+
+          # ------------------------------------------------------------------
+          # Live gates 3-6 (every action except create-link-prereqs)
+          # ------------------------------------------------------------------
+          - ${{ if ne(parameters.action, 'create-link-prereqs') }}:
+            - task: Bash@3
+              displayName: "Live pre-flight: Kafka ready, Secrets, source reachability, SR exporter extension"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  source .azure-pipelines/scripts/cluster-linking-lib.sh
+                  load_link_env
+                  fail=0
+                  note() { echo "  $1"; }
+
+                  echo "=== Kafka CR $DEST_KAFKA_NAME cluster-ready ==="
+                  ready=$(oc -n "$DEST_NAMESPACE" get kafka "$DEST_KAFKA_NAME" -o jsonpath='{.status.conditions[?(@.type=="platform.confluent.io/cluster-ready")].status}' 2>/dev/null || true)
+                  [ "$ready" = "True" ] && note "OK   cluster-ready=True" || { note "FAIL cluster-ready=$ready"; fail=1; }
+                  DEST_KAFKA_CLUSTER_ID=$(oc -n "$DEST_NAMESPACE" get kafka "$DEST_KAFKA_NAME" -o jsonpath='{.status.clusterID}' 2>/dev/null || true)
+                  note "destination Kafka cluster id: ${DEST_KAFKA_CLUSTER_ID:-<none>}"
+                  pe=$(oc -n "$DEST_NAMESPACE" get kafka "$DEST_KAFKA_NAME" -o jsonpath='{.spec.passwordEncoder.secretRef}' 2>/dev/null || true)
+                  [ -n "$pe" ] && note "OK   spec.passwordEncoder.secretRef=$pe" || note "INFO Kafka CR has no spec.passwordEncoder (KRaft mode does not need it; revisit if link creation reports password.encoder.secret)"
+
+                  echo "=== KafkaRestClass $DEST_KAFKA_REST_CLASS ==="
+                  oc -n "$DEST_NAMESPACE" get kafkarestclass "$DEST_KAFKA_REST_CLASS" >/dev/null 2>&1 && note "OK   present" || { note "FAIL missing"; fail=1; }
+
+                  echo "=== Secrets ==="
+                  for s in sasl-plain-internal "$LINK_OAUTH_SECRET" "$SOURCE_CA_SECRET"; do
+                    if oc -n "$DEST_NAMESPACE" get secret "$s" >/dev/null 2>&1; then
+                      note "OK   $s ($(oc -n "$DEST_NAMESPACE" get secret "$s" -o go-template='{{range $k,$v := .data}}{{$k}} {{end}}'))"
+                    else
+                      note "FAIL $s missing (run create-link-prereqs)"; fail=1
+                    fi
+                  done
+                  [ "$fail" -eq 0 ] || fatal "live pre-flight failed before reaching the source"
+
+                  pod_prepare
+                  trap pod_cleanup EXIT
+                  write_source_props
+                  write_local_props
+
+                  echo "=== Source reachability as the linking principal (kafka-cluster cluster-id) ==="
+                  require_no_placeholders SOURCE_BOOTSTRAP
+                  if discover_source_cluster_id; then
+                    note "OK   source cluster id $SOURCE_CLUSTER_ID_LIVE via ${SOURCE_BOOTSTRAP%%,*}"
+                    echo "##vso[task.setvariable variable=SOURCE_CLUSTER_ID_LIVE]$SOURCE_CLUSTER_ID_LIVE"
+                  else
+                    fail=1
+                  fi
+
+                  echo "=== Local admin client on $LOCAL_BOOTSTRAP ==="
+                  if out=$(kexec kafka-broker-api-versions --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>&1 | head -3); then
+                    note "OK   $(printf '%s' "$out" | head -1)"
+                  else
+                    note "FAIL $out"; fail=1
+                  fi
+
+                  echo "=== Schema Registry exporter extension ==="
+                  if [ "$ACTION" = "provision-schema-link" ] || [ "$ACTION" = "validate" ] || [ "$ACTION" = "discover-source" ]; then
+                    if [[ "$SOURCE_SR_URL" == REPLACE_WITH_* ]]; then
+                      note "SKIP SOURCE_SR_URL is a placeholder"
+                      [ "$ACTION" = "provision-schema-link" ] && fail=1
+                    else
+                      mint_token
+                      res=$(sr_get "$SOURCE_SR_URL/exporters"); code=${res%%$'\n'*}; body=${res#*$'\n'}
+                      case "$code" in
+                        200) note "OK   source SR $SOURCE_SR_URL/exporters -> 200 ($body)" ;;
+                        401|403) note "WARN source SR answered $code: extension present, principal lacks SR rights (source-rolebindings.sh)"; [ "$ACTION" = "provision-schema-link" ] && fail=1 ;;
+                        404) note "FAIL source SR answered 404: SchemaExporterResourceExtension not loaded on the source SR"; [ "$ACTION" = "provision-schema-link" ] && fail=1 ;;
+                        *)   note "FAIL source SR answered '$code' ($body)"; [ "$ACTION" = "provision-schema-link" ] && fail=1 ;;
+                      esac
+                      res=$(sr_get "https://${DEST_SR_NAME}.${DEST_NAMESPACE}.svc.cluster.local:8081/exporters"); code=${res%%$'\n'*}
+                      case "$code" in
+                        200|401|403) note "OK   CFK SR /exporters -> $code (extension loaded)" ;;
+                        *)           note "WARN CFK SR /exporters -> '$code'" ;;
+                      esac
+                      if [[ "$DEST_SR_PUBLIC_URL" != REPLACE_WITH_* ]]; then
+                        res=$(sr_get "$DEST_SR_PUBLIC_URL/subjects"); code=${res%%$'\n'*}
+                        note "INFO $DEST_SR_PUBLIC_URL/subjects -> $code (the SOURCE SR must reach this URL too)"
+                      fi
+                    fi
+                  else
+                    note "SKIP (not needed for $ACTION)"
+                  fi
+
+                  echo ""
+                  [ "$fail" -eq 0 ] && echo "PASS: live pre-flight" || fatal "live pre-flight failed"
+              env:
+                LINK_DIR: $(LINK_DIR)
+                VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+                VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+                VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+                ACTION: ${{ parameters.action }}
+
+          # ------------------------------------------------------------------
+          # discover-source
+          # ------------------------------------------------------------------
+          - ${{ if eq(parameters.action, 'discover-source') }}:
+            - task: Bash@3
+              displayName: "Discover source: cluster id, topics, groups, subjects, source role bindings"
+              inputs:
+                targetType: inline
+                script: |
+                  set +e
+                  source .azure-pipelines/scripts/cluster-linking-lib.sh
+                  load_link_env
+                  pod_prepare
+                  trap pod_cleanup EXIT
+                  write_source_props
+                  write_local_props
+                  resolve_markers
+
+                  echo ""
+                  echo "=== source topics (kafka-topics --list) ==="
+                  kexec kafka-topics --list --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --command-config "$SOURCE_PROPS" 2>&1 | grep -v '^_' | sort | tee "$REPORT_DIR/source-topics.txt" | head -200
+                  echo "... $(wc -l < "$REPORT_DIR/source-topics.txt") user topic(s) total (internal _* topics hidden)"
+
+                  echo ""
+                  echo "=== source consumer groups (kafka-consumer-groups --list) ==="
+                  kexec kafka-consumer-groups --list --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --command-config "$SOURCE_PROPS" 2>&1 | sort | tee "$REPORT_DIR/source-groups.txt" | head -200
+
+                  echo ""
+                  echo "=== topics.txt entries vs source ==="
+                  for t in $(python3 .azure-pipelines/scripts/render_clusterlink.py --env-dir "$LINK_DIR" --list-sources 2>/dev/null); do
+                    grep -qx "$t" "$REPORT_DIR/source-topics.txt" && echo "  OK   $t" || echo "  MISS $t (not on source)"
+                  done
+
+                  if [[ "$SOURCE_SR_URL" != REPLACE_WITH_* ]]; then
+                    echo ""
+                    echo "=== source subjects ($SOURCE_SR_URL/subjects) ==="
+                    mint_token
+                    res=$(sr_get "$SOURCE_SR_URL/subjects"); echo "HTTP ${res%%$'\n'*}"; printf '%s\n' "${res#*$'\n'}" | tee "$REPORT_DIR/source-subjects.json" | head -c 4000; echo
+                    echo ""
+                    echo "=== source SR exporter capability ($SOURCE_SR_URL/exporters) ==="
+                    res=$(sr_get "$SOURCE_SR_URL/exporters"); echo "HTTP ${res%%$'\n'*}  ${res#*$'\n'}"
+                    echo "=== source SR mode ($SOURCE_SR_URL/mode) ==="
+                    res=$(sr_get "$SOURCE_SR_URL/mode"); echo "HTTP ${res%%$'\n'*}  ${res#*$'\n'}"
+                  fi
+
+                  echo ""
+                  echo "=== destination: existing ClusterLink / SchemaExporter CRs ==="
+                  oc -n "$DEST_NAMESPACE" get clusterlink,schemaexporter 2>&1
+
+                  echo ""
+                  echo "=== source-rolebindings.sh rendered for the Kafka Admin ==="
+                  topic_lines=""
+                  for t in $(python3 .azure-pipelines/scripts/render_clusterlink.py --env-dir "$LINK_DIR" --list-sources 2>/dev/null); do
+                    topic_lines+="confluent iam rbac role-binding create --principal \"\$P\" --role DeveloperRead   --resource \"Topic:$t\" --kafka-cluster \"\$K\"
+                  confluent iam rbac role-binding create --principal \"\$P\" --role DeveloperManage --resource \"Topic:$t\" --kafka-cluster \"\$K\"
+                  "
+                  done
+                  group_lines=""
+                  for g in $(python3 .azure-pipelines/scripts/render_clusterlink.py --env-dir "$LINK_DIR" --list-groups 2>/dev/null); do
+                    group_lines+="confluent iam rbac role-binding create --principal \"\$P\" --role DeveloperRead --resource \"Group:$g\" --kafka-cluster \"\$K\"
+                  "
+                  done
+                  python3 - "$LINK_DIR/source-rolebindings.sh" "$SOURCE_CLUSTER_ID" "$SOURCE_SR_CLUSTER_ID" "$topic_lines" "$group_lines" > "$REPORT_DIR/source-rolebindings.rendered.sh" <<'PY'
+                  import sys
+                  t = open(sys.argv[1]).read()
+                  t = t.replace("__SOURCE_CLUSTER_ID__", sys.argv[2]).replace("__SOURCE_SR_CLUSTER_ID__", sys.argv[3])
+                  t = t.replace("__TOPIC_LINES__", sys.argv[4].strip() or "# (topics.txt is empty)")
+                  t = t.replace("__GROUP_LINES__", sys.argv[5].strip() or "# (consumer-groups.txt is empty)")
+                  print(t)
+                  PY
+                  cat "$REPORT_DIR/source-rolebindings.rendered.sh"
+                  echo ""
+                  echo "Artifacts: source-topics.txt, source-groups.txt, source-subjects.json, source-rolebindings.rendered.sh"
+                  exit 0
+              env:
+                LINK_DIR: $(LINK_DIR)
+                VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+                VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+                VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+                REPORT_DIR: $(REPORT_DIR)
+
+          # ------------------------------------------------------------------
+          # validate: dry-run both rendered CRs (gate 7)
+          # ------------------------------------------------------------------
+          - ${{ if eq(parameters.action, 'validate') }}:
+            - task: Bash@3
+              displayName: "Render both CRs and oc apply --dry-run=server"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  source .azure-pipelines/scripts/cluster-linking-lib.sh
+                  load_link_env
+                  SOURCE_CLUSTER_ID=${SOURCE_CLUSTER_ID_LIVE:-$SOURCE_CLUSTER_ID}
+                  [[ "$SOURCE_CLUSTER_ID" == @* ]] && fatal "source cluster id was not discovered"
+
+                  echo "=== ClusterLink ==="
+                  python3 .azure-pipelines/scripts/render_clusterlink.py --env-dir "$LINK_DIR" \
+                    --source-cluster-id "$SOURCE_CLUSTER_ID" --source-bootstrap "$SOURCE_BOOTSTRAP" \
+                    --token-endpoint "$SOURCE_OAUTH_TOKEN_ENDPOINT" --out "$RENDER_DIR/clusterlink.yaml"
+                  cat "$RENDER_DIR/clusterlink.yaml"
+                  oc apply --dry-run=server -f "$RENDER_DIR/clusterlink.yaml"
+
+                  echo ""
+                  echo "=== SchemaExporter ==="
+                  if python3 .azure-pipelines/scripts/render_schemaexporter.py --env-dir "$LINK_DIR" --source-sr-url "$SOURCE_SR_URL" --token-endpoint "$SOURCE_OAUTH_TOKEN_ENDPOINT" --out "$RENDER_DIR/schemaexporter.yaml"; then
+                    cat "$RENDER_DIR/schemaexporter.yaml"
+                    oc apply --dry-run=server -f "$RENDER_DIR/schemaexporter.yaml"
+                  else
+                    echo "WARN: SchemaExporter not rendered (placeholders remain); cluster link validation is unaffected"
+                  fi
+                  cp "$RENDER_DIR"/*.yaml "$REPORT_DIR/" 2>/dev/null || true
+                  echo ""
+                  echo "PASS: validate"
+              env:
+                LINK_DIR: $(LINK_DIR)
+                VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+                VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+                VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+                RENDER_DIR: $(RENDER_DIR)
+                REPORT_DIR: $(REPORT_DIR)
+
+          # ------------------------------------------------------------------
+          # provision-cluster-link / promote / failover share one apply step
+          # ------------------------------------------------------------------
+          - ${{ if in(parameters.action, 'provision-cluster-link', 'promote', 'failover') }}:
+            - task: Bash@3
+              displayName: "Render + apply ClusterLink (${{ parameters.action }}) and verify admission"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  source .azure-pipelines/scripts/cluster-linking-lib.sh
+                  load_link_env
+                  SOURCE_CLUSTER_ID=${SOURCE_CLUSTER_ID_LIVE:-$SOURCE_CLUSTER_ID}
+                  [[ "$SOURCE_CLUSTER_ID" == @* ]] && fatal "source cluster id was not discovered"
+                  pod_prepare
+                  trap pod_cleanup EXIT
+                  write_local_props
+
+                  FO=""
+                  if [ "$ACTION" = "failover" ]; then
+                    FO=$(printf '%s' "$FAILOVER_TOPICS" | tr -d '[:space:]')
+                  fi
+
+                  if [ "$ACTION" = "promote" ]; then
+                    PROMOTE_LIST=$(grep -vE '^\s*(#|$)' "$LINK_DIR/promote-topics.txt" | sed 's/#.*//' | tr -d ' ' | paste -sd, -)
+                    [ -n "$PROMOTE_LIST" ] || fatal "promote-topics.txt is empty; nothing to promote"
+                    echo "=== promote pre-check: lag must be zero and state ACTIVE for: $PROMOTE_LIST ==="
+                    mkdir -p "$RENDER_DIR/describe"
+                    already=""
+                    for t in ${PROMOTE_LIST//,/ }; do
+                      describe_mirror "$t" > "$RENDER_DIR/describe/$t.txt" || true
+                      if grep -qE 'State: *(STOPPED|PENDING_STOPPED)' "$RENDER_DIR/describe/$t.txt"; then
+                        echo "  already promoted: $t"; already+="$t,"
+                      fi
+                    done
+                    to_check=$(python3 - "$PROMOTE_LIST" "$already" <<'PY'
+                  import sys
+                  want = [t for t in sys.argv[1].split(",") if t]
+                  done = set(t for t in sys.argv[2].split(",") if t)
+                  print(",".join(t for t in want if t not in done))
+                  PY
+                  )
+                    if [ -n "$to_check" ]; then
+                      python3 .azure-pipelines/scripts/mirror_report.py --describe-dir "$RENDER_DIR/describe" --require-zero-lag "$to_check" --link "$LINK_NAME" --env "$TARGET_ENV"
+                    else
+                      echo "every topic in promote-topics.txt is already STOPPED; re-applying for idempotency"
+                    fi
+                  fi
+
+                  echo ""
+                  echo "=== render ==="
+                  python3 .azure-pipelines/scripts/render_clusterlink.py --env-dir "$LINK_DIR" \
+                    --source-cluster-id "$SOURCE_CLUSTER_ID" --source-bootstrap "$SOURCE_BOOTSTRAP" \
+                    --token-endpoint "$SOURCE_OAUTH_TOKEN_ENDPOINT" --out "$RENDER_DIR/clusterlink.yaml" \
+                    ${FO:+--failover-topics "$FO"}
+                  cat "$RENDER_DIR/clusterlink.yaml"
+                  cp "$RENDER_DIR/clusterlink.yaml" "$REPORT_DIR/clusterlink.rendered.yaml"
+
+                  echo ""
+                  echo "=== dry-run then apply ==="
+                  oc apply --dry-run=server -f "$RENDER_DIR/clusterlink.yaml"
+                  oc apply -f "$RENDER_DIR/clusterlink.yaml"
+
+                  echo ""
+                  echo "=== post-admission verification (silent-strip check) ==="
+                  oc -n "$DEST_NAMESPACE" get clusterlink "$LINK_NAME" -o yaml > "$RENDER_DIR/clusterlink.live.yaml"
+                  python3 .azure-pipelines/scripts/verify_clusterlink_admission.py \
+                    --rendered "$RENDER_DIR/clusterlink.yaml" --live "$RENDER_DIR/clusterlink.live.yaml"
+
+                  echo ""
+                  echo "=== wait for the link and mirror topics ==="
+                  promoted=$(grep -vE '^\s*(#|$)' "$LINK_DIR/promote-topics.txt" | sed 's/#.*//' | tr -d ' ' || true)
+                  case "$ACTION" in
+                    provision-cluster-link)
+                      want=ACTIVE; topics=""
+                      # ACTIVE is expected only for mirrors that are not already promoted.
+                      for t in $(mirror_topic_names); do
+                        printf '%s\n' "$promoted" | grep -qx "$t" || topics+="$t "
+                      done ;;
+                    promote)  want=STOPPED; topics=${PROMOTE_LIST//,/ } ;;
+                    failover) want=STOPPED; topics=${FO//,/ } ;;
+                  esac
+                  deadline=$(( $(date +%s) + WAIT_MIN*60 ))
+                  until describe_link | grep -q "$LINK_NAME"; do
+                    [ "$(date +%s)" -lt "$deadline" ] || { oc -n "$DEST_NAMESPACE" get clusterlink "$LINK_NAME" -o yaml | sed -n '/^status:/,$p'; fatal "link $LINK_NAME not visible on the destination after ${WAIT_MIN}m"; }
+                    echo "waiting for link $LINK_NAME to appear on the destination..."; sleep 15
+                  done
+                  describe_link
+                  echo ""
+                  # shellcheck disable=SC2086
+                  if [ -n "$topics" ]; then
+                    wait_for_mirror_state "$want" "$WAIT_MIN" $topics || {
+                      echo ""; echo "=== ClusterLink CR status ==="; oc -n "$DEST_NAMESPACE" get clusterlink "$LINK_NAME" -o yaml | sed -n '/^status:/,$p'
+                      fatal "mirror topics did not reach $want"; }
+                  fi
+                  echo ""
+                  echo "=== ClusterLink CR status ==="
+                  oc -n "$DEST_NAMESPACE" get clusterlink "$LINK_NAME" -o yaml | sed -n '/^status:/,$p'
+                  if [ "$ACTION" != "provision-cluster-link" ]; then
+                    echo ""
+                    echo "=== KafkaTopic CRs created by CFK for promoted/failed-over mirrors ==="
+                    oc -n "$DEST_NAMESPACE" get kafkatopic 2>/dev/null | grep -E '^clink-|^NAME' || echo "(none yet)"
+                  fi
+                  echo ""
+                  echo "PASS: $ACTION"
+              env:
+                LINK_DIR: $(LINK_DIR)
+                VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+                VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+                VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+                RENDER_DIR: $(RENDER_DIR)
+                REPORT_DIR: $(REPORT_DIR)
+                TARGET_ENV: ${{ parameters.environment }}
+                ACTION: ${{ parameters.action }}
+                FAILOVER_TOPICS: ${{ parameters.failoverTopics }}
+                WAIT_MIN: ${{ parameters.waitTimeoutMinutes }}
+
+          # ------------------------------------------------------------------
+          # provision-schema-link
+          # ------------------------------------------------------------------
+          - ${{ if eq(parameters.action, 'provision-schema-link') }}:
+            - task: Bash@3
+              displayName: "Render + apply SchemaExporter and wait for RUNNING"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  source .azure-pipelines/scripts/cluster-linking-lib.sh
+                  load_link_env
+                  require_no_placeholders SOURCE_SR_URL DEST_SR_PUBLIC_URL
+                  pod_prepare
+                  trap pod_cleanup EXIT
+
+                  echo "=== render ==="
+                  python3 .azure-pipelines/scripts/render_schemaexporter.py --env-dir "$LINK_DIR" --source-sr-url "$SOURCE_SR_URL" --token-endpoint "$SOURCE_OAUTH_TOKEN_ENDPOINT" --out "$RENDER_DIR/schemaexporter.yaml"
+                  cat "$RENDER_DIR/schemaexporter.yaml"
+                  cp "$RENDER_DIR/schemaexporter.yaml" "$REPORT_DIR/schemaexporter.rendered.yaml"
+
+                  echo ""
+                  echo "=== dry-run then apply ==="
+                  oc apply --dry-run=server -f "$RENDER_DIR/schemaexporter.yaml"
+                  oc apply -f "$RENDER_DIR/schemaexporter.yaml"
+
+                  echo ""
+                  echo "=== post-admission verification ==="
+                  oc -n "$DEST_NAMESPACE" get schemaexporter "$SCHEMA_LINK_NAME" -o yaml > "$RENDER_DIR/schemaexporter.live.yaml"
+                  python3 .azure-pipelines/scripts/verify_clusterlink_admission.py \
+                    --rendered "$RENDER_DIR/schemaexporter.yaml" --live "$RENDER_DIR/schemaexporter.live.yaml"
+
+                  echo ""
+                  echo "=== wait for exporter RUNNING on the source SR ==="
+                  mint_token
+                  deadline=$(( $(date +%s) + WAIT_MIN*60 ))
+                  while :; do
+                    res=$(sr_get "$SOURCE_SR_URL/exporters/$SCHEMA_LINK_NAME/status"); code=${res%%$'\n'*}; body=${res#*$'\n'}
+                    state=$(printf '%s' "$body" | python3 -c 'import json,sys
+                  try: print(json.load(sys.stdin).get("state",""))
+                  except Exception: print("")')
+                    echo "HTTP $code state=${state:-?} $body"
+                    [ "$state" = "RUNNING" ] && break
+                    if [ "$(date +%s)" -ge "$deadline" ]; then
+                      echo "=== SchemaExporter CR status ==="; oc -n "$DEST_NAMESPACE" get schemaexporter "$SCHEMA_LINK_NAME" -o yaml | sed -n '/^status:/,$p'
+                      fatal "exporter $SCHEMA_LINK_NAME not RUNNING after ${WAIT_MIN}m"
+                    fi
+                    sleep 15
+                  done
+                  echo ""
+                  echo "=== exporter config as stored on the source SR ==="
+                  res=$(sr_get "$SOURCE_SR_URL/exporters/$SCHEMA_LINK_NAME"); printf '%s\n' "${res#*$'\n'}" | sed -E 's/("[^"]*(secret|password)[^"]*" *: *")[^"]*"/\1***"/Ig'
+                  echo ""
+                  echo "=== destination subjects now visible on the CFK SR ==="
+                  res=$(sr_get "https://${DEST_SR_NAME}.${DEST_NAMESPACE}.svc.cluster.local:8081/subjects"); echo "HTTP ${res%%$'\n'*}"; printf '%s\n' "${res#*$'\n'}" | head -c 4000; echo
+                  echo ""
+                  echo "=== SchemaExporter CR status ==="
+                  oc -n "$DEST_NAMESPACE" get schemaexporter "$SCHEMA_LINK_NAME" -o yaml | sed -n '/^status:/,$p'
+                  echo ""
+                  echo "PASS: provision-schema-link"
+              env:
+                LINK_DIR: $(LINK_DIR)
+                VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+                VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+                VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+                RENDER_DIR: $(RENDER_DIR)
+                REPORT_DIR: $(REPORT_DIR)
+                WAIT_MIN: ${{ parameters.waitTimeoutMinutes }}
+
+          # ------------------------------------------------------------------
+          # mirror-status (also runs after promote/failover for the record)
+          # ------------------------------------------------------------------
+          - ${{ if in(parameters.action, 'mirror-status', 'promote', 'failover', 'provision-cluster-link') }}:
+            - task: Bash@3
+              displayName: "Mirror topic status + diagnostics report"
+              inputs:
+                targetType: inline
+                script: |
+                  set +e
+                  source .azure-pipelines/scripts/cluster-linking-lib.sh
+                  load_link_env
+                  pod_prepare
+                  trap pod_cleanup EXIT
+                  write_local_props
+                  mkdir -p "$RENDER_DIR/describe" "$REPORT_DIR"
+
+                  echo "=== link (kafka-cluster-links --list --include-topics) ==="
+                  describe_link | tee "$REPORT_DIR/link_describe.txt"
+
+                  echo ""
+                  echo "=== mirror topics known to the destination for $LINK_NAME ==="
+                  live_mirrors=$(kexec kafka-mirrors --list --link "$LINK_NAME" --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>/dev/null | grep -vE '^\s*$')
+                  echo "$live_mirrors"
+                  expected=$(mirror_topic_names)
+                  all=$(printf '%s\n%s\n' "$live_mirrors" "$expected" | grep -vE '^\s*$' | sort -u)
+                  for t in $all; do
+                    describe_mirror "$t" > "$RENDER_DIR/describe/$t.txt" 2>&1
+                  done
+                  echo ""
+                  echo "=== per-topic describe (pedantic) ==="
+                  for f in "$RENDER_DIR"/describe/*.txt; do echo "--- $(basename "$f" .txt)"; cat "$f"; done | tee "$REPORT_DIR/mirror_describe_raw.txt"
+
+                  echo ""
+                  echo "=== expected (topics.txt) vs live ==="
+                  for t in $expected; do printf '%s\n' "$live_mirrors" | grep -qx "$t" && echo "  OK   $t" || echo "  MISS $t (in topics.txt, not on destination)"; done
+                  for t in $live_mirrors; do printf '%s\n' "$expected" | grep -qx "$t" || echo "  EXTRA $t (on destination, not in topics.txt)"; done
+
+                  echo ""
+                  echo "=== ClusterLink CR status ==="
+                  oc -n "$DEST_NAMESPACE" get clusterlink "$LINK_NAME" -o yaml 2>&1 | sed -n '/^status:/,$p' | tee "$REPORT_DIR/clusterlink_cr_status.txt"
+
+                  echo ""
+                  echo "=== SchemaExporter CR + source exporter status ==="
+                  oc -n "$DEST_NAMESPACE" get schemaexporter "$SCHEMA_LINK_NAME" -o yaml 2>&1 | sed -n '/^status:/,$p' | tee "$REPORT_DIR/schemaexporter_cr_status.txt"
+                  if [[ "$SOURCE_SR_URL" != REPLACE_WITH_* ]] && oc -n "$DEST_NAMESPACE" get schemaexporter "$SCHEMA_LINK_NAME" >/dev/null 2>&1; then
+                    mint_token && { res=$(sr_get "$SOURCE_SR_URL/exporters/$SCHEMA_LINK_NAME/status"); echo "HTTP ${res%%$'\n'*} ${res#*$'\n'}" | tee "$REPORT_DIR/exporter_status.txt"; }
+                  fi
+
+                  echo ""
+                  echo "=== broker log lines mentioning the link (kafka-0, last 400 lines) ==="
+                  oc -n "$DEST_NAMESPACE" logs "$KAFKA_POD" -c kafka --tail=400 2>/dev/null | grep -iE 'cluster ?link|mirror|ClusterLink' | tail -40 | tee "$REPORT_DIR/broker_log_link_lines.txt"
+
+                  echo ""
+                  echo "=== recent Warning events in $DEST_NAMESPACE ==="
+                  oc -n "$DEST_NAMESPACE" get events --field-selector type=Warning --sort-by=.lastTimestamp 2>/dev/null | tail -20 | tee "$REPORT_DIR/warning_events.txt"
+
+                  echo ""
+                  echo "=== STATUS TABLE ==="
+                  python3 .azure-pipelines/scripts/mirror_report.py --describe-dir "$RENDER_DIR/describe" \
+                    --report "$REPORT_DIR/mirror-status-report.md" --link "$LINK_NAME" --env "$TARGET_ENV" \
+                    --extra "$REPORT_DIR/link_describe.txt" "$REPORT_DIR/clusterlink_cr_status.txt" \
+                            "$REPORT_DIR/schemaexporter_cr_status.txt" "$REPORT_DIR/exporter_status.txt" \
+                            "$REPORT_DIR/broker_log_link_lines.txt" "$REPORT_DIR/warning_events.txt"
+                  exit 0
+              env:
+                LINK_DIR: $(LINK_DIR)
+                VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+                VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+                VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+                RENDER_DIR: $(RENDER_DIR)
+                REPORT_DIR: $(REPORT_DIR)
+                TARGET_ENV: ${{ parameters.environment }}
+
+          # ------------------------------------------------------------------
+          # delete-link
+          # ------------------------------------------------------------------
+          - ${{ if eq(parameters.action, 'delete-link') }}:
+            - task: Bash@3
+              displayName: "Delete SchemaExporter then ClusterLink (remaining mirrors fail over)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  source .azure-pipelines/scripts/cluster-linking-lib.sh
+                  load_link_env
+                  echo "=== before ==="
+                  oc -n "$DEST_NAMESPACE" get clusterlink,schemaexporter 2>&1 || true
+                  echo ""
+                  if oc -n "$DEST_NAMESPACE" get schemaexporter "$SCHEMA_LINK_NAME" >/dev/null 2>&1; then
+                    oc -n "$DEST_NAMESPACE" delete schemaexporter "$SCHEMA_LINK_NAME" --wait=true --timeout="${WAIT_MIN}m"
+                  else
+                    echo "schemaexporter $SCHEMA_LINK_NAME not present"
+                  fi
+                  if oc -n "$DEST_NAMESPACE" get clusterlink "$LINK_NAME" >/dev/null 2>&1; then
+                    echo "NOTE: deleting the link fails over every remaining mirror topic; CFK creates clink-* KafkaTopic CRs for them."
+                    oc -n "$DEST_NAMESPACE" delete clusterlink "$LINK_NAME" --wait=true --timeout="${WAIT_MIN}m"
+                  else
+                    echo "clusterlink $LINK_NAME not present"
+                  fi
+                  echo ""
+                  echo "=== after ==="
+                  oc -n "$DEST_NAMESPACE" get clusterlink,schemaexporter 2>&1 || true
+                  oc -n "$DEST_NAMESPACE" get kafkatopic 2>/dev/null | grep -E '^clink-|^NAME' || echo "(no clink-* KafkaTopic CRs)"
+                  echo ""
+                  echo "Secrets $LINK_OAUTH_SECRET / $SOURCE_CA_SECRET and rbac/ role bindings were preserved."
+              env:
+                LINK_DIR: $(LINK_DIR)
+                VG_KAFKA_BROKER_HOSTS: $(${{ parameters.environment }}-kafka-broker-hosts)
+                VG_SCHEMA_REGISTRY_HOSTS: $(${{ parameters.environment }}-schema-registry-hosts)
+                VG_OAUTH_TOKEN_URL: $(kafka-oauthbearer-token-endpoint-url)
+                WAIT_MIN: ${{ parameters.waitTimeoutMinutes }}
+
+          - task: PublishBuildArtifacts@1
+            displayName: "Publish cluster-linking report"
+            condition: always()
+            inputs:
+              PathtoPublish: $(Build.ArtifactStagingDirectory)/cluster-linking
+              ArtifactName: cluster-linking-${{ parameters.environment }}-${{ parameters.action }}

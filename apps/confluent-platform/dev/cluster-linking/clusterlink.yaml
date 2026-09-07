@@ -1,0 +1,67 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-09-05 (created)
+# Description: CFK ClusterLink CR (dev). Destination-initiated link
+#              from VM DEV Confluent Platform (cp-confluent/dev)
+#              into CFK dah-flink-dev. mirrorTopics / consumerGroupFilters /
+#              aclFilters are rendered from the sibling *.txt files by
+#              .azure-pipelines/cluster-linking.yaml (runbook I1).
+########################################################################
+apiVersion: platform.confluent.io/v1beta1
+kind: ClusterLink
+metadata:
+  name: vm-dev-to-cfk-dev
+  namespace: dah-flink-dev
+  labels:
+    app.kubernetes.io/name: clusterlink
+    app.kubernetes.io/instance: vm-dev-to-cfk-dev
+    app.kubernetes.io/component: cluster-link
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+    platform.confluent.io/clusterlink-reconcile-interval-seconds: "300"
+spec:
+  name: vm-dev-to-cfk-dev
+  # Destination side: the operator drives the link through the broker's embedded REST (runbook A22).
+  destinationKafkaCluster:
+    kafkaRestClassRef:
+      name: default
+      namespace: dah-flink-dev
+  # Source side: OAuth client credentials on the 9092 listener. __TOKENS__ are rendered by the pipeline
+  # from link.env and the variable group (SOURCE_BOOTSTRAP, SOURCE_OAUTH_TOKEN_ENDPOINT, discovered cluster id).
+  sourceKafkaCluster:
+    bootstrapEndpoint: __SOURCE_BOOTSTRAP__
+    clusterID: __SOURCE_CLUSTER_ID__
+    authentication:
+      type: oauth
+      jaasConfig:
+        secretRef: oauth-clusterlink
+      oauthSettings:
+        audience: "Confluent,account,api://default"
+        expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+        subClaimName: sub
+        jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+        tokenEndpointUri: __SOURCE_OAUTH_TOKEN_ENDPOINT__
+        scope: 11547.DAH(Dev)
+    tls:
+      enabled: true
+      secretRef: clusterlink-source-ca
+  # Link-level configs (docs: multi-dc-deployments/cluster-linking/configs.html).
+  # The two *.sync.enable flags are forced by the renderer from the *.txt files.
+  configs:
+    consumer.offset.sync.enable: "false"
+    consumer.offset.sync.ms: "30000"
+    acl.sync.enable: "false"
+    acl.sync.ms: "5000"
+    topic.config.sync.ms: "5000"
+    cluster.link.retry.timeout.ms: "300000"
+    availability.check.ms: "60000"
+    availability.check.consecutive.failure.threshold: "5"
+  # RENDERED from topics.txt / promote-topics.txt
+  mirrorTopics: []
+  # RENDERED from consumer-groups.txt
+  consumerGroupFilters: []
+  # RENDERED from acls.txt
+  aclFilters: []

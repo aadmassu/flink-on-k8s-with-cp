@@ -1745,9 +1745,119 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 
 ---
 
+## I. Cluster Linking + Schema Linking (VM CP → CFK)
+
+### I1. The ClusterLink CR is rendered, not hand-edited — topic / group / ACL lists live in text files
+
+* **Context**: the migration needs one destination-initiated link per env
+  (VM DEV→CFK DEV, VM QA→CFK QA, VM UAT→CFK UAT-P, CFK UAT-P→CFK UAT-S,
+  VM PRD→CFK PRD, CFK PRD→CFK DR). QA is the pilot.
+* **Shape**: `apps/confluent-platform/<env>/cluster-linking/` holds `link.env`
+  (endpoints, names, scope), `clusterlink.yaml` (CR template with empty
+  `mirrorTopics` / `consumerGroupFilters` / `aclFilters`), and the lists
+  `topics.txt`, `promote-topics.txt`, `consumer-groups.txt`, `acls.txt`.
+  `.azure-pipelines/scripts/render_clusterlink.py` merges them and forces
+  `consumer.offset.sync.enable` / `acl.sync.enable` to match whether the
+  corresponding file is empty. The source cluster ID is discovered at run
+  time (`kafka-cluster cluster-id` from `kafka-0` against the source) so a
+  VM rebuild never leaves a stale ID in git.
+* **Why it matters**: CFK deletes a mirror topic that disappears from
+  `spec.mirrorTopics`. A promoted topic must therefore stay in BOTH
+  `topics.txt` and `promote-topics.txt` for the life of the link; the
+  renderer refuses a promote entry that is not also a mirror.
+* **Source auth**: OAuth client credentials on the source 9092 listener
+  (VM `INTERNAL`, CFK `external` — same port, see A31). The linking
+  principal is an existing Okta pair from the variable group, chosen by
+  the pipeline's `linkPrincipal` dropdown (default `<env>-oauth-broker-*`,
+  the VM broker/MDS client that is already a VM super.user; a dedicated
+  `<env>-clusterlink-oauth-client-*` pair is an option once issued),
+  materialised as Secret `oauth-clusterlink` with the same five keys as the
+  other `oauth-*` Secrets. Source endpoints also come from the variable
+  group (`<env>-kafka-broker-hosts` with the port rewritten to 9092,
+  `<env>-schema-registry-hosts`, `kafka-oauthbearer-token-endpoint-url`)
+  when `link.env` says `@vargroup`; `SOURCE_HOST_PREFIX` (`q11547varc-`
+  for QA) fails the run if a variable still points at another env's VM
+  cluster, which the QA group did at one point. Trust for the source comes from
+  `clusterlink-source-ca` (FCB root PEMs + `kafka-tls` `ca.crt`, stored as
+  both `cacerts.pem` and `ca.crt`). CFK does not rotate TLS material on a
+  live ClusterLink; re-apply after a CA change.
+
+### I2. Schema Linking runs INSIDE the source Schema Registry — the CFK CR only manages it remotely
+
+* **Symptom to expect**: `SchemaExporter` CR applied, exporter never reaches
+  RUNNING, source SR answers `404` on `/exporters`.
+* **Root cause**: exporters are a Schema Registry plugin. The source SR must
+  load `io.confluent.schema.exporter.SchemaExporterResourceExtension` in
+  `resource.extension.class`, register
+  `kafkastore.update.handlers=io.confluent.schema.exporter.storage.SchemaExporterUpdateHandler`,
+  and carry a `password.encoder.secret` (the exporter stores destination
+  credentials encrypted in `_exporter_configs`). VM DEV/UAT/PRD/DR already
+  have the two classes; **VM QA does not**, and no VM SR sets
+  `password.encoder.secret`. Ask the Kafka Admin to add them (SR restart).
+* **Fix / shape**: `schemaexporter.yaml` uses `sourceCluster.schemaRegistryRest`
+  = the VM SR URL (the operator dials it) and
+  `destinationCluster.schemaRegistryRest` = the CFK SR **Ingress hostname**
+  (the VM SR dials it, so an in-cluster `svc` name would not resolve).
+  `contextType: NONE` keeps subject names identical so clients cut over
+  without renames; subjects land in IMPORT mode on the CFK SR and stay
+  read-only until the exporter is deleted at cutover.
+* **Pipeline gate**: `validate` mints a token as the linking principal and
+  probes `/exporters` on both SRs; 404 = extension missing, 401/403 =
+  extension present but role bindings missing.
+
+### I3. Role bindings for the linking principal live on both sides — and the CFK SR cluster id is whatever `schema.registry.group.id` says
+
+* **Destination (CFK)**: `cluster-linking/rbac/clusterlink-rolebindings.yaml`
+  grants `ResourceOwner` on `Subject:*` in the CFK SR scope (needed to
+  write subjects and flip them to IMPORT mode) and `Operator` on the Kafka
+  cluster. The link itself is created by the operator through
+  `KafkaRestClass default` (mTLS superuser), so no Kafka grant is needed
+  for link creation.
+* **Gotcha**: our SR CRs override `schema.registry.group.id=schema-registry`,
+  while the onboarding role bindings scope
+  `schemaRegistryClusterId: id_schemaregistry_<ns>` (CFK's default).
+  Whichever value the running SR reports is the RBAC scope that counts.
+  The pipeline reads the live value from `schemaregistry-0`
+  (`DEST_SR_CLUSTER_ID=@live`) and renders it; audit the onboarding
+  bindings against the same value.
+* **Source (VM)**: the Kafka Admin runs `source-rolebindings.sh`
+  (`discover-source` prints it fully rendered): `ClusterAdmin` on the
+  source Kafka cluster, `DeveloperRead` + `DeveloperManage` per mirrored
+  topic, `DeveloperRead` per synced group, and `ClusterAdmin` +
+  `DeveloperRead Subject:*` in the source SR scope for the exporter.
+
+### I4. Promote is gated on zero lag and is one-way; failover and delete need an explicit confirm
+
+* `promote` re-describes every topic in `promote-topics.txt`
+  (`kafka-mirrors --describe --pedantic` from `kafka-0` over the internal
+  PLAIN listener) and refuses when any partition lag is non-zero or the
+  state is not ACTIVE. Then it re-renders with `state: PROMOTE`, applies,
+  verifies the stored object was not silently stripped
+  (`verify_clusterlink_admission.py`), and waits for STOPPED. CFK creates
+  a `clink-<topic>-<uid>` KafkaTopic CR for each promoted topic.
+* `failover` ignores lag (disaster path) and `delete-link` fails over
+  every remaining mirror; both require the `confirmDestructive` checkbox
+  and `failover` also needs an explicit topic list.
+* `mirror-status` publishes `mirror-status-report.md` (state, lag total /
+  max, last fetch age, errors per topic; link describe; CR statuses;
+  exporter status; broker log lines; Warning events) as the build artifact
+  `cluster-linking-<env>-<action>`.
+
+### I5. CFK→CFK links (UAT-P→UAT-S, PRD→DR) are blocked on broker exposure
+
+* CFK brokers at FCB are ClusterIP-only (no LoadBalancer, no per-broker
+  passthrough Routes). A destination-initiated link needs the destination
+  brokers to dial the source brokers, which is fine for VM sources (egress
+  to `fcpd.fcbint.net:9092`) but impossible for a CFK source in another
+  OpenShift cluster until its brokers are reachable from outside.
+  `uat-s/` and `dr/` `link.env` therefore carry `REPLACE_WITH_*` for the
+  source bootstrap and the `validate` action stops at the placeholder gate.
+  The floating `apps.ut` / `apps.pd` hostnames follow the primary cluster,
+  so the secondary must use cluster-specific names once they exist.
+
 ## How to add an entry here
 
-1. Pick the right section (A–H). If your issue doesn't fit, add a new
+1. Pick the right section (A–I). If your issue doesn't fit, add a new
    section letter.
 2. Number the entry within the section (e.g. C5 if C currently goes up
    to C4).

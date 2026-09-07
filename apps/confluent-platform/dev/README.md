@@ -172,3 +172,7 @@ The keypair should not rotate (rotation invalidates outstanding tokens), so this
 - VM reference properties: [`../cp-confluent/dev/`](../cp-confluent/dev/)
 - Project memory on the migration plan: `project_cfk_migration.md`
 - Flink stays pointed at the VM cluster until migration completes: `project_flink_targets_vm_cp.md`
+
+## Cluster Linking + Schema Linking
+
+Link configuration for this environment lives in [`cluster-linking/`](cluster-linking/) (endpoints, topic / consumer-group / ACL / subject lists, `ClusterLink` and `SchemaExporter` CR templates, destination role bindings). It is driven by `.azure-pipelines/cluster-linking.yaml`; see the folder README for the action order.

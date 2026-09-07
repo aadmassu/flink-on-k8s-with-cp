@@ -1,0 +1,56 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-09-05 (created)
+# Description: Destination-side (CFK dr) role bindings for the linking
+#              principal. Source-side grants live in source-rolebindings.sh.
+#              Tokens are rendered by the pipeline (runbook I3).
+########################################################################
+# The exporter writes subjects into the CFK SR and flips them to IMPORT mode,
+# which needs ResourceOwner on Subject:* in the CFK SR cluster scope.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: clusterlink-sr-resourceowner-subjects
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/component: schema-link
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_CLUSTERLINK_CLIENT_ID__"
+  role: ResourceOwner
+  resourcePatterns:
+    - resourceType: Subject
+      name: "*"
+      patternType: LITERAL
+  clustersScopeByIds:
+    schemaRegistryClusterId: __DEST_SR_CLUSTER_ID__
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-prod
+---
+# Read-only view of the destination Kafka cluster for the same principal, so
+# `kafka-cluster-links --describe` / `kafka-mirrors --describe` can run under it
+# instead of the SASL/PLAIN admin user once the pilot is over.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: clusterlink-kafka-operator
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: cluster-link
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+spec:
+  principal:
+    type: user
+    name: "__ENV_CLUSTERLINK_CLIENT_ID__"
+  role: Operator
+  kafkaRestClassRef:
+    name: default
+    namespace: dah-flink-prod

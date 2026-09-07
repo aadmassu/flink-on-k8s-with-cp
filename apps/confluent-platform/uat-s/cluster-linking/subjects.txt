@@ -1,0 +1,5 @@
+# Schema Registry subjects exported over SCHEMA_LINK_NAME (spec.subjects, one per line).
+# `*` = every subject in the default context of the source SR. Explicit names or prefixes
+# (`orders*`) also work. Exported subjects land in IMPORT mode on the CFK SR and stay
+# read-only there until the exporter is deleted at cutover.
+*
