@@ -85,7 +85,7 @@ spec:
   principal:
     type: group
     name: "qa_app_okta_digital_analytics_hub_users"
-  role: ClusterAdmin
+  role: SystemAdmin
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-qa
@@ -107,7 +107,7 @@ spec:
     name: "qa_app_okta_digital_analytics_hub_users"
   role: SystemAdmin
   clustersScopeByIds:
-    schemaRegistryClusterId: id_schemaregistry_dah-flink-qa
+    schemaRegistryClusterId: schema-registry
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-qa
@@ -129,7 +129,7 @@ spec:
     name: "qa_app_okta_digital_analytics_hub_users"
   role: SystemAdmin
   clustersScopeByIds:
-    connectClusterId: dah-flink-qa.connect
+    connectClusterId: connect-cluster
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-qa
