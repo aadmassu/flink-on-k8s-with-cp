@@ -236,6 +236,14 @@ The keypair should not rotate (rotation invalidates outstanding tokens), so this
 - Project memory on the migration plan: `project_cfk_migration.md`
 - Flink stays pointed at the VM cluster until migration completes: `project_flink_targets_vm_cp.md`
 
+## Ingress: floating and site hostnames
+
+This is a secondary (failure-domain) cluster, so `ingress/` holds two Ingresses per component:
+`<component>-ingress.yaml` on the floating `apps.pd.ocp.fcbint.net` name, which DNS failover normally points at the
+primary, and `<component>-site-ingress.yaml` on the cluster-specific `apps.pd-s.ocp.fcbint.net` name, which is how this
+cluster is reached directly. Both use the same `*-ingress-tls` Secret; the site name is the certificate CN
+and the floating name a SAN. The pipeline applies both sets (runbook H8).
+
 ## Cluster Linking + Schema Linking
 
 Link configuration for this environment lives in [`cluster-linking/`](cluster-linking/) (endpoints, topic / consumer-group / ACL / subject lists, `ClusterLink` and `SchemaExporter` CR templates, destination role bindings). It is driven by `.azure-pipelines/cluster-linking.yaml`; see the folder README for the action order.

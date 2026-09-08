@@ -431,6 +431,10 @@ so a manual recovery follows the same shape.
 - [ ] Schema Registry `/subjects` returns 200 (or `[]` on a fresh
       cluster)
 - [ ] ControlCenter UI loads and OIDC redirect goes through Okta cleanly
+- [ ] (uat-s / dr only) every `<component>-site` Ingress admitted and the
+      site hostnames (`*.apps.ut-s` / `*.apps.pd-s`) answer directly; the
+      floating names are expected to resolve to the primary
+      (`LESSONS_LEARNED.md` H8)
 - [ ] MDS issues tokens on
       `https://kafka.dah-flink-<env>.svc.cluster.local:8090/security/1.0/authenticate`
 - [ ] At least one round-trip producer/consumer through KafkaRest

@@ -2984,8 +2984,15 @@ stages:
                       ;;
                   esac
 
-                  # Ingress must expose exactly one host rule: the floating name.
-                  # Site-specific names live only in the Certificate SANs.
+                  # Every Ingress exposes exactly one host rule. The floating name lives
+                  # on <svc>-ingress.yaml; on the secondary clusters (uat-s, dr) a second
+                  # <svc>-site-ingress.yaml carries the cluster-specific name so the
+                  # secondary stays reachable while floating DNS points at the primary
+                  # (runbook H8). Both reuse the same *-ingress-tls Secret (site name is a SAN).
+                  has_site_ingress=false
+                  if [ "$site_ingress_domain" != "$floating_ingress_domain" ] && [ -n "$(ls "$ENV_DIR"/ingress/*-site-ingress.yaml 2>/dev/null)" ]; then
+                    has_site_ingress=true
+                  fi
                   validate_ingress_hosts() {
                     local manifest=$1
                     local expected=$2
@@ -3017,18 +3024,15 @@ stages:
                   PY
                   }
 
-                  for svc in "${!svc_applies[@]}"; do
-                    if ! is_true "${svc_applies[$svc]}"; then
-                      continue
-                    fi
-                    ingress_file="$ENV_DIR/ingress/${ingress_files[$svc]}"
+                  validate_component_ingress() {
+                    local svc=$1 ingress_file=$2 expected_host=$3
                     if [ ! -f "$ingress_file" ]; then
                       echo "  FAIL: Ingress file not found: $ingress_file"
                       exit 1
                     fi
 
-                    if ! validate_ingress_hosts "$ingress_file" "$svc.$floating_ingress_domain"; then
-                      echo "  FAIL: $svc Ingress must declare exactly one host rule: $svc.$floating_ingress_domain"
+                    if ! validate_ingress_hosts "$ingress_file" "$expected_host"; then
+                      echo "  FAIL: $svc Ingress $(basename "$ingress_file") must declare exactly one host rule: $expected_host"
                       exit 1
                     fi
 
@@ -3091,17 +3095,33 @@ stages:
                       python3 -c "import yaml,sys;d=yaml.safe_load(open('$ingress_file'));p=int('$port');found=any(int(path.get('backend',{}).get('service',{}).get('port',{}).get('number',0))==p for rule in d.get('spec',{}).get('rules',[])for path in rule.get('http',{}).get('paths',[]));sys.exit(0 if found else 1)" || exit 1
                       echo "  ✓ $svc Ingress manifest valid (reencrypt, port $port)"
                     fi
+                  }
+
+                  for svc in "${!svc_applies[@]}"; do
+                    if ! is_true "${svc_applies[$svc]}"; then
+                      continue
+                    fi
+                    validate_component_ingress "$svc" "$ENV_DIR/ingress/${ingress_files[$svc]}" "$svc.$floating_ingress_domain"
+                    if [ "$has_site_ingress" = "true" ]; then
+                      validate_component_ingress "$svc" "$ENV_DIR/ingress/${ingress_files[$svc]%-ingress.yaml}-site-ingress.yaml" "$svc.$site_ingress_domain"
+                    fi
                   done
 
                   if is_true "$APPLY_KAFKA"; then
                     svc="kafka-mds"
-                    ingress_file="$ENV_DIR/ingress/kafka-mds-ingress.yaml"
+                    mds_targets=("kafka-mds-ingress.yaml=$svc.$floating_ingress_domain")
+                    if [ "$has_site_ingress" = "true" ]; then
+                      mds_targets+=("kafka-mds-site-ingress.yaml=$svc.$site_ingress_domain")
+                    fi
+                    for target in "${mds_targets[@]}"; do
+                    ingress_file="$ENV_DIR/ingress/${target%%=*}"
+                    expected_host="${target#*=}"
                     if [ ! -f "$ingress_file" ]; then
                       echo "  FAIL: Ingress file not found: $ingress_file"
                       exit 1
                     fi
-                    validate_ingress_hosts "$ingress_file" "$svc.$floating_ingress_domain" || {
-                      echo "  FAIL: Kafka MDS Ingress must declare exactly one host rule: $svc.$floating_ingress_domain"
+                    validate_ingress_hosts "$ingress_file" "$expected_host" || {
+                      echo "  FAIL: Kafka MDS Ingress $(basename "$ingress_file") must declare exactly one host rule: $expected_host"
                       exit 1
                     }
                     grep -q "openshift-core-zone" "$ingress_file" || {
@@ -3117,7 +3137,8 @@ stages:
                       exit 1
                     }
                     python3 -c "import yaml,sys;d=yaml.safe_load(open('$ingress_file'));found=any(int(path.get('backend',{}).get('service',{}).get('port',{}).get('number',0))==8090 for rule in d.get('spec',{}).get('rules',[]) for path in rule.get('http',{}).get('paths',[]));sys.exit(0 if found else 1)" || exit 1
-                    echo "  ✓ kafka-mds Ingress manifest valid (reencrypt, port 8090)"
+                    echo "  ✓ kafka-mds Ingress $(basename "$ingress_file") valid (reencrypt, port 8090)"
+                    done
                   fi
 
                   echo ""
@@ -3131,16 +3152,30 @@ stages:
                   apply_if "$APPLY_KREST"   kafkarest-ingress.yaml      "Kafka REST Proxy"
                   apply_if "$APPLY_C3"      controlcenter-ingress.yaml  "Control Center"
 
+                  if [ "$has_site_ingress" = "true" ]; then
+                    echo ""
+                    echo "=== Apply site-specific Ingresses (<component>.$site_ingress_domain) ==="
+                    apply_if "$APPLY_KAFKA"   kafka-mds-site-ingress.yaml      "Kafka MDS (site)"
+                    apply_if "$APPLY_SR"      schemaregistry-site-ingress.yaml "Schema Registry (site)"
+                    apply_if "$APPLY_CONNECT" connect-site-ingress.yaml        "Kafka Connect (site)"
+                    apply_if "$APPLY_KREST"   kafkarest-site-ingress.yaml      "Kafka REST Proxy (site)"
+                    apply_if "$APPLY_C3"      controlcenter-site-ingress.yaml  "Control Center (site)"
+                  fi
+
                   echo ""
                   echo "=== Ingress status ==="
                   oc get ingress -n "$OC_NS" 2>&1 || true
 
                   echo ""
-                  echo "NOTE: Ingress routes the shared floating DNS only:"
-                  echo "  floating (Ingress host): <component>.$floating_ingress_domain"
-                  echo "  site (Certificate SAN):  <component>.$site_ingress_domain"
-                  echo "The site name stays in the Certificate SANs so the cluster-local"
-                  echo "hostname still validates; it is not an Ingress host rule."
+                  echo "NOTE: Ingress hosts for $TARGET_ENV:"
+                  echo "  floating (<component>-ingress.yaml):      <component>.$floating_ingress_domain"
+                  if [ "$has_site_ingress" = "true" ]; then
+                    echo "  site     (<component>-site-ingress.yaml): <component>.$site_ingress_domain"
+                    echo "The floating name follows DNS failover and normally points at the primary"
+                    echo "cluster; the site name is how this secondary cluster is reached directly."
+                  else
+                    echo "  site (Certificate SAN only):              <component>.$site_ingress_domain"
+                  fi
                   echo "The floating CNAME must be managed through the FCB DNS request process."
               env:
                 OC_NS: $(RESOLVED_NS)

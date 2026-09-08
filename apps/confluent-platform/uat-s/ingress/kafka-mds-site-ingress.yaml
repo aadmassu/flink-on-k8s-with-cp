@@ -1,0 +1,43 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-09-08 (created)
+# Description: Non-floating Ingress for UAT secondary (ut-s): same TLS, backend
+#              and termination as kafka-mds-ingress.yaml, but on the
+#              cluster-specific host so this cluster is reachable while
+#              the floating apps.ut.ocp.fcbint.net name points at the primary.
+#              Reuses the kafka-mds-ingress-tls Secret (site name is a SAN). Runbook H8.
+########################################################################
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kafka-mds-site
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-mds-site
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: '11547'
+  annotations:
+    route.openshift.io/termination: reencrypt
+    route.openshift.io/destination-ca-certificate-secret: kafka-tls
+    route.openshift.io/insecureEdgeTerminationPolicy: Redirect
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+  - host: kafka-mds.apps.ut-s.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: kafka
+            port:
+              number: 8090
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - kafka-mds.apps.ut-s.ocp.fcbint.net
+    secretName: kafka-mds-ingress-tls

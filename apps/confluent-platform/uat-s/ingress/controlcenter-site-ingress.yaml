@@ -1,0 +1,39 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-09-08 (created)
+# Description: Non-floating Ingress for UAT secondary (ut-s): same TLS, backend
+#              and termination as controlcenter-ingress.yaml, but on the
+#              cluster-specific host so this cluster is reachable while
+#              the floating apps.ut.ocp.fcbint.net name points at the primary.
+#              Passthrough: the pod serves controlcenter-tls, whose SANs
+#              include the site name. Runbook H8.
+########################################################################
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: controlcenter-site
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter-site
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: '11547'
+  annotations:
+    route.openshift.io/termination: passthrough
+    route.openshift.io/insecureEdgeTerminationPolicy: Redirect
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+  - host: controlcenter.apps.ut-s.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: controlcenter
+            port:
+              number: 9021
+        path: ''
+        pathType: ImplementationSpecific

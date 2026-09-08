@@ -1,0 +1,43 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-09-08 (created)
+# Description: Non-floating Ingress for Prod secondary (pd-s): same TLS, backend
+#              and termination as schemaregistry-ingress.yaml, but on the
+#              cluster-specific host so this cluster is reachable while
+#              the floating apps.pd.ocp.fcbint.net name points at the primary.
+#              Reuses the schemaregistry-ingress-tls Secret (site name is a SAN). Runbook H8.
+########################################################################
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: schemaregistry-site
+  namespace: dah-flink-prod
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/instance: schemaregistry-site
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: '11547'
+  annotations:
+    route.openshift.io/termination: reencrypt
+    route.openshift.io/destination-ca-certificate-secret: reencrypt-bundle
+    route.openshift.io/insecureEdgeTerminationPolicy: Redirect
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+spec:
+  ingressClassName: openshift-core-zone
+  rules:
+  - host: schemaregistry.apps.pd-s.ocp.fcbint.net
+    http:
+      paths:
+      - backend:
+          service:
+            name: schemaregistry
+            port:
+              number: 8081
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - schemaregistry.apps.pd-s.ocp.fcbint.net
+    secretName: schemaregistry-ingress-tls

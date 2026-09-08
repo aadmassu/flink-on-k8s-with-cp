@@ -1745,6 +1745,35 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 
 ---
 
+### H8. Floating DNS follows the primary — the secondary clusters need their own site Ingresses
+
+* **Symptom**: with only `<component>.apps.ut.ocp.fcbint.net` /
+  `apps.pd.ocp.fcbint.net` host rules, nothing on `uat-s` (ut-s) or `dr`
+  (pd-s) is reachable from a browser or a client: the floating CNAME is
+  flipped by Container Platforms on DNS failover and resolves to the
+  primary cluster in normal operation, and OpenShift routes match on the
+  Host header.
+* **Root cause**: "secondary" at FCB is the failure domain of UAT and Prod
+  (the only two envs that have one — see the FCB "OpenShift Ingress"
+  doc). Our Ingresses carried the floating host only; the site name was
+  present just as a Certificate SAN.
+* **Fix (2026-09-08)**: `uat-s/ingress/` and `dr/ingress/` gained one
+  `<component>-site-ingress.yaml` per component (`<component>-site`
+  object, host `<component>.apps.ut-s` / `apps.pd-s`), identical to the
+  floating file in termination, backend and TLS Secret. No Certificate
+  change: every `*-ingress-tls` cert already has the site name as CN and
+  the floating name as SAN, and `controlcenter-tls` (passthrough) lists
+  both too. The `confluent-platform.yaml` ingress step validates and
+  applies the site files whenever `site_ingress_domain` differs from
+  `floating_ingress_domain` and the files exist; dev/qa/uat-p/prd are
+  untouched.
+* **Why it matters**: the secondary must be exercisable before a failover
+  (smoke tests, RBAC onboarding, cluster-link source endpoints for the
+  CFK→CFK links in I5). Anything that publishes a hostname for UAT or
+  Prod needs a `-p` and a `-s` answer; floating alone is not enough. C3
+  OIDC on the site host also needs the ut-s / pd-s callback URI
+  registered on the Okta app, or SSO works only through the floating name.
+
 ## I. Cluster Linking + Schema Linking (VM CP → CFK)
 
 ### I1. The ClusterLink CR is rendered, not hand-edited — topic / group / ACL lists live in text files
