@@ -43,3 +43,20 @@ Open questions
 - KRaft: confirm link creation works without spec.passwordEncoder on the Kafka CR
 - SR RBAC scope: SR CR overrides schema.registry.group.id=schema-registry but onboarding
   rolebindings use id_schemaregistry_<ns>; pipeline uses live value (@live)
+
+PARKED 2026-09-18 — schema-link decisions pending (resume here)
+- Decision reached: schema LINKING (continuous exporter) over one-shot copy for QA/UAT/PRD.
+  One-shot copy stays the fallback if a VM SR cannot load the exporter extension.
+- Mode handling agreed: source VM SR stays READWRITE during parallel run; READONLY only at cutover.
+  Destination CFK SR: exporter sets IMPORT per subject; set global IMPORT beforehand as a guard;
+  destination /subjects must be [] before provision-schema-link.
+- Cutover sequence: 1 source READONLY  2 exporter caught up + subject lists match
+  3 delete exporter  4 destination READWRITE  5 repoint clients. mode.mutability=true both sides (default).
+- Link principal for QA pilot: reuse the QA broker super-user pair (0oa1yqr0z4oGawRNe358) — either copy it into
+  qa-clusterlink-oauth-client-id/-secret and run linkPrincipal=clusterlink, or run the default linkPrincipal=oauth-broker.
+  Do NOT use the SR client pair; SR-scope grants are still needed for either client (Tushar, from discover-source output).
+  Dedicated linking client required before UAT (audit).
+- NOT BUILT YET (Ayu to confirm): (a) provision-schema-link gate: assert CFK SR /subjects empty + set global IMPORT;
+  (b) new `cutover-schemas` action (confirm-gated): source READONLY -> verify caught up -> delete exporter -> dest READWRITE.
+- Still blocked on Tushar: VM QA SR needs SchemaExporterResourceExtension + SchemaExporterUpdateHandler + password.encoder.secret
+  (both QA SR nodes, rolling restart), then run source-rolebindings.rendered.sh.
