@@ -1,5 +1,5 @@
 # Consumer groups whose committed offsets sync to the destination (spec.consumerGroupFilters).
-# Enables consumer.offset.sync.enable. Format (pipe-separated, 3 fields):
+# Enables consumer.offset.sync.enable. One group per line, either a bare name (= LITERAL|INCLUDE) or
 #   name|patternType|filterType     patternType: LITERAL | PREFIXED   filterType: INCLUDE | EXCLUDE
 # Start with the groups that cut over first; an EXCLUDE line wins over an INCLUDE.
 REPLACE_WITH_PD_GROUP_1|LITERAL|INCLUDE

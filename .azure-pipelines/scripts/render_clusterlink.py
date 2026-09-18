@@ -69,8 +69,11 @@ def parse_groups(env_dir, errors):
             errors.append("consumer-groups.txt still has a placeholder line: %s" % line)
             continue
         parts = [p.strip() for p in line.split("|")]
+        if len(parts) == 1:
+            # bare group name = exact match, included
+            parts = [parts[0], "LITERAL", "INCLUDE"]
         if len(parts) != 3:
-            errors.append("consumer-groups.txt: expected 3 fields, got %d: %s" % (len(parts), line))
+            errors.append("consumer-groups.txt: expected name|patternType|filterType (or a bare name), got %d field(s): %s" % (len(parts), line))
             continue
         name, pattern, ftype = parts
         if pattern not in ("LITERAL", "PREFIXED"):
