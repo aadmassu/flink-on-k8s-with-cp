@@ -229,10 +229,32 @@ discover_source_cluster_id() {
   [ -n "$SOURCE_CLUSTER_ID_LIVE" ] || { echo "$out"; fatal "could not parse the source cluster id"; }
 }
 
-# Live schema.registry.group.id of the CFK SR (its RBAC cluster id).
+# Live schema.registry.group.id of the CFK SR (its RBAC cluster id). Tried in order:
+# CFK shared-config ConfigMap, properties files inside the pod, the CR's configOverrides,
+# then CFK's default id_schemaregistry_<namespace>. Each attempt is echoed for diagnosis.
 discover_dest_sr_cluster_id() {
-  DEST_SR_CLUSTER_ID_LIVE=$(srexec sh -c "grep -h '^schema.registry.group.id=' /opt/confluentinc/etc/schema-registry/schema-registry.properties /mnt/config/schema-registry.properties 2>/dev/null | head -1 | cut -d= -f2-")
-  [ -n "$DEST_SR_CLUSTER_ID_LIVE" ] || fatal "could not read schema.registry.group.id from $SR_POD"
+  local v="" src=""
+  v=$(oc -n "$DEST_NAMESPACE" get configmap "${DEST_SR_NAME}-shared-config" -o jsonpath='{.data.schema-registry\.properties}' 2>/dev/null \
+      | grep '^schema.registry.group.id=' | head -1 | cut -d= -f2-)
+  echo "  configmap ${DEST_SR_NAME}-shared-config: ${v:-<not found>}"
+  [ -n "$v" ] && src="configmap"
+  if [ -z "$v" ]; then
+    v=$(srexec sh -c 'for f in /mnt/config/schema-registry.properties /mnt/config/init/schema-registry.properties /opt/confluentinc/etc/schema-registry/schema-registry.properties /etc/schema-registry/schema-registry.properties $(find /mnt /opt/confluentinc/etc /etc/schema-registry -maxdepth 4 -name "schema-registry.properties" 2>/dev/null); do [ -f "$f" ] && grep -h "^schema.registry.group.id=" "$f" 2>/dev/null && break; done' 2>/dev/null | head -1 | cut -d= -f2-)
+    echo "  properties file in $SR_POD: ${v:-<not found>}"
+    [ -n "$v" ] && src="pod"
+  fi
+  if [ -z "$v" ]; then
+    v=$(oc -n "$DEST_NAMESPACE" get schemaregistry "$DEST_SR_NAME" -o jsonpath='{.spec.configOverrides.server}' 2>/dev/null \
+      | tr ',[]" ' '\n' | grep '^schema.registry.group.id=' | head -1 | cut -d= -f2-)
+    echo "  CR spec.configOverrides.server: ${v:-<not set>}"
+    [ -n "$v" ] && src="cr-override"
+  fi
+  if [ -z "$v" ]; then
+    v="id_schemaregistry_${DEST_NAMESPACE}"; src="cfk-default"
+    echo "  falling back to CFK default: $v"
+  fi
+  DEST_SR_CLUSTER_ID_LIVE=$v
+  info "destination SR cluster id: $DEST_SR_CLUSTER_ID_LIVE (from $src)"
 }
 
 # Resolve @discover / @live markers into SOURCE_CLUSTER_ID / DEST_SR_CLUSTER_ID.

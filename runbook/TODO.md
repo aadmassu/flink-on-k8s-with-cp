@@ -122,5 +122,7 @@ at that point.
       ClusterLink CR `oauthSettings` field set survives admission; KRaft
       brokers create the link without `spec.passwordEncoder`; the
       `kafka-mirrors --describe --pedantic` column names match
-      `mirror_report.py`'s parser; the CFK SR container exposes
-      `schema.registry.group.id` at the path the lib greps.
+      `mirror_report.py`'s parser. (2026-09-18: the SR group-id lookup now
+      falls back ConfigMap → pod files → CR override → CFK default and
+      prints which source answered; confirm the QA run reports the value
+      the onboarding role bindings expect.)
