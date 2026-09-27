@@ -4,4 +4,7 @@
 # Each line becomes spec.mirrorTopics[] on the ClusterLink CR (explicit list, no auto-create).
 # Never delete a line for a topic that was already promoted: CFK deletes mirror topics that
 # disappear from spec.mirrorTopics. Fill in from the QA topic inventory before provisioning.
-REPLACE_WITH_QA_TOPIC_1
+
+#REPLACE_WITH_QA_TOPIC_1
+
+afsar_test

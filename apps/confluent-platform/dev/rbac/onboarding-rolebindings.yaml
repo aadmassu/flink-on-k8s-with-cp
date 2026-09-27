@@ -91,7 +91,7 @@ spec:
   principal:
     type: group
     name: "dv_app_okta_digital_analytics_hub_developers"
-  role: ClusterAdmin
+  role: SystemAdmin
   kafkaRestClassRef:
     name: default
     namespace: dah-flink-dev
