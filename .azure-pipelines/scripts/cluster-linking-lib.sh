@@ -116,10 +116,11 @@ pod_cleanup() {
   kexec sh -c "rm -rf '$POD_DIR'" >/dev/null 2>&1 || true
 }
 
-# Read one key out of an Opaque Secret (base64-decoded).
+# Read one key out of an Opaque Secret (base64-decoded). go-template `index` handles
+# keys with dots (plain.txt, ca.crt), which jsonpath would misread as nested fields.
 secret_key() {
   local name=$1 key=$2
-  oc -n "$DEST_NAMESPACE" get secret "$name" -o "jsonpath={.data.$key}" 2>/dev/null | base64 -d
+  oc -n "$DEST_NAMESPACE" get secret "$name" -o go-template="{{index .data \"$key\"}}" 2>/dev/null | base64 -d
 }
 
 # Linking principal credentials from the oauth-clusterlink Secret.
