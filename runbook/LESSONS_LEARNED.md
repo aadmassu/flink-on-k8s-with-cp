@@ -1903,6 +1903,15 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   every `kafka.yaml` carries the same `-D` under `configOverrides.jvm` so the
   brokers can run the link. Adding the JVM flag rolls the brokers on the next
   `install-or-update`.
+* **Second trap, same run (2026-09-27)**: with the allowlist in place the CLI
+  failed the HTTPS call to Okta with `PKIX path building failed`. The token
+  retriever uses the JVM default truststore, not `ssl.truststore.*` from the
+  client properties, and the JDK cacerts lack the FCB / Zscaler chain that
+  fronts `myapps.firstcitizens.com`. `kcli()` now also passes
+  `-Djavax.net.ssl.trustStore=/var/ssl/truststore/bundle.p12` (the same
+  bundle the broker JVM uses). Client credentials moved from JAAS options to
+  `sasl.oauthbearer.client.credentials.client.id/secret` and
+  `sasl.oauthbearer.scope`, which Kafka 4.x asks for.
 * **Why it matters**: the CFK-managed components authenticate to Kafka today
   without this flag, which means CFK or the Confluent handlers add their own
   allowlist. Do not assume the broker JVM already has it: read

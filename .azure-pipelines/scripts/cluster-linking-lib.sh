@@ -102,12 +102,16 @@ kexec() { oc -n "$DEST_NAMESPACE" exec "$KAFKA_POD" -c kafka -- "$@"; }
 # Run a Kafka CLI tool inside the broker pod with the OAuth URL allowlist that Kafka 4.x
 # clients require (org.apache.kafka.sasl.oauthbearer.allowed.urls); without it every
 # OAUTHBEARER login fails with "The URL cannot be accessed due to restrictions" (runbook I6).
+# The JVM truststore flags matter too: the token retriever speaks HTTPS to Okta through the
+# JVM default trust, not through ssl.truststore.* in the client properties, and the JDK
+# cacerts do not carry the FCB / Zscaler chain that fronts Okta (runbook I6).
 kcli() {
   local allowed="${SOURCE_OAUTH_TOKEN_ENDPOINT:-}"
   case "$allowed" in */v1/token) allowed="$allowed,${allowed%/v1/token}/v1/keys" ;; esac
+  local ts="${LOCAL_TRUSTSTORE:-/var/ssl/truststore/bundle.p12}" tsp="${LOCAL_TRUSTSTORE_PASSWORD:-changeit}"
   oc -n "$DEST_NAMESPACE" exec "$KAFKA_POD" -c kafka -- sh -c \
-    'export KAFKA_OPTS="${KAFKA_OPTS:-} -Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=$1"; shift; exec "$@"' \
-    sh "$allowed" "$@"
+    'export KAFKA_OPTS="${KAFKA_OPTS:-} -Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=$1 -Djavax.net.ssl.trustStore=$2 -Djavax.net.ssl.trustStorePassword=$3 -Djavax.net.ssl.trustStoreType=PKCS12"; shift 3; exec "$@"' \
+    sh "$allowed" "$ts" "$tsp" "$@"
 }
 # Run a command inside the schema registry pod.
 srexec() { oc -n "$DEST_NAMESPACE" exec "$SR_POD" -c schemaregistry -- "$@"; }
@@ -162,7 +166,10 @@ security.protocol=SASL_SSL
 sasl.mechanism=OAUTHBEARER
 sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler
 sasl.oauthbearer.token.endpoint.url=$SOURCE_OAUTH_TOKEN_ENDPOINT
-sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId="$LINK_CLIENT_ID" clientSecret="$LINK_CLIENT_SECRET" scope="$SOURCE_OAUTH_SCOPE";
+sasl.oauthbearer.client.credentials.client.id=$LINK_CLIENT_ID
+sasl.oauthbearer.client.credentials.client.secret=$LINK_CLIENT_SECRET
+sasl.oauthbearer.scope=$SOURCE_OAUTH_SCOPE
+sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;
 ssl.truststore.location=${LOCAL_TRUSTSTORE:-/var/ssl/truststore/bundle.p12}
 ssl.truststore.password=${LOCAL_TRUSTSTORE_PASSWORD:-changeit}
 ssl.truststore.type=PKCS12
