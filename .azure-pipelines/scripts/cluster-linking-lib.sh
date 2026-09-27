@@ -208,12 +208,15 @@ show-error
 EOF
 }
 
-# PEM copy of the FCB trust bundle for curl (the pod only carries the PKCS12 form).
+# PEM trust bundle for curl inside the pod: taken from the clusterlink-source-ca Secret
+# (FCB roots + kafka-tls CA). The broker image has no openssl, so the PKCS12 is not usable here.
 pod_ca_pem() {
   CA_PEM="$POD_DIR/ca.pem"
-  if ! kexec sh -c "openssl pkcs12 -in '${LOCAL_TRUSTSTORE:-/var/ssl/truststore/bundle.p12}' -passin pass:'${LOCAL_TRUSTSTORE_PASSWORD:-changeit}' -nokeys -out '$CA_PEM' >/dev/null 2>&1 && test -s '$CA_PEM'"; then
-    echo "WARN: could not extract a PEM bundle from the pod truststore; curl falls back to -k"
+  if ! { secret_key "$SOURCE_CA_SECRET" cacerts.pem || true; } | grep -q 'BEGIN CERTIFICATE'; then
+    echo "WARN: Secret $SOURCE_CA_SECRET has no cacerts.pem; curl falls back to -k"
     CA_PEM=""
+  else
+    secret_key "$SOURCE_CA_SECRET" cacerts.pem | kput "$CA_PEM"
   fi
   CURL_CA=${CA_PEM:+--cacert $CA_PEM}
   CURL_CA=${CURL_CA:--k}
