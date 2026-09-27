@@ -140,8 +140,8 @@ secret_key() {
 
 # Linking principal credentials from the oauth-clusterlink Secret.
 load_link_credentials() {
-  LINK_CLIENT_ID=$(secret_key "$LINK_OAUTH_SECRET" clientId)
-  LINK_CLIENT_SECRET=$(secret_key "$LINK_OAUTH_SECRET" clientSecret)
+  LINK_CLIENT_ID=$(secret_key "$LINK_OAUTH_SECRET" clientId || true)
+  LINK_CLIENT_SECRET=$(secret_key "$LINK_OAUTH_SECRET" clientSecret || true)
   [ -n "$LINK_CLIENT_ID" ] && [ -n "$LINK_CLIENT_SECRET" ] \
     || fatal "Secret $LINK_OAUTH_SECRET in $DEST_NAMESPACE lacks clientId/clientSecret (run create-link-prereqs)"
 }
@@ -149,9 +149,9 @@ load_link_credentials() {
 # Admin password for the CFK internal listener from sasl-plain-internal.
 load_local_admin() {
   local plain
-  plain=$(secret_key sasl-plain-internal plain.txt)
-  LOCAL_ADMIN_USER=$(printf '%s\n' "$plain" | sed -n 's/^username=//p' | head -1)
-  LOCAL_ADMIN_PWD=$(printf '%s\n' "$plain" | sed -n 's/^password=//p' | head -1)
+  plain=$(secret_key sasl-plain-internal plain.txt || true)
+  LOCAL_ADMIN_USER=$(printf '%s\n' "$plain" | sed -n 's/^username=//p' | head -1 || true)
+  LOCAL_ADMIN_PWD=$(printf '%s\n' "$plain" | sed -n 's/^password=//p' | head -1 || true)
   [ -n "$LOCAL_ADMIN_USER" ] && [ -n "$LOCAL_ADMIN_PWD" ] \
     || fatal "sasl-plain-internal/plain.txt does not carry username=/password= lines"
 }
@@ -228,7 +228,7 @@ mint_token() {
     | python3 -c 'import json,sys; print(json.load(sys.stdin).get("access_token",""))' \
     | kput "$TOKEN_FILE"
   local n
-  n=$(kexec sh -c "wc -c < '$TOKEN_FILE'")
+  n=$(kexec sh -c "wc -c < '$TOKEN_FILE'" 2>/dev/null || echo 0)
   if [ "${n:-0}" -le 20 ]; then
     echo "Okta response for client ${LINK_CLIENT_ID:0:8}... scope $SOURCE_OAUTH_SCOPE:"
     kexec sh -c "curl -K '$TOKEN_CFG' $CURL_CA -w '\nHTTP %{http_code}\n'" | sed -E 's/"access_token" *: *"[^"]*"/"access_token":"***"/'
@@ -248,7 +248,7 @@ discover_source_cluster_id() {
   local out
   out=$(kcli kafka-cluster cluster-id --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --config "$SOURCE_PROPS" 2>&1) \
     || { echo "$out"; fatal "kafka-cluster cluster-id against the source failed"; }
-  SOURCE_CLUSTER_ID_LIVE=$(printf '%s\n' "$out" | sed -n 's/^Cluster ID: *//p' | tail -1)
+  SOURCE_CLUSTER_ID_LIVE=$(printf '%s\n' "$out" | sed -n 's/^Cluster ID: *//p' | tail -1 || true)
   [ -n "$SOURCE_CLUSTER_ID_LIVE" ] || { echo "$out"; fatal "could not parse the source cluster id"; }
 }
 
@@ -258,17 +258,17 @@ discover_source_cluster_id() {
 discover_dest_sr_cluster_id() {
   local v="" src=""
   v=$(oc -n "$DEST_NAMESPACE" get configmap "${DEST_SR_NAME}-shared-config" -o jsonpath='{.data.schema-registry\.properties}' 2>/dev/null \
-      | grep '^schema.registry.group.id=' | head -1 | cut -d= -f2-)
+      | grep '^schema.registry.group.id=' | head -1 | cut -d= -f2- || true)
   echo "  configmap ${DEST_SR_NAME}-shared-config: ${v:-<not found>}"
   [ -n "$v" ] && src="configmap"
   if [ -z "$v" ]; then
-    v=$(srexec sh -c 'for f in /mnt/config/schema-registry.properties /mnt/config/init/schema-registry.properties /opt/confluentinc/etc/schema-registry/schema-registry.properties /etc/schema-registry/schema-registry.properties $(find /mnt /opt/confluentinc/etc /etc/schema-registry -maxdepth 4 -name "schema-registry.properties" 2>/dev/null); do [ -f "$f" ] && grep -h "^schema.registry.group.id=" "$f" 2>/dev/null && break; done' 2>/dev/null | head -1 | cut -d= -f2-)
+    v=$(srexec sh -c 'for f in /mnt/config/schema-registry.properties /mnt/config/init/schema-registry.properties /opt/confluentinc/etc/schema-registry/schema-registry.properties /etc/schema-registry/schema-registry.properties $(find /mnt /opt/confluentinc/etc /etc/schema-registry -maxdepth 4 -name "schema-registry.properties" 2>/dev/null); do [ -f "$f" ] && grep -h "^schema.registry.group.id=" "$f" 2>/dev/null && break; done' 2>/dev/null | head -1 | cut -d= -f2- || true)
     echo "  properties file in $SR_POD: ${v:-<not found>}"
     [ -n "$v" ] && src="pod"
   fi
   if [ -z "$v" ]; then
     v=$(oc -n "$DEST_NAMESPACE" get schemaregistry "$DEST_SR_NAME" -o jsonpath='{.spec.configOverrides.server}' 2>/dev/null \
-      | tr ',[]" ' '\n' | grep '^schema.registry.group.id=' | head -1 | cut -d= -f2-)
+      | tr ',[]" ' '\n' | grep '^schema.registry.group.id=' | head -1 | cut -d= -f2- || true)
     echo "  CR spec.configOverrides.server: ${v:-<not set>}"
     [ -n "$v" ] && src="cr-override"
   fi
@@ -322,7 +322,7 @@ wait_for_mirror_state() {
     pending=()
     for t in "${topics[@]}"; do
       out=$(describe_mirror "$t") || true
-      state=$(printf '%s\n' "$out" | grep -E '^\s*Topic:' | grep -oE 'State: *[A-Z_]+' | head -1 | awk '{print $2}')
+      state=$(printf '%s\n' "$out" | grep -E '^\s*Topic:' | grep -oE 'State: *[A-Z_]+' | head -1 | awk '{print $2}' || true)
       [ "$state" = "$want" ] || pending+=("$t:${state:-UNKNOWN}")
     done
     if [ ${#pending[@]} -eq 0 ]; then
