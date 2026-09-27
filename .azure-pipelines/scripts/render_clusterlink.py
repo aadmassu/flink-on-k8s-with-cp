@@ -25,6 +25,18 @@ import sys
 
 import yaml
 
+
+def dump_yaml(data):
+    """safe_dump preserving key order; PyYAML < 5.1 (RHEL python3.6) has no sort_keys."""
+    try:
+        return yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
+    except TypeError:
+        class OrderedDumper(yaml.SafeDumper):
+            pass
+        OrderedDumper.add_representer(
+            dict, lambda d, v: d.represent_mapping("tag:yaml.org,2002:map", list(v.items())))
+        return yaml.dump(data, Dumper=OrderedDumper, default_flow_style=False)
+
 TOPIC_RE = re.compile(r"^[A-Za-z0-9._-]{1,249}$")
 PLACEHOLDER = "REPLACE_WITH_"
 
@@ -256,7 +268,7 @@ def main():
         elif not isinstance(v, str):
             configs[k] = str(v)
 
-    text = yaml.safe_dump(template, default_flow_style=False, sort_keys=False)
+    text = dump_yaml(template)
     leftover = re.findall(r"__[A-Z_]+__|REPLACE_WITH_\w+|@vargroup|@discover", text)
     if leftover:
         print("ERROR: rendered CR still contains unresolved tokens: %s" % sorted(set(leftover)), file=sys.stderr)

@@ -17,6 +17,18 @@ import sys
 
 import yaml
 
+
+def dump_yaml(data):
+    """safe_dump preserving key order; PyYAML < 5.1 (RHEL python3.6) has no sort_keys."""
+    try:
+        return yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
+    except TypeError:
+        class OrderedDumper(yaml.SafeDumper):
+            pass
+        OrderedDumper.add_representer(
+            dict, lambda d, v: d.represent_mapping("tag:yaml.org,2002:map", list(v.items())))
+        return yaml.dump(data, Dumper=OrderedDumper, default_flow_style=False)
+
 PLACEHOLDER = "REPLACE_WITH_"
 
 
@@ -100,7 +112,7 @@ def main():
                 print("ERROR: --token-endpoint must be the resolved Okta token URL", file=sys.stderr)
                 return 1
             conf["tokenEndpointUri"] = args.token_endpoint
-    text = yaml.safe_dump(template, default_flow_style=False, sort_keys=False)
+    text = dump_yaml(template)
     leftover = re.findall(r"__[A-Z_]+__|REPLACE_WITH_\w+|@vargroup", text)
     if leftover:
         print("ERROR: rendered CR still contains unresolved tokens: %s" % sorted(set(leftover)), file=sys.stderr)

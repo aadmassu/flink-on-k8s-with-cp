@@ -243,7 +243,7 @@ mint_token() {
 # HTTP GET against a Schema Registry URL with the bearer token; prints "<status> <body>".
 sr_get() {
   local url=$1
-  kexec sh -c ": > '$POD_DIR/sr.body'; curl -s --connect-timeout 10 --max-time 30 $CURL_CA -o '$POD_DIR/sr.body' -w '%{http_code}' -H \"Authorization: Bearer \$(cat '$TOKEN_FILE')\" '$url' || printf '000'; echo; cat '$POD_DIR/sr.body' 2>/dev/null; rm -f '$POD_DIR/sr.body'"
+  kexec sh -c ": > '$POD_DIR/sr.body'; curl -s --connect-timeout 10 --max-time 30 $CURL_CA -o '$POD_DIR/sr.body' -w '%{http_code}' -H \"Authorization: Bearer \$(cat '$TOKEN_FILE')\" '$url'; echo; cat '$POD_DIR/sr.body' 2>/dev/null; rm -f '$POD_DIR/sr.body'"
 }
 
 # Source cluster id via kafka-cluster (Kafka 3.x) with the source client config.
