@@ -437,10 +437,12 @@ stages:
                   fi
 
                   echo "=== Local admin client on $LOCAL_BOOTSTRAP ==="
-                  if out=$(kcli kafka-broker-api-versions --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>&1 | head -3); then
-                    note "OK   $(printf '%s' "$out" | head -1)"
+                  # capture everything first: piping straight into head makes the tool die on SIGPIPE under pipefail
+                  out=$(kcli kafka-broker-api-versions --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>&1 || true)
+                  if printf '%s' "$out" | grep -q 'usable:'; then
+                    note "OK   $(printf '%s\n' "$out" | grep -m1 -E '^[^ ].*\(id: ' | cut -c1-90)"
                   else
-                    note "FAIL $out"; fail=1
+                    note "FAIL $(printf '%s\n' "$out" | tail -3)"; fail=1
                   fi
 
                   echo "=== Schema Registry exporter extension ==="
@@ -464,7 +466,10 @@ stages:
                       esac
                       if [[ "$DEST_SR_PUBLIC_URL" != REPLACE_WITH_* ]]; then
                         res=$(sr_get "$DEST_SR_PUBLIC_URL/subjects"); code=${res%%$'\n'*}
-                        note "INFO $DEST_SR_PUBLIC_URL/subjects -> $code (the SOURCE SR must reach this URL too)"
+                        case "$code" in
+                          000) note "INFO $DEST_SR_PUBLIC_URL not reachable from inside the cluster (hairpin through the router is often blocked); the SOURCE SR must reach it from the VM network, which this probe cannot prove" ;;
+                          *)   note "INFO $DEST_SR_PUBLIC_URL/subjects -> $code (the SOURCE SR must reach this URL too)" ;;
+                        esac
                       fi
                     fi
                   else
