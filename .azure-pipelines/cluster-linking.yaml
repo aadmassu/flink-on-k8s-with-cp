@@ -3,7 +3,7 @@
 # Variable group: kafka-openshift-credentials-<env>. Reused entries:
 #   <env>-kafka-broker-hosts, <env>-schema-registry-hosts (source endpoints when link.env says @vargroup)
 #   kafka-oauthbearer-token-endpoint-url (Okta token URL)
-#   <env>-<linkPrincipal>-client-id / -client-secret (Okta client the link authenticates with)
+#   <env>-clusterlink-oauth-client-id / -client-secret (the Okta client the link authenticates with)
 # Config folder:  apps/confluent-platform/<env>/cluster-linking/ (see its README).
 #
 # ACTIONS
@@ -52,14 +52,6 @@ parameters:
       - failover
       - delete-link
 
-  - name: linkPrincipal
-    displayName: "Okta client used by the link (variable-group pair <env>-<choice>-client-id/secret)"
-    type: string
-    default: oauth-broker
-    # oauth-broker = the VM broker/MDS client (already super.user on the VM). clusterlink = a
-    # dedicated client under <env>-clusterlink-oauth-client-*, once FCB Security issues it.
-    values: [oauth-broker, oauth-mds-rest, oauth-schemaregistry, clusterlink]
-
   - name: failoverTopics
     displayName: "failover only: comma-separated mirror topics"
     type: string
@@ -88,21 +80,13 @@ variables:
     - group: kafka-openshift-credentials-prd
   - ${{ if eq(parameters.environment, 'dr') }}:
     - group: kafka-openshift-credentials-dr
-  # linkPrincipal picks which existing Okta client pair in the variable group the link uses.
-  - ${{ if eq(parameters.linkPrincipal, 'clusterlink') }}:
-    - name: linkClientId
-      value: $(${{ parameters.environment }}-clusterlink-oauth-client-id)
-    - name: linkClientSecret
-      value: $(${{ parameters.environment }}-clusterlink-oauth-client-secret)
-    - name: linkPrincipalVarName
-      value: ${{ parameters.environment }}-clusterlink-oauth-client-id
-  - ${{ if ne(parameters.linkPrincipal, 'clusterlink') }}:
-    - name: linkClientId
-      value: $(${{ parameters.environment }}-${{ parameters.linkPrincipal }}-client-id)
-    - name: linkClientSecret
-      value: $(${{ parameters.environment }}-${{ parameters.linkPrincipal }}-client-secret)
-    - name: linkPrincipalVarName
-      value: ${{ parameters.environment }}-${{ parameters.linkPrincipal }}-client-id
+  # The Okta client the link authenticates with: one dedicated pair per environment.
+  - name: linkClientId
+    value: $(${{ parameters.environment }}-clusterlink-oauth-client-id)
+  - name: linkClientSecret
+    value: $(${{ parameters.environment }}-clusterlink-oauth-client-secret)
+  - name: linkPrincipalVarName
+    value: ${{ parameters.environment }}-clusterlink-oauth-client-id
   - name: LINK_DIR
     value: apps/confluent-platform/${{ parameters.environment }}/cluster-linking
   - name: RENDER_DIR
@@ -241,7 +225,7 @@ stages:
                 set -euo pipefail
                 source .azure-pipelines/scripts/cluster-linking-lib.sh
                 load_link_env
-                echo "linking principal source: variable $LINK_CLIENT_ID_VARNAME (linkPrincipal=$LINK_PRINCIPAL)"
+                echo "linking principal source: variable $LINK_CLIENT_ID_VARNAME"
                 if [[ ! "${LINK_CLIENT_ID_VAR:-}" =~ ^0oa[[:alnum:]]+$ ]]; then
                   echo "WARN: variable $LINK_CLIENT_ID_VARNAME is not set to an Okta client id (0oa...)."
                   echo "      create-link-prereqs and rbac rendering will fail until it exists in kafka-openshift-credentials-${TARGET_ENV}."
@@ -270,7 +254,6 @@ stages:
               ACTION: ${{ parameters.action }}
               LINK_CLIENT_ID_VAR: $(linkClientId)
               LINK_CLIENT_ID_VARNAME: $(linkPrincipalVarName)
-              LINK_PRINCIPAL: ${{ parameters.linkPrincipal }}
 
           # ------------------------------------------------------------------
           # create-link-prereqs
@@ -285,7 +268,7 @@ stages:
                   source .azure-pipelines/scripts/cluster-linking-lib.sh
                   load_link_env
 
-                  echo "linking principal: linkPrincipal=$LINK_PRINCIPAL (variables $LINK_CLIENT_ID_VARNAME / ...-client-secret)"
+                  echo "linking principal: variables $LINK_CLIENT_ID_VARNAME / ...-client-secret"
                   for v in LINK_CLIENT_ID LINK_CLIENT_SECRET; do
                     val="${!v:-}"
                     if [ -z "$val" ] || [[ "$val" =~ ^\$\( ]] || [[ "$val" =~ ^REPLACE_WITH_ ]]; then
@@ -356,7 +339,7 @@ stages:
                   pod_prepare
                   trap pod_cleanup EXIT
                   if ! mint_token; then
-                    echo "The client id/secret pair behind linkPrincipal=$LINK_PRINCIPAL ($LINK_CLIENT_ID_VARNAME) is rejected by Okta."
+                    echo "The client id/secret pair in $LINK_CLIENT_ID_VARNAME / ...-client-secret is rejected by Okta."
                     echo "Compare the pair with the source cluster's own broker/MDS client in cp-confluent/<env>/ and fix the variable group."
                     exit 1
                   fi
@@ -384,7 +367,6 @@ stages:
                 LINK_CLIENT_ID: $(linkClientId)
                 LINK_CLIENT_SECRET: $(linkClientSecret)
                 LINK_CLIENT_ID_VARNAME: $(linkPrincipalVarName)
-                LINK_PRINCIPAL: ${{ parameters.linkPrincipal }}
 
           # ------------------------------------------------------------------
           # Live gates 3-6 (every action except create-link-prereqs)
