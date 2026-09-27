@@ -100,10 +100,9 @@ at that point.
       SchemaExporter extension, update handler, and `password.encoder.secret`
       (present on DEV/UAT/PRD/DR except the encoder secret). Blocks
       `provision-schema-link` in QA.
-- [ ] **Linking principal**: the pipeline defaults to the existing
-      `<env>-oauth-broker-client-*` pair (VM broker/MDS super.user). Decide
-      before UAT whether a dedicated Okta client (`linkPrincipal=clusterlink`,
-      `<env>-clusterlink-oauth-client-*`) is required for audit.
+- [ ] **Linking principal**: `<env>-clusterlink-oauth-client-*` holds the VM
+      broker/MDS super.user for the QA pilot. Request a dedicated Okta client
+      per env from FCB Security before UAT (audit separation).
 - [ ] **Variable group hygiene**: confirm `qa-kafka-broker-hosts` /
       `qa-schema-registry-hosts` name the QA VM hosts (`q11547varc-*`), not
       DEV's; `validate` now fails on the prefix check if they do not.

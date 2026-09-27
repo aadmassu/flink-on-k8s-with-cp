@@ -483,11 +483,10 @@ Run per link, QA first. Pipeline: `.azure-pipelines/cluster-linking.yaml`;
 config: `apps/confluent-platform/<env>/cluster-linking/`.
 
 ### 6a. Before the first run
-- [ ] Linking principal chosen (`linkPrincipal` dropdown; default
-      `oauth-broker` = `<env>-oauth-broker-client-{id,secret}`, already in
-      the variable group). A dedicated `<env>-clusterlink-oauth-client-*`
-      pair is optional. Owner: Kafka Admin (variable group), FCB Security
-      (new client, if any)
+- [ ] `<env>-clusterlink-oauth-client-{id,secret}` set in the variable
+      group (QA pilot: the VM QA broker/MDS client from
+      `cp-confluent/qa/`; dedicated client before UAT). Owner: Kafka Admin
+      (variable group), FCB Security (new client)
 - [ ] `<env>-kafka-broker-hosts` and `<env>-schema-registry-hosts` in the
       variable group name THIS env's VM hosts (QA's once pointed at DEV);
       `validate` fails on `SOURCE_HOST_PREFIX` if they do not

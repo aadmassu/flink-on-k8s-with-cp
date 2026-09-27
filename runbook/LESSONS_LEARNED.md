@@ -1796,11 +1796,11 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   renderer refuses a promote entry that is not also a mirror.
 * **Source auth**: OAuth client credentials on the source 9092 listener
   (VM `INTERNAL`, CFK `external` — same port, see A31). The linking
-  principal is an existing Okta pair from the variable group, chosen by
-  the pipeline's `linkPrincipal` dropdown (default `<env>-oauth-broker-*`,
-  the VM broker/MDS client that is already a VM super.user; a dedicated
-  `<env>-clusterlink-oauth-client-*` pair is an option once issued),
-  materialised as Secret `oauth-clusterlink` with the same five keys as the
+  principal is one Okta pair per environment,
+  `<env>-clusterlink-oauth-client-{id,secret}` in the variable group (for
+  the QA pilot it holds the VM QA broker/MDS client, a VM super.user; a
+  dedicated client should replace it before UAT), materialised as Secret
+  `oauth-clusterlink` with the same five keys as the
   other `oauth-*` Secrets. Source endpoints also come from the variable
   group (`<env>-kafka-broker-hosts` with the port rewritten to 9092,
   `<env>-schema-registry-hosts`, `kafka-oauthbearer-token-endpoint-url`)

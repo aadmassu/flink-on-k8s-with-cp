@@ -20,19 +20,15 @@ No credential values live in this folder.
 ## Identity and secrets
 
 One Okta client (the *linking principal*) is used for the cluster link and the schema
-link. The pipeline's `linkPrincipal` dropdown picks which existing pair in variable group
-`kafka-openshift-credentials-dev` supplies it (default `oauth-broker`, the VM broker/MDS
-client that is already a super.user on the VM side):
+link. It comes from two entries in variable group `kafka-openshift-credentials-dev`:
 
-| `linkPrincipal` | Variables read |
+| Variable | Used for |
 |---|---|
-| `oauth-broker` (default) | `dev-oauth-broker-client-id` / `-client-secret` |
-| `oauth-mds-rest` | `dev-oauth-mds-rest-client-id` / `-client-secret` |
-| `oauth-schemaregistry` | `dev-oauth-schemaregistry-client-id` / `-client-secret` |
-| `clusterlink` | `dev-clusterlink-oauth-client-id` / `-client-secret` (dedicated client, once issued) |
+| `dev-clusterlink-oauth-client-id` | Principal in role bindings, rendered over `__ENV_CLUSTERLINK_CLIENT_ID__` |
+| `dev-clusterlink-oauth-client-secret` | Secret `oauth-clusterlink` (same five-key layout as the other `oauth-*` Secrets) |
 
-Whichever pair is chosen lands in Secret `oauth-clusterlink` (same five-key layout as the
-other `oauth-*` Secrets) and is rendered over `__ENV_CLUSTERLINK_CLIENT_ID__` in `rbac/`.
+For the QA pilot this pair holds the VM QA broker/MDS client, which is a VM super user.
+A dedicated Okta client per environment should replace it before UAT.
 
 Source endpoints come from the same variable group when `link.env` says `@vargroup`:
 `dev-kafka-broker-hosts` (port rewritten to `SOURCE_BOOTSTRAP_PORT`),

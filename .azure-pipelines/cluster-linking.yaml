@@ -85,7 +85,7 @@ variables:
     value: $(${{ parameters.environment }}-clusterlink-oauth-client-id)
   - name: linkClientSecret
     value: $(${{ parameters.environment }}-clusterlink-oauth-client-secret)
-  - name: linkPrincipalVarName
+  - name: linkClientIdVarName
     value: ${{ parameters.environment }}-clusterlink-oauth-client-id
   - name: LINK_DIR
     value: apps/confluent-platform/${{ parameters.environment }}/cluster-linking
@@ -253,7 +253,7 @@ stages:
               TARGET_ENV: ${{ parameters.environment }}
               ACTION: ${{ parameters.action }}
               LINK_CLIENT_ID_VAR: $(linkClientId)
-              LINK_CLIENT_ID_VARNAME: $(linkPrincipalVarName)
+              LINK_CLIENT_ID_VARNAME: $(linkClientIdVarName)
 
           # ------------------------------------------------------------------
           # create-link-prereqs
@@ -366,7 +366,7 @@ stages:
                 TARGET_ENV: ${{ parameters.environment }}
                 LINK_CLIENT_ID: $(linkClientId)
                 LINK_CLIENT_SECRET: $(linkClientSecret)
-                LINK_CLIENT_ID_VARNAME: $(linkPrincipalVarName)
+                LINK_CLIENT_ID_VARNAME: $(linkClientIdVarName)
 
           # ------------------------------------------------------------------
           # Live gates 3-6 (every action except create-link-prereqs)
