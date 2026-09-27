@@ -503,6 +503,9 @@ config: `apps/confluent-platform/<env>/cluster-linking/`.
 - [ ] Source SR loads the exporter extension + update handler AND sets
       `password.encoder.secret` (VM QA is missing all three as of
       2026-09-05). Owner: Kafka Admin
+- [ ] Kafka CR `configOverrides.jvm` carries
+      `-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=<token>,<jwks>` and the
+      brokers have rolled since it was added (`LESSONS_LEARNED.md` I6)
 - [ ] Network: `kafka-0` → source brokers 9092, CFK operator → source SR
       8081, source SR → CFK SR Ingress 443. `connectivity-test.yaml` covers
       the first two; the third is confirmed by `validate`'s `/subjects`

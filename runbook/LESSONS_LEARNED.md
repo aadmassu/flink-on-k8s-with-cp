@@ -1884,6 +1884,32 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   The floating `apps.ut` / `apps.pd` hostnames follow the primary cluster,
   so the secondary must use cluster-specific names once they exist.
 
+### I6. Kafka 4.x refuses OAuth token and JWKS URLs unless they are on a JVM allowlist
+
+* **Symptom**: any OAUTHBEARER client on CP 8.x, including the in-pod CLI tools
+  the linking pipeline runs from `kafka-0`, dies at login with
+  `Invalid value https://myapps.firstcitizens.com/oauth2/default/v1/token ...
+  The URL cannot be accessed due to restrictions. Allowed URL list: []`.
+* **Root cause**: the Apache Kafka 3.9.1 / 4.0 security fix (CVE-2025-27817)
+  makes `DefaultJwtRetriever` and the JWKS validator reject every URL not
+  listed in the JVM system property
+  `org.apache.kafka.sasl.oauthbearer.allowed.urls`. The check is in the
+  client library, so it applies to CLI tools, to the brokers when they act as
+  an OAuth client (the destination side of a cluster link), and to any
+  component using the Apache login handler. It is not a network problem;
+  the SYN never leaves the JVM.
+* **Fix (2026-09-27)**: `kcli()` in `cluster-linking-lib.sh` prefixes every
+  in-pod Kafka CLI with `KAFKA_OPTS=-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=<token>,<jwks>`;
+  every `kafka.yaml` carries the same `-D` under `configOverrides.jvm` so the
+  brokers can run the link. Adding the JVM flag rolls the brokers on the next
+  `install-or-update`.
+* **Why it matters**: the CFK-managed components authenticate to Kafka today
+  without this flag, which means CFK or the Confluent handlers add their own
+  allowlist. Do not assume the broker JVM already has it: read
+  `KAFKA_OPTS` from the running pod (Diagnostics pipeline) before the first
+  `provision-cluster-link`, and expect the same error from the link itself if
+  the flag is missing there.
+
 ## How to add an entry here
 
 1. Pick the right section (A–I). If your issue doesn't fit, add a new

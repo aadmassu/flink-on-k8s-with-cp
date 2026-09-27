@@ -98,6 +98,17 @@ require_no_placeholders() {
 
 # Run a command inside the kafka broker pod.
 kexec() { oc -n "$DEST_NAMESPACE" exec "$KAFKA_POD" -c kafka -- "$@"; }
+
+# Run a Kafka CLI tool inside the broker pod with the OAuth URL allowlist that Kafka 4.x
+# clients require (org.apache.kafka.sasl.oauthbearer.allowed.urls); without it every
+# OAUTHBEARER login fails with "The URL cannot be accessed due to restrictions" (runbook I6).
+kcli() {
+  local allowed="${SOURCE_OAUTH_TOKEN_ENDPOINT:-}"
+  case "$allowed" in */v1/token) allowed="$allowed,${allowed%/v1/token}/v1/keys" ;; esac
+  oc -n "$DEST_NAMESPACE" exec "$KAFKA_POD" -c kafka -- sh -c \
+    'export KAFKA_OPTS="${KAFKA_OPTS:-} -Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=$1"; shift; exec "$@"' \
+    sh "$allowed" "$@"
+}
 # Run a command inside the schema registry pod.
 srexec() { oc -n "$DEST_NAMESPACE" exec "$SR_POD" -c schemaregistry -- "$@"; }
 
@@ -224,7 +235,7 @@ sr_get() {
 # Source cluster id via kafka-cluster (Kafka 3.x) with the source client config.
 discover_source_cluster_id() {
   local out
-  out=$(kexec kafka-cluster cluster-id --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --config "$SOURCE_PROPS" 2>&1) \
+  out=$(kcli kafka-cluster cluster-id --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --config "$SOURCE_PROPS" 2>&1) \
     || { echo "$out"; fatal "kafka-cluster cluster-id against the source failed"; }
   SOURCE_CLUSTER_ID_LIVE=$(printf '%s\n' "$out" | sed -n 's/^Cluster ID: *//p' | tail -1)
   [ -n "$SOURCE_CLUSTER_ID_LIVE" ] || { echo "$out"; fatal "could not parse the source cluster id"; }
@@ -281,13 +292,13 @@ mirror_topic_names() {
 # kafka-mirrors --describe for one topic on the local cluster.
 describe_mirror() {
   local topic=$1
-  kexec kafka-mirrors --describe --topics "$topic" --pedantic \
+  kcli kafka-mirrors --describe --topics "$topic" --pedantic \
     --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>&1
 }
 
 # kafka-cluster-links --describe for the link on the local cluster.
 describe_link() {
-  kexec kafka-cluster-links --list --link "$LINK_NAME" --include-topics \
+  kcli kafka-cluster-links --list --link "$LINK_NAME" --include-topics \
     --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>&1
 }
 

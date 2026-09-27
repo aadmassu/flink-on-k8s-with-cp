@@ -429,7 +429,7 @@ stages:
                   fi
 
                   echo "=== Local admin client on $LOCAL_BOOTSTRAP ==="
-                  if out=$(kexec kafka-broker-api-versions --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>&1 | head -3); then
+                  if out=$(kcli kafka-broker-api-versions --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>&1 | head -3); then
                     note "OK   $(printf '%s' "$out" | head -1)"
                   else
                     note "FAIL $out"; fail=1
@@ -492,12 +492,12 @@ stages:
 
                   echo ""
                   echo "=== source topics (kafka-topics --list) ==="
-                  kexec kafka-topics --list --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --command-config "$SOURCE_PROPS" 2>&1 | grep -v '^_' | sort | tee "$REPORT_DIR/source-topics.txt" | head -200
+                  kcli kafka-topics --list --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --command-config "$SOURCE_PROPS" 2>&1 | grep -v '^_' | sort | tee "$REPORT_DIR/source-topics.txt" | head -200
                   echo "... $(wc -l < "$REPORT_DIR/source-topics.txt") user topic(s) total (internal _* topics hidden)"
 
                   echo ""
                   echo "=== source consumer groups (kafka-consumer-groups --list) ==="
-                  kexec kafka-consumer-groups --list --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --command-config "$SOURCE_PROPS" 2>&1 | sort | tee "$REPORT_DIR/source-groups.txt" | head -200
+                  kcli kafka-consumer-groups --list --bootstrap-server "${SOURCE_BOOTSTRAP%%,*}" --command-config "$SOURCE_PROPS" 2>&1 | sort | tee "$REPORT_DIR/source-groups.txt" | head -200
 
                   echo ""
                   echo "=== topics.txt entries vs source ==="
@@ -802,7 +802,7 @@ stages:
 
                   echo ""
                   echo "=== mirror topics known to the destination for $LINK_NAME ==="
-                  live_mirrors=$(kexec kafka-mirrors --list --link "$LINK_NAME" --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>/dev/null | grep -vE '^\s*$')
+                  live_mirrors=$(kcli kafka-mirrors --list --link "$LINK_NAME" --bootstrap-server "$LOCAL_BOOTSTRAP" --command-config "$LOCAL_PROPS" 2>/dev/null | grep -vE '^\s*$')
                   echo "$live_mirrors"
                   expected=$(mirror_topic_names)
                   all=$(printf '%s\n%s\n' "$live_mirrors" "$expected" | grep -vE '^\s*$' | sort -u)
