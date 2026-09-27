@@ -351,10 +351,18 @@ stages:
                   rm -f "$ca_tmp"
 
                   echo ""
-                  echo "=== destination role bindings (rbac/) ==="
+                  echo "=== token self-check: can this Okta client obtain a token? ==="
                   POD_DIR=/tmp/cl-prereq-$$
                   pod_prepare
                   trap pod_cleanup EXIT
+                  if ! mint_token; then
+                    echo "The client id/secret pair behind linkPrincipal=$LINK_PRINCIPAL ($LINK_CLIENT_ID_VARNAME) is rejected by Okta."
+                    echo "Compare the pair with the source cluster's own broker/MDS client in cp-confluent/<env>/ and fix the variable group."
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "=== destination role bindings (rbac/) ==="
                   if [ "${DEST_SR_CLUSTER_ID:-@live}" = "@live" ]; then
                     discover_dest_sr_cluster_id; DEST_SR_CLUSTER_ID=$DEST_SR_CLUSTER_ID_LIVE
                   fi

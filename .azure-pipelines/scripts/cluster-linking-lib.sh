@@ -229,8 +229,12 @@ mint_token() {
     | kput "$TOKEN_FILE"
   local n
   n=$(kexec sh -c "wc -c < '$TOKEN_FILE'")
-  [ "${n:-0}" -gt 20 ] || fatal "could not obtain an OAuth token for the linking principal (check $LINK_OAUTH_SECRET and scope $SOURCE_OAUTH_SCOPE)"
-  info "OAuth token obtained (${n} bytes)"
+  if [ "${n:-0}" -le 20 ]; then
+    echo "Okta response for client ${LINK_CLIENT_ID:0:8}... scope $SOURCE_OAUTH_SCOPE:"
+    kexec sh -c "curl -K '$TOKEN_CFG' $CURL_CA -w '\nHTTP %{http_code}\n'" | sed -E 's/"access_token" *: *"[^"]*"/"access_token":"***"/'
+    return 1
+  fi
+  info "OAuth token obtained (${n} bytes) for client ${LINK_CLIENT_ID:0:8}..."
 }
 
 # HTTP GET against a Schema Registry URL with the bearer token; prints "<status> <body>".
