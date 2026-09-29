@@ -85,58 +85,19 @@ safe_oc() {
   oc "$@" 2>&1 || true
 }
 
-section "0. Metrics endpoints for Dynatrace (JMX Prometheus exporter, port 7778)"
-# Discover every CFK pod, the headless Service behind it, and prove the /metrics
-# endpoint answers from inside the namespace. Read-only; prints URLs, not metric values.
-METRICS_PORT=7778
-echo "Pods (CFK components) and their per-pod DNS names:"
-safe_oc -n "$NS" get pods -l app.kubernetes.io/part-of=confluent-platform \
-  -o custom-columns='POD:.metadata.name,IP:.status.podIP,NODE:.spec.nodeName,READY:.status.conditions[?(@.type=="Ready")].status'
+section "0. Dynatrace metrics wiring (expected result of the latest install-or-update)"
+# Same checks as the validate pipeline, non-strict here; plus the per-pod scrape URLs for Dynatrace.
+STRICT=0 OC_NS="$NS" TARGET_ENV="$TARGET_ENV" bash "$(dirname "$0")/validate-dynatrace-metrics.sh" || true
 echo
-echo "Headless Services (one per component; per-pod names hang off these):"
-safe_oc -n "$NS" get svc -o custom-columns='NAME:.metadata.name,CLUSTER-IP:.spec.clusterIP,PORTS:.spec.ports[*].port' | grep -E 'NAME|None'
-echo
-echo "Scrape URLs (per pod):"
+echo "Per-pod scrape URLs (for the Dynatrace team):"
 for pod in $(oc -n "$NS" get pods -l app.kubernetes.io/part-of=confluent-platform -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
-  svc=$(oc -n "$NS" get pod "$pod" -o jsonpath='{.spec.subdomain}' 2>/dev/null)
-  echo "  http://${pod}.${svc:-<no-subdomain>}.${NS}.svc.cluster.local:${METRICS_PORT}/metrics"
+  sub=$(oc -n "$NS" get pod "$pod" -o jsonpath='{.spec.subdomain}' 2>/dev/null)
+  echo "  http://${pod}.${sub:-<no-subdomain>}.${NS}.svc.cluster.local:7778/metrics"
 done
 echo
-echo "Does the exporter answer? (curl from kafka-0 to each target, first 3 metric lines)"
-PROBE_POD=$(oc -n "$NS" get pods -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-if [ -n "$PROBE_POD" ]; then
-  for pod in $(oc -n "$NS" get pods -l app.kubernetes.io/part-of=confluent-platform -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
-    svc=$(oc -n "$NS" get pod "$pod" -o jsonpath='{.spec.subdomain}' 2>/dev/null)
-    url="http://${pod}.${svc}.${NS}.svc.cluster.local:${METRICS_PORT}/metrics"
-    code=$(oc -n "$NS" exec "$PROBE_POD" -c kafka -- curl -s -o /tmp/m.txt -w '%{http_code}' --max-time 10 "$url" 2>/dev/null || echo ERR)
-    lines=$(oc -n "$NS" exec "$PROBE_POD" -c kafka -- sh -c 'grep -c "" /tmp/m.txt 2>/dev/null; rm -f /tmp/m.txt' 2>/dev/null | head -1)
-    printf '  %-4s %6s lines  %s\n' "$code" "${lines:-0}" "$url"
-  done
-  [ -n "$PROBE_POD" ] && pass "metrics probe executed from $PROBE_POD"
-else
-  warn "no kafka pod found to probe from"
-fi
-echo
-echo "Who may reach $METRICS_PORT (NetworkPolicies in $NS, ingress rules only):"
-oc -n "$NS" get networkpolicy -o json 2>/dev/null | python3 -c '
-import json,sys
-d=json.load(sys.stdin)
-for np in d.get("items",[]):
-    name=np["metadata"]["name"]
-    for rule in np.get("spec",{}).get("ingress",[]) or []:
-        ports=[str(p.get("port")) for p in rule.get("ports",[]) or []]
-        srcs=[]
-        for f in rule.get("from",[]) or []:
-            ns=f.get("namespaceSelector",{}).get("matchLabels",{})
-            pod=f.get("podSelector",{}).get("matchLabels",{})
-            ip=f.get("ipBlock",{}).get("cidr")
-            srcs.append("ns=%s" % ns if ns else ("pod=%s" % pod if pod else ("cidr=%s" % ip if ip else "any")))
-        if not ports or "7778" in ports:
-            print("  %-32s ports=%-40s from=%s" % (name, ",".join(ports) or "ALL", "; ".join(srcs) or "ANY"))
-' || warn "could not read NetworkPolicies"
-echo
-echo "Namespaces that look like monitoring/Dynatrace collectors (label shown for NetworkPolicy selectors):"
-safe_oc get namespaces -o custom-columns='NAME:.metadata.name,LABEL:.metadata.labels.kubernetes\.io/metadata\.name' | grep -iE 'NAME|monitor|dynatrace|observ' || true
+echo "Dynatrace metrics Services (annotations as stored):"
+safe_oc -n "$NS" get svc -l app.kubernetes.io/component=dynatrace-metrics \
+  -o custom-columns='NAME:.metadata.name,SCRAPE:.metadata.annotations.metrics\.dynatrace\.com/scrape,PORT:.metadata.annotations.metrics\.dynatrace\.com/port,PATH:.metadata.annotations.metrics\.dynatrace\.com/path,SELECTOR:.spec.selector'
 
 section "CFK operator mTLS certificate diagnostic"
 echo "Timestamp (UTC):  $(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || true)"

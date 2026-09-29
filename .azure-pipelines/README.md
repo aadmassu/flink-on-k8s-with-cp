@@ -61,6 +61,7 @@ Each environment has a variable group with this naming pattern. All pipelines re
 | File | Purpose |
 |------|---------|
 | [`templates/install-tools.yaml`](templates/install-tools.yaml) | Downloads `oc`, `helm`, `kubectl` from Artifactory and prepends them to `PATH`. Imported by every pipeline. |
+| [`scripts/validate-dynatrace-metrics.sh`](scripts/validate-dynatrace-metrics.sh) | Checks the Dynatrace metrics wiring in one namespace: annotated `<component>-dynatrace-metrics` Services, ready endpoints vs pods, a 200 from every `:7778/metrics` endpoint (probed from `kafka-0`), and a NetworkPolicy admitting the `dynatrace` namespace. Strict in `validate-confluent-platform.yaml` (fails the run), advisory in `ad-hoc-oc-scripts.sh`. |
 | [`scripts/cluster-linking-lib.sh`](scripts/cluster-linking-lib.sh) | Shell helpers sourced by `cluster-linking.yaml`: `link.env` loader, in-pod client property files, OAuth token minting, `kafka-mirrors` / `kafka-cluster-links` wrappers, mirror-state wait loop. |
 | [`scripts/render_clusterlink.py`](scripts/render_clusterlink.py), [`render_schemaexporter.py`](scripts/render_schemaexporter.py), [`mirror_report.py`](scripts/mirror_report.py), [`verify_clusterlink_admission.py`](scripts/verify_clusterlink_admission.py) | Python 3.6+ (PyYAML only) renderers and validators used by `cluster-linking.yaml`. |
 
