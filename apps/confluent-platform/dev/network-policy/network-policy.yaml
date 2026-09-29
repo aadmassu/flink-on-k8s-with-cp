@@ -49,6 +49,17 @@ spec:
         - { protocol: TCP, port: 8083 }
         - { protocol: TCP, port: 8090 }
         - { protocol: TCP, port: 9021 }
+    # Dynatrace ActiveGate (namespace dynatrace) scraping the JMX Prometheus exporter (runbook H9).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: dynatrace
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: activegate
+              app.kubernetes.io/component: activegate
+      ports:
+        - { protocol: TCP, port: 7778 }
     # OpenShift ingress routers — externally exposed HTTPS ports only.
     # FCB's router namespace does not carry the optional policy-group label,
     # so select the immutable namespace name label instead.

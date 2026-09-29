@@ -1774,6 +1774,32 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
   OIDC on the site host also needs the ut-s / pd-s callback URI
   registered on the Okta app, or SSO works only through the floating name.
 
+### H9. Dynatrace scrapes the CFK JMX exporter through annotated Services and a Dynatrace-specific NetworkPolicy
+
+* **Context (2026-09-29, with Joaquin, FCB Dynatrace)**: Control Center's
+  bundled Prometheus is not a source for other tools (Confluent states this
+  outright). Every CFK pod already serves the JMX Prometheus exporter on
+  `:7778/metrics`, plain HTTP, no auth, cannot be disabled. Verified live in
+  QA: all 12 pods answer 200 (brokers ~41k series lines, C3 ~23k,
+  controllers ~11k, REST ~7.5k, SR ~6.5k, Connect ~3.3k).
+* **FCB pattern** (Dynatrace wiki "Exposing Custom Prometheus Metrics"):
+  the ActiveGate in namespace `dynatrace` scrapes any Service annotated
+  `metrics.dynatrace.com/scrape: "true"` plus `port`, `path`, `secure`, and
+  an optional `filter`. `apps/confluent-platform/<env>/monitoring/
+  dynatrace-metrics-services.yaml` adds one headless Service per component
+  selecting the CFK `podTemplate` labels; the pipeline applies it on
+  `install-or-update` and prints the ready endpoints per Service.
+* **The trap**: `allow-from-monitoring` from the security chart admits
+  namespaces labelled `network.openshift.io/policy-group=monitoring`, which
+  is OpenShift's own Prometheus, not Dynatrace. Dynatrace needs its own
+  rule: from namespace `dynatrace`, pods labelled
+  `app.kubernetes.io/name=activegate` + `app.kubernetes.io/component=activegate`,
+  to TCP 7778 on pods labelled `app.kubernetes.io/part-of=confluent-platform`.
+  DEV carries it in `network-policy.yaml`; every other env needs an
+  OpenShift Inter-Namespace Request (Container Platforms).
+* **Do not**: expose 7778 through Ingress (unauthenticated, violates the
+  TLS-only standard) or install a separate OTel collector; neither is needed.
+
 ## I. Cluster Linking + Schema Linking (VM CP → CFK)
 
 ### I1. The ClusterLink CR is rendered, not hand-edited — topic / group / ACL lists live in text files

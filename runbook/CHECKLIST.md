@@ -431,6 +431,9 @@ so a manual recovery follows the same shape.
 - [ ] Schema Registry `/subjects` returns 200 (or `[]` on a fresh
       cluster)
 - [ ] ControlCenter UI loads and OIDC redirect goes through Okta cleanly
+- [ ] Dynatrace metrics Services show one ready endpoint per pod in the
+      install log, and the Inter-Namespace Request (dynatrace → 7778) is
+      approved for this env (`LESSONS_LEARNED.md` H9)
 - [ ] (uat-s / dr only) every `<component>-site` Ingress admitted and the
       site hostnames (`*.apps.ut-s` / `*.apps.pd-s`) answer directly; the
       floating names are expected to resolve to the primary

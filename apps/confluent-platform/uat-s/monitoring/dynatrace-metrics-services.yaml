@@ -1,0 +1,196 @@
+---
+########################################################################
+# Author:      Ayu Admassu
+# Date:        2026-09-29 (created)
+# Description: Services that tell the Dynatrace ActiveGate to scrape the
+#              CFK JMX Prometheus exporter (:7778/metrics) on every pod.
+#              One Service per component; selectors match the CFK
+#              podTemplate labels. FCB pattern per the Dynatrace wiki
+#              (runbook H9). Plain HTTP inside the cluster only.
+########################################################################
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-dynatrace-metrics
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-dynatrace-metrics
+    app.kubernetes.io/component: dynatrace-metrics
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+    metrics.dynatrace.com/scrape: "true"
+    metrics.dynatrace.com/port: "7778"
+    metrics.dynatrace.com/path: "/metrics"
+    metrics.dynatrace.com/secure: "false"
+    # Optional include-list once the useful series are known, e.g.
+    # metrics.dynatrace.com/filter: '{"mode":"include","names":["kafka_server_*","jvm_*"]}'
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: confluent-platform
+  ports:
+    - name: metrics
+      port: 7778
+      targetPort: 7778
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kraftcontroller-dynatrace-metrics
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/instance: kraftcontroller-dynatrace-metrics
+    app.kubernetes.io/component: dynatrace-metrics
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+    metrics.dynatrace.com/scrape: "true"
+    metrics.dynatrace.com/port: "7778"
+    metrics.dynatrace.com/path: "/metrics"
+    metrics.dynatrace.com/secure: "false"
+    # Optional include-list once the useful series are known, e.g.
+    # metrics.dynatrace.com/filter: '{"mode":"include","names":["kafka_server_*","jvm_*"]}'
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: kraftcontroller
+    app.kubernetes.io/part-of: confluent-platform
+  ports:
+    - name: metrics
+      port: 7778
+      targetPort: 7778
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: schemaregistry-dynatrace-metrics
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/instance: schemaregistry-dynatrace-metrics
+    app.kubernetes.io/component: dynatrace-metrics
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+    metrics.dynatrace.com/scrape: "true"
+    metrics.dynatrace.com/port: "7778"
+    metrics.dynatrace.com/path: "/metrics"
+    metrics.dynatrace.com/secure: "false"
+    # Optional include-list once the useful series are known, e.g.
+    # metrics.dynatrace.com/filter: '{"mode":"include","names":["kafka_server_*","jvm_*"]}'
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: schemaregistry
+    app.kubernetes.io/part-of: confluent-platform
+  ports:
+    - name: metrics
+      port: 7778
+      targetPort: 7778
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connect-dynatrace-metrics
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/instance: connect-dynatrace-metrics
+    app.kubernetes.io/component: dynatrace-metrics
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+    metrics.dynatrace.com/scrape: "true"
+    metrics.dynatrace.com/port: "7778"
+    metrics.dynatrace.com/path: "/metrics"
+    metrics.dynatrace.com/secure: "false"
+    # Optional include-list once the useful series are known, e.g.
+    # metrics.dynatrace.com/filter: '{"mode":"include","names":["kafka_server_*","jvm_*"]}'
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: connect
+    app.kubernetes.io/part-of: confluent-platform
+  ports:
+    - name: metrics
+      port: 7778
+      targetPort: 7778
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafkarest-dynatrace-metrics
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/instance: kafkarest-dynatrace-metrics
+    app.kubernetes.io/component: dynatrace-metrics
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+    metrics.dynatrace.com/scrape: "true"
+    metrics.dynatrace.com/port: "7778"
+    metrics.dynatrace.com/path: "/metrics"
+    metrics.dynatrace.com/secure: "false"
+    # Optional include-list once the useful series are known, e.g.
+    # metrics.dynatrace.com/filter: '{"mode":"include","names":["kafka_server_*","jvm_*"]}'
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: kafkarest
+    app.kubernetes.io/part-of: confluent-platform
+  ports:
+    - name: metrics
+      port: 7778
+      targetPort: 7778
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: controlcenter-dynatrace-metrics
+  namespace: dah-flink-uat
+  labels:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/instance: controlcenter-dynatrace-metrics
+    app.kubernetes.io/component: dynatrace-metrics
+    app.kubernetes.io/part-of: confluent-platform
+    fcbint.net/app-id: "11547"
+  annotations:
+    fcbint.net/contact: dahkafkasupportnotification@firstcitizens.com
+    metrics.dynatrace.com/scrape: "true"
+    metrics.dynatrace.com/port: "7778"
+    metrics.dynatrace.com/path: "/metrics"
+    metrics.dynatrace.com/secure: "false"
+    # Optional include-list once the useful series are known, e.g.
+    # metrics.dynatrace.com/filter: '{"mode":"include","names":["kafka_server_*","jvm_*"]}'
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: controlcenter
+    app.kubernetes.io/part-of: confluent-platform
+  ports:
+    - name: metrics
+      port: 7778
+      targetPort: 7778
+      protocol: TCP

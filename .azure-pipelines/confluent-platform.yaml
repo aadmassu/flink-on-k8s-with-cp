@@ -1583,6 +1583,12 @@ stages:
                     fi
                   done
 
+                  for monitoring_file in "$ENV_DIR"/monitoring/*.yaml; do
+                    if [ -f "$monitoring_file" ]; then
+                      MANIFESTS_TO_VALIDATE+=("monitoring/$(basename "$monitoring_file")")
+                    fi
+                  done
+
                   for extSecret_file in "$ENV_DIR"/externalsecrets/*.yaml; do
                     if [ -f "$extSecret_file" ]; then
                       MANIFESTS_TO_VALIDATE+=("externalsecrets/$(basename "$extSecret_file")")
@@ -3187,6 +3193,33 @@ stages:
                 APPLY_KAFKA_REST_PROXY: ${{ parameters.applyKafkaRestProxy }}
                 APPLY_CONTROL_CENTER: ${{ parameters.applyControlCenter }}
 
+          - ${{ if eq(parameters.action, 'install-or-update') }}:
+            - task: Bash@3
+              displayName: "Apply Dynatrace metrics Services (monitoring/, if present)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV"
+                  if ! ls "$ENV_DIR"/monitoring/*.yaml >/dev/null 2>&1; then
+                    echo "No monitoring/ manifests for $TARGET_ENV; skipping."
+                    exit 0
+                  fi
+                  for f in "$ENV_DIR"/monitoring/*.yaml; do
+                    echo "+ oc apply -f $f"
+                    oc apply --dry-run=server -f "$f" >/dev/null
+                    oc apply -f "$f"
+                  done
+                  echo ""
+                  echo "=== Endpoints selected by each Dynatrace metrics Service (empty = selector mismatch) ==="
+                  for svc in $(oc -n "$OC_NS" get svc -l app.kubernetes.io/component=dynatrace-metrics -o jsonpath='{.items[*].metadata.name}'); do
+                    n=$(oc -n "$OC_NS" get endpointslices -l kubernetes.io/service-name="$svc" -o json | python3 .azure-pipelines/scripts/validate_endpointslices.py)
+                    printf '  %-36s %s ready endpoint(s)\n' "$svc" "$n"
+                  done
+              env:
+                OC_NS: $(RESOLVED_NS)
+                TARGET_ENV: ${{ parameters.environment }}
+
           - ${{ if eq(parameters.action, 'uninstall') }}:
             - task: Bash@3
               displayName: "Uninstall Confluent Platform CRs"
@@ -3303,6 +3336,12 @@ stages:
                   # Browser-facing routes are dependents of the component
                   # Services. Remove them first so a clean uninstall does not
                   # leave routes pointing at Services that no longer exist.
+                  for monitoring in "$ENV_DIR"/monitoring/*.yaml; do
+                    [ -f "$monitoring" ] || continue
+                    echo "+ oc delete -f $monitoring --ignore-not-found"
+                    oc delete -f "$monitoring" --ignore-not-found --wait=true --timeout=2m || FAIL=1
+                  done
+
                   for ingress in "$ENV_DIR"/ingress/*.yaml; do
                     [ -f "$ingress" ] || continue
                     echo "+ oc delete -f $ingress --ignore-not-found --wait=true --timeout=2m"
