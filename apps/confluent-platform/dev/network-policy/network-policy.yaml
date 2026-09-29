@@ -50,6 +50,8 @@ spec:
         - { protocol: TCP, port: 8090 }
         - { protocol: TCP, port: 9021 }
     # Dynatrace ActiveGate (namespace dynatrace) scraping the JMX Prometheus exporter (runbook H9).
+    # Upper envs get the same rule via Inter-Namespace Request with destination pod labels
+    # app.kubernetes.io/part-of=confluent-platform + fcbint.net/app-id=11547 (all CFK pods carry both).
     - from:
         - namespaceSelector:
             matchLabels:
