@@ -53,6 +53,15 @@ spec:
     - kafka-0.kafka.apps.dv-p.ocp.fcbint.net
     - kafka-1.kafka.apps.dv-p.ocp.fcbint.net
     - kafka-2.kafka.apps.dv-p.ocp.fcbint.net
+    # client listener through TLS-passthrough Ingress on 443 (runbook H10): names must be
+    # one label under the router wildcard. Both bootstrap shapes CFK may advertise are listed.
+    - kafka-client.apps.dv-p.ocp.fcbint.net
+    - kafka-0.apps.dv-p.ocp.fcbint.net
+    - kafka-1.apps.dv-p.ocp.fcbint.net
+    - kafka-2.apps.dv-p.ocp.fcbint.net
+    - kafka-client-0.apps.dv-p.ocp.fcbint.net
+    - kafka-client-1.apps.dv-p.ocp.fcbint.net
+    - kafka-client-2.apps.dv-p.ocp.fcbint.net
   duration: 8760h0m0s
   renewBefore: 1080h0m0s
   privateKey:

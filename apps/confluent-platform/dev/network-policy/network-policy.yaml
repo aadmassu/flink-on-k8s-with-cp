@@ -75,3 +75,4 @@ spec:
         - { protocol: TCP, port: 8083 }  # Kafka Connect
         - { protocol: TCP, port: 8090 }  # Kafka MDS (C3 SSO)
         - { protocol: TCP, port: 9021 }  # Control Center
+        - { protocol: TCP, port: 9093 }  # Kafka client listener (TLS passthrough, runbook H10)

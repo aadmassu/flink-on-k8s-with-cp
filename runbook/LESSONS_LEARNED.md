@@ -1800,6 +1800,44 @@ matters**. Keep entries dense; this is meant to be read end-to-end.
 * **Do not**: expose 7778 through Ingress (unauthenticated, violates the
   TLS-only standard) or install a separate OTel collector; neither is needed.
 
+### H10. Kafka brokers reachable from outside the cluster: a dedicated OAuth listener behind TLS-passthrough Ingresses on 443
+
+* **Context (2026-10-01)**: applications on the FCB network need the CFK
+  brokers; the brokers were ClusterIP-only. Tracker 2.10 recorded a
+  non-standard TCP port request for 9092/9094. OpenShift passthrough Routes
+  on 443 route on SNI without terminating TLS, which is the standard CFK
+  pattern on OpenShift and already approved at FCB for Control Center.
+* **Design**: a new `custom` listener `client` on 9093, same OAuth config and
+  `kafka-tls` certificate as `external`, with
+  `externalAccess.type: staticForHostBasedRouting` (`domain:
+  apps.dv-p.ocp.fcbint.net`, `port: 443`, `brokerPrefix: kafka-`). The
+  brokers advertise `kafka-N.apps.dv-p...:443` on that listener only.
+  `external:9092` is deliberately NOT given externalAccess: SR, Connect,
+  REST Proxy and Control Center bootstrap on it, and giving it router-side
+  advertised names would hairpin every in-cluster byte through HAProxy.
+* **Moving parts**: `kafka-tls` SANs gain the single-label router names
+  (two naming shapes listed until CFK's choice is confirmed; Keyfactor
+  reissues, brokers roll); the DEV NetworkPolicy admits the routers to 9093;
+  `ingress/kafka-client-passthrough.yaml.tmpl` is rendered by
+  `.azure-pipelines/scripts/kafka-passthrough.sh` from the LIVE advertised
+  listeners (`kafka-configs --describe --all`) and CFK Services, one
+  passthrough Ingress for the bootstrap plus one per broker, labelled
+  `app.kubernetes.io/component=kafka-passthrough`. The same script proves
+  the external path from the build agent with `openssl s_client` + SNI and
+  checks the served certificate names the host. `validate-confluent-platform`
+  runs it strict; the ad hoc script runs it advisory.
+* **Client side**: `bootstrap.servers=kafka.apps.dv-p.ocp.fcbint.net:443`,
+  `SASL_SSL` / `OAUTHBEARER`, hostname verification ON (it drives SNI, so
+  disabling it breaks routing, not only security). Router idle timeout is
+  raised to 1h per Ingress; keep it above `connections.max.idle.ms`.
+* **Caveats**: Kafka 4.x clients need the OAuth URL allowlist (I6). The
+  bootstrap hostname CFK uses for a custom listener was not confirmed in
+  advance, so the script derives it from the Service name and the SANs
+  cover both `kafka.` and `kafka-client.`; fix the SAN list once the first
+  run shows the real names. Rick's agreement is needed before QA, since
+  this replaces the 2.10 custom-port plan. Router capacity for PRD volumes
+  is an open question for Container Platforms.
+
 ## I. Cluster Linking + Schema Linking (VM CP → CFK)
 
 ### I1. The ClusterLink CR is rendered, not hand-edited — topic / group / ACL lists live in text files

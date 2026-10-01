@@ -118,6 +118,11 @@ Loop this section for each of: `kraftcontroller.yaml`, `kafka.yaml`,
       Use the mapping table in `docs/LISTENER_PORT_MATRIX.md`
 - [ ] `external:9092` carries `type: oauth`; every managed component's
       `dependencies.kafka.bootstrapEndpoint` ends `:9092` (not `:9071`)
+- [ ] (envs exposing brokers) `custom[client]` on 9093 with OAuth and
+      `externalAccess: staticForHostBasedRouting` on 443, `kafka-tls` SANs
+      carry the single-label router names, NetworkPolicy admits the routers
+      to 9093, and `validate-confluent-platform` passes the passthrough check
+      (`LESSONS_LEARNED.md` H10)
 - [ ] `custom[certonly]` on 9094 present with `type: mtls`,
       `sslClientAuthentication: required`, CN mapping rule (rolled to all
       six envs 2026-09-07; adding it rolls the brokers, so validate the CR

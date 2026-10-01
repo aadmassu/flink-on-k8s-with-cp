@@ -99,6 +99,18 @@ stages:
               TARGET_ENV: ${{ parameters.environment }}
               OC_NS: $(openshift-namespace)
 
+          - task: Bash@3
+            displayName: "Validate Kafka client listener passthrough (${{ parameters.environment }})"
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                chmod +x .azure-pipelines/scripts/kafka-passthrough.sh
+                STRICT=1 ENV_DIR="apps/confluent-platform/$TARGET_ENV" .azure-pipelines/scripts/kafka-passthrough.sh check
+            env:
+              TARGET_ENV: ${{ parameters.environment }}
+              OC_NS: $(openshift-namespace)
+
           - ${{ if and(eq(parameters.executeAdHocCommand, true), ne(parameters.adHocCommand, '')) }}:
             - task: Bash@3
               displayName: "Execute ad hoc command (${{ parameters.environment }})"

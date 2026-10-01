@@ -92,6 +92,36 @@ spec:
     # certonly mirrors the VM CERTONLY:9094 listener for mTLS-only clients.
     # Not externally exposed yet — tracker 2.10 custom-TCP-port exception pending.
     custom:
+      # client = OAuth listener for applications OUTSIDE the cluster, reached through
+      # TLS-passthrough Ingresses on 443 (SNI routing). external:9092 stays in-cluster
+      # so SR/Connect/REST/C3 never hairpin through the routers (runbook H10).
+      - name: client
+        port: 9093
+        externalAccess:
+          type: staticForHostBasedRouting
+          staticForHostBasedRouting:
+            domain: apps.dv-p.ocp.fcbint.net
+            port: 443
+            brokerPrefix: kafka-
+        authentication:
+          type: oauth
+          jaasConfig:
+            secretRef: oauth-broker
+          oauthSettings:
+            audience: "Confluent,account,api://default"
+            expectedIssuer: https://myapps.firstcitizens.com/oauth2/default
+            groupsClaimName: dahDev_groups
+            subClaimName: sub
+            jwksEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/keys
+            tokenEndpointUri: https://myapps.firstcitizens.com/oauth2/default/v1/token
+            scope: 11547.DAH(Dev)
+            loginConnectTimeoutMs: 10000
+            loginReadTimeoutMs: 30000
+            loginRetryBackoffMaxMs: 5000
+            loginRetryBackoffMs: 60000
+        tls:
+          enabled: true
+          secretRef: kafka-tls
       - name: certonly
         port: 9094
         authentication:
@@ -232,6 +262,9 @@ spec:
       # Validates BOTH Okta JWTs (via JWKS) and MDS-issued tokens (via publicKeyPath
       # above). Without it C3 human SSO sessions are rejected — runbook A33.
       - listener.name.external.oauthbearer.sasl.server.callback.handler.class=io.confluent.kafka.server.plugins.auth.token.CompositeBearerValidatorCallbackHandler
+      # Same validator chain on the client listener (runbook A33 / H10).
+      - listener.name.client.oauthbearer.sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required unsecuredLoginStringClaim_sub="thePrincipalName" publicKeyPath="/mnt/secrets/mds-token-keypair/mdsPublicKey.pem" ssl.truststore.location="/var/ssl/truststore/bundle.p12" ssl.truststore.password="changeit" ssl.truststore.type="PKCS12";
+      - listener.name.client.oauthbearer.sasl.server.callback.handler.class=io.confluent.kafka.server.plugins.auth.token.CompositeBearerValidatorCallbackHandler
 
       # TOKEN listener OAuth bearer validator truststore (for JWKS endpoint validation during startup)
       - listener.name.token.oauthbearer.ssl.truststore.location=/var/ssl/truststore/bundle.p12

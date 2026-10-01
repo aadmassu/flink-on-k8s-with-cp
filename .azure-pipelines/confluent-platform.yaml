@@ -3220,6 +3220,26 @@ stages:
                 OC_NS: $(RESOLVED_NS)
                 TARGET_ENV: ${{ parameters.environment }}
 
+          - ${{ if eq(parameters.action, 'install-or-update') }}:
+            - task: Bash@3
+              displayName: "Expose the Kafka client listener through passthrough Ingresses (if the env has the template)"
+              inputs:
+                targetType: inline
+                script: |
+                  set -euo pipefail
+                  is_true() { [ "$1" = "True" ]; }
+                  if ! is_true "${APPLY_ALL:-True}" && ! is_true "${APPLY_KAFKA:-False}"; then
+                    echo "Kafka not in scope for this run; skipping passthrough Ingresses."
+                    exit 0
+                  fi
+                  chmod +x .azure-pipelines/scripts/kafka-passthrough.sh
+                  ENV_DIR="apps/confluent-platform/$TARGET_ENV" .azure-pipelines/scripts/kafka-passthrough.sh render-apply
+              env:
+                OC_NS: $(RESOLVED_NS)
+                TARGET_ENV: ${{ parameters.environment }}
+                APPLY_ALL: ${{ parameters.applyAll }}
+                APPLY_KAFKA: ${{ parameters.applyKafka }}
+
           - ${{ if eq(parameters.action, 'uninstall') }}:
             - task: Bash@3
               displayName: "Uninstall Confluent Platform CRs"
@@ -3336,6 +3356,9 @@ stages:
                   # Browser-facing routes are dependents of the component
                   # Services. Remove them first so a clean uninstall does not
                   # leave routes pointing at Services that no longer exist.
+                  echo "+ oc delete ingress -l app.kubernetes.io/component=kafka-passthrough (rendered at install time)"
+                  oc -n "$OC_NS" delete ingress -l app.kubernetes.io/component=kafka-passthrough --ignore-not-found --wait=true --timeout=2m || FAIL=1
+
                   for monitoring in "$ENV_DIR"/monitoring/*.yaml; do
                     [ -f "$monitoring" ] || continue
                     echo "+ oc delete -f $monitoring --ignore-not-found"

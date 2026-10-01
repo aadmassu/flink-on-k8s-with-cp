@@ -99,6 +99,12 @@ echo "Dynatrace metrics Services (annotations as stored):"
 safe_oc -n "$NS" get svc -l app.kubernetes.io/component=dynatrace-metrics \
   -o custom-columns='NAME:.metadata.name,SCRAPE:.metadata.annotations.metrics\.dynatrace\.com/scrape,PORT:.metadata.annotations.metrics\.dynatrace\.com/port,PATH:.metadata.annotations.metrics\.dynatrace\.com/path,SELECTOR:.spec.selector'
 
+section "0b. Kafka client listener passthrough (runbook H10)"
+STRICT=0 OC_NS="$NS" TARGET_ENV="$TARGET_ENV" ENV_DIR="apps/confluent-platform/$TARGET_ENV" bash "$(dirname "$0")/kafka-passthrough.sh" check || true
+echo
+echo "Routes generated from the passthrough Ingresses:"
+safe_oc -n "$NS" get route -l app.kubernetes.io/component=kafka-passthrough -o custom-columns='NAME:.metadata.name,HOST:.spec.host,TERMINATION:.spec.tls.termination,SERVICE:.spec.to.name,PORT:.spec.port.targetPort,ADMITTED:.status.ingress[0].conditions[0].status'
+
 section "CFK operator mTLS certificate diagnostic"
 echo "Timestamp (UTC):  $(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || true)"
 echo "Target environment:$TARGET_ENV"
